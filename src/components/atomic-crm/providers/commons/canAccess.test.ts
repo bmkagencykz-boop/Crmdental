@@ -36,6 +36,18 @@ describe("canAccess", () => {
     );
   });
 
+  it("shows the reports to the owner and the head only", () => {
+    expect(canAccess("owner", { resource: "reports", action: "list" })).toBe(
+      true,
+    );
+    expect(canAccess("head", { resource: "reports", action: "list" })).toBe(
+      true,
+    );
+    expect(canAccess("manager", { resource: "reports", action: "list" })).toBe(
+      false,
+    );
+  });
+
   it("denies everything without a role", () => {
     expect(canAccess(undefined, { resource: "deals", action: "list" })).toBe(
       false,

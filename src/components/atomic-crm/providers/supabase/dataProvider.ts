@@ -20,6 +20,11 @@ import type {
   MessengerStatus,
 } from "../../types";
 import { applySearch } from "../commons/search";
+import type {
+  ReportFilters,
+  ReportName,
+  ReportResult,
+} from "../../reports/reportMath";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
 import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
@@ -317,6 +322,21 @@ const getDataProviderWithCustomMethods = () => {
         .single();
       if (error) throw error;
       return data as OrganizationSettings;
+    },
+    /** A report of the reports screen (public.report_*, owner and head only) */
+    async getReport<Name extends ReportName>(
+      name: Name,
+      filters: ReportFilters,
+    ): Promise<ReportResult[Name]> {
+      const { data, error } = await getSupabaseClient().rpc(`report_${name}`, {
+        period_from: filters.from ?? null,
+        period_to: filters.to ?? null,
+        filter_pipeline_id: filters.pipeline_id ?? null,
+        filter_sales_id: filters.sales_id ?? null,
+        filter_source_id: filters.source_id ?? null,
+      });
+      if (error) throw error;
+      return data as ReportResult[Name];
     },
     // One configuration row per organization; RLS returns the current one
     async getConfiguration(): Promise<ConfigurationContextValue> {

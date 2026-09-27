@@ -1,5 +1,6 @@
 import { InboxPage } from "../messages/InboxPage";
 import { TasksPage } from "../tasks/TasksPage";
+import { ReportsPage } from "../reports/ReportsPage";
 import type {
   CoreAdminProps,
   AuthProvider,
@@ -210,6 +211,7 @@ const DesktopAdmin = (
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         <Route path={TasksPage.path} element={<TasksPage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
+        <Route path={ReportsPage.path} element={<ReportsPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />

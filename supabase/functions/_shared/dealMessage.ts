@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "./supabaseAdmin.ts";
-import { chooseRoute, WAZZUP_API } from "./messenger.ts";
+import { chooseRoute, type Route, WAZZUP_API } from "./messenger.ts";
 
 export type DealMessageResult =
   | { ok: true; message: Record<string, unknown> }
@@ -13,8 +13,8 @@ export type DealMessageResult =
  * Sends a text to the patient of a deal through Wazzup24 and stores it as an
  * outgoing message. The chat is the one the patient last wrote from, else a
  * known chat, else WhatsApp on the patient's phone (chooseRoute). Used by
- * messenger_send (an employee) and automessages_dispatch (the system).
- * The caller has checked that the deal may be written to.
+ * messenger_send (an employee), automessages_dispatch and mailings_dispatch
+ * (the system). The caller has checked that the deal may be written to.
  */
 export const sendDealMessage = async ({
   organizationId,
@@ -23,6 +23,7 @@ export const sendDealMessage = async ({
   text,
   salesId = null,
   automessageId = null,
+  mailingMessageId = null,
 }: {
   organizationId: number;
   dealId: number;
@@ -30,7 +31,85 @@ export const sendDealMessage = async ({
   text: string;
   salesId?: number | null;
   automessageId?: number | null;
+  mailingMessageId?: number | null;
 }): Promise<DealMessageResult> => {
+  const sent = await sendToPatient({
+    organizationId,
+    dealId,
+    patientId,
+    text,
+    salesId,
+  });
+  if (!sent.ok) return sent;
+  const { route, channel, externalId } = sent;
+
+  // With an automessage or a mailing row, a trigger marks it sent (and
+  // completes the task of the automessage)
+  const { data: message, error } = await supabaseAdmin
+    .from("messages")
+    .insert({
+      organization_id: organizationId,
+      patient_id: patientId,
+      deal_id: dealId,
+      channel_id: channel?.id ?? null,
+      transport: route.chatType,
+      chat_id: route.chatId,
+      direction: "out",
+      sales_id: salesId,
+      text,
+      status: "sent",
+      external_id: externalId,
+      automessage_id: automessageId,
+      ...(mailingMessageId != null
+        ? { mailing_message_id: mailingMessageId }
+        : {}),
+    })
+    .select()
+    .single();
+  if (error) {
+    console.error("Storing the message failed", error);
+    return { ok: false, code: "store_failed", detail: error.message };
+  }
+  return { ok: true, message };
+};
+
+export type PatientMessageResult =
+  | {
+      ok: true;
+      route: Route;
+      channel: { id: number; external_id: string } | undefined;
+      externalId: string;
+    }
+  | {
+      ok: false;
+      code: "not_connected" | "no_route" | "send_failed";
+      detail?: string;
+    };
+
+/**
+ * Sends a text to a patient through Wazzup24 without storing it: to the chat
+ * the patient last wrote from (in this deal, or in any deal when dealId is
+ * null), else a known chat, else WhatsApp on the phone. A mailing to a
+ * patient without any deal uses it directly: the message is then recorded in
+ * mailing_messages only.
+ */
+export const sendToPatient = async ({
+  organizationId,
+  dealId,
+  patientId,
+  text,
+  salesId = null,
+}: {
+  organizationId: number;
+  dealId: number | null;
+  patientId: number;
+  text: string;
+  salesId?: number | null;
+}): Promise<PatientMessageResult> => {
+  const lastMessageQuery = supabaseAdmin
+    .from("messages")
+    .select("transport, chat_id, messenger_channels(external_id)")
+    .eq("organization_id", organizationId);
   const [integration, lastMessage, patientChats, patient, channels] =
     await Promise.all([
       supabaseAdmin
@@ -38,11 +117,10 @@ export const sendDealMessage = async ({
         .select("api_key")
         .eq("organization_id", organizationId)
         .maybeSingle(),
-      supabaseAdmin
-        .from("messages")
-        .select("transport, chat_id, messenger_channels(external_id)")
-        .eq("organization_id", organizationId)
-        .eq("deal_id", dealId)
+      (dealId != null
+        ? lastMessageQuery.eq("deal_id", dealId)
+        : lastMessageQuery.eq("patient_id", patientId)
+      )
         .order("sent_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -107,28 +185,10 @@ export const sendDealMessage = async ({
   const channel = (channels.data ?? []).find(
     (c) => c.external_id === route.channelId,
   );
-  // With an automessage, a trigger marks it sent (and completes its task)
-  const { data: message, error } = await supabaseAdmin
-    .from("messages")
-    .insert({
-      organization_id: organizationId,
-      patient_id: patientId,
-      deal_id: dealId,
-      channel_id: channel?.id ?? null,
-      transport: route.chatType,
-      chat_id: route.chatId,
-      direction: "out",
-      sales_id: salesId,
-      text,
-      status: "sent",
-      external_id: messageId ?? crmMessageId,
-      automessage_id: automessageId,
-    })
-    .select()
-    .single();
-  if (error) {
-    console.error("Storing the message failed", error);
-    return { ok: false, code: "store_failed", detail: error.message };
-  }
-  return { ok: true, message };
+  return {
+    ok: true,
+    route,
+    channel,
+    externalId: messageId ?? crmMessageId,
+  };
 };

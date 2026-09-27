@@ -50,16 +50,30 @@ Deno.serve(async (req) => {
   }
 
   for (const status of body.statuses ?? []) {
-    const { error } = await supabaseAdmin.rpc("update_message_status", {
+    const params = {
       webhook_token: token,
       external_id: status.messageId,
       status: status.status,
       error: status.error?.description ?? status.error?.error ?? null,
-    });
+    };
+    const { data: found, error } = await supabaseAdmin.rpc(
+      "update_message_status",
+      params,
+    );
     if (error?.code === "28000") {
       return new Response("Unknown token", { status: 401 });
     }
     if (error) console.error("update_message_status failed", error);
+    // A mailing message to a patient without any deal is not in messages
+    if (!error && found === false) {
+      const { error: mailingError } = await supabaseAdmin.rpc(
+        "update_mailing_message_status",
+        params,
+      );
+      if (mailingError) {
+        console.error("update_mailing_message_status failed", mailingError);
+      }
+    }
   }
 
   return new Response("OK");

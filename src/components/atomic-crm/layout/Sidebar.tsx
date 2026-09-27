@@ -61,9 +61,8 @@ export const Sidebar = () => {
         <CanAccess resource="sales" action="list">
           <SidebarLink item={sales} active={isActive(sales)} />
         </CanAccess>
-        <CanAccess resource="configuration" action="edit">
-          <SidebarLink item={settings} active={isActive(settings)} />
-        </CanAccess>
+        {/* Everyone: managers keep their quick replies there */}
+        <SidebarLink item={settings} active={isActive(settings)} />
       </div>
     </aside>
   );

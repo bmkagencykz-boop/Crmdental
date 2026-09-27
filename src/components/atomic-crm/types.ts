@@ -304,6 +304,20 @@ export type Automessage = {
   created_at: string;
 } & Pick<RaRecord, "id">;
 
+/**
+ * A ready answer of the chat (typed after "/"). sales_id null: the whole
+ * clinic (owner and head edit it); else the personal reply of this employee.
+ */
+export type QuickReply = {
+  organization_id?: Identifier;
+  title: string;
+  text: string;
+  shortcut?: string | null;
+  sales_id?: Identifier | null;
+  position: number;
+  created_at?: string;
+} & Pick<RaRecord, "id">;
+
 export type StageChecklistItem = {
   stage_id: Identifier;
   text: string;

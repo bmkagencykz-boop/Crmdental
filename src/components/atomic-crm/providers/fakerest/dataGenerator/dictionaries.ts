@@ -116,4 +116,56 @@ export const generateDictionaries = (db: Db) => {
     { id: 3, stage_id: 4, text: "Озвучить стоимость и рассрочку", position: 2 },
   ];
   db.deal_checklist_checks = [];
+  // Same defaults as private.seed_quick_replies, plus a personal reply of
+  // the owner (the demo user)
+  db.quick_replies = [
+    {
+      id: 1,
+      title: "Приветствие",
+      shortcut: "привет",
+      text: "Здравствуйте, {имя}! Меня зовут {сотрудник}, клиника {клиника}. Чем могу помочь?",
+      sales_id: null,
+      position: 0,
+    },
+    {
+      id: 2,
+      title: "Адрес и парковка",
+      shortcut: "адрес",
+      text: "Наш адрес: [укажите адрес клиники]. Рядом есть бесплатная парковка [уточните, где именно]. Ждём вас!",
+      sales_id: null,
+      position: 1,
+    },
+    {
+      id: 3,
+      title: "Стоимость консультации",
+      shortcut: "цена",
+      text: "{имя}, консультация врача стоит [укажите цену] ₸. На ней врач проведёт осмотр и составит план лечения.",
+      sales_id: null,
+      position: 2,
+    },
+    {
+      id: 4,
+      title: "Запись на консультацию",
+      shortcut: "запись",
+      text: "{имя}, записали вас на консультацию {дата_визита}. Если планы изменятся, пожалуйста, напишите нам заранее.",
+      sales_id: null,
+      position: 3,
+    },
+    {
+      id: 5,
+      title: "Спасибо, ждём вас",
+      shortcut: "спасибо",
+      text: "Спасибо, {имя}! Ждём вас в клинике {клиника}. Хорошего дня!",
+      sales_id: null,
+      position: 4,
+    },
+    {
+      id: 6,
+      title: "Рассрочка",
+      shortcut: "рассрочка",
+      text: "{имя}, услугу «{услуга}» можно оплатить в рассрочку без переплаты. Расскажу подробнее на консультации.",
+      sales_id: 0,
+      position: 0,
+    },
+  ];
 };

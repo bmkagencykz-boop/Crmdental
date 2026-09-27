@@ -23,6 +23,7 @@ import type {
   MessageTemplate,
   AutomessageRule,
   Automessage,
+  QuickReply,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 
@@ -50,6 +51,7 @@ export interface Db {
   message_templates: MessageTemplate[];
   automessage_rules: AutomessageRule[];
   automessages: Automessage[];
+  quick_replies: QuickReply[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
 }

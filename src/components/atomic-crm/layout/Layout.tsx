@@ -6,6 +6,8 @@ import { Notification } from "@/components/admin/notification";
 import { Error } from "@/components/admin/error";
 import { UserMenu } from "@/components/admin/user-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTheme } from "@/components/admin/use-theme";
+import { Moon, Sun } from "lucide-react";
 
 import { useConfigurationLoader } from "../root/useConfigurationLoader";
 import { SIDEBAR_WIDTH, useNavItems } from "./navigation";
@@ -25,10 +27,13 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             <span className="font-bold tracking-[-0.03em]">dental</span>
             <span className="font-bold text-brand-pink">crm</span>
           </Link>
-          <UserMenu>
-            <ProfileMenu />
-            <ChangelogMenuItem />
-          </UserMenu>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <UserMenu>
+              <ProfileMenu />
+              <ChangelogMenuItem />
+            </UserMenu>
+          </div>
         </div>
         <main className="px-8 pt-2 pb-12" id="main-content">
           <PageTitle />
@@ -43,6 +48,28 @@ export const Layout = ({ children }: { children: ReactNode }) => {
       </div>
       <Notification />
     </>
+  );
+};
+
+/** Light / dark switch (light is the amoCRM-like theme) */
+const ThemeToggle = () => {
+  const translate = useTranslate();
+  const { theme, setTheme } = useTheme();
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const label = translate(isDark ? "crm.theme.to_light" : "crm.theme.to_dark");
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      aria-label={label}
+      title={label}
+    >
+      {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
+    </button>
   );
 };
 

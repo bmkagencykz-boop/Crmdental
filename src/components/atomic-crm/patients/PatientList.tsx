@@ -80,7 +80,7 @@ const PatientTable = () => {
   const translate = useTranslate();
   const { data: sources } = useLeadSources();
   return (
-    <div className="glass overflow-hidden rounded-[1.75rem] px-2 py-1">
+    <div className="glass overflow-hidden rounded-lg px-2 py-1">
       <DataTable<Patient>
         rowClick="show"
         bulkActionButtons={

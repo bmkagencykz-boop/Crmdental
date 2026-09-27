@@ -130,7 +130,7 @@ const DuplicatePhoneHint = () => {
 
   if (!duplicates.length) return null;
   return (
-    <div className="rounded-2xl bg-brand-yellow/30 px-4 py-3 text-sm">
+    <div className="rounded-lg bg-brand-yellow/30 px-4 py-3 text-sm">
       {translate("crm.patients.duplicate_phone")}{" "}
       {duplicates.map((patient, index) => (
         <span key={patient.id}>

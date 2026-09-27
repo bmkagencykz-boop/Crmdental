@@ -8,8 +8,8 @@ import { ChangelogPage } from "../misc/ChangelogPage";
 import { type NavItem, SIDEBAR_WIDTH, useNavItems } from "./navigation";
 
 /**
- * Floating column of round buttons (Stratus reference) with short labels
- * under each icon (amoCRM habit).
+ * Column of square-ish buttons with short labels under each icon (amoCRM
+ * habit).
  */
 export const Sidebar = () => {
   const translate = useTranslate();
@@ -38,7 +38,7 @@ export const Sidebar = () => {
     >
       <Link
         to="/"
-        className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
+        className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground"
         aria-label="Dental CRM"
       >
         <LogoMark />
@@ -82,10 +82,10 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
     >
       <span
         className={cn(
-          "relative flex size-12 items-center justify-center rounded-full transition-all duration-200",
+          "relative flex size-12 items-center justify-center rounded-lg transition-all duration-200",
           active
-            ? "bg-primary text-primary-foreground shadow-[0_10px_28px_-10px_rgba(239,59,110,0.7)]"
-            : "border border-white/10 bg-[#241f22] text-foreground group-hover:-translate-y-0.5 group-hover:border-brand-rose/60 group-hover:text-brand-blush",
+            ? "bg-primary text-primary-foreground shadow-[0_8px_22px_-10px_rgba(239,59,110,0.7)]"
+            : "border border-nav-button-border bg-nav-button text-foreground shadow-card group-hover:border-primary/60 group-hover:text-brand-link",
         )}
       >
         <Icon className="size-[1.3rem]" strokeWidth={2} />
@@ -103,7 +103,7 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
         className={cn(
           "text-center text-[11px] leading-[1.15] transition-colors",
           active
-            ? "font-semibold text-brand-blush"
+            ? "font-semibold text-brand-link"
             : "font-medium text-foreground/85 group-hover:text-foreground",
         )}
       >

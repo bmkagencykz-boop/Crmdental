@@ -59,7 +59,7 @@ export const LostReasonDialog = ({
                 aria-checked={reasonId === reason.id}
                 onClick={() => setReasonId(reason.id)}
                 className={cn(
-                  "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  "rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
                   reasonId === reason.id
                     ? "bg-primary text-primary-foreground"
                     : "soft hover:bg-card",

@@ -34,7 +34,7 @@ export const StageChecklist = ({ deal }: { deal: Deal }) => {
   ).length;
 
   return (
-    <section className="rounded-[1.5rem] bg-muted/60 p-5">
+    <section className="rounded-lg bg-muted/60 p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-[15px] font-semibold">
           {translate("crm.deals.checklist.title")}

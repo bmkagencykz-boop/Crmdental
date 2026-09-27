@@ -60,7 +60,7 @@ export const DealComposer = ({
     <div className="flex flex-col gap-3 border-t border-border px-6 py-4">
       {openTasks.length ? (
         <div
-          className="flex max-h-36 flex-col gap-2 overflow-y-auto rounded-2xl bg-card px-4 py-3"
+          className="flex max-h-36 flex-col gap-2 overflow-y-auto rounded-lg bg-card px-4 py-3"
           aria-label={translate("crm.deals.timeline.next_steps")}
         >
           {openTasks.map((task) => (
@@ -68,7 +68,7 @@ export const DealComposer = ({
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-2 rounded-full bg-brand-yellow px-4 py-2.5 text-sm font-medium text-black">
+        <div className="flex items-center gap-2 rounded-md bg-brand-yellow px-4 py-2.5 text-sm font-medium text-black">
           <AlertTriangle className="size-4 shrink-0" />
           <span>{translate("crm.deals.page.no_task")}</span>
           <button
@@ -81,7 +81,7 @@ export const DealComposer = ({
         </div>
       )}
 
-      <div className="rounded-2xl bg-card p-3 shadow-card">
+      <div className="rounded-lg bg-card p-3 shadow-card">
         <div
           className="mb-2 flex flex-wrap items-center gap-1 text-sm"
           role="tablist"
@@ -94,7 +94,7 @@ export const DealComposer = ({
               aria-selected={mode === value}
               onClick={() => setMode(value)}
               className={cn(
-                "rounded-full px-3 py-1 font-semibold transition-colors",
+                "rounded-md px-3 py-1 font-semibold transition-colors",
                 mode === value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -222,7 +222,7 @@ const TaskForm = ({ deal, onDone }: { deal: Deal; onDone: () => void }) => {
         value={type}
         onChange={(event) => setType(event.target.value as TaskType)}
         aria-label={translate("resources.tasks.fields.type")}
-        className="soft h-10 rounded-full border-0 px-3 text-sm"
+        className="soft h-10 rounded-md border-0 px-3 text-sm"
       >
         {TASK_TYPES.map((value) => (
           <option key={value} value={value}>

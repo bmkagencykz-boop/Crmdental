@@ -4,7 +4,7 @@ import { useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
-import { accent, onAccent } from "../misc/accent";
+import { accent } from "../misc/accent";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal, Stage } from "../types";
 import { DealCard } from "./DealCard";
@@ -26,40 +26,32 @@ export const DealColumn = ({
     0,
   );
   const color = accent(stage.color);
-  const ink = onAccent(stage.color);
   return (
-    <section className="flex min-h-[calc(100vh-18rem)] w-[18rem] shrink-0 flex-col border-l border-white/[0.06] px-2.5 first:border-l-0">
-      <header
-        className="mb-3 flex items-center gap-3 rounded-full py-2.5 pr-5 pl-3"
-        style={{ backgroundColor: color, color: ink }}
-      >
-        <span
-          className="flex size-11 shrink-0 items-center justify-center rounded-full text-[1.35rem] font-semibold tabular-nums"
-          style={{
-            backgroundColor:
-              ink === "#FFFFFF"
-                ? "rgba(255,255,255,0.16)"
-                : "rgba(26,21,23,0.08)",
-          }}
-          title={translate("crm.deals.count", {
-            smart_count: deals.length,
-          })}
+    <section className="flex min-h-[calc(100vh-18rem)] w-[17rem] shrink-0 flex-col px-1.5">
+      <header className="mb-2 px-1">
+        <h3
+          className="truncate text-[12px] font-semibold uppercase tracking-[0.04em] text-foreground"
+          title={stage.name}
         >
-          {deals.length}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[14px] font-semibold leading-tight">
-            {stage.name}
-          </h3>
-          <p className="text-[12px] tabular-nums opacity-70">
+          {stage.name}
+        </h3>
+        <span
+          className="mt-1.5 block h-[3px] rounded-sm"
+          style={{ backgroundColor: color }}
+          aria-hidden
+        />
+        <p className="mt-1.5 text-[12px] tabular-nums text-muted-foreground">
+          {translate("crm.deals.count", { smart_count: deals.length })}
+          {": "}
+          <span className="font-medium text-foreground">
             {formatMoney(totalAmount, currency, totalAmount >= 1_000_000)}
-          </p>
-        </div>
+          </span>
+        </p>
       </header>
       {isFirst ? (
         <Link
           to={`/deals/create?stage_id=${stage.id}`}
-          className="mb-2 flex items-center justify-center gap-1.5 rounded-full border border-dashed border-white/15 py-2.5 text-[13px] font-medium text-muted-foreground no-underline transition-colors hover:border-white/40 hover:text-foreground"
+          className="mb-2 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[12px] font-medium text-muted-foreground no-underline transition-colors hover:border-primary/60 hover:text-foreground"
         >
           <Plus className="size-3.5" />
           {translate("crm.deals.quick_add")}
@@ -71,8 +63,8 @@ export const DealColumn = ({
             ref={droppableProvided.innerRef}
             {...droppableProvided.droppableProps}
             className={cn(
-              "flex flex-1 flex-col gap-2 rounded-[1rem] transition-colors",
-              snapshot.isDraggingOver && "bg-white/[0.04]",
+              "flex flex-1 flex-col gap-1.5 rounded-md transition-colors",
+              snapshot.isDraggingOver && "bg-primary/[0.06]",
             )}
           >
             {deals.map((deal, index) => (

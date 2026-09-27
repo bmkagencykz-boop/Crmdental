@@ -147,7 +147,7 @@ const PipelineTabs = () => {
             onClick={() => setCurrent(pipeline.id)}
             aria-pressed={active}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-semibold transition-all",
+              "rounded-md px-4 py-2 text-sm font-semibold transition-all",
               active
                 ? "bg-primary text-primary-foreground shadow-soft"
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
@@ -173,7 +173,7 @@ const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => {
       <DealArchivedList />
       <Link
         to="/deals/create"
-        className="fixed right-8 bottom-8 z-20 flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_14px_40px_-10px_rgba(239,59,110,0.6)] transition-transform hover:scale-105"
+        className="fixed right-8 bottom-8 z-20 flex size-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_14px_40px_-10px_rgba(239,59,110,0.6)] transition-transform hover:scale-105"
         aria-label={translate("resources.deals.action.new")}
       >
         <Plus className="size-7" strokeWidth={2.2} />

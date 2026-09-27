@@ -396,6 +396,7 @@ export const russianCrmMessages: CrmMessages = {
         task_placeholder: "Что сделать",
         save_task: "Поставить",
       },
+      paid_short: "оплачено %{amount}",
     },
     roles: {
       owner: "Владелец",
@@ -547,6 +548,8 @@ export const russianCrmMessages: CrmMessages = {
       label: "Тема",
       light: "Светлая",
       system: "Системная",
+      to_light: "Светлая тема",
+      to_dark: "Тёмная тема",
     },
     language: "Язык",
     navigation: {

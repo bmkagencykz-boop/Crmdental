@@ -20,7 +20,7 @@ export const PatientAside = () => {
   if (!record) return null;
 
   return (
-    <aside className="glass flex h-fit flex-col gap-6 rounded-[1.75rem] p-6 text-sm">
+    <aside className="glass flex h-fit flex-col gap-6 rounded-lg p-6 text-sm">
       <div className="flex gap-2">
         <EditButton label="resources.patients.action.edit" />
       </div>

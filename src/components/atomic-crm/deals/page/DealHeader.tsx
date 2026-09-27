@@ -199,7 +199,7 @@ const StageBar = ({ deal }: { deal: Deal }) => {
         {findById(pipelines, deal.pipeline_id)?.name}
       </p>
       <label
-        className="relative flex items-center gap-2 rounded-full px-4 py-1.5"
+        className="relative flex items-center gap-2 rounded-md px-4 py-1.5"
         style={{
           backgroundColor: accent(stage?.color),
           color: onAccent(stage?.color),
@@ -231,7 +231,7 @@ const StageBar = ({ deal }: { deal: Deal }) => {
             .map((s, position) => (
               <span
                 key={s.id}
-                className={cn("flex-1 rounded-full bg-muted")}
+                className={cn("flex-1 rounded-sm bg-muted")}
                 style={
                   stage?.kind === "lost"
                     ? { backgroundColor: "var(--color-brand-red)" }

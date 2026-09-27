@@ -96,7 +96,7 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
               className="sticky top-0 z-10 flex justify-center py-1"
               aria-hidden
             >
-              <span className="rounded-full bg-card/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-card backdrop-blur">
+              <span className="rounded-md bg-card/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-card backdrop-blur">
                 {dayLabel(item.date, translate)}
               </span>
             </li>
@@ -144,7 +144,7 @@ const Card = ({
   tone?: string;
 }) => (
   <div
-    className={`mx-auto flex w-full max-w-[85%] gap-3 rounded-2xl px-4 py-3 text-sm shadow-card ${tone ?? "bg-card"}`}
+    className={`mx-auto flex w-full max-w-[85%] gap-3 rounded-lg px-4 py-3 text-sm shadow-card ${tone ?? "bg-card"}`}
   >
     <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
     <div className="min-w-0 flex-1">

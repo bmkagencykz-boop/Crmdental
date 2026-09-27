@@ -100,7 +100,7 @@ const Badge = ({
   icon: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <span className="inline-flex items-center gap-1 rounded-full bg-brand-blush px-2 py-0.5 text-[11px] font-semibold text-[#1A1517]">
+  <span className="inline-flex items-center gap-1 rounded-md bg-brand-blush px-2 py-0.5 text-[11px] font-semibold text-[#1A1517]">
     {icon}
     {children}
   </span>

@@ -53,7 +53,7 @@ export const InboxPage = () => {
 
   return (
     <div className="grid h-[calc(100vh-11rem)] min-h-[32rem] grid-cols-[22rem_1fr] gap-5">
-      <section className="glass flex min-h-0 flex-col rounded-[1.75rem] p-3">
+      <section className="glass flex min-h-0 flex-col rounded-lg p-3">
         <div className="flex flex-col gap-2 p-2">
           <Input
             value={search}
@@ -70,7 +70,7 @@ export const InboxPage = () => {
                 aria-selected={unreadOnly === value}
                 onClick={() => setUnreadOnly(value)}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
                   unreadOnly === value
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -101,7 +101,7 @@ export const InboxPage = () => {
           ) : null}
         </ul>
       </section>
-      <section className="glass flex min-h-0 flex-col rounded-[1.75rem]">
+      <section className="glass flex min-h-0 flex-col rounded-lg">
         {selectedId != null ? (
           <Conversation dealId={selectedId} fallback={selected} />
         ) : (
@@ -134,7 +134,7 @@ const ConversationRow = ({
       onClick={onClick}
       aria-current={active}
       className={cn(
-        "flex w-full flex-col gap-0.5 rounded-2xl px-3 py-2.5 text-left transition-colors",
+        "flex w-full flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-colors",
         active ? "bg-card shadow-card" : "hover:bg-card/60",
       )}
     >

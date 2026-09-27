@@ -161,7 +161,7 @@ const Amount = ({
   value: string;
   muted?: boolean;
 }) => (
-  <div className="min-w-0 rounded-2xl bg-card/70 px-3 py-3">
+  <div className="min-w-0 rounded-lg bg-card/70 px-3 py-3">
     <p className="truncate text-xs text-muted-foreground">{label}</p>
     <p
       className={`mt-1 truncate text-[15px] font-bold tabular-nums ${muted ? "text-muted-foreground" : ""}`}

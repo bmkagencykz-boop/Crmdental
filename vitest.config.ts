@@ -66,6 +66,7 @@ export default defineConfig({
             "doc/**",
             "supabase/**",
             ".supabase-e2e/**",
+            ".claude/**",
             "e2e/**/*.spec.{ts,tsx}",
           ],
           server: {
@@ -92,7 +93,7 @@ export default defineConfig({
           globals: true,
           environment: "node",
           include: ["supabase/functions/**/*.test.ts"],
-          exclude: ["**/node_modules/**", ".supabase-e2e/**"],
+          exclude: ["**/node_modules/**", ".supabase-e2e/**", ".claude/**"],
         },
       },
     ],

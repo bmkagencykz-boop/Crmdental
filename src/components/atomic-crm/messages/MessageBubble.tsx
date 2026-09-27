@@ -24,7 +24,7 @@ export const MessageBubble = ({ message }: { message: Message }) => {
     <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-card",
+          "max-w-[85%] rounded-lg px-3.5 py-2 text-sm shadow-card",
           outgoing
             ? "rounded-br-md bg-brand-blue text-white [&_p]:text-white/95"
             : "rounded-bl-md bg-card",

@@ -110,7 +110,7 @@ const PatientDeals = ({ patientId }: { patientId: Patient["id"] }) => {
           <li key={deal.id}>
             <Link
               to={`/deals/${deal.id}/show`}
-              className="flex items-center gap-4 rounded-2xl bg-card/80 px-4 py-3 no-underline transition-colors hover:bg-card"
+              className="flex items-center gap-4 rounded-lg bg-card/80 px-4 py-3 no-underline transition-colors hover:bg-card"
             >
               <span
                 className="size-2.5 shrink-0 rounded-full"
@@ -156,7 +156,7 @@ const Panel = ({
   action?: ReactNode;
   children: ReactNode;
 }) => (
-  <section className="glass rounded-[1.75rem] p-6">
+  <section className="glass rounded-lg p-6">
     <div className="mb-4 flex items-center justify-between gap-2">
       <h3 className="text-[15px] font-semibold">{title}</h3>
       {action}

@@ -59,7 +59,7 @@ export const SettingsPage = () => {
             onClick={() => setSection(id)}
             aria-current={section === id ? "page" : undefined}
             className={cn(
-              "rounded-full px-4 py-2 text-left text-sm font-semibold transition-all",
+              "rounded-md px-4 py-2 text-left text-sm font-semibold transition-all",
               section === id
                 ? "bg-primary text-primary-foreground shadow-soft"
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
@@ -104,7 +104,7 @@ const Panel = ({
   hint: string;
   children: ReactNode;
 }) => (
-  <section className="glass flex flex-col gap-6 rounded-[1.75rem] p-7">
+  <section className="glass flex flex-col gap-6 rounded-lg p-7">
     <div>
       <h2 className="text-xl font-bold tracking-[-0.02em]">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{hint}</p>

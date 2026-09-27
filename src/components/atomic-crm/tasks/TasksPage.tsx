@@ -154,7 +154,7 @@ export const TasksPage = () => {
           ))}
       </div>
 
-      <section className="glass rounded-[1.75rem] p-6">
+      <section className="glass rounded-lg p-6">
         {isPending ? null : shown.length ? (
           <div className="flex flex-col gap-4">
             {shown.map((task, index) => (
@@ -191,7 +191,7 @@ const Pill = ({
     type="button"
     aria-pressed={active}
     className={cn(
-      "rounded-full font-semibold transition-all",
+      "rounded-md font-semibold transition-all",
       small ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
       active
         ? "bg-primary text-primary-foreground shadow-soft"

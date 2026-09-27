@@ -83,7 +83,7 @@ const RuleRow = ({ rule }: { rule: TaskRule }) => {
     rule.event === "deal_created" ? "deal_created" : String(rule.stage_id);
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-card p-4">
+    <div className="flex flex-col gap-3 rounded-lg bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={when}

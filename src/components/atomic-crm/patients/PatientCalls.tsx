@@ -109,7 +109,7 @@ export const CallForm = ({
             aria-checked={direction === value}
             onClick={() => setDirection(value)}
             className={cn(
-              "flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
+              "flex h-10 items-center gap-1.5 rounded-md px-3.5 text-sm font-medium transition-colors",
               direction === value
                 ? "bg-primary text-primary-foreground"
                 : "soft hover:bg-card",

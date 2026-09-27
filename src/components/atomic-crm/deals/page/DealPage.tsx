@@ -36,7 +36,7 @@ const DealPageContent = () => {
 
   return (
     <div className="grid h-[calc(100vh-7.5rem)] min-h-[36rem] grid-cols-[27rem_1fr] gap-5">
-      <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-[1.75rem]">
+      <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
         <DealHeader deal={deal} />
         <div className="px-6 pb-3">
           <TagsListEdit resource="deals" />
@@ -79,7 +79,7 @@ const DealPageContent = () => {
           )}
         </div>
       </aside>
-      <section className="glass flex min-h-0 flex-col overflow-hidden rounded-[1.75rem]">
+      <section className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <DealFeed deal={deal} />
         </div>

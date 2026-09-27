@@ -391,6 +391,7 @@ export const englishCrmMessages = {
         task_placeholder: "What to do",
         save_task: "Set task",
       },
+      paid_short: "paid %{amount}",
     },
     roles: {
       owner: "Owner",
@@ -540,6 +541,8 @@ export const englishCrmMessages = {
       label: "Theme",
       light: "Light",
       system: "System",
+      to_light: "Light theme",
+      to_dark: "Dark theme",
     },
     language: "Language",
     navigation: {

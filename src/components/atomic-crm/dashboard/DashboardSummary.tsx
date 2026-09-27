@@ -58,7 +58,7 @@ export const DashboardSummary = () => {
 
   return (
     <div className="mb-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
-      <div className="glass grid grid-cols-2 gap-px overflow-hidden rounded-[1.75rem] md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border shadow-card md:grid-cols-4">
         <Stat
           label={translate("crm.dashboard.summary.pipeline")}
           value={formatMoney(pipeline, currency, pipeline >= 1_000_000)}
@@ -79,7 +79,7 @@ export const DashboardSummary = () => {
           tone={overdue > 0 ? "alert" : undefined}
         />
       </div>
-      <div className="flex flex-col justify-between gap-4 rounded-[1.75rem] bg-primary p-6 text-primary-foreground">
+      <div className="flex flex-col justify-between gap-4 rounded-lg bg-primary p-6 text-primary-foreground">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[13px] font-medium opacity-70">
@@ -113,18 +113,18 @@ const Stat = ({
       <p
         className={cn(
           "mt-2 text-[1.75rem] font-bold leading-none tracking-[-0.03em] tabular-nums",
-          tone === "alert" && "text-[#e0605d]",
+          tone === "alert" && "text-brand-red",
         )}
       >
         {value}
       </p>
     </>
   );
-  const className = "block bg-card/40 px-6 py-6 no-underline text-foreground";
+  const className = "block bg-card px-6 py-6 no-underline text-foreground";
   return to ? (
     <Link
       to={to}
-      className={cn(className, "transition-colors hover:bg-card/80")}
+      className={cn(className, "transition-colors hover:bg-pill-hover")}
     >
       {content}
     </Link>
@@ -133,7 +133,7 @@ const Stat = ({
   );
 };
 
-const badgeTones = ["bg-[#83a2db]", "bg-[#fd8e8c]", "bg-[#1f2635]"];
+const badgeTones = ["bg-[#1A1517]", "bg-[#B23A5B]", "bg-[#6E6468]"];
 
 const TeamRow = ({
   sales,
@@ -148,7 +148,7 @@ const TeamRow = ({
       const name = `${sale.first_name} ${sale.last_name}`;
       return (
         <div key={sale.id} className="relative" title={name}>
-          <span className="flex size-11 items-center justify-center overflow-hidden rounded-full border-2 border-white/80 bg-white/70 text-xs font-bold text-[#1f2635]">
+          <span className="flex size-11 items-center justify-center overflow-hidden rounded-full border-2 border-white/80 bg-white/70 text-xs font-bold text-[#1A1517]">
             {sale.avatar?.src ? (
               <img
                 src={sale.avatar.src}

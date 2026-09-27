@@ -65,6 +65,7 @@ import { isSupportedFile, readImportFile } from "./readImportFile";
 
 const BATCH_SIZE = 200;
 const PREVIEW_ROWS = 10;
+const PREVIEW_ERRORS = 20;
 const SKIP = "__skip__";
 const NONE = "__none__";
 const CREATE = "__create__";
@@ -215,11 +216,11 @@ const useImportDictionaries = (): ImportDictionaries => {
   const { data: sources } = useLeadSources();
   const { data: services } = useServices();
   const { data: lostReasons } = useLostReasons();
-  const { data: sales = [] } = useGetList<Sale>("sales", {
+  const { data: sales } = useGetList<Sale>("sales", {
     pagination: { page: 1, perPage: 500 },
     sort: { field: "last_name", order: "ASC" },
   });
-  const { data: tags = [] } = useGetList<Tag>("tags", {
+  const { data: tags } = useGetList<Tag>("tags", {
     pagination: { page: 1, perPage: 1000 },
     sort: { field: "name", order: "ASC" },
   });
@@ -230,8 +231,8 @@ const useImportDictionaries = (): ImportDictionaries => {
       sources,
       services,
       lostReasons,
-      sales: sales.filter((sale) => !sale.disabled),
-      tags,
+      sales: (sales ?? []).filter((sale) => !sale.disabled),
+      tags: tags ?? [],
     }),
     [pipelines, stages, sources, services, lostReasons, sales, tags],
   );
@@ -537,6 +538,16 @@ const ReviewStep = ({
   const errorsByLine = new Map(
     rejected.map(({ row, errors }) => [row.line, errors]),
   );
+  const valuesByKind = useMemo(() => collectValues(rows, mode), [rows, mode]);
+  // The first rows, and the rows with errors further down
+  const previewRows = useMemo(() => {
+    const first = rows.slice(0, PREVIEW_ROWS);
+    const later = rejected
+      .map(({ row }) => row)
+      .filter((row) => !first.includes(row))
+      .slice(0, PREVIEW_ERRORS);
+    return [...first, ...later];
+  }, [rows, rejected]);
 
   const setResolution = (
     kind: DictionaryKind,
@@ -571,7 +582,7 @@ const ReviewStep = ({
                   <ResolutionSelect
                     kind={kind}
                     value={value}
-                    row={collectValues(rows, mode)[kind]?.get(value)}
+                    row={valuesByKind[kind]?.get(value)}
                     dictionaries={dictionaries}
                     resolution={resolutions[kind][value]}
                     onChange={(resolution) =>
@@ -611,7 +622,7 @@ const ReviewStep = ({
               </tr>
             </thead>
             <tbody>
-              {rows.slice(0, PREVIEW_ROWS).map((row) => {
+              {previewRows.map((row) => {
                 const errors = errorsByLine.get(row.line);
                 return (
                   <tr key={row.line} className="border-t border-border">

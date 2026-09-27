@@ -123,7 +123,7 @@ test.describe("notifications", () => {
     login,
   }) => {
     await login("owner@smile.kz");
-    await page.goto("/settings");
+    await page.goto("/#/settings");
     await page.getByRole("button", { name: "Response control" }).click();
     const limit = page.getByLabel("Answer within, minutes");
     await expect(limit).toHaveValue("15");

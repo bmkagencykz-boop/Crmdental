@@ -41,6 +41,7 @@ export const AutomessageSendButton = ({ task }: { task: Task }) => {
       <Button
         size="sm"
         className="mt-1.5 h-7 gap-1.5 px-2.5 text-xs"
+        data-testid="automessage-send"
         onClick={() => {
           setText(task.text ?? "");
           setOpen(true);

@@ -141,7 +141,7 @@ test.describe("automatic messages", () => {
     await expect(page.getByRole("main")).toContainText(
       "Здравствуйте, Daulet! Спасибо за обращение",
     );
-    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await page.getByTestId("automessage-send").click();
     const dialog = page.getByRole("dialog");
     await dialog
       .getByLabel("Message text")

@@ -159,7 +159,11 @@ export const ImportWizard = () => {
       {step === "upload" ? (
         <UploadStep
           onLoaded={(name, data) => {
-            const guess = guessMapping(data[0].map(cellText), customFields);
+            const guess = guessMapping(
+              data[0].map(cellText),
+              // Archived fields take no new values
+              customFields.filter((field) => field.is_active),
+            );
             setFileName(name);
             setSheet(data);
             setMapping(guess.mapping);

@@ -41,6 +41,12 @@ import {
 } from "../commons/domain";
 import type { CrmDataProvider } from "../types";
 import {
+  computeReport,
+  type ReportFilters,
+  type ReportName,
+  type ReportResult,
+} from "../../reports/reportMath";
+import {
   authProvider as defaultAuthProvider,
   USER_STORAGE_KEY,
 } from "./authProvider";
@@ -448,6 +454,40 @@ export const createDataProvider = ({
     isInitialized: async (): Promise<boolean> =>
       (await all<Sale>("sales")).length > 0,
     updatePassword: async (): Promise<true> => true,
+    // Same computations as the public.report_* functions of the database
+    getReport: async <Name extends ReportName>(
+      name: Name,
+      filters: ReportFilters,
+    ): Promise<ReportResult[Name]> => {
+      const salesId = await currentSalesId();
+      const me = (await all<Sale>("sales")).find(
+        (sale) => String(sale.id) === String(salesId),
+      );
+      if (me?.role !== "owner" && me?.role !== "head") {
+        throw new Error("reports.forbidden");
+      }
+      const resources = [
+        "deals",
+        "stages",
+        "pipelines",
+        "deal_events",
+        "deal_payments",
+        "tasks",
+        "messages",
+        "sales",
+        "lead_sources",
+        "services",
+        "lost_reasons",
+      ] as const;
+      const rows = await Promise.all(resources.map((r) => all<any>(r)));
+      return computeReport(
+        name,
+        Object.fromEntries(
+          resources.map((resource, index) => [resource, rows[index]]),
+        ) as any,
+        filters,
+      );
+    },
     getConfiguration: async (): Promise<ConfigurationContextValue> => {
       const { data } = await baseDataProvider.getOne("configuration", {
         id: 1,
@@ -833,6 +873,7 @@ export const createDataProvider = ({
           data: {
             ...params.data,
             done_date: params.data.done_date ?? null,
+            created_at: params.data.created_at ?? new Date().toISOString(),
             sales_id: params.data.sales_id ?? (await currentSalesId()),
           },
         }),

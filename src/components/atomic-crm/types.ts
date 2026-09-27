@@ -298,6 +298,7 @@ export type Task = {
   due_date: string;
   done_date?: string | null;
   sales_id?: Identifier;
+  created_at?: string;
 } & Pick<RaRecord, "id">;
 
 export type ActivityPatientCreated = {

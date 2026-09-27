@@ -1,4 +1,4 @@
-import { FileText, Settings, User, Users } from "lucide-react";
+import { ChartColumn, FileText, Settings, User, Users } from "lucide-react";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -20,6 +20,12 @@ export const Sidebar = () => {
     match: "/sales/*",
     icon: Users,
     label: translate("resources.sales.name", { smart_count: 2 }),
+  };
+  const reports: NavItem = {
+    to: "/reports",
+    match: "/reports",
+    icon: ChartColumn,
+    label: translate("reports.title"),
   };
   const settings: NavItem = {
     to: "/settings",
@@ -49,6 +55,9 @@ export const Sidebar = () => {
         ))}
       </nav>
       <div className="flex flex-col items-center gap-3">
+        <CanAccess resource="reports" action="list">
+          <SidebarLink item={reports} active={isActive(reports)} />
+        </CanAccess>
         <CanAccess resource="sales" action="list">
           <SidebarLink item={sales} active={isActive(sales)} />
         </CanAccess>

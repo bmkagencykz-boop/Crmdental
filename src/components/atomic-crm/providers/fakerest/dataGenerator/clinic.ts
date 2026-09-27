@@ -1,7 +1,7 @@
 import { random } from "faker/locale/en_US";
 
 import { normalizePatient } from "../../commons/domain";
-import type { Deal, DealEvent, Patient } from "../../../types";
+import type { Deal, DealEvent, Patient, Stage } from "../../../types";
 import {
   dealAmounts,
   dealTitles,
@@ -14,7 +14,8 @@ import {
 import type { Db } from "./types";
 import { randomDate } from "./utils";
 
-const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
 
 // Keys of the deal titles and amounts by service name
 const serviceKeys: Record<string, string> = {
@@ -81,7 +82,14 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       const pipelineId = random.arrayElement([1, 1, 1, 1, 2]);
       const stages = db.stages.filter((s) => s.pipeline_id === pipelineId);
       const stage = random.arrayElement(
-        stages.flatMap((s) => (s.kind === "open" ? [s, s, s] : [s])),
+        // Open deals first, then refusals (reports need some) and successes
+        stages.flatMap((s) =>
+          s.kind === "open"
+            ? [s, s, s]
+            : s.kind === "lost"
+              ? [s, s, s, s]
+              : [s, s],
+        ),
       );
       const service =
         pipelineId === 2 ? db.services[1] : random.arrayElement(db.services);
@@ -142,6 +150,70 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
   );
   db.deals = deals;
 
+  // Stage history: every deal walks through the stages up to its current one
+  // (sometimes skipping one), a lost deal leaves from an open stage. The log
+  // feeds the deal feed and the reports (time in stage, funnel, lost from).
+  const history = new Map<
+    Deal["id"],
+    Array<{ stage_id: Stage["id"]; at: number }>
+  >();
+  deals.forEach((deal) => {
+    const pipelineStages = db.stages
+      .filter((s) => s.pipeline_id === deal.pipeline_id)
+      .sort((a, b) => a.position - b.position);
+    const open = pipelineStages.filter((s) => s.kind === "open");
+    const current = pipelineStages.find((s) => s.id === deal.stage_id)!;
+    // The furthest open stage reached before the current one
+    const lastOpen =
+      current.kind === "open"
+        ? current
+        : current.kind === "won"
+          ? open[open.length - 1]
+          : random.arrayElement(
+              open.flatMap((s, index) =>
+                Array(Math.max(1, open.length - index)).fill(s),
+              ),
+            );
+    const path = open.filter(
+      (s, index) =>
+        index === 0 ||
+        s.id === lastOpen.id ||
+        (s.position < lastOpen.position && random.number(9) > 1),
+    );
+    if (current.kind !== "open") path.push(current);
+    const start = new Date(deal.created_at).getTime();
+    // Steps of a few hours to a few days, within the time the deal has had
+    const room = Math.max(now - start, HOUR);
+    const weights = path.slice(1).map(() => random.number({ min: 1, max: 10 }));
+    const total = weights.reduce((sum, w) => sum + w, 0) || 1;
+    const span = room * random.arrayElement([0.3, 0.5, 0.7, 0.9]);
+    let at = start;
+    const entries = [{ stage_id: path[0].id, at }];
+    weights.forEach((weight, index) => {
+      at += Math.round((span * weight) / total);
+      entries.push({ stage_id: path[index + 1].id, at });
+    });
+    history.set(deal.id, entries);
+    const last = new Date(entries[entries.length - 1].at).toISOString();
+    deal.stage_changed_at = last;
+    deal.updated_at = last;
+    deal.closed_at = current.kind === "open" ? null : last;
+  });
+  // When the deal reached its stage at or after "План согласован": payments come after
+  const planReachedAt = (deal: Deal) => {
+    const plan = db.stages.find(
+      (s) => s.pipeline_id === deal.pipeline_id && s.name === "План согласован",
+    );
+    const entries = history.get(deal.id) ?? [];
+    const entry = entries.find((e) => {
+      const stage = db.stages.find((s) => s.id === e.stage_id)!;
+      return plan
+        ? stage.position >= plan.position && stage.kind !== "lost"
+        : stage.kind === "won";
+    });
+    return entry ? new Date(entry.at) : new Date(deal.created_at);
+  };
+
   // Payments on deals with an agreed plan, in treatment or finished
   db.deal_payments = [];
   deals.forEach((deal) => {
@@ -156,7 +228,7 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       id: db.deal_payments.length,
       deal_id: deal.id,
       amount,
-      paid_at: randomDate(new Date(deal.created_at)).toISOString().slice(0, 10),
+      paid_at: randomDate(planReachedAt(deal)).toISOString().slice(0, 10),
       comment: random.arrayElement([
         "Kaspi",
         "Наличные",
@@ -169,8 +241,34 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
     deal.paid_amount += amount;
   });
 
-  // Tasks on open deals: some overdue, some deals left without any
+  // Tasks done along the way: most in time, some late
   db.tasks = [];
+  deals.forEach((deal) => {
+    const entries = history.get(deal.id) ?? [];
+    entries.slice(0, -1).forEach((entry, index) => {
+      if (random.number(9) < 3) return;
+      const next = entries[index + 1].at;
+      const due = entry.at + random.arrayElement([1, 4, 24, 48]) * HOUR;
+      const done = Math.min(
+        next,
+        random.number(9) < 7 ? due - HOUR : due + random.number(48) * HOUR,
+      );
+      db.tasks.push({
+        id: db.tasks.length,
+        deal_id: deal.id,
+        type: random.arrayElement(["call", "message", "reminder"]),
+        text: random.arrayElement(taskTexts),
+        created_at: new Date(entry.at).toISOString(),
+        due_date: new Date(due).toISOString(),
+        done_date: new Date(
+          Math.max(done, entry.at + 10 * 60 * 1000),
+        ).toISOString(),
+        sales_id: deal.sales_id ?? undefined,
+      });
+    });
+  });
+
+  // Tasks on open deals: some overdue, some deals left without any
   deals.forEach((deal) => {
     const stage = db.stages.find((s) => s.id === deal.stage_id)!;
     if (stage.kind !== "open" || random.number(9) < 2) return;
@@ -188,6 +286,7 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
         "other",
       ]),
       text: random.arrayElement(taskTexts),
+      created_at: deal.stage_changed_at,
       due_date: new Date(now + hours * 60 * 60 * 1000).toISOString(),
       done_date: null,
       sales_id: deal.sales_id ?? undefined,
@@ -325,44 +424,38 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       });
     });
 
-  // Same as the database trigger: the first answer of each deal
+  // Same as the database trigger: the first answer of each deal. Older deals
+  // (their conversation is not generated) were answered within minutes to hours.
   for (const deal of deals) {
     const first = db.messages
       .filter((m) => m.deal_id === deal.id && m.direction === "out")
       .sort((a, b) => a.sent_at.localeCompare(b.sent_at))[0];
-    if (first) deal.first_response_at = first.sent_at;
+    const createdAt = new Date(deal.created_at).getTime();
+    // A conversation of the last days on an older deal: it was answered before
+    if (first && new Date(first.sent_at).getTime() - createdAt < DAY) {
+      deal.first_response_at = first.sent_at;
+    } else if (first || random.number(9) < 8) {
+      const minutes = random.arrayElement([3, 7, 12, 20, 35, 60, 95, 180, 420]);
+      deal.first_response_at = new Date(
+        createdAt + minutes * 60 * 1000,
+      ).toISOString();
+    }
   }
 
   db.deal_events = deals
-    .flatMap((deal) => {
-      const events: DealEvent[] = [
-        {
+    .flatMap((deal) =>
+      (history.get(deal.id) ?? []).map(
+        (entry, index, entries): DealEvent => ({
           id: 0,
           deal_id: deal.id,
-          type: "created",
-          from_stage_id: null,
-          to_stage_id: db.stages.find(
-            (s) => s.pipeline_id === deal.pipeline_id,
-          )!.id,
+          type: index === 0 ? "created" : "stage_changed",
+          from_stage_id: index === 0 ? null : entries[index - 1].stage_id,
+          to_stage_id: entry.stage_id,
           changes: {},
           sales_id: deal.sales_id,
-          created_at: deal.created_at,
-        },
-      ];
-      const first = events[0].to_stage_id;
-      if (first !== deal.stage_id) {
-        events.push({
-          id: 0,
-          deal_id: deal.id,
-          type: "stage_changed",
-          from_stage_id: first,
-          to_stage_id: deal.stage_id,
-          changes: {},
-          sales_id: deal.sales_id,
-          created_at: deal.closed_at ?? deal.updated_at,
-        });
-      }
-      return events;
-    })
+          created_at: new Date(entry.at).toISOString(),
+        }),
+      ),
+    )
     .map((event, id) => ({ ...event, id }));
 };

@@ -15,7 +15,7 @@ type CanAccessParams<
  *
  * - owner: everything, including staff management
  * - head: everything but staff management (can list the staff)
- * - manager: day-to-day work, no settings
+ * - manager: day-to-day work, no settings, no reports
  */
 export const canAccess = <
   RecordType extends Record<string, any> = Record<string, any>,
@@ -33,6 +33,12 @@ export const canAccess = <
   }
 
   if (params.resource === "configuration") {
+    return role === "head";
+  }
+
+  // Reports (spec §7) are for the owner and the head; the database refuses
+  // the report functions to anybody else
+  if (params.resource === "reports") {
     return role === "head";
   }
 

@@ -12,8 +12,9 @@
 -- payment), the prepayment of a deal is the sum of its prepayments, and the
 -- paid amount stays the sum of all its payments (deals.paid_amount).
 --
--- public.deals_summary is declared here rather than in 03_views.sql: it shows
--- the doctor's name, and the schema files load in order. The report functions
+-- public.deals_summary shows the doctor's name; it is declared in
+-- 19_custom_fields.sql, after the last columns it reads (schema files load in
+-- order). The report functions
 -- (09_reports.sql) and the template variables (08_automessages.sql) that read
 -- the new columns are plpgsql, whose bodies are resolved when they run.
 --
@@ -50,82 +51,6 @@ create index doctors_organization_id_idx on public.doctors using btree (organiza
 create index deals_doctor_id_idx on public.deals using btree (organization_id, doctor_id) where doctor_id is not null;
 
 --
--- Views
---
-
--- Deals with what the board and the lists display
-create or replace view public.deals_summary with (security_invoker = on) as
-select
-    d.id,
-    d.organization_id,
-    d.patient_id,
-    d.pipeline_id,
-    d.stage_id,
-    d.name,
-    d.source_id,
-    d.service_id,
-    d.plan_amount,
-    d.paid_amount,
-    d.sales_id,
-    d.lost_reason_id,
-    d.lost_comment,
-    d.appointment_at,
-    d.visit_at,
-    d.tags,
-    d.description,
-    d.index,
-    d.created_at,
-    d.updated_at,
-    d.stage_changed_at,
-    d.closed_at,
-    d.first_response_at,
-    d.archived_at,
-    s.kind as stage_kind,
-    p.first_name as patient_first_name,
-    p.last_name as patient_last_name,
-    p.phones[1] as patient_phone,
-    lower(concat_ws(' ', d.name, p.last_name, p.first_name, p.middle_name, array_to_string(p.phones, ' '))) as search_text,
-    (
-        select count(*)
-        from public.tasks t
-        where t.organization_id = d.organization_id and t.deal_id = d.id and t.done_date is null
-    ) as nb_open_tasks,
-    (
-        select min(t.due_date)
-        from public.tasks t
-        where t.organization_id = d.organization_id and t.deal_id = d.id and t.done_date is null
-    ) as next_task_due_at,
-    (
-        select count(*)
-        from public.messages m
-        where m.organization_id = d.organization_id and m.deal_id = d.id and m.direction = 'in' and m.read_at is null
-    ) as nb_unread_messages,
-    (
-        select max(m.sent_at)
-        from public.messages m
-        where m.organization_id = d.organization_id and m.deal_id = d.id
-    ) as last_message_at,
-    (
-        select m.text
-        from public.messages m
-        where m.organization_id = d.organization_id and m.deal_id = d.id
-        order by m.sent_at desc, m.id desc
-        limit 1
-    ) as last_message_text,
-    d.doctor_id,
-    dr.name as doctor_name,
-    d.consultation_amount,
-    (
-        select coalesce(sum(pay.amount), 0)::bigint
-        from public.deal_payments pay
-        where pay.organization_id = d.organization_id and pay.deal_id = d.id and pay.kind = 'prepayment'
-    ) as prepayment_amount
-from public.deals d
-    join public.stages s on s.id = d.stage_id
-    join public.patients p on p.organization_id = d.organization_id and p.id = d.patient_id
-    left join public.doctors dr on dr.organization_id = d.organization_id and dr.id = d.doctor_id;
-
---
 -- Row Level Security
 --
 
@@ -151,6 +76,3 @@ grant all on table public.doctors to authenticated;
 grant all on table public.doctors to service_role;
 grant all on sequence public.doctors_id_seq to anon, authenticated, service_role;
 
-grant all on table public.deals_summary to anon;
-grant all on table public.deals_summary to authenticated;
-grant all on table public.deals_summary to service_role;

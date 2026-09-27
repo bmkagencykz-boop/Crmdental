@@ -54,49 +54,7 @@ select
 from public.deal_notes n
     join public.deals d on d.organization_id = n.organization_id and d.id = n.deal_id;
 
-create or replace view public.patients_summary with (security_invoker = on) as
-select
-    p.id,
-    p.organization_id,
-    p.first_name,
-    p.last_name,
-    p.middle_name,
-    p.phone_jsonb,
-    p.phones,
-    p.birth_date,
-    p.city,
-    p.whatsapp,
-    p.instagram,
-    p.telegram,
-    p.source_id,
-    p.tags,
-    p.sales_id,
-    p.gender,
-    p.avatar,
-    p.background,
-    p.status,
-    p.first_seen,
-    p.last_seen,
-    array_to_string(p.phones, ' ') as phone_fts,
-    (
-        select count(*)
-        from public.deals d
-        where d.organization_id = p.organization_id and d.patient_id = p.id
-    ) as nb_deals,
-    (
-        select count(*)
-        from public.deals d
-            join public.stages s on s.id = d.stage_id
-        where d.organization_id = p.organization_id and d.patient_id = p.id and s.kind = 'open'
-    ) as nb_open_deals,
-    (
-        select count(*)
-        from public.tasks t
-            join public.deals d on d.organization_id = t.organization_id and d.id = t.deal_id
-        where d.organization_id = p.organization_id and d.patient_id = p.id and t.done_date is null
-    ) as nb_tasks
-from public.patients p;
-
--- public.deals_summary (deals with what the board and the lists display) is
--- declared in 13_doctors.sql: it shows the doctor of the deal, and the
--- doctors table and the deal columns of stage 13 are declared there.
+-- public.patients_summary and public.deals_summary (deals with what the board
+-- and the lists display) are declared in 19_custom_fields.sql: they show the
+-- custom field values, and the columns of stage 19 (and the doctors of stage
+-- 13) are declared in later files.

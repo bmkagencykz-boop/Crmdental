@@ -197,11 +197,7 @@ grant all on table public.activity_log to anon;
 grant all on table public.activity_log to authenticated;
 grant all on table public.activity_log to service_role;
 
-grant all on table public.patients_summary to anon;
-grant all on table public.patients_summary to authenticated;
-grant all on table public.patients_summary to service_role;
-
--- public.deals_summary: see 13_doctors.sql
+-- public.patients_summary, public.deals_summary: see 19_custom_fields.sql
 
 -- Sequence grants
 grant all on sequence public.organizations_id_seq to service_role;

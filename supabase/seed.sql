@@ -133,6 +133,32 @@ begin
   select org_id, p.id, 'in', 184, 'Спрашивала про рассрочку на имплантацию', manager_sales_id
   from public.patients p where p.organization_id = org_id and p.last_name = 'Нурланова';
 
+  -- Custom fields (stage 19) and their values on some deals and patients
+  insert into public.custom_fields (organization_id, entity, name, type, options, position, show_on_card)
+  values
+    (org_id, 'deal', 'Жалоба', 'textarea', '[]', 0, false),
+    (org_id, 'deal', 'Откуда узнал', 'select', '["Инстаграм", "2GIS", "Рекомендация", "Реклама"]', 1, true),
+    (org_id, 'deal', 'Есть снимок КТ', 'checkbox', '[]', 2, true),
+    (org_id, 'patient', 'Полис ДМС', 'text', '[]', 0, false);
+  update public.deals d
+  set custom_values = jsonb_strip_nulls(jsonb_build_object(
+    (select id::text from public.custom_fields where organization_id = org_id and name = 'Жалоба'), v.complaint,
+    (select id::text from public.custom_fields where organization_id = org_id and name = 'Откуда узнал'), v.found,
+    (select id::text from public.custom_fields where organization_id = org_id and name = 'Есть снимок КТ'), v.ct))
+  from (values
+    ('Имплантация 2 зубов', 'Нет двух зубов снизу, мешает жевать', 'Инстаграм', true),
+    ('Брекеты', 'Кривые зубы, хочет ровную улыбку', 'Рекомендация', false),
+    ('Лечение каналов', 'Ноет зуб по ночам', '2GIS', true),
+    ('Виниры E-max, 6 шт.', 'Хочет белую улыбку к свадьбе', 'Инстаграм', null),
+    ('Удаление зуба мудрости', 'Режется зуб мудрости', 'Реклама', true)
+  ) as v(deal, complaint, found, ct)
+  where d.organization_id = org_id and d.name = v.deal;
+  update public.patients p
+  set custom_values = jsonb_build_object(
+    (select id::text from public.custom_fields where organization_id = org_id and name = 'Полис ДМС'), v.policy)
+  from (values ('Нурланова', 'ДМС-000123'), ('Ким', 'ДМС-004517')) as v(last_name, policy)
+  where p.organization_id = org_id and p.last_name = v.last_name;
+
   -- Clinic 2: its data must never show up in clinic 1
   other_owner_id := pg_temp.create_demo_user('owner@other.kz', 'Тимур', 'Жаксылыков',
     jsonb_build_object('organization_name', 'Демо-клиника «Улыбка»'));

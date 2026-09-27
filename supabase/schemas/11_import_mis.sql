@@ -145,7 +145,7 @@ begin
     created := coalesce((p ->> 'created_at')::timestamp with time zone, now());
     insert into public.patients (
       organization_id, first_name, last_name, middle_name, phone_jsonb, birth_date,
-      city, source_id, sales_id, tags, background, first_seen, last_seen
+      city, source_id, sales_id, tags, background, first_seen, last_seen, custom_values
     )
     values (
       org_id,
@@ -160,7 +160,8 @@ begin
       new_tags,
       nullif(btrim(p ->> 'background'), ''),
       created,
-      created
+      created,
+      case when jsonb_typeof(p -> 'custom_values') = 'object' then p -> 'custom_values' else '{}'::jsonb end
     )
     returning * into saved_patient;
     patient_outcome := 'created';
@@ -180,7 +181,11 @@ begin
         source_id = coalesce(pt.source_id, (p ->> 'source_id')::bigint),
         sales_id = coalesce(pt.sales_id, (p ->> 'sales_id')::bigint),
         tags = pt.tags || array(select t from unnest(new_tags) as t where not t = any(pt.tags)),
-        background = coalesce(nullif(pt.background, ''), nullif(btrim(p ->> 'background'), ''))
+        background = coalesce(nullif(pt.background, ''), nullif(btrim(p ->> 'background'), '')),
+        custom_values = case
+          when jsonb_typeof(p -> 'custom_values') = 'object' then (p -> 'custom_values') || pt.custom_values
+          else pt.custom_values
+        end
     where pt.organization_id = org_id and pt.id = patient_row.id
     returning * into saved_patient;
     patient_outcome := case
@@ -241,7 +246,7 @@ begin
   if deal_row.id is null then
     insert into public.deals (
       organization_id, patient_id, pipeline_id, stage_id, name, source_id, service_id,
-      plan_amount, sales_id, lost_reason_id, tags, description, created_at
+      plan_amount, sales_id, lost_reason_id, tags, description, created_at, custom_values
     )
     values (
       org_id,
@@ -256,7 +261,8 @@ begin
       reason_id,
       new_tags,
       nullif(btrim(d ->> 'description'), ''),
-      coalesce(created, now())
+      coalesce(created, now()),
+      case when jsonb_typeof(d -> 'custom_values') = 'object' then d -> 'custom_values' else '{}'::jsonb end
     )
     returning * into saved_deal;
     -- The dates of the file, not of the import
@@ -276,6 +282,11 @@ begin
         sales_id = coalesce(dl.sales_id, (d ->> 'sales_id')::bigint),
         tags = dl.tags || array(select t from unnest(new_tags) as t where not t = any(dl.tags)),
         description = coalesce(nullif(dl.description, ''), nullif(btrim(d ->> 'description'), '')),
+        -- Custom fields: what the deal does not have yet
+        custom_values = case
+          when jsonb_typeof(d -> 'custom_values') = 'object' then (d -> 'custom_values') || dl.custom_values
+          else dl.custom_values
+        end,
         -- The stage of the file, within the same pipeline; a refusal stays
         stage_id = case
           when target_stage.id is not null and target_stage.pipeline_id = dl.pipeline_id
@@ -324,9 +335,13 @@ $$;
 -- and their deals). Every row:
 --   { index, system: 'excel' | 'amocrm',
 --     patient: { external_id, first_name, last_name, middle_name, phones[],
---                birth_date, city, source_id, sales_id, tags[], background, created_at },
+--                birth_date, city, source_id, sales_id, tags[], background, created_at,
+--                custom_values },
 --     deal: { external_id, name, stage_id, source_id, service_id, plan_amount,
---             paid_amount, sales_id, lost_reason_id, tags[], description, created_at } }
+--             paid_amount, sales_id, lost_reason_id, tags[], description, created_at,
+--             custom_values } }
+-- custom_values: { "<field id>": value } (19_custom_fields.sql); an existing
+-- patient or deal only gets the fields it has no value for.
 -- Dictionary ids are resolved by the wizard. Runs with the rights of the
 -- caller (RLS applies); only the owner and the head import. While importing,
 -- deals get no rule tasks, are not redistributed and skip stage checklists

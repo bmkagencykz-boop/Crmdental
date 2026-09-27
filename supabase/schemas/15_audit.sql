@@ -96,6 +96,11 @@ declare
   changes jsonb := '{}'::jsonb;
 begin
   foreach field in array fields loop
+    -- Custom fields (19_custom_fields.sql): one entry per field, "cf:<id>"
+    if field = 'custom_values' then
+      changes := changes || private.custom_values_diff(old_row -> field, new_row -> field);
+      continue;
+    end if;
     before := nullif(old_row -> field, 'null'::jsonb);
     after := nullif(new_row -> field, 'null'::jsonb);
     if old_row is null and after = '[]'::jsonb then
@@ -210,7 +215,7 @@ begin
   if new.type = 'created' then
     event_action := 'create';
     diff := private.audit_diff(null, to_jsonb(deal),
-      array['name', 'pipeline_id', 'stage_id', 'sales_id', 'source_id', 'service_id', 'plan_amount']);
+      array['name', 'pipeline_id', 'stage_id', 'sales_id', 'source_id', 'service_id', 'plan_amount', 'custom_values']);
     if diff -> 'plan_amount' ->> 1 = '0' then
       diff := diff - 'plan_amount';
     end if;
@@ -336,7 +341,7 @@ create or replace trigger audit_deal_deleted
 
 create or replace trigger audit_patient
     after insert or update or delete on public.patients
-    for each row execute function private.audit_row('patient', 'last_name,first_name,middle_name,phones,sales_id,tags');
+    for each row execute function private.audit_row('patient', 'last_name,first_name,middle_name,phones,sales_id,tags,custom_values');
 
 create or replace trigger audit_deal_payment
     after insert or update or delete on public.deal_payments

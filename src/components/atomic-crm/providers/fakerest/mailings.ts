@@ -763,7 +763,8 @@ export const createMailingDemo = ({
   ];
 
   const views: Record<string, () => Promise<any[]>> = {
-    mailings_summary: mailingsSummary,
+    // mailings_summary (the demo adapter reads it as "mailings")
+    mailings: mailingsSummary,
   };
 
   return { methods, callbacks, views };

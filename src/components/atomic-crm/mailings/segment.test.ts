@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addMonths,
   classifySegment,
+  cleanSegment,
   isEmptySegment,
   segmentPreview,
   type SegmentData,
@@ -161,5 +162,23 @@ describe("addMonths", () => {
     expect(addMonths("2026-03-15T10:00:00Z", -6).toISOString()).toBe(
       "2025-09-15T10:00:00.000Z",
     );
+  });
+});
+
+describe("cleanSegment", () => {
+  it("keeps only the filters that filter", () => {
+    expect(
+      cleanSegment({
+        tag_ids: [],
+        tag_mode: "all",
+        service_ids: [3],
+        inactive_months: null,
+        has_open_deal: false,
+      }),
+    ).toEqual({ service_ids: [3], has_open_deal: false });
+    expect(cleanSegment({ tag_ids: [1], tag_mode: "all" })).toEqual({
+      tag_ids: [1],
+      tag_mode: "all",
+    });
   });
 });

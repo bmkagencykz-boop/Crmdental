@@ -173,7 +173,9 @@ export const createDataProvider = ({
   authProvider,
   silent = false,
 }: CreateFakeRestDataProviderOptions = {}): CrmDataProvider => {
-  const baseDataProvider = fakeRestDataProvider(db, !silent, latency);
+  // The latency is paid once per call of the app (withLatency below), not
+  // by every read of the demo's own "triggers": bulk actions stay fast
+  const baseDataProvider = fakeRestDataProvider(db, !silent, 0);
   let messengerConnected = true;
   // Demo: the clinic is connected to Zadarma, the last event is the latest call
   const demoTelephony = (
@@ -1806,8 +1808,24 @@ export const createDataProvider = ({
     ],
   ) as CrmDataProvider;
 
-  return dataProvider;
+  return withLatency(dataProvider, latency);
 };
+
+/** A network-like delay before every call of the app */
+const withLatency = <T extends object>(provider: T, latency: number): T =>
+  latency <= 0
+    ? provider
+    : new Proxy(provider, {
+        get(target, key, receiver) {
+          const value = Reflect.get(target, key, receiver);
+          return typeof value === "function"
+            ? async (...args: unknown[]) => {
+                await new Promise((resolve) => setTimeout(resolve, latency));
+                return value.apply(target, args);
+              }
+            : value;
+        },
+      });
 
 export const dataProvider = createDataProvider();
 

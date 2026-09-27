@@ -1,31 +1,15 @@
-import { useGetList, useTranslate } from "ra-core";
+import { useTranslate } from "ra-core";
 
 import { findById, useStages } from "../dictionaries/useDictionaries";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { useGetSalesName } from "../sales/useGetSalesName";
-import type { Deal, DealEvent } from "../types";
+import type { DealEvent } from "../types";
 import { formatMoney } from "./kanbanFormat";
 
 const MONEY_FIELDS = ["plan_amount", "paid_amount"];
 
-/** Deal log (spec §9): who changed what and when */
-export const DealEvents = ({ deal }: { deal: Deal }) => {
-  const { data: events = [] } = useGetList<DealEvent>("deal_events", {
-    filter: { deal_id: deal.id },
-    sort: { field: "created_at", order: "DESC" },
-    pagination: { page: 1, perPage: 100 },
-  });
-  if (!events.length) return null;
-  return (
-    <ol className="relative flex flex-col gap-4 border-l border-border pl-5">
-      {events.map((event) => (
-        <DealEventItem key={event.id} event={event} />
-      ))}
-    </ol>
-  );
-};
-
-const DealEventItem = ({ event }: { event: DealEvent }) => {
+/** One entry of the deal log: date, author, stage change, changed fields */
+export const DealEventContent = ({ event }: { event: DealEvent }) => {
   const translate = useTranslate();
   const { currency } = useConfigurationContext();
   const { data: stages } = useStages();
@@ -37,8 +21,7 @@ const DealEventItem = ({ event }: { event: DealEvent }) => {
   const changedFields = Object.keys(event.changes ?? {});
 
   return (
-    <li className="relative text-sm">
-      <span className="absolute -left-[1.6rem] top-1.5 size-2.5 rounded-full border-2 border-background bg-brand-blue" />
+    <div className="text-sm">
       <p className="text-xs text-muted-foreground">
         {new Date(event.created_at).toLocaleString("ru-RU", {
           day: "2-digit",
@@ -81,6 +64,6 @@ const DealEventItem = ({ event }: { event: DealEvent }) => {
           })}
         </ul>
       ) : null}
-    </li>
+    </div>
   );
 };

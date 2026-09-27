@@ -1,3 +1,4 @@
+import { TasksPage } from "../tasks/TasksPage";
 import type {
   CoreAdminProps,
   AuthProvider,
@@ -206,6 +207,7 @@ const DesktopAdmin = (
         <Route path={ProfilePage.path} element={<ProfilePage />} />
         <Route path={SettingsPage.path} element={<SettingsPage />} />
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
+        <Route path={TasksPage.path} element={<TasksPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />

@@ -6,6 +6,7 @@ import {
   useUpdate,
   type Identifier,
 } from "ra-core";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,15 @@ import {
 import { TagChip } from "../tags/TagChip";
 import { TagCreateModal } from "../tags/TagCreateModal";
 import { useTags } from "../tags/useTags";
-import type { Patient, Tag } from "../types";
+import type { Deal, Patient, Tag } from "../types";
 
-export const TagsListEdit = () => {
-  const record = useRecordContext<Patient>();
+/** Tags of the patient or deal of the record context */
+export const TagsListEdit = ({
+  resource = "patients",
+}: {
+  resource?: "patients" | "deals";
+}) => {
+  const record = useRecordContext<Patient | Deal>();
   const [open, setOpen] = useState(false);
   const translate = useTranslate();
 
@@ -34,7 +40,8 @@ export const TagsListEdit = () => {
     { ids: record?.tags },
     { enabled: record && record.tags && record.tags.length > 0 },
   );
-  const [update] = useUpdate<Patient>();
+  const [update] = useUpdate<Patient | Deal>();
+  const queryClient = useQueryClient();
 
   const unselectedTags =
     allTags &&
@@ -43,10 +50,10 @@ export const TagsListEdit = () => {
 
   const handleTagAdd = (id: number) => {
     if (!record) {
-      throw new Error("No patient record found");
+      throw new Error("No record found");
     }
     const tags = [...(record.tags ?? []), id];
-    update("patients", {
+    update(resource, {
       id: record.id,
       data: { tags },
       previousData: record,
@@ -55,10 +62,10 @@ export const TagsListEdit = () => {
 
   const handleTagDelete = async (id: Identifier) => {
     if (!record) {
-      throw new Error("No patient record found");
+      throw new Error("No record found");
     }
     const tags = record.tags.filter((tagId) => tagId !== id);
-    await update("patients", {
+    await update(resource, {
       id: record.id,
       data: { tags },
       previousData: record,
@@ -76,11 +83,11 @@ export const TagsListEdit = () => {
   const handleTagCreated = useCallback(
     async (tag: Tag) => {
       if (!record) {
-        throw new Error("No patient record found");
+        throw new Error("No record found");
       }
 
       await update(
-        "patients",
+        resource,
         {
           id: record.id,
           data: { tags: [...record.tags, tag.id] },
@@ -89,11 +96,13 @@ export const TagsListEdit = () => {
         {
           onSuccess: () => {
             setOpen(false);
+            // Lists already on screen (board cards) must learn the new tag
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
           },
         },
       );
     },
-    [update, record],
+    [update, record, resource, queryClient],
   );
 
   if (isPendingRecordTags || isPendingAllTags) return null;

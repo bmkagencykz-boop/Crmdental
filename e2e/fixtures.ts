@@ -244,6 +244,10 @@ const getMenuMethod = ({ page }: { page: Page; isMobile: boolean }) => ({
     await page.getByRole("link", { name: "Patients", exact: true }).click();
     await page.waitForLoadState("networkidle");
   },
+  goToTasks: async () => {
+    await page.getByRole("link", { name: "Tasks", exact: true }).click();
+    await page.waitForLoadState("networkidle");
+  },
   goToDeals: async () => {
     await page.getByRole("link", { name: "Deals", exact: true }).click();
     await page.waitForLoadState("networkidle");

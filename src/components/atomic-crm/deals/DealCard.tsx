@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { findById, useServices } from "../dictionaries/useDictionaries";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { useGetSalesName } from "../sales/useGetSalesName";
+import { useTags } from "../tags/useTags";
 import type { Deal } from "../types";
 import { formatCardDate, formatMoney } from "./kanbanFormat";
 import { getDealTaskState } from "./taskState";
@@ -36,6 +37,10 @@ export const DealCardContent = ({
 }) => {
   const { currency } = useConfigurationContext();
   const { data: services } = useServices();
+  const { data: allTags } = useTags();
+  const tags = (deal.tags ?? [])
+    .map((id) => allTags?.find((tag) => tag.id === id))
+    .filter((tag) => tag != null);
   const translate = useTranslate();
   const redirect = useRedirect();
   const handleClick = () => {
@@ -92,6 +97,15 @@ export const DealCardContent = ({
                 {service.name}
               </span>
             ) : null}
+            {tags.slice(0, 2).map((tag) => (
+              <span
+                key={tag.id}
+                className="truncate rounded-full px-2 py-0.5 text-[11px] font-medium text-black/80"
+                style={{ backgroundColor: tag.color }}
+              >
+                {tag.name}
+              </span>
+            ))}
           </div>
           <span className="shrink-0 text-[13px] font-semibold tabular-nums">
             {formatMoney(deal.plan_amount, currency)}
@@ -127,16 +141,15 @@ const TaskBadge = ({
   const translate = useTranslate();
   if (state === "no_task") {
     return (
-      <span className="flex shrink-0 items-center gap-1 font-medium text-[#b9801a] dark:text-brand-yellow">
-        <span className="size-1.5 rounded-full bg-brand-yellow" />
+      <span className="flex shrink-0 items-center gap-1 font-medium text-destructive">
+        <span className="size-1.5 rounded-full bg-brand-red" />
         {translate("crm.deals.no_task")}
       </span>
     );
   }
   if (state === "overdue") {
     return (
-      <span className="flex shrink-0 items-center gap-1 font-medium text-destructive">
-        <span className="size-1.5 rounded-full bg-brand-red" />
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-red px-2 py-0.5 font-semibold text-white">
         {translate("crm.deals.overdue_task")}
       </span>
     );

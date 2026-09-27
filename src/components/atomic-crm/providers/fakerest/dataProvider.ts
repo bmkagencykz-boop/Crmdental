@@ -690,6 +690,7 @@ export const createDataProvider = ({
           ...params,
           data: {
             ...params.data,
+            done_date: params.data.done_date ?? null,
             sales_id: params.data.sales_id ?? (await currentSalesId()),
           },
         }),

@@ -1,7 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Archive, ArchiveRestore, Pencil } from "lucide-react";
 import {
-  InfiniteListBase,
   ShowBase,
   useDataProvider,
   useNotify,
@@ -25,16 +24,13 @@ import {
   useServices,
   useStages,
 } from "../dictionaries/useDictionaries";
-import { NoteCreate } from "../notes/NoteCreate";
-import { NotesIterator } from "../notes/NotesIterator";
 import { patientDisplayName } from "../patients/parsePatientText";
 import type { CrmDataProvider } from "../providers/types";
 import { useGetSalesName } from "../sales/useGetSalesName";
-import { AddTask } from "../tasks/AddTask";
-import { TasksListByDueDate } from "../tasks/TasksListByDueDate";
 import type { Deal } from "../types";
-import { DealEvents } from "./DealEvents";
+import { TagsListEdit } from "../patients/TagsListEdit";
 import { DealPayments } from "./DealPayments";
+import { DealTimeline } from "./DealTimeline";
 
 export const DealShow = ({ open, id }: { open: boolean; id?: string }) => {
   const redirect = useRedirect();
@@ -44,7 +40,7 @@ export const DealShow = ({ open, id }: { open: boolean; id?: string }) => {
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="top-1/20 max-h-9/10 translate-y-0 overflow-y-auto p-6 lg:max-w-5xl">
+      <DialogContent className="top-1/20 max-h-9/10 translate-y-0 overflow-y-auto p-6 lg:max-w-6xl">
         {id ? (
           <ShowBase id={id}>
             <DealShowContent />
@@ -135,77 +131,54 @@ const DealShowContent = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.25fr]">
-        <Panel title={translate("crm.deals.sections.details")}>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
-            <Field label={translate("resources.deals.fields.service_id")}>
-              {findById(services, record.service_id)?.name}
-            </Field>
-            <Field label={translate("resources.deals.fields.source_id")}>
-              {findById(sources, record.source_id)?.name}
-            </Field>
-            <Field label={translate("resources.deals.fields.sales_id")}>
-              {salesName || translate("crm.deals.unassigned")}
-            </Field>
-            <Field label={translate("resources.deals.fields.appointment_at")}>
-              {formatDateTime(record.appointment_at)}
-            </Field>
-            <Field label={translate("resources.deals.fields.visit_at")}>
-              {formatDateTime(record.visit_at)}
-            </Field>
-            <Field label={translate("resources.deals.fields.created_at")}>
-              {formatDateTime(record.created_at)}
-            </Field>
-            {stage?.kind === "lost" ? (
-              <Field label={translate("resources.deals.fields.lost_reason_id")}>
-                {findById(lostReasons, record.lost_reason_id)?.name}
-                {record.lost_comment ? ` — ${record.lost_comment}` : ""}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,22rem)_1fr]">
+        <div className="flex flex-col gap-6">
+          <Panel title={translate("crm.deals.sections.details")}>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-2.5 text-sm">
+              <Field label={translate("resources.deals.fields.service_id")}>
+                {findById(services, record.service_id)?.name}
               </Field>
-            ) : null}
-          </dl>
-          {record.description ? (
-            <p className="mt-4 whitespace-pre-line text-sm leading-6">
-              {record.description}
-            </p>
-          ) : null}
-        </Panel>
-        <Panel title={translate("crm.deals.sections.payments")}>
-          <DealPayments deal={record} />
-        </Panel>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel
-          title={translate("resources.tasks.name", { smart_count: 2 })}
-          action={<AddTask display="icon" />}
-        >
-          <TasksListByDueDate
-            filterByDeal={record.id}
-            emptyPlaceholder={
-              <p className="text-sm text-muted-foreground">
-                {translate("crm.deals.no_task_hint")}
+              <Field label={translate("resources.deals.fields.source_id")}>
+                {findById(sources, record.source_id)?.name}
+              </Field>
+              <Field label={translate("resources.deals.fields.sales_id")}>
+                {salesName || translate("crm.deals.unassigned")}
+              </Field>
+              <Field label={translate("resources.deals.fields.appointment_at")}>
+                {formatDateTime(record.appointment_at)}
+              </Field>
+              <Field label={translate("resources.deals.fields.visit_at")}>
+                {formatDateTime(record.visit_at)}
+              </Field>
+              <Field label={translate("resources.deals.fields.created_at")}>
+                {formatDateTime(record.created_at)}
+              </Field>
+              {stage?.kind === "lost" ? (
+                <Field
+                  label={translate("resources.deals.fields.lost_reason_id")}
+                >
+                  {findById(lostReasons, record.lost_reason_id)?.name}
+                  {record.lost_comment ? ` — ${record.lost_comment}` : ""}
+                </Field>
+              ) : null}
+            </dl>
+            {record.description ? (
+              <p className="mt-4 whitespace-pre-line text-sm leading-6">
+                {record.description}
               </p>
-            }
-          />
-        </Panel>
-        <Panel title={translate("crm.deals.sections.history")}>
-          <DealEvents deal={record} />
+            ) : null}
+          </Panel>
+          <Panel title={translate("crm.deals.sections.tags")}>
+            <TagsListEdit resource="deals" />
+          </Panel>
+          <Panel title={translate("crm.deals.sections.payments")}>
+            <DealPayments deal={record} />
+          </Panel>
+        </div>
+        <Panel title={translate("crm.deals.timeline.title")}>
+          <DealTimeline deal={record} />
         </Panel>
       </div>
-
-      <Panel title={translate("resources.notes.name", { smart_count: 2 })}>
-        <InfiniteListBase
-          resource="deal_notes"
-          filter={{ deal_id: record.id }}
-          sort={{ field: "date", order: "DESC" }}
-          perPage={25}
-          disableSyncWithLocation
-          storeKey={false}
-          empty={<NoteCreate reference="deals" />}
-        >
-          <NotesIterator reference="deals" />
-        </InfiniteListBase>
-      </Panel>
     </div>
   );
 };

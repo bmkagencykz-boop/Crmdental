@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Columns3, LayoutGrid, UsersRound } from "lucide-react";
+import { Columns3, LayoutGrid, ListChecks, UsersRound } from "lucide-react";
 import { useTranslate } from "ra-core";
 
 export const SIDEBAR_WIDTH = "6rem";
@@ -28,6 +28,12 @@ export const useNavItems = (): NavItem[] => {
       match: "/deals/*",
       icon: Columns3,
       label: translate("resources.deals.name", { smart_count: 2 }),
+    },
+    {
+      to: "/tasks",
+      match: "/tasks",
+      icon: ListChecks,
+      label: translate("resources.tasks.name", { smart_count: 2 }),
     },
     {
       to: "/patients",

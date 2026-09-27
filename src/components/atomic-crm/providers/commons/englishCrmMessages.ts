@@ -318,6 +318,7 @@ export const englishCrmMessages = {
         details: "Details",
         payments: "Payments",
         history: "History",
+        tags: "Tags",
       },
       lost: {
         title: "Why did the patient refuse?",
@@ -337,6 +338,22 @@ export const englishCrmMessages = {
         system: "system",
         created: "Deal created at stage «%{stage}»",
         stage_changed: "Stage:",
+      },
+      timeline: {
+        title: "Deal feed",
+        next_steps: "Next steps",
+        compose: {
+          note: "Note",
+          call: "Call",
+        },
+        task_done: "Task done",
+      },
+      period: "Period",
+      periods: {
+        today: "Today",
+        week: "Last 7 days",
+        month: "Last 30 days",
+        quarter: "Last 90 days",
       },
     },
     roles: {
@@ -494,6 +511,20 @@ export const englishCrmMessages = {
         message: "Message",
         reminder: "Reminder",
         other: "Other",
+      },
+      tabs: {
+        today: "Today",
+        overdue: "Overdue",
+        open: "All open",
+        done: "Done",
+      },
+      owner: "Whose:",
+      everyone: "Everyone",
+      empty: {
+        today: "Nothing planned for today.",
+        overdue: "No overdue tasks. Well done!",
+        open: "No open tasks.",
+        done: "No completed tasks yet.",
       },
     },
     activity: {

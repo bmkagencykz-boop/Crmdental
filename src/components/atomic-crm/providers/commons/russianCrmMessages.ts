@@ -323,6 +323,7 @@ export const russianCrmMessages: CrmMessages = {
         details: "Детали",
         payments: "Оплаты",
         history: "История",
+        tags: "Теги",
       },
       lost: {
         title: "Почему пациент отказался?",
@@ -342,6 +343,22 @@ export const russianCrmMessages: CrmMessages = {
         system: "система",
         created: "Сделка создана на этапе «%{stage}»",
         stage_changed: "Этап:",
+      },
+      timeline: {
+        title: "Лента сделки",
+        next_steps: "Следующие шаги",
+        compose: {
+          note: "Заметка",
+          call: "Звонок",
+        },
+        task_done: "Задача выполнена",
+      },
+      period: "Период",
+      periods: {
+        today: "Сегодня",
+        week: "7 дней",
+        month: "30 дней",
+        quarter: "90 дней",
       },
     },
     roles: {
@@ -499,6 +516,20 @@ export const russianCrmMessages: CrmMessages = {
         message: "Сообщение",
         reminder: "Напоминание",
         other: "Другое",
+      },
+      tabs: {
+        today: "Сегодня",
+        overdue: "Просроченные",
+        open: "Все открытые",
+        done: "Выполненные",
+      },
+      owner: "Чьи:",
+      everyone: "Все сотрудники",
+      empty: {
+        today: "На сегодня задач нет.",
+        overdue: "Просроченных задач нет.",
+        open: "Открытых задач нет.",
+        done: "Выполненных задач пока нет.",
       },
     },
     activity: {

@@ -21,15 +21,20 @@ import {
 import { Link } from "react-router";
 import { patientDisplayName } from "../patients/parsePatientText";
 import type { Deal, Task as TData } from "../types";
+import { useGetSalesName } from "../sales/useGetSalesName";
 import { TaskEdit } from "./TaskEdit";
+import { isOverdue } from "./tasksPredicate";
 
 export const Task = ({
   task,
   showDeal,
+  showResponsible,
 }: {
   task: TData;
   /** Show the patient and deal the task is about (dashboard lists) */
   showDeal?: boolean;
+  /** Show who the task is assigned to (tasks of the whole team) */
+  showResponsible?: boolean;
 }) => {
   const notify = useNotify();
   const translate = useTranslate();
@@ -82,6 +87,10 @@ export const Task = ({
     queryClient.invalidateQueries({ queryKey: ["tasks", "getList"] });
   }, [queryClient, isUpdatePending, isSuccess, variables]);
 
+  const responsible = useGetSalesName(task.sales_id, {
+    enabled: !!showResponsible && task.sales_id != null,
+  });
+  const overdue = !task.done_date && isOverdue(task.due_date);
   const labelId = `checkbox-list-label-${task.id}`;
 
   return (
@@ -108,9 +117,24 @@ export const Task = ({
               {task.text}
             </div>
             <div className="text-sm text-muted-foreground">
-              {translate("resources.tasks.fields.due_short")}
-              &nbsp;
-              <DateField source="due_date" record={task} showDate showTime />
+              <span className={overdue ? "font-medium text-brand-red" : ""}>
+                {translate("resources.tasks.fields.due_short")}
+                &nbsp;
+                <DateField
+                  source="due_date"
+                  record={task}
+                  showDate
+                  showTime
+                  options={{
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }}
+                />
+              </span>
+              {showResponsible && responsible ? ` · ${responsible}` : null}
               {showDeal && (
                 <ReferenceField<TData, Deal>
                   source="deal_id"

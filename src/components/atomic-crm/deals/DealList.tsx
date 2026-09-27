@@ -25,6 +25,7 @@ import {
   useServices,
 } from "../dictionaries/useDictionaries";
 import { TopToolbar } from "../layout/TopToolbar";
+import { ReferenceInput } from "@/components/admin/reference-input";
 import { AccountManagerInput } from "../sales/AccountManagerInput";
 import { DealArchivedList } from "./DealArchivedList";
 import { DealCreate } from "./DealCreate";
@@ -32,6 +33,7 @@ import { DealEdit } from "./DealEdit";
 import { DealListContent } from "./DealListContent";
 import { DealShow } from "./DealShow";
 import { OnlyMineInput } from "./OnlyMineInput";
+import { periodChoices } from "./periods";
 
 export const DEAL_PIPELINE_STORE_KEY = "deals.pipeline_id";
 
@@ -89,6 +91,24 @@ const DealList = () => {
         emptyText="resources.deals.fields.service_id"
         choices={toChoices(services)}
       />
+    </WrapperField>,
+    <WrapperField source="created_at@gte" label="crm.deals.period">
+      <SelectInput
+        source="created_at@gte"
+        label={false}
+        emptyText="crm.deals.period"
+        choices={periodChoices(translate)}
+      />
+    </WrapperField>,
+    <WrapperField source="tags@cs" label="resources.tags.name">
+      <ReferenceInput source="tags@cs" reference="tags">
+        <SelectInput
+          label={false}
+          emptyText="resources.tags.name"
+          format={(value: string) => value?.replace(/[{}]/g, "")}
+          parse={(value: string) => (value ? `{${value}}` : value)}
+        />
+      </ReferenceInput>
     </WrapperField>,
   ];
 

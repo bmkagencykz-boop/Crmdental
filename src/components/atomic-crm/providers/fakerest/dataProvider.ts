@@ -35,6 +35,8 @@ import type {
   LeadSource,
   LeadWebhook,
   TelegramBotStatus,
+  CrmNotification,
+  NotificationPreferences,
 } from "../../types";
 import {
   leadNoteText,
@@ -56,6 +58,11 @@ import {
   scheduleAutomessages,
 } from "../commons/automessages";
 import { DEMO_CLINIC_NAME } from "./dataGenerator/automessages";
+import {
+  applyWaitingFilter,
+  dealsWaiting,
+  WAITING_FILTER,
+} from "../commons/responseTime";
 import {
   applyPipelineMove,
   checkDealStageChange,
@@ -158,6 +165,17 @@ export const createDataProvider = ({
   let messengerConnected = true;
   let telegramBotConnected = true;
   let leadToken = "demo-token";
+  let notificationPreferences: NotificationPreferences = {
+    kinds: [
+      "lead_assigned",
+      "patient_message",
+      "response_overdue",
+      "task_overdue",
+    ],
+    browser_enabled: false,
+    telegram_enabled: true,
+    telegram_linked: false,
+  };
   const getIdentity = async () =>
     authProvider?.getIdentity?.() ?? defaultAuthProvider.getIdentity?.();
   const all = async <T>(resource: string) =>
@@ -490,10 +508,29 @@ export const createDataProvider = ({
     });
   };
 
+  // Same as the view deals_waiting
+  const dealsWaitingView = async () => {
+    const [deals, stages, patients, messages, settings] = await Promise.all([
+      all<Deal>("deals"),
+      all<Stage>("stages"),
+      all<Patient>("patients"),
+      all<Message>("messages"),
+      all<OrganizationSettings>("organization_settings"),
+    ]);
+    return dealsWaiting({
+      deals,
+      stages,
+      patients,
+      messages,
+      settings: settings[0],
+    });
+  };
+
   const views: Record<string, () => Promise<any[]>> = {
     patients: patientsSummary,
     deals: dealsSummary,
     audit_log: auditLogSummary,
+    deals_waiting: dealsWaitingView,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -862,6 +899,59 @@ export const createDataProvider = ({
     isInitialized: async (): Promise<boolean> =>
       (await all<Sale>("sales")).length > 0,
     updatePassword: async (): Promise<true> => true,
+    // --- notifications (stage 16), kept in memory in the demo ---
+    getNotificationPreferences: async (): Promise<NotificationPreferences> => ({
+      ...notificationPreferences,
+    }),
+    saveNotificationPreferences: async (
+      preferences: Pick<
+        NotificationPreferences,
+        "kinds" | "browser_enabled" | "telegram_enabled"
+      >,
+    ): Promise<NotificationPreferences> => {
+      notificationPreferences = {
+        ...notificationPreferences,
+        kinds: [...new Set(preferences.kinds)].sort(),
+        browser_enabled: preferences.browser_enabled,
+        telegram_enabled: preferences.telegram_enabled,
+      };
+      return { ...notificationPreferences };
+    },
+    // The demo has no bot: the code is shown, nothing links it
+    createTelegramLinkCode: async (): Promise<string> => {
+      const code = Math.random().toString(16).slice(2, 18).padEnd(16, "0");
+      notificationPreferences = {
+        ...notificationPreferences,
+        telegram_link_code: code,
+        telegram_link_expires_at: new Date(
+          Date.now() + 30 * 60 * 1000,
+        ).toISOString(),
+      };
+      return code;
+    },
+    unlinkTelegram: async (): Promise<void> => {
+      notificationPreferences = {
+        ...notificationPreferences,
+        telegram_linked: false,
+        telegram_username: null,
+        telegram_link_code: null,
+        telegram_link_expires_at: null,
+      };
+    },
+    markAllNotificationsRead: async (): Promise<number> => {
+      const me = await currentSalesId();
+      const unread = (await all<CrmNotification>("notifications")).filter(
+        (n) => String(n.sales_id) === String(me) && !n.read_at,
+      );
+      for (const notification of unread) {
+        await baseDataProvider.update("notifications", {
+          id: notification.id,
+          data: { read_at: new Date().toISOString() },
+          previousData: notification,
+        });
+      }
+      return unread.length;
+    },
     // Same computations as the public.report_* functions of the database
     getReport: async <Name extends ReportName>(
       name: Name,
@@ -1101,6 +1191,16 @@ export const createDataProvider = ({
       } satisfies ResourceCallbacks<Patient>,
       {
         resource: "deals",
+        // Quick filter «Ждут ответа»: the overdue deals of deals_waiting
+        beforeGetList: async (params) =>
+          params.filter?.[WAITING_FILTER]
+            ? applyWaitingFilter(
+                params,
+                (await dealsWaitingView())
+                  .filter((row) => row.overdue)
+                  .map((row) => row.id),
+              )
+            : params,
         beforeCreate: async (params) => {
           const [pipelines, stages] = await Promise.all([
             all<Pipeline>("pipelines"),

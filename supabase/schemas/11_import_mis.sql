@@ -362,6 +362,8 @@ begin
   perform set_config('crm.importing', 'on', true);
   -- The audit log shows these changes as coming from the import
   perform set_config('crm.audit_source', 'import', true);
+  -- Imported deals don't notify employees ("deal assigned to you")
+  perform set_config('crm.notifications', 'off', true);
   for item, row_position in
     select e.value, e.ordinality::integer from jsonb_array_elements(rows) with ordinality as e
   loop
@@ -392,6 +394,7 @@ begin
   end loop;
   perform set_config('crm.importing', 'off', true);
   perform set_config('crm.audit_source', '', true);
+  perform set_config('crm.notifications', '', true);
   return result;
 end;
 $$;

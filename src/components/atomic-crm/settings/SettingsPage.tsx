@@ -28,6 +28,7 @@ import { MisSettings } from "./MisSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
+import { ResponseControlSettings } from "../notifications/ResponseControlSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -37,6 +38,7 @@ const SECTIONS = [
   "messengers",
   "leads",
   "distribution",
+  "response",
   "automations",
   "automessages",
   "quick_replies",
@@ -62,7 +64,9 @@ const sectionLabel = (section: Section, kind: "title" | "hint") =>
         ? `leads.${kind === "title" ? "section" : "hint"}`
         : section === "import" || section === "mis"
           ? `${section}.${kind}`
-          : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+          : section === "response"
+            ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+            : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 // Import and MIS keep their texts in their own namespaces (import.*, mis.*)
 /**
@@ -141,6 +145,7 @@ export const SettingsPage = () => {
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "leads" ? <LeadSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
+        {section === "response" ? <ResponseControlSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "automessages" ? <AutomessagesSettings /> : null}
         {section === "quick_replies" ? <QuickRepliesEditor /> : null}

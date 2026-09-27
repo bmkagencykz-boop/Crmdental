@@ -15,6 +15,7 @@ import { useTags } from "../tags/useTags";
 import type { Deal } from "../types";
 import { formatCardDate, formatMoney } from "./kanbanFormat";
 import { getDealTaskState } from "./taskState";
+import { WaitingBadge } from "../notifications/WaitingBadge";
 
 export const DealCard = ({ deal, index }: { deal: Deal; index: number }) => {
   if (!deal) return null;
@@ -129,6 +130,7 @@ export const DealCardContent = ({
         <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
           {deal.name || service?.name || translate("crm.deals.untitled")}
         </p>
+        <WaitingBadge dealId={deal.id} />
         {deal.plan_amount > 0 ? (
           <p className="mt-0.5 text-[13px] font-semibold tabular-nums">
             {formatMoney(deal.plan_amount, currency)}

@@ -12,6 +12,7 @@ import { Moon, Sun } from "lucide-react";
 import { useConfigurationLoader } from "../root/useConfigurationLoader";
 import { SIDEBAR_WIDTH, useNavItems } from "./navigation";
 import { ChangelogMenuItem, ProfileMenu, Sidebar } from "./Sidebar";
+import { NotificationBell } from "../notifications/NotificationBell";
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
@@ -28,6 +29,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             <span className="font-bold text-brand-pink">crm</span>
           </Link>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <ThemeToggle />
             <UserMenu>
               <ProfileMenu />

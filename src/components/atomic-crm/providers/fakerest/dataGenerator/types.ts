@@ -27,6 +27,7 @@ import type {
   QuickReply,
   ExternalRef,
   IntegrationStatus,
+  CrmNotification,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 
@@ -55,6 +56,7 @@ export interface Db {
   automessage_rules: AutomessageRule[];
   automessages: Automessage[];
   quick_replies: QuickReply[];
+  notifications: CrmNotification[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   external_refs: Array<ExternalRef & { id: number }>;
   integrations: Array<IntegrationStatus & { id: number }>;

@@ -33,6 +33,8 @@ import { DealCreate } from "./DealCreate";
 import { DealEdit } from "./DealEdit";
 import { DealListContent } from "./DealListContent";
 import { OnlyMineInput } from "./OnlyMineInput";
+import { WaitingOnlyInput } from "../notifications/WaitingOnlyInput";
+import { WAITING_FILTER } from "../providers/commons/responseTime";
 import { periodChoices } from "./periods";
 
 export const DEAL_PIPELINE_STORE_KEY = "deals.pipeline_id";
@@ -76,6 +78,7 @@ const DealList = () => {
             <OnlyMineInput source="sales_id" alwaysOn />
           ),
         ]),
+    <WaitingOnlyInput source={WAITING_FILTER} alwaysOn />,
     <WrapperField source="source_id" label="resources.deals.fields.source_id">
       <SelectInput
         source="source_id"

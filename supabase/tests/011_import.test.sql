@@ -239,4 +239,9 @@ select tests.assert(
   current_setting('crm.audit_source', true) is null or current_setting('crm.audit_source', true) = '',
   'the import source does not leak to later statements');
 
+select tests.assert(
+  not exists (select 1 from public.notifications n join public.deals d on d.id = n.deal_id
+              where d.name = 'Консультация' and d.organization_id = current_setting('t.org')::bigint),
+  'an imported deal notifies nobody');
+
 rollback;

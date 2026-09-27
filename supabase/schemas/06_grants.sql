@@ -9,6 +9,21 @@ grant usage on schema public to anon;
 grant usage on schema public to authenticated;
 grant usage on schema public to service_role;
 
+-- Private schema: tenant helpers are called from RLS policies and column defaults
+grant usage on schema private to anon;
+grant usage on schema private to authenticated;
+grant usage on schema private to service_role;
+
+revoke all on function private.current_organization_id() from public;
+grant execute on function private.current_organization_id() to anon;
+grant execute on function private.current_organization_id() to authenticated;
+grant execute on function private.current_organization_id() to service_role;
+
+revoke all on function private.current_user_role() from public;
+grant execute on function private.current_user_role() to anon;
+grant execute on function private.current_user_role() to authenticated;
+grant execute on function private.current_user_role() to service_role;
+
 -- Function grants
 grant all on function public.cleanup_note_attachments() to anon;
 grant all on function public.cleanup_note_attachments() to authenticated;
@@ -66,6 +81,15 @@ grant all on function public.set_sales_id_default() to authenticated;
 grant all on function public.set_sales_id_default() to service_role;
 
 -- Table grants
+-- Organizations: users may only rename their clinic or change its timezone;
+-- billing columns are written by the service role only.
+-- Supabase's default privileges grant everything on new tables: reset first.
+revoke all on table public.organizations from anon, authenticated;
+grant select on table public.organizations to anon;
+grant select on table public.organizations to authenticated;
+grant update (name, timezone) on table public.organizations to authenticated;
+grant all on table public.organizations to service_role;
+
 grant all on table public.companies to anon;
 grant all on table public.companies to authenticated;
 grant all on table public.companies to service_role;
@@ -102,8 +126,9 @@ grant all on table public.configuration to anon;
 grant all on table public.configuration to authenticated;
 grant all on table public.configuration to service_role;
 
-grant all on table public.favicons_excluded_domains to anon;
-grant all on table public.favicons_excluded_domains to authenticated;
+revoke all on table public.favicons_excluded_domains from anon, authenticated;
+grant select on table public.favicons_excluded_domains to anon;
+grant select on table public.favicons_excluded_domains to authenticated;
 grant all on table public.favicons_excluded_domains to service_role;
 
 -- View grants
@@ -119,26 +144,28 @@ grant all on table public.contacts_summary to anon;
 grant all on table public.contacts_summary to authenticated;
 grant all on table public.contacts_summary to service_role;
 
-grant all on table public.init_state to anon;
-grant all on table public.init_state to authenticated;
-grant all on table public.init_state to service_role;
-
 -- Sequence grants
+grant all on sequence public.organizations_id_seq to service_role;
+
+grant all on sequence public.configuration_id_seq to anon;
+grant all on sequence public.configuration_id_seq to authenticated;
+grant all on sequence public.configuration_id_seq to service_role;
+
 grant all on sequence public.companies_id_seq to anon;
 grant all on sequence public.companies_id_seq to authenticated;
 grant all on sequence public.companies_id_seq to service_role;
 
-grant all on sequence public."contactNotes_id_seq" to anon;
-grant all on sequence public."contactNotes_id_seq" to authenticated;
-grant all on sequence public."contactNotes_id_seq" to service_role;
+grant all on sequence public.contact_notes_id_seq to anon;
+grant all on sequence public.contact_notes_id_seq to authenticated;
+grant all on sequence public.contact_notes_id_seq to service_role;
 
 grant all on sequence public.contacts_id_seq to anon;
 grant all on sequence public.contacts_id_seq to authenticated;
 grant all on sequence public.contacts_id_seq to service_role;
 
-grant all on sequence public."dealNotes_id_seq" to anon;
-grant all on sequence public."dealNotes_id_seq" to authenticated;
-grant all on sequence public."dealNotes_id_seq" to service_role;
+grant all on sequence public.deal_notes_id_seq to anon;
+grant all on sequence public.deal_notes_id_seq to authenticated;
+grant all on sequence public.deal_notes_id_seq to service_role;
 
 grant all on sequence public.deals_id_seq to anon;
 grant all on sequence public.deals_id_seq to authenticated;

@@ -57,4 +57,4 @@ node_modules/
 /playwright/.auth/
 
 *.lock
- 
+ .vitest-attachments/

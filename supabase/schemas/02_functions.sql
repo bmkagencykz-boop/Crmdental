@@ -228,19 +228,44 @@ CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+-- A new auth user either:
+--  * was invited by a clinic owner: the users edge function (service role) puts
+--    organization_id and role in app_metadata, which end users cannot write;
+--  * signed up by themselves: a new organization is created and they own it.
 declare
-  sales_count int;
+  org_id bigint;
+  user_role text;
+  org_name text;
 begin
-  select count(id) into sales_count
-  from public.sales;
+  org_id := nullif(new.raw_app_meta_data ->> 'organization_id', '')::bigint;
 
-  insert into public.sales (first_name, last_name, email, user_id, administrator)
+  if org_id is not null then
+    if not exists (select 1 from public.organizations o where o.id = org_id) then
+      raise exception 'Organization % does not exist', org_id;
+    end if;
+    user_role := coalesce(new.raw_app_meta_data ->> 'role', 'manager');
+    if user_role not in ('head', 'manager') then
+      user_role := 'manager';
+    end if;
+  else
+    org_name := coalesce(
+      nullif(btrim(new.raw_user_meta_data ->> 'organization_name'), ''),
+      'Моя клиника'
+    );
+    insert into public.organizations (name) values (org_name) returning id into org_id;
+    insert into public.configuration (organization_id, config)
+    values (org_id, jsonb_build_object('title', org_name));
+    user_role := 'owner';
+  end if;
+
+  insert into public.sales (organization_id, first_name, last_name, email, user_id, role)
   values (
+    org_id,
     coalesce(new.raw_user_meta_data ->> 'first_name', new.raw_user_meta_data -> 'custom_claims' ->> 'first_name', 'Pending'),
     coalesce(new.raw_user_meta_data ->> 'last_name', new.raw_user_meta_data -> 'custom_claims' ->> 'last_name', 'Pending'),
     new.email,
     new.id,
-    case when sales_count > 0 then FALSE else TRUE end
+    user_role
   );
   return new;
 end;
@@ -263,13 +288,11 @@ end;
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 begin
-  return exists (
-    select 1 from public.sales where user_id = auth.uid() and administrator = true
-  );
+  return coalesce(private.current_user_role() in ('owner', 'head'), false);
 end;
 $$;
 

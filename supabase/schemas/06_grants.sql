@@ -287,3 +287,35 @@ alter default privileges for role postgres in schema public grant all on tables 
 alter default privileges for role postgres in schema public grant all on tables to anon;
 alter default privileges for role postgres in schema public grant all on tables to authenticated;
 alter default privileges for role postgres in schema public grant all on tables to service_role;
+
+-- Messengers: the API key table is for the service role only; employees read
+-- channels, chats and messages and may only mark messages read
+revoke all on table public.messenger_integrations from anon, authenticated;
+grant all on table public.messenger_integrations to service_role;
+revoke all on table public.messenger_channels from anon, authenticated;
+grant select on table public.messenger_channels to authenticated;
+grant all on table public.messenger_channels to service_role;
+revoke all on table public.patient_chats from anon, authenticated;
+grant select on table public.patient_chats to authenticated;
+grant all on table public.patient_chats to service_role;
+revoke all on table public.messages from anon, authenticated;
+grant select on table public.messages to authenticated;
+grant update (read_at) on table public.messages to authenticated;
+grant all on table public.messages to service_role;
+revoke all on sequence public.messenger_channels_id_seq from anon, authenticated;
+revoke all on sequence public.patient_chats_id_seq from anon, authenticated;
+revoke all on sequence public.messages_id_seq from anon, authenticated;
+grant all on sequence public.messenger_channels_id_seq to service_role;
+grant all on sequence public.patient_chats_id_seq to service_role;
+grant all on sequence public.messages_id_seq to service_role;
+
+revoke all on function public.ingest_message(text, jsonb) from public, anon, authenticated;
+grant execute on function public.ingest_message(text, jsonb) to service_role;
+revoke all on function public.update_message_status(text, text, text, text) from public, anon, authenticated;
+grant execute on function public.update_message_status(text, text, text, text) to service_role;
+revoke all on function public.mark_deal_messages_read(bigint) from public, anon;
+grant execute on function public.mark_deal_messages_read(bigint) to authenticated, service_role;
+revoke all on function public.messenger_status() from public, anon;
+grant execute on function public.messenger_status() to authenticated, service_role;
+revoke all on function private.handle_message_created() from public;
+grant execute on function private.handle_message_created() to service_role;

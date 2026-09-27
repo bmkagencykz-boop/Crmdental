@@ -235,6 +235,96 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       sales_id: patient.sales_id,
     }));
 
+  // Conversations: open deals of the last weeks talk in WhatsApp or Instagram,
+  // the most recent ones still unread
+  db.messenger_channels = [
+    {
+      id: 1,
+      external_id: "demo-wa",
+      transport: "whatsapp",
+      name: "+7 727 355 00 00",
+      state: "active",
+    },
+    {
+      id: 2,
+      external_id: "demo-ig",
+      transport: "instagram",
+      name: "zhemchug.dental",
+      state: "active",
+    },
+  ];
+  const dialogs = [
+    [
+      "Здравствуйте! Сколько стоит имплант под ключ?",
+      "Добрый день! Имплантация под ключ от 280 000 ₸. Приглашаем на бесплатную консультацию — когда вам удобно?",
+      "Можно в субботу утром?",
+    ],
+    [
+      "Добрый день, можно записаться на чистку?",
+      "Здравствуйте! Есть окно завтра в 11:00 или в 16:30.",
+      "Давайте в 16:30",
+    ],
+    [
+      "Сколько стоят брекеты?",
+      "Металлические от 450 000 ₸, керамические от 650 000 ₸. Есть рассрочка 0-0-12.",
+      "А рассрочка через Kaspi?",
+    ],
+    [
+      "У ребёнка болит зуб, примете сегодня?",
+      "Здравствуйте! Да, детский врач свободен в 15:00. Записать вас?",
+    ],
+    [
+      "Хочу виниры, сколько по времени делаются?",
+      "Добрый день! 2–3 визита, около двух недель. Нужна консультация, чтобы назвать точную стоимость.",
+    ],
+  ];
+  const openStages = new Set(
+    db.stages.filter((stage) => stage.kind === "open").map((stage) => stage.id),
+  );
+  let messageId = 0;
+  db.messages = deals
+    .filter((deal) => openStages.has(deal.stage_id))
+    .filter(() => random.number(9) < 5)
+    .flatMap((deal, index) => {
+      const patient = db.patients.find((p) => p.id === deal.patient_id)!;
+      const instagram = index % 4 === 3;
+      const lines = dialogs[index % dialogs.length];
+      const start = Math.max(
+        new Date(deal.created_at).getTime(),
+        now - 5 * DAY,
+      );
+      const unread = index % 3 === 0;
+      return lines.map((text, position) => {
+        const incoming = position % 2 === 0;
+        const sentAt = new Date(
+          Math.min(
+            start + position * 40 * 60 * 1000,
+            now - (lines.length - position) * 60 * 1000,
+          ),
+        ).toISOString();
+        return {
+          id: messageId++,
+          patient_id: patient.id,
+          deal_id: deal.id,
+          channel_id: instagram ? 2 : 1,
+          transport: instagram ? ("instagram" as const) : ("whatsapp" as const),
+          chat_id: instagram
+            ? `ig-${patient.id}`
+            : (patient.phones?.[0] ?? "").replace(/\D/g, ""),
+          direction: incoming ? ("in" as const) : ("out" as const),
+          sales_id: incoming ? null : deal.sales_id,
+          text,
+          content_type: "text",
+          status: incoming ? ("inbound" as const) : ("read" as const),
+          sent_at: sentAt,
+          read_at:
+            incoming && !(unread && position === lines.length - 1)
+              ? sentAt
+              : null,
+        };
+      });
+    });
+
   db.deal_events = deals
     .flatMap((deal) => {
       const events: DealEvent[] = [

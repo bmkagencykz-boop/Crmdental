@@ -29,6 +29,10 @@ alter table public.deal_payments enable row level security;
 alter table public.deal_events enable row level security;
 alter table public.tasks enable row level security;
 alter table public.calls enable row level security;
+alter table public.messenger_integrations enable row level security;
+alter table public.messenger_channels enable row level security;
+alter table public.patient_chats enable row level security;
+alter table public.messages enable row level security;
 
 -- Organizations: members read their clinic, only the owner edits it
 create policy "Organization members can read" on public.organizations for select to authenticated
@@ -209,3 +213,16 @@ create policy "Organization members can update" on public.calls for update to au
     with check (organization_id = (select private.current_organization_id()));
 create policy "Organization members can delete" on public.calls for delete to authenticated
     using (organization_id = (select private.current_organization_id()));
+
+-- Messengers. messenger_integrations has no policy at all: its API key is
+-- only read by the edge functions (service role).
+create policy "Organization members can read" on public.messenger_channels for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Organization members can read" on public.patient_chats for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Rows of visible deals can be read" on public.messages for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = messages.organization_id and d.id = messages.deal_id));
+-- Only read_at is updatable (column grant): opening a conversation
+create policy "Rows of visible deals can be updated" on public.messages for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = messages.organization_id and d.id = messages.deal_id))
+    with check (organization_id = (select private.current_organization_id()));

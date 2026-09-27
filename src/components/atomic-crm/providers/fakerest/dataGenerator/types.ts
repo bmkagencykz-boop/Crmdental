@@ -6,6 +6,8 @@ import type {
   DealPayment,
   LeadSource,
   LostReason,
+  Message,
+  MessengerChannel,
   OrganizationSettings,
   Patient,
   PatientNote,
@@ -34,6 +36,8 @@ export interface Db {
   deal_events: DealEvent[];
   tasks: Task[];
   calls: Call[];
+  messages: Message[];
+  messenger_channels: MessengerChannel[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
 }

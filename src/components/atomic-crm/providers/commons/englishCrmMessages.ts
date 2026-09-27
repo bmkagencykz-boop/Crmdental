@@ -345,6 +345,7 @@ export const englishCrmMessages = {
         compose: {
           note: "Note",
           call: "Call",
+          message: "Message",
         },
         task_done: "Task done",
       },
@@ -398,6 +399,7 @@ export const englishCrmMessages = {
         lost_reasons: "Lost reasons",
         access: "Access",
         clinic: "Clinic",
+        messengers: "Messengers",
       },
       hints: {
         pipelines:
@@ -408,6 +410,8 @@ export const englishCrmMessages = {
         lost_reasons: "Required when a deal is closed as lost.",
         access: "What managers see and how deals move between pipelines.",
         clinic: "Name and logo shown in the app.",
+        messengers:
+          "WhatsApp, Instagram and Telegram through Wazzup24. Incoming messages create the patient and the deal.",
       },
       errors: {
         in_use: "It is still used by deals: move them first.",
@@ -443,6 +447,20 @@ export const englishCrmMessages = {
         pipeline_move_first_stage: "Always to the first stage",
         pipeline_move_choose_stage: "Choose the stage",
       },
+      messengers: {
+        status_connected: "Connected to Wazzup24",
+        status_disconnected: "Not connected",
+        api_key: "Wazzup24 API key",
+        api_key_placeholder: "Paste the key",
+        api_key_replace: "Paste a new key to replace it",
+        api_key_help:
+          "Wazzup24 → Settings → API. The key is stored on the server and never shown again.",
+        connect: "Connect",
+        connected: "Wazzup24 connected",
+        connect_error: "Could not connect Wazzup24",
+        disconnect: "Disconnect",
+        channels: "Channels",
+      },
     },
     theme: {
       dark: "Dark",
@@ -454,6 +472,7 @@ export const englishCrmMessages = {
     navigation: {
       label: "CRM navigation",
       dashboard: "Dashboard",
+      inbox: "Inbox",
     },
     profile: {
       add_secondary_email: "Add an email",
@@ -540,6 +559,49 @@ export const englishCrmMessages = {
       patient: "patient card",
       deal: "deal",
       load_more: "Load more activity",
+    },
+    inbox: {
+      all: "All",
+      unread: "Unread",
+      conversations: "Conversations",
+      empty:
+        "No conversations yet. Connect WhatsApp, Instagram or Telegram in Settings → Messengers.",
+      pick: "Pick a conversation",
+      open_deal: "Open deal",
+    },
+    messages: {
+      placeholder: "Write to the patient…",
+      send: "Send",
+      send_error: "The message was not sent",
+      from_phone: "from the phone",
+      unread:
+        "%{smart_count} unread message |||| %{smart_count} unread messages",
+      transport: {
+        whatsapp: "WhatsApp",
+        instagram: "Instagram",
+        telegram: "Telegram",
+      },
+      status: {
+        inbound: "Received",
+        sent: "Sent",
+        delivered: "Delivered",
+        read: "Read",
+        error: "Not delivered",
+      },
+      content: {
+        file: "Attachment",
+        image: "Photo",
+        audio: "Voice message",
+        video: "Video",
+        document: "Document",
+      },
+    },
+    errors: {
+      not_connected: "Messengers are not connected: Settings → Messengers",
+      no_route: "The patient has no messenger chat or phone number",
+      send_failed: "Wazzup24 did not accept the message",
+      invalid_api_key: "Wazzup24 did not accept this API key",
+      webhook_failed: "The key is saved, but Wazzup24 refused the webhook",
     },
   },
 } as const;

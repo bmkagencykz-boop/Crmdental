@@ -350,6 +350,7 @@ export const russianCrmMessages: CrmMessages = {
         compose: {
           note: "Заметка",
           call: "Звонок",
+          message: "Сообщение",
         },
         task_done: "Задача выполнена",
       },
@@ -403,6 +404,7 @@ export const russianCrmMessages: CrmMessages = {
         lost_reasons: "Причины отказа",
         access: "Доступ",
         clinic: "Клиника",
+        messengers: "Мессенджеры",
       },
       hints: {
         pipelines:
@@ -414,6 +416,8 @@ export const russianCrmMessages: CrmMessages = {
         access:
           "Что видят администраторы и как сделки переходят между воронками.",
         clinic: "Название и логотип в приложении.",
+        messengers:
+          "WhatsApp, Instagram и Telegram через Wazzup24. Входящее сообщение само создаёт пациента и сделку.",
       },
       errors: {
         in_use: "Используется в сделках — сначала перенесите их.",
@@ -449,6 +453,20 @@ export const russianCrmMessages: CrmMessages = {
         pipeline_move_first_stage: "Всегда на первый этап",
         pipeline_move_choose_stage: "С выбором этапа",
       },
+      messengers: {
+        status_connected: "Wazzup24 подключён",
+        status_disconnected: "Не подключено",
+        api_key: "API-ключ Wazzup24",
+        api_key_placeholder: "Вставьте ключ",
+        api_key_replace: "Вставьте новый ключ, чтобы заменить",
+        api_key_help:
+          "Wazzup24 → Настройки → API. Ключ хранится на сервере и больше не показывается.",
+        connect: "Подключить",
+        connected: "Wazzup24 подключён",
+        connect_error: "Не удалось подключить Wazzup24",
+        disconnect: "Отключить",
+        channels: "Каналы",
+      },
     },
     theme: {
       dark: "Тёмная",
@@ -460,6 +478,7 @@ export const russianCrmMessages: CrmMessages = {
     navigation: {
       label: "Навигация",
       dashboard: "Рабочий стол",
+      inbox: "Входящие",
     },
     profile: {
       add_secondary_email: "Добавить email",
@@ -545,6 +564,49 @@ export const russianCrmMessages: CrmMessages = {
       patient: "карточку пациента",
       deal: "сделке",
       load_more: "Показать ещё",
+    },
+    inbox: {
+      all: "Все",
+      unread: "Непрочитанные",
+      conversations: "Диалоги",
+      empty:
+        "Диалогов пока нет. Подключите WhatsApp, Instagram или Telegram в Настройки → Мессенджеры.",
+      pick: "Выберите диалог",
+      open_deal: "Открыть сделку",
+    },
+    messages: {
+      placeholder: "Написать пациенту…",
+      send: "Отправить",
+      send_error: "Сообщение не отправлено",
+      from_phone: "с телефона",
+      unread:
+        "%{smart_count} непрочитанное сообщение |||| %{smart_count} непрочитанных сообщения |||| %{smart_count} непрочитанных сообщений",
+      transport: {
+        whatsapp: "WhatsApp",
+        instagram: "Instagram",
+        telegram: "Telegram",
+      },
+      status: {
+        inbound: "Получено",
+        sent: "Отправлено",
+        delivered: "Доставлено",
+        read: "Прочитано",
+        error: "Не доставлено",
+      },
+      content: {
+        file: "Вложение",
+        image: "Фото",
+        audio: "Голосовое сообщение",
+        video: "Видео",
+        document: "Документ",
+      },
+    },
+    errors: {
+      not_connected: "Мессенджеры не подключены: Настройки → Мессенджеры",
+      no_route: "У пациента нет чата в мессенджере и номера телефона",
+      send_failed: "Wazzup24 не принял сообщение",
+      invalid_api_key: "Wazzup24 не принял этот API-ключ",
+      webhook_failed: "Ключ сохранён, но Wazzup24 не принял адрес для входящих",
     },
   },
 };

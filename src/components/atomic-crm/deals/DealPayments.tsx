@@ -77,7 +77,7 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <Amount
           label={translate("resources.deals.fields.plan_amount")}
           value={formatMoney(deal.plan_amount, currency)}
@@ -128,7 +128,7 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
           inputMode="numeric"
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
-          className="w-36"
+          className="w-32"
         />
         <Input
           type="date"
@@ -161,10 +161,11 @@ const Amount = ({
   value: string;
   muted?: boolean;
 }) => (
-  <div className="rounded-2xl bg-card/70 px-4 py-3">
-    <p className="text-xs text-muted-foreground">{label}</p>
+  <div className="min-w-0 rounded-2xl bg-card/70 px-3 py-3">
+    <p className="truncate text-xs text-muted-foreground">{label}</p>
     <p
-      className={`mt-1 text-lg font-bold tabular-nums ${muted ? "text-muted-foreground" : ""}`}
+      className={`mt-1 truncate text-[15px] font-bold tabular-nums ${muted ? "text-muted-foreground" : ""}`}
+      title={value}
     >
       {value}
     </p>

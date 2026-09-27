@@ -1,4 +1,5 @@
 import { Draggable } from "@hello-pangea/dnd";
+import { MessageCircle } from "lucide-react";
 import { useRedirect, useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 
@@ -83,9 +84,25 @@ export const DealCardContent = ({
       >
         <div className="flex items-baseline justify-between gap-2">
           <p className="truncate font-semibold">{patientName}</p>
-          <time className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
-            {date}
-          </time>
+          <span className="flex shrink-0 items-center gap-1.5">
+            {deal.nb_unread_messages ? (
+              <span
+                className="flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full bg-[#3fb96b] px-1.5 text-[11px] font-bold text-white"
+                title={translate("crm.messages.unread", {
+                  smart_count: deal.nb_unread_messages,
+                })}
+                aria-label={translate("crm.messages.unread", {
+                  smart_count: deal.nb_unread_messages,
+                })}
+              >
+                <MessageCircle className="size-3" />
+                {deal.nb_unread_messages}
+              </span>
+            ) : null}
+            <time className="text-[11px] text-muted-foreground tabular-nums">
+              {date}
+            </time>
+          </span>
         </div>
         <p className="mt-1 line-clamp-2 font-medium text-brand-link">
           {deal.name || service?.name || translate("crm.deals.untitled")}

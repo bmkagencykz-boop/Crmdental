@@ -40,7 +40,8 @@ test.describe("deal card and tasks screen", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Deal created at stage «Новый лид»");
 
-    // Note
+    // Note (the composer opens on messages)
+    await dialog.getByRole("tab", { name: "Note" }).click();
     await dialog.getByPlaceholder("Add a note").fill("Wants a quote by Friday");
     await dialog.getByRole("button", { name: "Add this note" }).click();
     const feed = dialog.getByRole("list", { name: "Deal feed" });

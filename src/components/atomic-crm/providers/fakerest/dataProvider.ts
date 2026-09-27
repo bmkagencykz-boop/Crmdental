@@ -21,6 +21,8 @@ import type {
   SignUpData,
   Stage,
   Task,
+  Message,
+  MessengerStatus,
 } from "../../types";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
@@ -62,6 +64,9 @@ const DEAL_VIEW_COLUMNS = [
   "search_text",
   "nb_open_tasks",
   "next_task_due_at",
+  "nb_unread_messages",
+  "last_message_at",
+  "last_message_text",
 ];
 
 const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>
@@ -107,6 +112,7 @@ export const createDataProvider = ({
   silent = false,
 }: CreateFakeRestDataProviderOptions = {}): CrmDataProvider => {
   const baseDataProvider = fakeRestDataProvider(db, !silent, latency);
+  let messengerConnected = true;
   const getIdentity = async () =>
     authProvider?.getIdentity?.() ?? defaultAuthProvider.getIdentity?.();
   const all = async <T>(resource: string) =>
@@ -139,11 +145,12 @@ export const createDataProvider = ({
   };
 
   const dealsSummary = async () => {
-    const [deals, stages, patients, tasks] = await Promise.all([
+    const [deals, stages, patients, tasks, messages] = await Promise.all([
       all<Deal>("deals"),
       all<Stage>("stages"),
       all<Patient>("patients"),
       all<Task>("tasks"),
+      all<Message>("messages"),
     ]);
     const kind = new Map(stages.map((stage) => [stage.id, stage.kind]));
     const patientsById = new Map(patients.map((p) => [p.id, p]));
@@ -170,6 +177,9 @@ export const createDataProvider = ({
           .toLowerCase(),
         nb_open_tasks: open.length,
         next_task_due_at: open.map((task) => task.due_date).sort()[0] ?? null,
+        ...messageSummary(
+          messages.filter((message) => message.deal_id === deal.id),
+        ),
       };
     });
   };
@@ -274,6 +284,75 @@ export const createDataProvider = ({
         });
       }
       return pipeline.id;
+    },
+    // Demo: messages are "sent" without Wazzup24
+    sendMessage: async (dealId: Identifier, text: string): Promise<Message> => {
+      const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
+        id: dealId,
+      });
+      const previous = (await all<Message>("messages"))
+        .filter((message) => message.deal_id === deal.id)
+        .sort((a, b) => b.sent_at.localeCompare(a.sent_at))[0];
+      const { data: patient } = await baseDataProvider.getOne<Patient>(
+        "patients",
+        { id: deal.patient_id },
+      );
+      const { data } = await baseDataProvider.create<Message>("messages", {
+        data: {
+          patient_id: deal.patient_id,
+          deal_id: deal.id,
+          channel_id: previous?.channel_id ?? 1,
+          transport: previous?.transport ?? "whatsapp",
+          chat_id:
+            previous?.chat_id ?? (patient.phones?.[0] ?? "").replace(/\D/g, ""),
+          direction: "out",
+          sales_id: await currentSalesId(),
+          text,
+          content_type: "text",
+          status: "sent",
+          sent_at: new Date().toISOString(),
+        },
+      });
+      if (!deal.first_response_at) {
+        await baseDataProvider.update("deals", {
+          id: deal.id,
+          data: { first_response_at: data.sent_at },
+          previousData: deal,
+        });
+      }
+      return data;
+    },
+    markDealMessagesRead: async (dealId: Identifier): Promise<number> => {
+      const unread = (await all<Message>("messages")).filter(
+        (message) =>
+          message.deal_id === dealId &&
+          message.direction === "in" &&
+          !message.read_at,
+      );
+      await Promise.all(
+        unread.map((message) =>
+          baseDataProvider.update("messages", {
+            id: message.id,
+            data: { read_at: new Date().toISOString() },
+            previousData: message,
+          }),
+        ),
+      );
+      return unread.length;
+    },
+    getMessengerStatus: async (): Promise<MessengerStatus | null> =>
+      messengerConnected
+        ? {
+            connected: true,
+            connected_at: new Date().toISOString(),
+            last_error: null,
+          }
+        : null,
+    connectMessenger: async (_apiKey: string): Promise<void> => {
+      messengerConnected = true;
+    },
+    disconnectMessenger: async (): Promise<void> => {
+      messengerConnected = false;
     },
     getOrganizationSettings: async (): Promise<OrganizationSettings> => {
       const [settings] = await all<OrganizationSettings & { id: number }>(
@@ -734,3 +813,17 @@ const convertFileToBase64 = (file: { rawFile: Blob }): Promise<string> =>
     reader.onerror = reject;
     reader.readAsDataURL(file.rawFile);
   });
+
+/** Same as the message columns of deals_summary */
+const messageSummary = (messages: Message[]) => {
+  const last = [...messages].sort(
+    (a, b) => b.sent_at.localeCompare(a.sent_at) || Number(b.id) - Number(a.id),
+  )[0];
+  return {
+    nb_unread_messages: messages.filter(
+      (message) => message.direction === "in" && !message.read_at,
+    ).length,
+    last_message_at: last?.sent_at ?? null,
+    last_message_text: last?.text ?? null,
+  };
+};

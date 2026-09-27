@@ -138,7 +138,24 @@ select
         select min(t.due_date)
         from public.tasks t
         where t.organization_id = d.organization_id and t.deal_id = d.id and t.done_date is null
-    ) as next_task_due_at
+    ) as next_task_due_at,
+    (
+        select count(*)
+        from public.messages m
+        where m.organization_id = d.organization_id and m.deal_id = d.id and m.direction = 'in' and m.read_at is null
+    ) as nb_unread_messages,
+    (
+        select max(m.sent_at)
+        from public.messages m
+        where m.organization_id = d.organization_id and m.deal_id = d.id
+    ) as last_message_at,
+    (
+        select m.text
+        from public.messages m
+        where m.organization_id = d.organization_id and m.deal_id = d.id
+        order by m.sent_at desc, m.id desc
+        limit 1
+    ) as last_message_text
 from public.deals d
     join public.stages s on s.id = d.stage_id
     join public.patients p on p.organization_id = d.organization_id and p.id = d.patient_id;

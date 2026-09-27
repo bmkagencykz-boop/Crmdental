@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { Call, DealEvent, DealNote, Task } from "../types";
+import type { Call, DealEvent, DealNote, Message, Task } from "../types";
 import { buildTimeline } from "./timeline";
 
 describe("buildTimeline", () => {
-  it("merges notes, done tasks, calls and events, newest first", () => {
+  it("merges messages, notes, done tasks, calls and events, newest first", () => {
     const items = buildTimeline({
       notes: [{ id: 1, date: "2026-09-02T10:00:00Z" } as DealNote],
       tasks: [
@@ -12,8 +12,10 @@ describe("buildTimeline", () => {
       ],
       calls: [{ id: 1, called_at: "2026-09-03T10:00:00Z" } as Call],
       events: [{ id: 1, created_at: "2026-09-01T10:00:00Z" } as DealEvent],
+      messages: [{ id: 1, sent_at: "2026-09-05T10:00:00Z" } as Message],
     });
     expect(items.map((item) => item.key)).toEqual([
+      "message-1",
       "task-1",
       "call-1",
       "note-1",

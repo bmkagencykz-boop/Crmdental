@@ -17,6 +17,7 @@ import { useDataProvider, useNotify } from "ra-core";
 import type { CrmDataProvider } from "../providers/types";
 import { AccessSettings } from "./AccessSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
+import { MessengerSettings } from "./MessengerSettings";
 import { PipelinesEditor } from "./PipelinesEditor";
 
 const SECTIONS = [
@@ -24,6 +25,7 @@ const SECTIONS = [
   "services",
   "sources",
   "lost_reasons",
+  "messengers",
   "access",
   "clinic",
 ] as const;
@@ -77,6 +79,7 @@ export const SettingsPage = () => {
         {section === "lost_reasons" ? (
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
+        {section === "messengers" ? <MessengerSettings /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
       </Panel>

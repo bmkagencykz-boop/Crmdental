@@ -624,3 +624,215 @@ begin
   return old;
 end;
 $$;
+
+--
+-- Messengers
+--
+
+-- A message received from Wazzup24 (edge function wazzup_webhook, service role),
+-- in a provider-neutral shape:
+--   { channel_id, transport, chat_id, external_id, direction, text,
+--     content_uri, content_type, sent_at, contact: { name, phone, username } }
+-- Finds the patient (WhatsApp by phone, Instagram and Telegram by chat id) or
+-- creates one, attaches the message to the patient's most recently updated
+-- open deal or opens a new deal, and ignores a message already received.
+CREATE OR REPLACE FUNCTION "public"."ingest_message"("webhook_token" "text", "message" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint;
+  msg_transport text := message ->> 'transport';
+  msg_chat_id text := nullif(btrim(message ->> 'chat_id'), '');
+  msg_external_id text := nullif(btrim(message ->> 'external_id'), '');
+  msg_direction text := coalesce(message ->> 'direction', 'in');
+  contact jsonb := coalesce(message -> 'contact', '{}'::jsonb);
+  contact_phone text;
+  contact_name text;
+  source_id bigint;
+  found_message public.messages;
+  new_channel_id bigint;
+  found_patient_id bigint;
+  found_deal_id bigint;
+  new_message_id bigint;
+  created_patient boolean := false;
+  created_deal boolean := false;
+begin
+  select i.organization_id into org_id
+  from public.messenger_integrations i
+  where i.webhook_token = ingest_message.webhook_token;
+  if org_id is null then
+    raise exception 'Unknown webhook token' using errcode = '28000';
+  end if;
+  if msg_transport is null or msg_transport not in ('whatsapp', 'instagram', 'telegram')
+    or msg_chat_id is null or msg_direction not in ('in', 'out') then
+    raise exception 'Unsupported message' using errcode = '22023';
+  end if;
+
+  -- Webhooks are retried: a message is stored once
+  if msg_external_id is not null then
+    select * into found_message from public.messages m
+    where m.organization_id = org_id and m.external_id = msg_external_id;
+    if found then
+      return jsonb_build_object('message_id', found_message.id, 'patient_id', found_message.patient_id,
+        'deal_id', found_message.deal_id, 'duplicate', true);
+    end if;
+  end if;
+
+  if nullif(btrim(message ->> 'channel_id'), '') is not null then
+    insert into public.messenger_channels (organization_id, external_id, transport)
+    values (org_id, btrim(message ->> 'channel_id'), msg_transport)
+    on conflict (organization_id, external_id) do update set transport = excluded.transport
+    returning id into new_channel_id;
+  end if;
+
+  select s.id into source_id from public.lead_sources s
+  where s.organization_id = org_id and s.code = msg_transport;
+
+  -- The patient: known chat, else (WhatsApp) the phone number, else a new one
+  select c.patient_id into found_patient_id from public.patient_chats c
+  where c.organization_id = org_id and c.transport = msg_transport and c.chat_id = msg_chat_id;
+  if msg_transport = 'whatsapp' then
+    contact_phone := private.normalize_phone(coalesce(nullif(btrim(contact ->> 'phone'), ''), msg_chat_id));
+  end if;
+  if found_patient_id is null and contact_phone is not null then
+    select p.id into found_patient_id from public.patients p
+    where p.organization_id = org_id and p.phones @> array[contact_phone]
+    order by p.last_seen desc, p.id desc
+    limit 1;
+  end if;
+  if found_patient_id is null then
+    contact_name := coalesce(
+      nullif(btrim(contact ->> 'name'), ''),
+      nullif(btrim(contact ->> 'username'), ''),
+      contact_phone,
+      msg_chat_id
+    );
+    insert into public.patients (organization_id, first_name, phone_jsonb, whatsapp, instagram, telegram, source_id)
+    values (
+      org_id,
+      contact_name,
+      case when contact_phone is not null
+        then jsonb_build_array(jsonb_build_object('number', contact_phone, 'type', 'mobile'))
+        else '[]'::jsonb end,
+      contact_phone,
+      case when msg_transport = 'instagram' then coalesce(nullif(btrim(contact ->> 'username'), ''), msg_chat_id) end,
+      case when msg_transport = 'telegram' then nullif(btrim(contact ->> 'username'), '') end,
+      source_id
+    )
+    returning id into found_patient_id;
+    created_patient := true;
+  end if;
+  insert into public.patient_chats (organization_id, patient_id, transport, chat_id, username)
+  values (org_id, found_patient_id, msg_transport, msg_chat_id, nullif(btrim(contact ->> 'username'), ''))
+  on conflict (organization_id, transport, chat_id) do nothing;
+
+  -- The deal: the most recently updated open one, else a new request
+  select d.id into found_deal_id
+  from public.deals d
+    join public.stages s on s.id = d.stage_id
+  where d.organization_id = org_id and d.patient_id = found_patient_id
+    and s.kind = 'open' and d.archived_at is null
+  order by d.updated_at desc, d.id desc
+  limit 1;
+  if found_deal_id is null then
+    insert into public.deals (organization_id, patient_id, source_id)
+    values (org_id, found_patient_id, source_id)
+    returning id into found_deal_id;
+    created_deal := true;
+  end if;
+
+  insert into public.messages (
+    organization_id, patient_id, deal_id, channel_id, transport, chat_id, direction,
+    text, content_uri, content_type, status, external_id, sent_at
+  ) values (
+    org_id, found_patient_id, found_deal_id, new_channel_id, msg_transport, msg_chat_id, msg_direction,
+    message ->> 'text',
+    nullif(message ->> 'content_uri', ''),
+    coalesce(nullif(message ->> 'content_type', ''), 'text'),
+    case when msg_direction = 'in' then 'inbound' else 'sent' end,
+    msg_external_id,
+    coalesce((message ->> 'sent_at')::timestamp with time zone, now())
+  )
+  returning id into new_message_id;
+
+  update public.patients set last_seen = now()
+  where organization_id = org_id and id = found_patient_id;
+
+  return jsonb_build_object('message_id', new_message_id, 'patient_id', found_patient_id,
+    'deal_id', found_deal_id, 'created_patient', created_patient, 'created_deal', created_deal,
+    'duplicate', false);
+end;
+$$;
+
+-- Delivery status of an outgoing message (edge function wazzup_webhook)
+CREATE OR REPLACE FUNCTION "public"."update_message_status"("webhook_token" "text", "external_id" "text", "status" "text", "error" "text" DEFAULT NULL::"text") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint;
+begin
+  select i.organization_id into org_id
+  from public.messenger_integrations i
+  where i.webhook_token = update_message_status.webhook_token;
+  if org_id is null then
+    raise exception 'Unknown webhook token' using errcode = '28000';
+  end if;
+  if update_message_status.status not in ('sent', 'delivered', 'read', 'error') then
+    return false;
+  end if;
+  update public.messages m
+  set status = update_message_status.status,
+      error = case when update_message_status.status = 'error' then update_message_status.error end
+  where m.organization_id = org_id
+    and m.external_id = update_message_status.external_id
+    and m.direction = 'out';
+  return found;
+end;
+$$;
+
+-- The employee opened the conversation of a deal
+CREATE OR REPLACE FUNCTION "public"."mark_deal_messages_read"("deal_id" bigint) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  marked integer;
+begin
+  update public.messages m
+  set read_at = now()
+  where m.deal_id = mark_deal_messages_read.deal_id
+    and m.direction = 'in'
+    and m.read_at is null;
+  get diagnostics marked = row_count;
+  return marked;
+end;
+$$;
+
+-- Is the clinic connected to Wazzup24 (owner and head; the key stays secret)
+CREATE OR REPLACE FUNCTION "public"."messenger_status"() RETURNS TABLE("connected" boolean, "connected_at" timestamp with time zone, "last_error" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select i.api_key is not null, i.connected_at, i.last_error
+  from public.messenger_integrations i
+  where i.organization_id = private.current_organization_id()
+    and private.current_user_role() in ('owner', 'head')
+$$;
+
+-- First answer to the patient: deals.first_response_at (response time reports)
+CREATE OR REPLACE FUNCTION "private"."handle_message_created"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if new.direction = 'out' then
+    update public.deals d
+    set first_response_at = new.sent_at
+    where d.organization_id = new.organization_id and d.id = new.deal_id
+      and d.first_response_at is null;
+  end if;
+  return null;
+end;
+$$;

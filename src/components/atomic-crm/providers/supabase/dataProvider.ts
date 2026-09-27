@@ -16,6 +16,8 @@ import type {
   Sale,
   SalesFormData,
   SignUpData,
+  Message,
+  MessengerStatus,
 } from "../../types";
 import { applySearch } from "../commons/search";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
@@ -255,6 +257,54 @@ const getDataProviderWithCustomMethods = () => {
       return data as Identifier;
     },
     getOrganizationSettings,
+    /** Sends a message of a deal through Wazzup24 (edge function messenger_send) */
+    async sendMessage(dealId: Identifier, text: string): Promise<Message> {
+      const { data, error } = await getSupabaseClient().functions.invoke<{
+        data: Message;
+      }>("messenger_send", { method: "POST", body: { deal_id: dealId, text } });
+      if (!data || error) {
+        throw new Error(
+          await functionErrorMessage(error, "crm.messages.send_error"),
+        );
+      }
+      return data.data;
+    },
+    /** The employee opened the conversation: its messages are read */
+    async markDealMessagesRead(dealId: Identifier): Promise<number> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "mark_deal_messages_read",
+        { deal_id: dealId },
+      );
+      if (error) throw error;
+      return data as number;
+    },
+    async getMessengerStatus(): Promise<MessengerStatus | null> {
+      const { data, error } = await getSupabaseClient().rpc("messenger_status");
+      if (error) throw error;
+      return ((data as MessengerStatus[]) ?? [])[0] ?? null;
+    },
+    /** Saves the Wazzup24 key, imports the channels, registers the webhook */
+    async connectMessenger(apiKey: string): Promise<void> {
+      const { error } = await getSupabaseClient().functions.invoke(
+        "messenger_connect",
+        { method: "POST", body: { api_key: apiKey } },
+      );
+      if (error) {
+        throw new Error(
+          await functionErrorMessage(
+            error,
+            "crm.settings.messengers.connect_error",
+          ),
+        );
+      }
+    },
+    async disconnectMessenger(): Promise<void> {
+      const { error } = await getSupabaseClient().functions.invoke(
+        "messenger_connect",
+        { method: "POST", body: { disconnect: true } },
+      );
+      if (error) throw error;
+    },
     async updateOrganizationSettings(
       settings: Partial<Omit<OrganizationSettings, "organization_id">>,
     ): Promise<OrganizationSettings> {
@@ -401,6 +451,10 @@ const DEAL_VIEW_COLUMNS = [
   "updated_at",
   "stage_changed_at",
   "closed_at",
+  "first_response_at",
+  "nb_unread_messages",
+  "last_message_at",
+  "last_message_text",
 ];
 
 const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>
@@ -483,4 +537,15 @@ const uploadToBucket = async (fi: RAFile) => {
   fi.type = mimeType;
 
   return fi;
+};
+
+/** Error code of an edge function turned into a translatable message */
+const functionErrorMessage = async (error: any, fallback: string) => {
+  try {
+    const body = await error?.context?.json();
+    if (body?.code) return `crm.errors.${body.code}`;
+  } catch {
+    // not a JSON body
+  }
+  return fallback;
 };

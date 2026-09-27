@@ -84,13 +84,22 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
     >
       <span
         className={cn(
-          "flex size-11 items-center justify-center rounded-full transition-all duration-200",
+          "relative flex size-11 items-center justify-center rounded-full transition-all duration-200",
           active
             ? "bg-primary text-primary-foreground shadow-soft"
             : "soft text-foreground/70 group-hover:-translate-y-0.5 group-hover:text-foreground",
         )}
       >
         <Icon className="size-[1.1rem]" strokeWidth={1.8} />
+        {item.badge ? (
+          <span
+            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#3fb96b] px-1 text-[10px] font-bold text-white ring-2 ring-background"
+            data-testid="nav-badge"
+            aria-hidden
+          >
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+        ) : null}
       </span>
       <span
         className={cn(

@@ -101,3 +101,8 @@ create or replace trigger on_auth_user_updated
 create or replace trigger delete_organization_data
     before delete on public.organizations
     for each row execute function private.delete_organization_data();
+
+-- Messages: first answer of the deal
+create or replace trigger message_created
+    after insert on public.messages
+    for each row execute function private.handle_message_created();

@@ -1,3 +1,4 @@
+import { InboxPage } from "../messages/InboxPage";
 import { TasksPage } from "../tasks/TasksPage";
 import type {
   CoreAdminProps,
@@ -208,6 +209,7 @@ const DesktopAdmin = (
         <Route path={SettingsPage.path} element={<SettingsPage />} />
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         <Route path={TasksPage.path} element={<TasksPage />} />
+        <Route path={InboxPage.path} element={<InboxPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />
@@ -217,6 +219,8 @@ const DesktopAdmin = (
       <Resource name="deal_events" />
       <Resource name="tasks" />
       <Resource name="calls" />
+      <Resource name="messages" />
+      <Resource name="messenger_channels" />
       <Resource name="pipelines" />
       <Resource name="stages" />
       <Resource name="services" />

@@ -162,3 +162,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.users]
 verify_jwt = false
+[functions.wazzup_webhook]
+verify_jwt = false
+[functions.messenger_connect]
+verify_jwt = false
+[functions.messenger_send]
+verify_jwt = false

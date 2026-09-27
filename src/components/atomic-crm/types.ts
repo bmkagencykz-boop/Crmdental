@@ -169,7 +169,45 @@ export type Deal = {
   patient_phone?: string | null;
   nb_open_tasks?: number;
   next_task_due_at?: string | null;
+  nb_unread_messages?: number;
+  last_message_at?: string | null;
+  last_message_text?: string | null;
 } & Pick<RaRecord, "id">;
+
+export type MessengerTransport = "whatsapp" | "instagram" | "telegram";
+
+/** A message of a deal, received or sent through Wazzup24 */
+export type Message = {
+  organization_id?: Identifier;
+  patient_id: Identifier;
+  deal_id: Identifier;
+  channel_id?: Identifier | null;
+  transport: MessengerTransport;
+  chat_id: string;
+  direction: "in" | "out";
+  sales_id?: Identifier | null;
+  text?: string | null;
+  content_uri?: string | null;
+  content_type: string;
+  status: "inbound" | "sent" | "delivered" | "read" | "error";
+  error?: string | null;
+  external_id?: string | null;
+  sent_at: string;
+  read_at?: string | null;
+} & Pick<RaRecord, "id">;
+
+export type MessengerChannel = {
+  external_id: string;
+  transport: MessengerTransport;
+  name?: string | null;
+  state?: string | null;
+} & Pick<RaRecord, "id">;
+
+export type MessengerStatus = {
+  connected: boolean;
+  connected_at: string | null;
+  last_error: string | null;
+};
 
 export type DealPayment = {
   deal_id: Identifier;

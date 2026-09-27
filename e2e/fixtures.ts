@@ -235,6 +235,29 @@ async function createDeal({
   return data;
 }
 
+/** What wazzup_connect stores: the clinic's key and webhook token */
+async function connectMessenger() {
+  const token = `test-token-${requireTestOrganization()}`;
+  const { error } = await adminSupabase.from("messenger_integrations").upsert({
+    organization_id: requireTestOrganization(),
+    api_key: "test-key",
+    webhook_token: token,
+    connected_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(`Failed to connect messenger: ${error.message}`);
+  return token;
+}
+
+/** What wazzup_webhook does with a message from Wazzup24 */
+async function receiveMessage(token: string, message: Record<string, unknown>) {
+  const { data, error } = await adminSupabase.rpc("ingest_message", {
+    webhook_token: token,
+    message,
+  });
+  if (error) throw new Error(`Failed to ingest message: ${error.message}`);
+  return data as { patient_id: number; deal_id: number };
+}
+
 const getMenuMethod = ({ page }: { page: Page; isMobile: boolean }) => ({
   goToDashboard: async () => {
     await page.getByRole("link", { name: "Dashboard", exact: true }).click();
@@ -242,6 +265,10 @@ const getMenuMethod = ({ page }: { page: Page; isMobile: boolean }) => ({
   },
   goToPatients: async () => {
     await page.getByRole("link", { name: "Patients", exact: true }).click();
+    await page.waitForLoadState("networkidle");
+  },
+  goToInbox: async () => {
+    await page.getByRole("link", { name: /^Inbox/ }).click();
     await page.waitForLoadState("networkidle");
   },
   goToTasks: async () => {
@@ -283,6 +310,8 @@ export const test = base.extend<{
   createSales: typeof createSales;
   createPatient: typeof createPatient;
   createDeal: typeof createDeal;
+  connectMessenger: typeof connectMessenger;
+  receiveMessage: typeof receiveMessage;
   createNotes: typeof createNotes;
   menu: ReturnType<typeof getMenuMethod>;
   login: (email: string, password?: string) => Promise<void>;
@@ -310,6 +339,14 @@ export const test = base.extend<{
   // eslint-disable-next-line no-empty-pattern
   createPatient: async ({}, cb) => {
     await cb(createPatient);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  connectMessenger: async ({}, cb) => {
+    await cb(connectMessenger);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  receiveMessage: async ({}, cb) => {
+    await cb(receiveMessage);
   },
   // eslint-disable-next-line no-empty-pattern
   createDeal: async ({}, cb) => {

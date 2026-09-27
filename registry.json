@@ -146,6 +146,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/settings/TaskRulesEditor.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/settings/SettingsPage.tsx",
           "type": "registry:component"
         },
@@ -162,7 +166,15 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/settings/DistributionSettings.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/settings/DictionaryEditor.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/settings/ChecklistEditor.tsx",
           "type": "registry:component"
         },
         {
@@ -559,6 +571,10 @@
         },
         {
           "path": "src/components/atomic-crm/deals/dealUtils.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/deals/StageChecklist.tsx",
           "type": "registry:component"
         },
         {

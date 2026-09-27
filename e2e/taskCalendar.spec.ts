@@ -73,7 +73,7 @@ test.describe("task calendar", () => {
     await page.getByRole("button", { name: `New task: ${day} 10:00` }).click();
 
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByText("New task")).toBeVisible();
+    await expect(dialog.getByText("Create task").first()).toBeVisible();
     await dialog.getByLabel("Description").fill("Confirm the implant visit");
     await dialog.getByRole("combobox", { name: "Deal" }).click();
     await page.getByPlaceholder("Search...").fill("Akhmetov");

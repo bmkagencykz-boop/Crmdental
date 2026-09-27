@@ -13,7 +13,11 @@ type Editor =
   /** nullable: an empty value saves null instead of 0 */
   | { kind: "number"; nullable?: boolean }
   | { kind: "datetime" }
-  | { kind: "select"; choices: Choice[]; emptyLabel?: string };
+  /** A day, YYYY-MM-DD (custom fields) */
+  | { kind: "date" }
+  | { kind: "select"; choices: Choice[]; emptyLabel?: string }
+  /** Several options (custom fields), saved with «Готово» */
+  | { kind: "multiselect"; choices: Choice[] };
 
 /**
  * A row of the deal card, amoCRM style: label on the left, value on the
@@ -107,6 +111,17 @@ const FieldEditor = ({
   >(null);
   useEffect(() => ref.current?.focus(), []);
 
+  if (editor.kind === "multiselect") {
+    return (
+      <MultiselectEditor
+        choices={editor.choices}
+        value={value}
+        label={label}
+        onDone={onDone}
+      />
+    );
+  }
+
   if (editor.kind === "select") {
     return (
       <select
@@ -181,9 +196,11 @@ const FieldEditor = ({
       type={
         editor.kind === "datetime"
           ? "datetime-local"
-          : editor.kind === "number"
-            ? "number"
-            : "text"
+          : editor.kind === "date"
+            ? "date"
+            : editor.kind === "number"
+              ? "number"
+              : "text"
       }
       defaultValue={initial}
       onBlur={(event) => finish(event.target.value)}
@@ -193,5 +210,75 @@ const FieldEditor = ({
       }}
       className="h-9"
     />
+  );
+};
+
+/** Checkboxes of the options, saved with «Готово», cancelled with Escape */
+const MultiselectEditor = ({
+  choices,
+  value,
+  label,
+  onDone,
+}: {
+  choices: Choice[];
+  value: unknown;
+  label: string;
+  onDone: (value: unknown, changed: boolean) => void;
+}) => {
+  const translate = useTranslate();
+  const initial = Array.isArray(value) ? value.map(String) : [];
+  const [chosen, setChosen] = useState<string[]>(initial);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => ref.current?.querySelector("input")?.focus(), []);
+  const done = () => {
+    const next = choices
+      .map((choice) => String(choice.id))
+      .filter((id) => chosen.includes(id));
+    onDone(next.length ? next : null, next.join("|") !== initial.join("|"));
+  };
+  return (
+    <div
+      ref={ref}
+      role="group"
+      aria-label={label}
+      className="flex flex-col gap-1.5 rounded-lg bg-card p-2"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onDone(value, false);
+      }}
+    >
+      {choices.map((choice) => (
+        <label key={choice.id} className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 accent-[var(--primary)]"
+            checked={chosen.includes(String(choice.id))}
+            onChange={(event) =>
+              setChosen((current) =>
+                event.target.checked
+                  ? [...current, String(choice.id)]
+                  : current.filter((id) => id !== String(choice.id)),
+              )
+            }
+          />
+          {choice.name}
+        </label>
+      ))}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={done}
+          className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+        >
+          {translate("custom_fields.values.done")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDone(value, false)}
+          className="rounded-md px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+        >
+          {translate("ra.action.cancel")}
+        </button>
+      </div>
+    </div>
   );
 };

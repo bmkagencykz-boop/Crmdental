@@ -55,6 +55,7 @@ import {
   type AuditFilterState,
   type AuditLookups,
 } from "./format";
+import { useCustomFields } from "../custom-fields/useCustomFields";
 
 const PER_PAGE = 50;
 const EXPORT_LIMIT = 5000;
@@ -216,6 +217,7 @@ const useAuditLookups = (enabled: boolean): AuditLookups => {
   const { data: sources } = useLeadSources();
   const { data: services } = useServices();
   const { data: doctors } = useDoctors();
+  const { data: customFields } = useCustomFields();
   return useMemo(
     () => ({
       currency: currency ?? "KZT",
@@ -227,6 +229,7 @@ const useAuditLookups = (enabled: boolean): AuditLookups => {
       sources,
       services,
       doctors,
+      customFields,
     }),
     [
       currency,
@@ -238,6 +241,7 @@ const useAuditLookups = (enabled: boolean): AuditLookups => {
       sources,
       services,
       doctors,
+      customFields,
     ],
   );
 };

@@ -294,7 +294,7 @@ describe("toAuditListFilter", () => {
       "at@lt": new Date(2026, 9, 1).toISOString(),
       sales_id: 2,
       "entity@in":
-        "(pipeline,stage,settings,task_rule,checklist_item,messenger)",
+        "(pipeline,stage,settings,task_rule,checklist_item,messenger,custom_field)",
       q: "ахметов",
     });
   });
@@ -336,5 +336,83 @@ describe("toAuditCsvRows", () => {
     ).map(plain);
     expect(lines[0]).toContain("Ахметова Г. С.");
     expect(lines[1]).toContain("15 000");
+  });
+});
+
+describe("custom fields (stage 19)", () => {
+  beforeAll(() => i18nProvider.changeLocale("ru"));
+  const withFields: AuditLookups = {
+    ...lookups,
+    customFields: [
+      {
+        id: 2,
+        entity: "deal",
+        name: "Откуда узнал",
+        type: "select",
+        options: ["Инстаграм", "2GIS"],
+        required: false,
+        position: 0,
+        is_active: true,
+        show_on_card: true,
+      },
+      {
+        id: 5,
+        entity: "deal",
+        name: "Рассрочка",
+        type: "money",
+        options: [],
+        required: false,
+        position: 1,
+        is_active: false,
+        show_on_card: false,
+      },
+    ],
+  };
+
+  it("shows one line per field, with its name", () => {
+    expect(
+      describeAuditChanges(
+        entry({
+          changes: {
+            "cf:2": ["2GIS", "Инстаграм"],
+            "cf:5": [null, 150000],
+            "cf:9": ["x", null],
+          },
+        }),
+        withFields,
+        t,
+      ).map(plain),
+    ).toEqual([
+      "Откуда узнал: 2GIS → Инстаграм",
+      "Рассрочка: — → 150 000 ₸",
+      "Поле #9: x → —",
+    ]);
+  });
+
+  it("describes the definitions of the fields", () => {
+    const created = entry({
+      entity: "custom_field",
+      entity_id: 2,
+      action: "create",
+      deal_id: null,
+      patient_id: null,
+      deal_name: null,
+      patient_name: null,
+      changes: {
+        name: [null, "Откуда узнал"],
+        type: [null, "select"],
+        options: [null, ["Инстаграм", "2GIS"]],
+        required: [null, false],
+      },
+    });
+    expect(describeAuditChanges(created, withFields, t)).toEqual([
+      "Название: Откуда узнал",
+      "Тип: Список",
+      "Варианты: Инстаграм, 2GIS",
+      "Обязательное: Нет",
+    ]);
+    expect(auditEntityLabel(created, withFields, t)).toBe(
+      "Поле «Откуда узнал»",
+    );
   });
 });

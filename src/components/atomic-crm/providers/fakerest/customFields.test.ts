@@ -64,9 +64,7 @@ describe("demo custom fields (stage 19)", () => {
     expect(deals.some((deal) => deal.custom_values?.["2"])).toBe(true);
     expect(deals.some((deal) => deal.custom_values?.["1"])).toBe(true);
     const patients = await list<Patient>(dataProvider, "patients_summary");
-    expect(patients.some((patient) => patient.custom_values?.["4"])).toBe(
-      true,
-    );
+    expect(patients.some((patient) => patient.custom_values?.["4"])).toBe(true);
   });
 
   it("filters the deals by jsonb containment", async () => {

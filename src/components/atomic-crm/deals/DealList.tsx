@@ -37,6 +37,15 @@ import { OnlyMineInput } from "./OnlyMineInput";
 import { WaitingOnlyInput } from "../notifications/WaitingOnlyInput";
 import { WAITING_FILTER } from "../providers/commons/responseTime";
 import { periodChoices } from "./periods";
+import { CustomFieldsFilter } from "../custom-fields/CustomFieldsFilter";
+import {
+  CUSTOM_VALUES_FILTER,
+  filterableFields,
+} from "../custom-fields/customFields";
+import { customFieldsExporter } from "../custom-fields/exporters";
+import { useCustomFields } from "../custom-fields/useCustomFields";
+
+const dealExporter = customFieldsExporter("deal");
 
 export const DEAL_PIPELINE_STORE_KEY = "deals.pipeline_id";
 
@@ -57,6 +66,7 @@ const DealList = () => {
   const { data: services } = useServices();
   const { data: sources } = useLeadSources();
   const { data: doctors } = useDoctors();
+  const { data: customFields } = useCustomFields();
   const { current } = useCurrentPipeline();
   const { canAccess: canAccessSalesList, isPending } = useCanAccess({
     resource: "sales",
@@ -124,6 +134,17 @@ const DealList = () => {
         />
       </ReferenceInput>
     </WrapperField>,
+    // Custom fields: lists and checkboxes (stage 19)
+    ...(filterableFields(customFields).length
+      ? [
+          <WrapperField
+            source={CUSTOM_VALUES_FILTER}
+            label="custom_fields.filter.label"
+          >
+            <CustomFieldsFilter source={CUSTOM_VALUES_FILTER} />
+          </WrapperField>,
+        ]
+      : []),
   ];
 
   return (
@@ -138,6 +159,7 @@ const DealList = () => {
         filters={dealFilters}
         actions={<DealActions />}
         pagination={null}
+        exporter={dealExporter}
         storeKey={`deals.pipeline.${current.id}`}
       >
         <DealLayout pipelineId={current.id} />

@@ -77,6 +77,7 @@ export const DealCreate = ({
               plan_amount: 0,
               tags: [],
               index: 0,
+              custom_values: {},
             }}
           >
             <DealInputs />

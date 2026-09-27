@@ -178,9 +178,7 @@ export const normalizeCustomValue = (
     case "number":
     case "money": {
       if (typeof value === "string") {
-        raw = raw
-          .replace(/[\s ₸]|тг\.?|тенге/gi, "")
-          .replace(/,/g, ".");
+        raw = raw.replace(/[\s\u00a0₸]|тг\.?|тенге/gi, "").replace(/,/g, ".");
       }
       if (/^-?\d{1,15}(\.\d{1,6})?$/.test(raw)) {
         const amount = Number(raw);
@@ -232,9 +230,7 @@ export const entityFields = (
   { archived = false }: { archived?: boolean } = {},
 ) =>
   fields
-    .filter(
-      (field) => field.entity === entity && (archived || field.is_active),
-    )
+    .filter((field) => field.entity === entity && (archived || field.is_active))
     .sort((a, b) => a.position - b.position || Number(a.id) - Number(b.id));
 
 const sameValue = (a: unknown, b: unknown) =>
@@ -667,3 +663,20 @@ export const customCsvColumns = (
       customFieldText(field.type, values?.[String(field.id)]) ?? "",
     ]),
   );
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** ISO moment → value of a datetime-local input (browser time zone) */
+export const toLocalInput = (value: unknown) => {
+  if (!value) return "";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+};
+
+/** Value of a datetime-local input → ISO moment */
+export const fromLocalInput = (value: string) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+};

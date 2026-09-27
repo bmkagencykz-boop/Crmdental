@@ -1418,7 +1418,9 @@ export const createDataProvider = ({
       !previous?.show_on_card &&
       others.filter((field) => field.show_on_card).length >= MAX_CARD_FIELDS
     ) {
-      throw new Error("На карточке канбана можно показать не больше двух полей");
+      throw new Error(
+        "На карточке канбана можно показать не больше двух полей",
+      );
     }
   };
 
@@ -1530,10 +1532,12 @@ export const createDataProvider = ({
           };
         },
         beforeUpdate: async (params) => {
-          const { data: previous } =
-            await baseDataProvider.getOne<CustomField>("custom_fields", {
+          const { data: previous } = await baseDataProvider.getOne<CustomField>(
+            "custom_fields",
+            {
               id: params.id,
-            });
+            },
+          );
           if (
             (params.data.type != null && params.data.type !== previous.type) ||
             (params.data.entity != null &&
@@ -1549,7 +1553,11 @@ export const createDataProvider = ({
           return { ...params, data };
         },
         beforeDelete: async (params) => {
-          await checkDefinition(params.previousData as CustomField, params.previousData as CustomField, true);
+          await checkDefinition(
+            params.previousData as CustomField,
+            params.previousData as CustomField,
+            true,
+          );
           return params;
         },
       } satisfies ResourceCallbacks<CustomField>,

@@ -16,6 +16,11 @@ import type { Deal } from "../types";
 import { formatCardDate, formatMoney } from "./kanbanFormat";
 import { getDealTaskState } from "./taskState";
 import { WaitingBadge } from "../notifications/WaitingBadge";
+import { cardFields } from "../custom-fields/customFields";
+import {
+  useCustomFields,
+  useCustomValueText,
+} from "../custom-fields/useCustomFields";
 
 export const DealCard = ({ deal, index }: { deal: Deal; index: number }) => {
   if (!deal) return null;
@@ -139,6 +144,7 @@ export const DealCardContent = ({
             </span>
           ) : null}
         </p>
+        <CardCustomFields deal={deal} />
         <WaitingBadge dealId={deal.id} />
         {deal.plan_amount > 0 ? (
           <p className="mt-0.5 text-[13px] font-semibold tabular-nums">
@@ -198,4 +204,31 @@ const TaskBadge = ({
     );
   }
   return null;
+};
+
+/**
+ * The custom fields the clinic chose for the card (Settings → Поля, two at
+ * most, stage 19), in small text: «Откуда узнал: Инстаграм · Есть снимок
+ * КТ: Да». Empty fields are not shown.
+ */
+const CardCustomFields = ({ deal }: { deal: Deal }) => {
+  const { data: fields } = useCustomFields();
+  const text = useCustomValueText();
+  const shown = cardFields(fields)
+    .map((field) => ({
+      field,
+      value: text(field, deal.custom_values?.[String(field.id)]),
+    }))
+    .filter(({ value }) => value != null);
+  if (!shown.length) return null;
+  return (
+    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+      {shown.map(({ field, value }, index) => (
+        <span key={field.id} data-card-field={field.id}>
+          {index > 0 ? " · " : null}
+          {field.name}: <span className="text-foreground/80">{value}</span>
+        </span>
+      ))}
+    </p>
+  );
 };

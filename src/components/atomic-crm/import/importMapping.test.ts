@@ -594,10 +594,7 @@ describe("custom fields (stage 19)", () => {
     const { mapping } = guessMapping(headers, customFields);
     const base = amoHeaders.map(() => "");
     base[6] = "Нурланова Асель";
-    const sheet = [
-      headers,
-      [...base, "2GIS", "нет", "ДМС-1", "", "", "", ""],
-    ];
+    const sheet = [headers, [...base, "2GIS", "нет", "ДМС-1", "", "", "", ""]];
     const rows = parseRows(sheet, mapping, customFields);
     const { ready } = buildBatchRows({
       rows,

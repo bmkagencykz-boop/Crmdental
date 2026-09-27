@@ -1,8 +1,10 @@
-import { useGetList } from "ra-core";
+import { useGetList, useTranslate } from "ra-core";
 import { useMemo } from "react";
 
-import type { CustomField, CustomFieldEntity } from "../types";
-import { entityFields } from "./customFields";
+import type { CustomField, CustomFieldEntity, CustomValue } from "../types";
+import { formatMoney } from "../deals/kanbanFormat";
+import { useConfigurationContext } from "../root/ConfigurationContext";
+import { displayCustomValue, entityFields } from "./customFields";
 
 export { entityFields };
 
@@ -34,4 +36,16 @@ export const useEntityFields = (
     [data, entity, archived],
   );
   return { data: fields, all: data, isPending };
+};
+
+/** A value as the screens show it; links and phones are clickable */
+export const useCustomValueText = () => {
+  const translate = useTranslate();
+  const { currency } = useConfigurationContext();
+  return (field: CustomField, value: CustomValue | null | undefined) =>
+    displayCustomValue(field, value, {
+      formatMoney: (amount) => formatMoney(amount, currency),
+      yes: translate("custom_fields.values.yes"),
+      no: translate("custom_fields.values.no"),
+    });
 };

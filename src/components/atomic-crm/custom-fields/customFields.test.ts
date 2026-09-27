@@ -93,6 +93,7 @@ describe("normalizeCustomValue (same as private.custom_value)", () => {
     );
     expect(normalizeCustomValue(installment, "150 000 ₸")).toBe(150000);
     expect(normalizeCustomValue(installment, "25 000 тг")).toBe(25000);
+    expect(normalizeCustomValue(installment, "12\u00a0000")).toBe(12000);
     expect(normalizeCustomValue(installment, 1500.6)).toBe(1501);
     expect(() => normalizeCustomValue(installment, -5)).toThrow(
       "Поле «Сумма рассрочки»: ожидается сумма в тенге",
@@ -314,9 +315,9 @@ describe("texts (same as private.custom_field_text)", () => {
     const money = (n: number) => `${n} KZT`;
     expect(displayCustomValue(ct, true)).toBe("Да");
     expect(displayCustomValue(ct, false, { no: "No" })).toBe("No");
-    expect(
-      displayCustomValue(installment, 1000, { formatMoney: money }),
-    ).toBe("1000 KZT");
+    expect(displayCustomValue(installment, 1000, { formatMoney: money })).toBe(
+      "1000 KZT",
+    );
     expect(displayCustomValue(policy, "")).toBeNull();
     expect(displayCustomValue(shot, "2026-03-01")).toBe("01.03.2026");
   });
@@ -337,9 +338,9 @@ describe("logs and filters", () => {
     expect(
       customValuesDiff({ "2": "2GIS", "5": 1 }, { "2": "2GIS", "4": "AB" }),
     ).toEqual({ "cf:4": [null, "AB"], "cf:5": [1, null] });
-    expect(
-      customValuesDiff({ "9": ["Латекс"] }, { "9": ["Латекс"] }),
-    ).toEqual({});
+    expect(customValuesDiff({ "9": ["Латекс"] }, { "9": ["Латекс"] })).toEqual(
+      {},
+    );
   });
 
   it("builds and reads the custom_values@cs filter", () => {
@@ -432,7 +433,10 @@ describe("definitions (same as private.handle_custom_field_write)", () => {
       f.id === 2 || f.id === 3 ? { ...f, show_on_card: true } : f,
     );
     expect(
-      definitionProblem({ ...base, name: "Третье", show_on_card: true }, onCard),
+      definitionProblem(
+        { ...base, name: "Третье", show_on_card: true },
+        onCard,
+      ),
     ).toBe("custom_fields.errors.card_limit");
     expect(
       definitionProblem(

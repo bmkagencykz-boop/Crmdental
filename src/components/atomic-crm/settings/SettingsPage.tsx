@@ -22,6 +22,7 @@ import { AccessSettings } from "./AccessSettings";
 import { AutomessagesSettings } from "./AutomessagesSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DoctorsEditor } from "./DoctorsEditor";
+import { CustomFieldsEditor } from "../custom-fields/CustomFieldsEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { LeadSettings } from "../leads/LeadSettings";
@@ -39,6 +40,7 @@ const SECTIONS = [
   "sources",
   "lost_reasons",
   "doctors",
+  "custom_fields",
   "messengers",
   "leads",
   "telephony",
@@ -62,21 +64,23 @@ const isSection = (value: string | null): value is Section =>
 
 /** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
-  section === "quick_replies"
-    ? `quick_replies.${kind}`
-    : section === "automessages" ||
-        section === "recalls" ||
-        section === "doctors"
-      ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-      : section === "leads"
-        ? `leads.${kind === "title" ? "section" : "hint"}`
-        : section === "import" || section === "mis"
-          ? `${section}.${kind}`
-          : section === "telephony"
-            ? `telephony.${kind === "title" ? "section" : "hint"}`
-            : section === "response"
-              ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-              : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+  section === "custom_fields"
+    ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
+    : section === "quick_replies"
+      ? `quick_replies.${kind}`
+      : section === "automessages" ||
+          section === "recalls" ||
+          section === "doctors"
+        ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+        : section === "leads"
+          ? `leads.${kind === "title" ? "section" : "hint"}`
+          : section === "import" || section === "mis"
+            ? `${section}.${kind}`
+            : section === "telephony"
+              ? `telephony.${kind === "title" ? "section" : "hint"}`
+              : section === "response"
+                ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+                : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -152,6 +156,7 @@ export const SettingsPage = () => {
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
         {section === "doctors" ? <DoctorsEditor /> : null}
+        {section === "custom_fields" ? <CustomFieldsEditor /> : null}
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "leads" ? <LeadSettings /> : null}
         {section === "telephony" ? <TelephonySettings /> : null}

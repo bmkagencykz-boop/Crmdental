@@ -178,7 +178,7 @@ begin
         failed := true;
       when 'number', 'money' then
         if value_kind = 'string' then
-          raw := replace(regexp_replace(raw, '[\s ₸]|тг\.?|тенге', '', 'gi'), ',', '.');
+          raw := replace(regexp_replace(raw, '[\s\u00a0₸]|тг\.?|тенге', '', 'gi'), ',', '.');
         end if;
         if raw ~ '^-?\d{1,15}(\.\d{1,6})?$' then
           amount := raw::numeric;

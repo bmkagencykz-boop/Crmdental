@@ -135,6 +135,7 @@ select tests.assert(tests.cv('Зубов', '2.50') = '2.5', 'number: no trailing
 select tests.throws($q$select tests.cv('Зубов', '"два"')$q$, '23514', 'number: not a word');
 select tests.assert(tests.cv('Сумма рассрочки', '"150 000 ₸"') = '150000', 'money: tenge sign and spaces');
 select tests.assert(tests.cv('Сумма рассрочки', '1500.6') = '1501', 'money: whole tenge');
+select tests.assert(tests.cv('Сумма рассрочки', to_jsonb(E'12\u00a0000 тг'::text)) = '12000', 'money: non-breaking spaces of Excel');
 select tests.throws($q$select tests.cv('Сумма рассрочки', '-5')$q$, '23514', 'money: not negative');
 select tests.assert(tests.cv('Дата снимка', '"2026-03-01"') = '"2026-03-01"', 'date: ISO date');
 select tests.throws($q$select tests.cv('Дата снимка', '"2026-02-30"')$q$, '23514', 'date: a real day');

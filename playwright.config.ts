@@ -47,14 +47,6 @@ export default defineConfig({
       },
     },
 
-    /* Test against mobile viewports. */
-    {
-      name: "Mobile Chrome",
-      use: {
-        ...devices["Pixel 5"],
-        ...(process.env.CI && { channel: "chromium-headless-shell" }),
-      },
-    },
     // Uncomment to test against additional devices
 
     /* Test against desktop browsers. */

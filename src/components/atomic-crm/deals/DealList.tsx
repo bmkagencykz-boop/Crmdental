@@ -3,60 +3,68 @@ import type { InputProps } from "ra-core";
 import {
   useCanAccess,
   useGetIdentity,
-  useListContext,
+  useStore,
   useTranslate,
+  type Identifier,
 } from "ra-core";
 import { matchPath, useLocation } from "react-router";
-import { AutocompleteInput } from "@/components/admin/autocomplete-input";
 import { CreateButton } from "@/components/admin/create-button";
 import { ExportButton } from "@/components/admin/export-button";
 import { List } from "@/components/admin/list";
-import { ReferenceInput } from "@/components/admin/reference-input";
 import { FilterButton } from "@/components/admin/filter-form";
 import { SearchInput } from "@/components/admin/search-input";
 import { SelectInput } from "@/components/admin/select-input";
+import { cn } from "@/lib/utils";
 
-import { DataImportButton } from "../dataImport/DataImportButton";
-import { useConfigurationContext } from "../root/ConfigurationContext";
+import {
+  findById,
+  getDefaultPipeline,
+  toChoices,
+  useLeadSources,
+  usePipelines,
+  useServices,
+} from "../dictionaries/useDictionaries";
 import { TopToolbar } from "../layout/TopToolbar";
 import { AccountManagerInput } from "../sales/AccountManagerInput";
 import { DealArchivedList } from "./DealArchivedList";
 import { DealCreate } from "./DealCreate";
 import { DealEdit } from "./DealEdit";
-import { DealEmpty } from "./DealEmpty";
 import { DealListContent } from "./DealListContent";
 import { DealShow } from "./DealShow";
 import { OnlyMineInput } from "./OnlyMineInput";
 
+export const DEAL_PIPELINE_STORE_KEY = "deals.pipeline_id";
+
+/** The pipeline shown on the board, remembered per user */
+export const useCurrentPipeline = () => {
+  const { data: pipelines, isPending } = usePipelines();
+  const [storedId, setStoredId] = useStore<Identifier | undefined>(
+    DEAL_PIPELINE_STORE_KEY,
+  );
+  const current =
+    findById(pipelines, storedId) ?? getDefaultPipeline(pipelines);
+  return { pipelines, current, setCurrent: setStoredId, isPending };
+};
+
 const DealList = () => {
   const { identity } = useGetIdentity();
-  const { dealCategories } = useConfigurationContext();
   const translate = useTranslate();
+  const { data: services } = useServices();
+  const { data: sources } = useLeadSources();
+  const { current } = useCurrentPipeline();
   const { canAccess: canAccessSalesList, isPending } = useCanAccess({
     resource: "sales",
     action: "list",
   });
 
-  if (!identity) return null;
+  if (!identity || !current) return null;
 
   const dealFilters = [
-    <SearchInput source="q" alwaysOn />,
-    <ReferenceInput source="company_id" reference="companies">
-      <AutocompleteInput
-        label={false}
-        placeholder={translate("resources.deals.fields.company_id")}
-      />
-    </ReferenceInput>,
-    <WrapperField source="category" label="resources.deals.fields.category">
-      <SelectInput
-        source="category"
-        label={false}
-        emptyText="resources.deals.fields.category"
-        choices={dealCategories}
-        optionText="label"
-        optionValue="value"
-      />
-    </WrapperField>,
+    <SearchInput
+      source="q"
+      alwaysOn
+      placeholder={translate("crm.deals.search")}
+    />,
     ...(isPending
       ? []
       : [
@@ -66,48 +74,84 @@ const DealList = () => {
             <OnlyMineInput source="sales_id" alwaysOn />
           ),
         ]),
+    <WrapperField source="source_id" label="resources.deals.fields.source_id">
+      <SelectInput
+        source="source_id"
+        label={false}
+        emptyText="resources.deals.fields.source_id"
+        choices={toChoices(sources)}
+      />
+    </WrapperField>,
+    <WrapperField source="service_id" label="resources.deals.fields.service_id">
+      <SelectInput
+        source="service_id"
+        label={false}
+        emptyText="resources.deals.fields.service_id"
+        choices={toChoices(services)}
+      />
+    </WrapperField>,
   ];
 
   return (
-    <List
-      perPage={100}
-      filter={{ "archived_at@is": null }}
-      title={false}
-      sort={{ field: "index", order: "DESC" }}
-      filters={dealFilters}
-      actions={<DealActions />}
-      pagination={null}
-    >
-      <DealLayout />
-    </List>
+    <>
+      <PipelineTabs />
+      <List
+        key={current.id}
+        perPage={500}
+        filter={{ "archived_at@is": null, pipeline_id: current.id }}
+        title={false}
+        sort={{ field: "index", order: "ASC" }}
+        filters={dealFilters}
+        actions={<DealActions />}
+        pagination={null}
+        storeKey={`deals.pipeline.${current.id}`}
+      >
+        <DealLayout pipelineId={current.id} />
+      </List>
+    </>
   );
 };
 
-const DealLayout = () => {
+/** Pipeline switcher: pills, the current one in ink (Stratus tabs) */
+const PipelineTabs = () => {
+  const { pipelines, current, setCurrent } = useCurrentPipeline();
+  if (pipelines.length < 2) return null;
+  return (
+    <nav className="-mt-2 mb-5 flex flex-wrap gap-2" aria-label="pipelines">
+      {pipelines.map((pipeline) => {
+        const active = pipeline.id === current?.id;
+        return (
+          <button
+            key={pipeline.id}
+            type="button"
+            onClick={() => setCurrent(pipeline.id)}
+            aria-pressed={active}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-semibold transition-all",
+              active
+                ? "bg-primary text-primary-foreground shadow-soft"
+                : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
+            )}
+          >
+            {pipeline.name}
+          </button>
+        );
+      })}
+    </nav>
+  );
+};
+
+const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => {
   const location = useLocation();
   const matchCreate = matchPath("/deals/create", location.pathname);
   const matchShow = matchPath("/deals/:id/show", location.pathname);
   const matchEdit = matchPath("/deals/:id", location.pathname);
 
-  const { data, isPending, filterValues } = useListContext();
-  const hasFilters = filterValues && Object.keys(filterValues).length > 0;
-
-  if (isPending) return null;
-  if (!data?.length && !hasFilters)
-    return (
-      <>
-        <DealEmpty>
-          <DealShow open={!!matchShow} id={matchShow?.params.id} />
-          <DealArchivedList />
-        </DealEmpty>
-      </>
-    );
-
   return (
     <div className="w-full">
-      <DealListContent />
+      <DealListContent pipelineId={pipelineId} />
       <DealArchivedList />
-      <DealCreate open={!!matchCreate} />
+      <DealCreate open={!!matchCreate} pipelineId={pipelineId} />
       <DealEdit open={!!matchEdit && !matchCreate} id={matchEdit?.params.id} />
       <DealShow open={!!matchShow} id={matchShow?.params.id} />
     </div>
@@ -117,14 +161,12 @@ const DealLayout = () => {
 const DealActions = () => (
   <TopToolbar className="items-center">
     <FilterButton iconOnly />
-    <DataImportButton resource="deals" iconOnly />
     <ExportButton iconOnly />
     <CreateButton label="resources.deals.action.new" />
   </TopToolbar>
 );
 
 /**
- *
  * Used so that label of filters can be inferred for the select display,
  * but not be displayed when showing the input.
  */

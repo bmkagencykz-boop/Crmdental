@@ -1,12 +1,4 @@
-import {
-  FileText,
-  Import,
-  Moon,
-  Settings,
-  Sun,
-  User,
-  Users,
-} from "lucide-react";
+import { FileText, Moon, Settings, Sun, User, Users } from "lucide-react";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
 import { useTheme } from "@/components/admin/use-theme";
@@ -14,7 +6,6 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 import { ChangelogPage } from "../misc/ChangelogPage";
-import { ImportPage } from "../misc/ImportPage";
 import { type NavItem, SIDEBAR_WIDTH, useNavItems } from "./navigation";
 
 /**
@@ -173,22 +164,6 @@ export const ProfileMenu = () => {
       <Link to="/profile" className="flex items-center gap-2">
         <User />
         {translate("crm.profile.title")}
-      </Link>
-    </DropdownMenuItem>
-  );
-};
-
-export const ImportFromJsonMenuItem = () => {
-  const translate = useTranslate();
-  const userMenuContext = useUserMenu();
-  if (!userMenuContext) {
-    throw new Error("<ImportFromJsonMenuItem> must be used inside <UserMenu>");
-  }
-  return (
-    <DropdownMenuItem asChild onClick={userMenuContext.onClose}>
-      <Link to={ImportPage.path} className="flex items-center gap-2">
-        <Import />
-        {translate("crm.header.import_data")}
       </Link>
     </DropdownMenuItem>
   );

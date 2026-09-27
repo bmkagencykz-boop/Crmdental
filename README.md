@@ -33,6 +33,7 @@ make typecheck
 make lint
 make test        # unit-тесты фронта и edge functions
 make test-db     # миграции + тесты RLS на обычном Postgres (PGHOST, PGPORT, PGUSER)
+make test-e2e    # сценарии Playwright на отдельном локальном Supabase (нужен Docker)
 ```
 
 `make test-db` не требует Docker. Скрипт [`scripts/db-test.sh`](scripts/db-test.sh):

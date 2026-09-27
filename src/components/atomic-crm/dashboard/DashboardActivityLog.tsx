@@ -1,12 +1,10 @@
 import { Clock } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { Card } from "@/components/ui/card";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 import { ActivityLog } from "../activity/ActivityLog";
 
 export function DashboardActivityLog() {
-  const isMobile = useIsMobile();
   const translate = useTranslate();
   return (
     <div className="flex flex-col">
@@ -20,13 +18,9 @@ export function DashboardActivityLog() {
           })}
         </h2>
       </div>
-      {isMobile ? (
+      <Card className="mb-2 p-6">
         <ActivityLog pageSize={10} />
-      ) : (
-        <Card className="mb-2 p-6">
-          <ActivityLog pageSize={10} />
-        </Card>
-      )}
+      </Card>
     </div>
   );
 }

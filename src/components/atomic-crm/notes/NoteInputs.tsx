@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFormContext, useWatch } from "react-hook-form";
 
-import type { ContactNote, DealNote } from "../types";
+import type { PatientNote, DealNote } from "../types";
 import { Status } from "../misc/Status";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { getCurrentDate } from "./utils";
 import { AttachmentField } from "./AttachmentField";
 import { foreignKeyMapping } from "./foreignKeyMapping";
 import { AutocompleteInput, ReferenceInput } from "@/components/admin";
-import { contactOptionText } from "../misc/ContactOption";
+import { patientDisplayName } from "../patients/parsePatientText";
 import { validateNoteOrAttachmentRequired } from "./noteModel";
 
 export const NoteInputs = ({
@@ -27,7 +27,7 @@ export const NoteInputs = ({
   defaultStatus?: string;
   showStatus?: boolean;
   selectReference?: boolean;
-  reference?: "contacts" | "deals";
+  reference?: "patients" | "deals";
 }) => {
   const { noteStatuses } = useConfigurationContext();
   const translate = useTranslate();
@@ -35,9 +35,9 @@ export const NoteInputs = ({
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { control, formState, setValue } = useFormContext<
-    ContactNote | DealNote
+    PatientNote | DealNote
   >();
-  const selectedContactId = useWatch({ control, name: "contact_id" });
+  const selectedPatientId = useWatch({ control, name: "patient_id" });
   const selectedStatus = useWatch({ control, name: "status" });
   const textValue = useWatch({ control, name: "text" as any });
   const isExpanded = isFocused || !!textValue;
@@ -53,21 +53,21 @@ export const NoteInputs = ({
   const shouldHydrateStatus =
     showStatus &&
     (defaultStatus !== undefined ||
-      (reference === "contacts" && Boolean(selectReference)));
-  const { data: selectedContact } = useGetOne(
-    "contacts",
-    { id: selectedContactId! },
+      (reference === "patients" && Boolean(selectReference)));
+  const { data: selectedPatient } = useGetOne(
+    "patients",
+    { id: selectedPatientId! },
     {
       enabled:
         shouldHydrateStatus &&
-        reference === "contacts" &&
+        reference === "patients" &&
         Boolean(selectReference) &&
-        selectedContactId != null,
+        selectedPatientId != null,
     },
   );
   const resolvedDefaultStatus = shouldHydrateStatus
-    ? reference === "contacts" && selectReference
-      ? selectedContact?.status
+    ? reference === "patients" && selectReference
+      ? selectedPatient?.status
       : defaultStatus
     : undefined;
 
@@ -90,7 +90,7 @@ export const NoteInputs = ({
   ]);
 
   // We manually define the input labels because the default ones
-  // would use the resource from the context, which is either "contact_notes" or "deal_notes",
+  // would use the resource from the context, which is either "patient_notes" or "deal_notes",
   // but we want it to be "notes" regardless of the context
   return (
     <div ref={containerRef} className="space-y-2">
@@ -117,12 +117,12 @@ export const NoteInputs = ({
         >
           <AutocompleteInput
             label={
-              reference === "contacts"
-                ? "resources.notes.fields.contact_id"
+              reference === "patients"
+                ? "resources.notes.fields.patient_id"
                 : "resources.notes.fields.deal_id"
             }
             optionText={
-              reference === "contacts" ? contactOptionText : undefined
+              reference === "patients" ? patientDisplayName : undefined
             }
             helperText={false}
             validate={required()}

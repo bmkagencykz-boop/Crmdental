@@ -1,9 +1,12 @@
 import { test, expect } from "./fixtures";
 
-test("user onboarding", async ({ page, isMobile, menu, dismissToast }) => {
+test("a clinic signs up and records its first request", async ({
+  page,
+  menu,
+  closeDialog,
+  dismissToast,
+}) => {
   await page.goto("/");
-
-  // Expect a title "to contain" a substring.
   await expect(page).toHaveTitle(/Dental CRM/);
 
   // Any visitor can register a new clinic from the login page
@@ -11,104 +14,50 @@ test("user onboarding", async ({ page, isMobile, menu, dismissToast }) => {
   await expect(page.getByText("Welcome to Dental CRM")).toBeVisible();
 
   await page.getByLabel("Clinic name").fill("Smile Clinic");
-  await page.getByLabel("First name").fill("John");
-  await page.getByLabel("Last name").fill("Doe");
-  await page.getByLabel("Email").fill("john@doe.com");
+  await page.getByLabel("First name").fill("Aigerim");
+  await page.getByLabel("Last name").fill("Saparova");
+  await page.getByLabel("Email").fill("owner@smile.kz");
   await page.getByLabel("Password").fill("password");
   await page.getByRole("button", { name: "Create account" }).click();
 
-  await expect(page.getByText("What's next?")).toBeVisible();
-  await expect(page.getByText("1/3 done")).toBeVisible();
-  await expect(page.getByText("Install Dental CRM")).toBeVisible();
-  await expect(page.getByText("Add your first contact")).toBeVisible();
-  await expect(page.getByText("Add your first note")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Import data" })).toBeVisible();
+  await expect(page.getByText("Open deals")).toBeVisible();
 
-  await page
-    .getByRole(isMobile ? "button" : "link", { name: "Add contact" })
-    .click();
-  await page.waitForLoadState("networkidle");
-  await page.getByLabel("She/Her").click();
-  await page.getByLabel("First name").fill("Jane");
-  await page.getByLabel("Last name").fill("Smith");
-  await page.getByLabel("Title").fill("CEO");
-  await page.getByLabel("Company").click();
-  await page.getByPlaceholder("Search").fill("Smith Corp");
-  await page.getByText("Create Smith Corp").click();
-  await page
-    .getByRole("group", { name: "Email addresses" })
-    .getByRole("textbox", { name: "Email" })
-    .fill("jane@smithcorp.com");
-  await page
-    .getByRole("group", { name: "Email addresses" })
-    .getByRole("button", { name: "Add" })
-    .click();
+  // The new clinic starts with the default pipeline
+  await menu.goToDeals();
+  await expect(page.getByText("Новый лид", { exact: true })).toBeVisible();
+  await expect(page.getByText("Лечение завершено")).toBeVisible();
 
+  await menu.goToPatients();
+  await page.getByRole("link", { name: "New Patient" }).click();
+  await page.getByLabel("Last name").fill("Akhmetov");
+  await page.getByLabel("First name").fill("Daulet");
   await page
-    .getByRole("group", { name: "Phone numbers" })
-    .getByRole("textbox", { name: "Phone number" })
-    .fill("+1234567890");
-  await page
-    .getByRole("group", { name: "Phone numbers" })
-    .getByRole("button", { name: "Add" })
-    .click();
-
-  await page
-    .getByLabel("LinkedIn URL")
-    .fill("https://www.linkedin.com/in/jane-smith");
-
-  await page
-    .getByLabel("Background info (bio, how you met, etc)")
-    .fill("Met at a conference.");
-
-  await page.getByLabel("Has newsletter").check();
-
-  await expect(page.getByLabel("Account manager *")).toHaveText("John Doe");
-
+    .getByPlaceholder("+7 7__ ___ __ __")
+    .first()
+    .fill("8 701 555 12 34");
   await page.getByRole("button", { name: "Save" }).click();
-
   await dismissToast("Element created");
 
-  await expect(page.locator(isMobile ? "h2" : "h5")).toHaveText("Jane Smith");
-  await expect(page.getByText("CEO at Smith Corp")).toBeVisible();
-
-  await menu.goToDashboard();
-  await page.waitForLoadState("networkidle");
-
-  await expect(page.getByText("2/3 done")).toBeVisible();
-
-  await page
-    .getByRole(isMobile ? "button" : "link", { name: "Add note" })
-    .click();
-
-  await page.waitForLoadState("networkidle");
-
-  await page.getByPlaceholder("Add a note").fill("This is a note about Jane.");
-  await page
-    .getByRole("button", { name: isMobile ? "Save" : "Add this note" })
-    .click();
-
-  await dismissToast("Note added");
-
   await expect(
-    page.getByText(isMobile ? "Me" : "You added a note", { exact: false }),
+    page.getByRole("heading", { name: "Akhmetov Daulet" }),
   ).toBeVisible();
-  await expect(page.getByText("This is a note about Jane.")).toBeVisible();
+  await expect(page.getByText("+77015551234")).toBeVisible();
 
+  // A request (deal) is opened from the patient card
+  await page.getByRole("link", { name: "New request" }).click();
+  await page.getByLabel("Title").fill("Implants");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await expect(page.getByRole("dialog")).toContainText("Akhmetov Daulet");
+  await expect(page.getByRole("dialog")).toContainText("Новый лид");
+  await expect(page.getByRole("dialog")).toContainText(
+    "Deal created at stage «Новый лид»",
+  );
+
+  await closeDialog();
   await menu.goToDashboard();
-
-  await page.waitForLoadState("networkidle");
-
-  await expect(page.getByText("Latest Activity")).toBeVisible();
   await expect(
-    page.getByText("Latest Activity").locator("xpath=../.."),
-  ).toHaveText(/You added company Smith Corp today at/);
-
-  await expect(
-    page.getByText("Latest Activity").locator("xpath=../.."),
-  ).toHaveText(/You added Jane Smith to Smith Corp today at/);
-
-  await expect(
-    page.getByText("Latest Activity").locator("xpath=../.."),
-  ).toHaveText(/You added a note about Jane Smith today at/);
+    page.getByText(/You\s+added patient\s+Akhmetov Daulet/),
+  ).toBeVisible();
+  await expect(page.getByText(/You\s+opened deal\s+Implants/)).toBeVisible();
 });

@@ -18,7 +18,7 @@ export const TasksList = () => {
             _: "Upcoming Tasks",
           })}
         </h2>
-        <AddTask display="icon" selectContact />
+        <AddTask display="icon" selectDeal />
       </div>
       <Card className="p-4 mb-2">
         <TasksListContent />

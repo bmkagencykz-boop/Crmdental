@@ -14,7 +14,7 @@ import { getRelativeTimeString } from "./dealUtils";
 
 export const DealArchivedList = () => {
   const translate = useTranslate();
-  const [locale = "en"] = useLocaleState();
+  const [locale = "ru"] = useLocaleState();
   const { identity } = useGetIdentity();
   const {
     data: archivedLists,
@@ -42,7 +42,7 @@ export const DealArchivedList = () => {
   // Group archived lists by date
   const archivedListsByDate: { [date: string]: Deal[] } = archivedLists.reduce(
     (acc, deal) => {
-      const date = new Date(deal.archived_at).toDateString();
+      const date = new Date(deal.archived_at ?? deal.updated_at).toDateString();
       if (!acc[date]) {
         acc[date] = [];
       }

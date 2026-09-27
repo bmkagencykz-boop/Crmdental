@@ -7,22 +7,8 @@ const adminSupabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } },
 );
 
-// Tables in FK-safe deletion order (children before parents)
-const TABLES = [
-  "tasks",
-  "contact_notes",
-  "deal_notes",
-  "deals",
-  "contacts",
-  "companies",
-  "tags",
-  "configuration",
-  "sales",
-  "organizations",
-];
-
-// All users created by createSales work in the same test clinic: the first
-// one signs the clinic up, the next ones are invited into it.
+// Test clinics and everything they own are removed by deleting the
+// organizations: every tenant table cascades from them.
 let testOrganizationId: number | null = null;
 
 const requireTestOrganization = () => {
@@ -33,10 +19,8 @@ const requireTestOrganization = () => {
 };
 
 async function resetDb() {
-  for (const table of TABLES) {
-    // Supabase client delete need a where clause to get executed, so we use one that will match on all rows (id is not null)
-    await adminSupabase.from(table).delete().not("id", "is", null);
-  }
+  // Supabase client delete need a where clause to get executed, so we use one that will match on all rows (id is not null)
+  await adminSupabase.from("organizations").delete().not("id", "is", null);
 
   // Delete all auth users (cascades to sales via DB trigger)
   const { data } = await adminSupabase.auth.admin.listUsers();
@@ -88,11 +72,13 @@ async function createSales({
       email,
       password,
       email_confirm: true,
-      user_metadata: { organization_name: "Test clinic" },
-      app_metadata:
-        testOrganizationId == null
-          ? {}
-          : { organization_id: testOrganizationId },
+      // Same metadata as the sign-up form and the users edge function
+      user_metadata: isFirstUser
+        ? { organization_name: "Test clinic", first_name, last_name }
+        : { first_name, last_name },
+      app_metadata: isFirstUser
+        ? {}
+        : { organization_id: testOrganizationId, role: role ?? "manager" },
     });
 
   if (userError) {
@@ -120,28 +106,24 @@ async function createSales({
 }
 
 async function createNotes({
-  contactId,
+  patientId,
   salesId,
   notes,
 }: {
-  contactId: string | number;
+  patientId: string | number;
   salesId: string | number;
-  notes: {
-    text: string;
-    date?: string;
-    status?: "cold" | "warm" | "hot";
-  }[];
+  notes: { text: string; date?: string }[];
 }) {
   if (notes.length === 0) return;
 
-  const { error } = await adminSupabase.from("contact_notes").insert(
-    notes.map(({ text, date, status = "cold" }) => ({
+  const { error } = await adminSupabase.from("patient_notes").insert(
+    notes.map(({ text, date }) => ({
       organization_id: requireTestOrganization(),
-      contact_id: contactId,
+      patient_id: patientId,
       sales_id: salesId,
       text,
       date,
-      status,
+      status: "cold",
     })),
   );
 
@@ -150,77 +132,41 @@ async function createNotes({
   }
 }
 
-async function createCompany({
-  name,
-  salesId,
-}: {
-  name: string;
-  salesId: string | number;
-}) {
-  const { data, error } = await adminSupabase
-    .from("companies")
-    .insert({
-      organization_id: requireTestOrganization(),
-      name,
-      sales_id: salesId,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create company: ${error.message}`);
-  }
-
-  return data;
-}
-
-async function createContact({
+async function createPatient({
   first_name,
   last_name,
-  title = "",
-  company_id = null,
+  phone,
   sales_id,
   notes = [],
 }: {
   first_name: string;
   last_name: string;
-  title?: string;
-  company_id?: string | number | null;
+  phone?: string;
   sales_id: string | number;
-  notes?: {
-    text: string;
-    date?: string;
-    status?: "cold" | "warm" | "hot";
-  }[];
+  notes?: { text: string; date?: string }[];
 }) {
   const { data, error } = await adminSupabase
-    .from("contacts")
+    .from("patients")
     .insert({
       organization_id: requireTestOrganization(),
       first_name,
       last_name,
-      title,
-      company_id,
       sales_id,
       first_seen: new Date().toISOString(),
       last_seen: new Date().toISOString(),
-      has_newsletter: false,
       tags: [],
-      gender: "unknown",
-      status: "cold",
       background: "",
-      email_jsonb: [],
-      phone_jsonb: [],
+      phone_jsonb: phone ? [{ number: phone, type: "mobile" }] : [],
     })
     .select("id")
     .single();
 
   if (error) {
-    throw new Error(`Failed to create contact: ${error.message}`);
+    throw new Error(`Failed to create patient: ${error.message}`);
   }
 
   await createNotes({
-    contactId: data.id,
+    patientId: data.id,
     salesId: sales_id,
     notes,
   });
@@ -228,16 +174,97 @@ async function createContact({
   return data;
 }
 
+/** Stages of the clinic's default pipeline, in board order */
+async function getDefaultStages() {
+  const { data: pipeline, error } = await adminSupabase
+    .from("pipelines")
+    .select("id")
+    .eq("organization_id", requireTestOrganization())
+    .eq("is_default", true)
+    .single();
+  if (error) {
+    throw new Error(`Failed to load the default pipeline: ${error.message}`);
+  }
+  const { data: stages, error: stagesError } = await adminSupabase
+    .from("stages")
+    .select("id, name, kind")
+    .eq("pipeline_id", pipeline.id)
+    .order("position");
+  if (stagesError) {
+    throw new Error(`Failed to load stages: ${stagesError.message}`);
+  }
+  return { pipelineId: pipeline.id as number, stages };
+}
+
+async function createDeal({
+  patient_id,
+  sales_id,
+  name,
+  stage,
+  plan_amount = 0,
+}: {
+  patient_id: string | number;
+  sales_id?: string | number | null;
+  name: string;
+  /** Stage name in the default pipeline; the first stage by default */
+  stage?: string;
+  plan_amount?: number;
+}) {
+  const { pipelineId, stages } = await getDefaultStages();
+  const target = stage ? stages.find((s) => s.name === stage) : stages[0];
+  if (!target) throw new Error(`Unknown stage ${stage}`);
+
+  const { data, error } = await adminSupabase
+    .from("deals")
+    .insert({
+      organization_id: requireTestOrganization(),
+      patient_id,
+      pipeline_id: pipelineId,
+      stage_id: target.id,
+      sales_id: sales_id ?? null,
+      name,
+      plan_amount,
+      index: 0,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create deal: ${error.message}`);
+  }
+  return data;
+}
+
 const getMenuMethod = ({ page }: { page: Page; isMobile: boolean }) => ({
   goToDashboard: async () => {
-    await page.getByRole("link", { name: "Dashboard" }).click();
+    await page.getByRole("link", { name: "Dashboard", exact: true }).click();
     await page.waitForLoadState("networkidle");
   },
-  goToContacts: async () => {
-    await page.getByRole("link", { name: "Contacts" }).click();
+  goToPatients: async () => {
+    await page.getByRole("link", { name: "Patients", exact: true }).click();
+    await page.waitForLoadState("networkidle");
+  },
+  goToDeals: async () => {
+    await page.getByRole("link", { name: "Deals", exact: true }).click();
     await page.waitForLoadState("networkidle");
   },
 });
+
+const login = async (page: Page, email: string, password = "password") => {
+  await page.goto("/");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(
+    page.getByRole("link", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
+};
+
+/** Closes the modal (deal card, forms) that hides the rest of the page */
+const closeDialog = async (page: Page) => {
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+};
 
 const dismissToast = async (page: Page, content: string) => {
   await expect(page.getByText(content)).toBeVisible();
@@ -250,10 +277,12 @@ export const test = base.extend<{
   resetDb: void;
   createUser: typeof createUser;
   createSales: typeof createSales;
-  createCompany: typeof createCompany;
-  createContact: typeof createContact;
+  createPatient: typeof createPatient;
+  createDeal: typeof createDeal;
   createNotes: typeof createNotes;
   menu: ReturnType<typeof getMenuMethod>;
+  login: (email: string, password?: string) => Promise<void>;
+  closeDialog: () => Promise<void>;
   dismissToast: (content: string) => Promise<void>;
 }>({
   resetDb: [
@@ -275,12 +304,12 @@ export const test = base.extend<{
     await cb(createSales);
   },
   // eslint-disable-next-line no-empty-pattern
-  createCompany: async ({}, cb) => {
-    await cb(createCompany);
+  createPatient: async ({}, cb) => {
+    await cb(createPatient);
   },
   // eslint-disable-next-line no-empty-pattern
-  createContact: async ({}, cb) => {
-    await cb(createContact);
+  createDeal: async ({}, cb) => {
+    await cb(createDeal);
   },
   // eslint-disable-next-line no-empty-pattern
   createNotes: async ({}, cb) => {
@@ -288,6 +317,14 @@ export const test = base.extend<{
   },
   menu: async ({ page, isMobile }, cb) => {
     await cb(getMenuMethod({ page, isMobile }));
+  },
+  login: async ({ page }, cb) => {
+    await cb((email: string, password?: string) =>
+      login(page, email, password),
+    );
+  },
+  closeDialog: async ({ page }, cb) => {
+    await cb(() => closeDialog(page));
   },
   dismissToast: async ({ page }, cb) => {
     await cb((content: string) => dismissToast(page, content));

@@ -6,28 +6,33 @@
 create schema tests;
 grant usage on schema tests to anon, authenticated, service_role;
 
--- Creates an auth user the way Supabase Auth does. A self-service sign-up
--- passes organization_name in user metadata; an invitation passes the
--- organization and role in app metadata (only the service role can do that).
+-- Creates an auth user the way Supabase Auth does. The sign-up form passes
+-- organization_name in user metadata. An invitation (users edge function,
+-- auth.admin.createUser) inserts the user, then writes the organization and
+-- role to app metadata with a second statement: only the service role can.
 create function tests.sign_up(email text, organization_name text default null) returns uuid
 language plpgsql as $$
 declare uid uuid;
 begin
-  insert into auth.users (email, raw_user_meta_data)
-  values (email, jsonb_build_object('first_name', split_part(email, '@', 1), 'last_name', 'Test', 'organization_name', organization_name))
+  insert into auth.users (email, raw_user_meta_data, raw_app_meta_data)
+  values (email, jsonb_build_object('first_name', split_part(email, '@', 1), 'last_name', 'Test', 'organization_name', organization_name),
+          '{"provider": "email", "providers": ["email"]}')
   returning id into uid;
   return uid;
 end;
 $$;
 
-create function tests.invite(email text, organization_id bigint, role text) returns uuid
+create function tests.invite(email text, org_id bigint, invited_role text) returns uuid
 language plpgsql as $$
 declare uid uuid;
 begin
   insert into auth.users (email, raw_user_meta_data, raw_app_meta_data)
   values (email, jsonb_build_object('first_name', split_part(email, '@', 1), 'last_name', 'Test'),
-          jsonb_build_object('organization_id', organization_id, 'role', role))
+          '{"provider": "email", "providers": ["email"]}')
   returning id into uid;
+  update auth.users
+  set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('organization_id', org_id, 'role', invited_role)
+  where id = uid;
   return uid;
 end;
 $$;

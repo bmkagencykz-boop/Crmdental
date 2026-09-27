@@ -1,6 +1,6 @@
 import { Paperclip } from "lucide-react";
 
-import type { AttachmentNote, ContactNote, DealNote } from "../types";
+import type { AttachmentNote, PatientNote, DealNote } from "../types";
 
 /**
  * Displays persisted note attachments in note show/list views.
@@ -10,7 +10,7 @@ import type { AttachmentNote, ContactNote, DealNote } from "../types";
  * @param props.note - Note record containing attachments to render.
  * @returns `null` when there are no attachments, otherwise attachment previews and links.
  */
-export const NoteAttachments = ({ note }: { note: ContactNote | DealNote }) => {
+export const NoteAttachments = ({ note }: { note: PatientNote | DealNote }) => {
   if (!note.attachments || note.attachments.length === 0) {
     return null;
   }

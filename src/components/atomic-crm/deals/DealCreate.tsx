@@ -1,85 +1,81 @@
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Form,
   useDataProvider,
   useGetIdentity,
   useListContext,
   useRedirect,
-  type GetListResult,
+  useTranslate,
+  type Identifier,
 } from "ra-core";
+import { useSearchParams } from "react-router";
 import { Create } from "@/components/admin/create";
 import { SaveButton } from "@/components/admin/form";
 import { FormToolbar } from "@/components/admin/simple-form";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
+import {
+  findById,
+  getPipelineStages,
+  useStages,
+} from "../dictionaries/useDictionaries";
 import type { Deal } from "../types";
 import { DealInputs } from "./DealInputs";
 
-export const DealCreate = ({ open }: { open: boolean }) => {
+export const DealCreate = ({
+  open,
+  pipelineId,
+}: {
+  open: boolean;
+  pipelineId: Identifier;
+}) => {
   const redirect = useRedirect();
+  const translate = useTranslate();
   const dataProvider = useDataProvider();
-  const { data: allDeals } = useListContext<Deal>();
+  const { data: allDeals, refetch } = useListContext<Deal>();
+  const { identity } = useGetIdentity();
+  const { data: allStages } = useStages();
+  const [searchParams] = useSearchParams();
+  const stages = getPipelineStages(allStages, pipelineId);
+  const stage =
+    findById(stages, searchParams.get("stage_id")) ?? stages[0] ?? undefined;
 
-  const handleClose = () => {
-    redirect("/deals");
-  };
+  const handleClose = () => redirect("/deals");
 
-  const queryClient = useQueryClient();
-
+  // New deals go on top of their column
   const onSuccess = async (deal: Deal) => {
-    if (!allDeals) {
-      redirect("/deals");
-      return;
-    }
-    // increase the index of all deals in the same stage as the new deal
-    // first, get the list of deals in the same stage
-    const deals = allDeals.filter(
-      (d: Deal) => d.stage === deal.stage && d.id !== deal.id,
+    const below = (allDeals ?? []).filter(
+      (d) => d.stage_id === deal.stage_id && d.id !== deal.id,
     );
-    // update the actual deals in the database
     await Promise.all(
-      deals.map(async (oldDeal) =>
+      below.map((d) =>
         dataProvider.update("deals", {
-          id: oldDeal.id,
-          data: { index: oldDeal.index + 1 },
-          previousData: oldDeal,
+          id: d.id,
+          data: { index: d.index + 1 },
+          previousData: d,
         }),
       ),
     );
-    // refresh the list of deals in the cache as we used dataProvider.update(),
-    // which does not update the cache
-    const dealsById = deals.reduce(
-      (acc, d) => ({
-        ...acc,
-        [d.id]: { ...d, index: d.index + 1 },
-      }),
-      {} as { [key: string]: Deal },
-    );
-    const now = Date.now();
-    queryClient.setQueriesData<GetListResult | undefined>(
-      { queryKey: ["deals", "getList"] },
-      (res) => {
-        if (!res) return res;
-        return {
-          ...res,
-          data: res.data.map((d: Deal) => dealsById[d.id] || d),
-        };
-      },
-      { updatedAt: now },
-    );
-    redirect("/deals");
+    refetch();
+    redirect(`/deals/${deal.id}/show`);
   };
-
-  const { identity } = useGetIdentity();
 
   return (
     <Dialog open={open} onOpenChange={() => handleClose()}>
-      <DialogContent className="lg:max-w-4xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
-        <Create resource="deals" mutationOptions={{ onSuccess }}>
+      <DialogContent className="top-1/20 max-h-9/10 translate-y-0 overflow-y-auto lg:max-w-3xl">
+        <DialogTitle className="text-xl font-bold">
+          {translate("resources.deals.action.new")}
+        </DialogTitle>
+        <Create resource="deals" mutationOptions={{ onSuccess }} title={false}>
           <Form
             defaultValues={{
+              pipeline_id: pipelineId,
+              patient_id: searchParams.get("patient_id")
+                ? Number(searchParams.get("patient_id"))
+                : undefined,
+              stage_id: stage?.id,
               sales_id: identity?.id,
-              contact_ids: [],
+              plan_amount: 0,
+              tags: [],
               index: 0,
             }}
           >

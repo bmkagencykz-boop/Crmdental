@@ -7,13 +7,8 @@ import { Notification } from "@/components/admin/notification";
 import { createDataProvider } from "@/components/atomic-crm/providers/fakerest";
 import { DEFAULT_USER } from "@/components/atomic-crm/providers/fakerest/authProvider";
 import type { Db } from "@/components/atomic-crm/providers/fakerest/dataGenerator/types";
-import type {
-  Company,
-  Contact,
-  Deal,
-  Sale,
-} from "@/components/atomic-crm/types";
-import { DataImportProvider } from "@/components/atomic-crm/dataImport/DataImportProvider";
+import { generateDictionaries } from "@/components/atomic-crm/providers/fakerest/dataGenerator/dictionaries";
+import type { Patient, Deal, Sale } from "@/components/atomic-crm/types";
 import { CRM } from "@/components/atomic-crm/root/CRM";
 import { testI18nProvider } from "@/components/atomic-crm/providers/commons/i18nProvider";
 
@@ -44,86 +39,60 @@ const baseSale: Sale = {
   user_id: DEFAULT_USER.id.toString(),
 };
 
-// Provide a minimal FakeRest database shape so tests can override only the records
-// that matter for each scenario.
-export const createCrmDb = (overrides: Partial<Db> = {}): Db =>
-  ({
-    companies: [],
+// Provide a minimal FakeRest database shape (with the default pipeline and
+// dictionaries) so tests can override only the records that matter.
+export const createCrmDb = (overrides: Partial<Db> = {}): Db => {
+  const db = {
     configuration: [{ config: {}, id: 1 }],
-    contact_notes: [],
-    contacts: [],
+    patient_notes: [],
+    patients: [],
     deal_notes: [],
+    deal_payments: [],
+    deal_events: [],
     deals: [],
+    calls: [],
     sales: [baseSale],
     tags: [],
     tasks: [],
-    ...overrides,
-  }) as Db;
+  } as unknown as Db;
+  generateDictionaries(db);
+  return { ...db, ...overrides };
+};
 
 export const buildSale = (overrides: Partial<Sale> = {}): Sale => ({
   ...baseSale,
   ...overrides,
 });
 
-export const buildCompany = (overrides: Partial<Company> = {}): Company => ({
-  address: "1 Infinite Loop",
-  city: "Cupertino",
-  country: "USA",
-  created_at: "2025-01-01T09:00:00.000Z",
-  description: "",
-  id: 1,
-  linkedin_url: "",
-  logo: { src: "", title: "logo" } as Company["logo"],
-  name: "Acme",
-  phone_number: "",
-  revenue: "",
-  sales_id: 0,
-  sector: "Tech",
-  size: 10,
-  state_abbr: "CA",
-  tax_identifier: "",
-  website: "",
-  zipcode: "95014",
-  ...overrides,
-});
-
-// Build a valid contact record with sensible defaults to keep tests and stories terse.
-export const buildContact = (overrides: Partial<Contact> = {}): Contact => ({
+// Build a valid patient record with sensible defaults to keep tests and stories terse.
+export const buildPatient = (overrides: Partial<Patient> = {}): Patient => ({
   background: "",
-  company_id: null,
-  company_name: undefined,
-  email_jsonb: [{ email: "ada@example.com", type: "Work" }],
-  first_name: "Ada",
+  first_name: "Айгерим",
   first_seen: "2025-01-01T09:00:00.000Z",
   gender: "female",
-  has_newsletter: false,
   id: 1,
-  last_name: "Lovelace",
+  last_name: "Сапарова",
   last_seen: "2025-01-02T10:00:00.000Z",
-  linkedin_url: null,
-  nb_tasks: 0,
-  phone_jsonb: [],
+  phone_jsonb: [{ number: "+77011234567", type: "mobile" }],
   sales_id: 0,
-  status: "warm",
   tags: [],
-  title: "CTO",
   ...overrides,
 });
 
 export const buildDeal = (overrides: Partial<Deal> = {}): Deal => ({
-  amount: 1000,
-  archived_at: undefined,
-  category: "Other",
-  company_id: 1,
-  contact_ids: [],
+  archived_at: null,
   created_at: "2025-01-01T09:00:00.000Z",
   description: "",
-  expected_closing_date: "2025-02-01T09:00:00.000Z",
   id: 1,
   index: 0,
-  name: "Acme deal",
+  name: "Имплантация",
+  paid_amount: 0,
+  patient_id: 1,
+  pipeline_id: 1,
+  plan_amount: 450000,
   sales_id: 0,
-  stage: "opportunity",
+  stage_id: 1,
+  tags: [],
   updated_at: "2025-01-01T09:00:00.000Z",
   ...overrides,
 });
@@ -171,12 +140,11 @@ export const StoryWrapper = ({
         i18nProvider={testI18nProvider}
         dashboard={() => <>{children}</>}
         store={store}
-        disableTelemetry
         layout={({ children }) => (
-          <DataImportProvider>
+          <>
             {children}
             <Notification />
-          </DataImportProvider>
+          </>
         )}
       />
     </MemoryRouter>

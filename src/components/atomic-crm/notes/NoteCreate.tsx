@@ -24,7 +24,7 @@ export const NoteCreate = ({
   showStatus,
   className,
 }: {
-  reference: "contacts" | "deals";
+  reference: "patients" | "deals";
   showStatus?: boolean;
   className?: string;
 }) => {
@@ -34,7 +34,7 @@ export const NoteCreate = ({
 
   if (!record || !identity) return null;
 
-  const defaultStatus = reference === "contacts" ? record.status : undefined;
+  const defaultStatus = reference === "patients" ? record.status : undefined;
 
   return (
     <CreateBase resource={resource} redirect={false}>
@@ -58,7 +58,7 @@ const NoteCreateButton = ({
   record,
 }: {
   defaultStatus?: string;
-  reference: "contacts" | "deals";
+  reference: "patients" | "deals";
   record: RaRecord<Identifier>;
 }) => {
   const [update] = useUpdate();
@@ -82,7 +82,7 @@ const NoteCreateButton = ({
   };
 
   const handleSuccess = (data: any) => {
-    if (reference === "contacts") {
+    if (reference === "patients") {
       resetValues.status = data.status ?? defaultStatus;
     }
 
@@ -92,7 +92,7 @@ const NoteCreateButton = ({
       id: (record && record.id) as unknown as Identifier,
       data: {
         last_seen:
-          reference === "contacts" ? new Date().toISOString() : undefined,
+          reference === "patients" ? new Date().toISOString() : undefined,
         status: data.status,
       },
       previousData: record,

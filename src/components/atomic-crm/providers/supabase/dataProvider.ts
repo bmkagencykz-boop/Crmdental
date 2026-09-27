@@ -7,14 +7,17 @@ import {
   type ResourceCallbacks,
 } from "ra-core";
 import type {
-  ContactNote,
   Deal,
   DealNote,
+  OrganizationSettings,
+  Patient,
+  PatientNote,
   RAFile,
   Sale,
   SalesFormData,
   SignUpData,
 } from "../../types";
+import { applySearch } from "../commons/search";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
 import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
@@ -28,20 +31,14 @@ const getBaseDataProvider = () =>
     sortOrder: "asc,desc.nullslast" as any,
   });
 
-const processCompanyLogo = async (params: any) => {
-  const logo = params.data.logo;
-
-  if (logo?.rawFile instanceof File) {
-    await uploadToBucket(logo);
-  }
-
-  return {
-    ...params,
-    data: {
-      ...params.data,
-      logo,
-    },
-  };
+// One row per organization, RLS returns the current one
+const getOrganizationSettings = async (): Promise<OrganizationSettings> => {
+  const { data, error } = await getSupabaseClient()
+    .from("organization_settings")
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as OrganizationSettings;
 };
 
 const getDataProviderWithCustomMethods = () => {
@@ -50,11 +47,12 @@ const getDataProviderWithCustomMethods = () => {
   return {
     ...baseDataProvider,
     async getList(resource: string, params: GetListParams) {
-      if (resource === "companies") {
-        return baseDataProvider.getList("companies_summary", params);
+      // Lists read the summary views (counters, patient of a deal...)
+      if (resource === "patients") {
+        return baseDataProvider.getList("patients_summary", params);
       }
-      if (resource === "contacts") {
-        return baseDataProvider.getList("contacts_summary", params);
+      if (resource === "deals") {
+        return baseDataProvider.getList("deals_summary", params);
       }
       if (resource === "activity_log") {
         const { data, total } = await baseDataProvider.getList(
@@ -65,9 +63,9 @@ const getDataProviderWithCustomMethods = () => {
         return {
           data: data.map((row: any) => ({
             ...row,
-            contactNote: row.contact_note ?? undefined,
+            patientNote: row.patient_note ?? undefined,
             dealNote: row.deal_note ?? undefined,
-            contact_note: undefined,
+            patient_note: undefined,
             deal_note: undefined,
           })),
           total,
@@ -77,14 +75,19 @@ const getDataProviderWithCustomMethods = () => {
       return baseDataProvider.getList(resource, params);
     },
     async getOne(resource: string, params: any) {
-      if (resource === "companies") {
-        return baseDataProvider.getOne("companies_summary", params);
+      if (resource === "patients") {
+        return baseDataProvider.getOne("patients_summary", params);
       }
-      if (resource === "contacts") {
-        return baseDataProvider.getOne("contacts_summary", params);
+      if (resource === "deals") {
+        return baseDataProvider.getOne("deals_summary", params);
       }
-
       return baseDataProvider.getOne(resource, params);
+    },
+    async getMany(resource: string, params: any) {
+      if (resource === "deals") {
+        return baseDataProvider.getMany("deals_summary", params);
+      }
+      return baseDataProvider.getMany(resource, params);
     },
 
     async signUp({
@@ -210,48 +213,60 @@ const getDataProviderWithCustomMethods = () => {
       return passwordUpdated;
     },
     async unarchiveDeal(deal: Deal) {
-      // get all deals where stage is the same as the deal to unarchive
+      // Put the deal back at the top of its column
       const { data: deals } = await baseDataProvider.getList<Deal>("deals", {
-        filter: { stage: deal.stage },
+        filter: { stage_id: deal.stage_id, "archived_at@is": null },
         pagination: { page: 1, perPage: 1000 },
         sort: { field: "index", order: "ASC" },
       });
-
-      // set index for each deal starting from 1, if the deal to unarchive is found, set its index to the last one
-      const updatedDeals = deals.map((d, index) => ({
-        ...d,
-        index: d.id === deal.id ? 0 : index + 1,
-        archived_at: d.id === deal.id ? null : d.archived_at,
-      }));
-
-      return await Promise.all(
-        updatedDeals.map((updatedDeal) =>
+      await Promise.all(
+        deals.map((d, index) =>
           baseDataProvider.update("deals", {
-            id: updatedDeal.id,
-            data: updatedDeal,
-            previousData: deals.find((d) => d.id === updatedDeal.id),
+            id: d.id,
+            data: { index: index + 1 },
+            previousData: d,
           }),
         ),
       );
+      return baseDataProvider.update("deals", {
+        id: deal.id,
+        data: { index: 0, archived_at: null },
+        previousData: deal,
+      });
     },
     async isInitialized() {
       return getIsInitialized();
     },
-    async mergeContacts(sourceId: Identifier, targetId: Identifier) {
-      const { data, error } = await getSupabaseClient().functions.invoke(
-        "merge_contacts",
-        {
-          method: "POST",
-          body: { loserId: sourceId, winnerId: targetId },
-        },
+    /** Patients whose numbers include this phone, whatever its format */
+    async findPatientsByPhone(phone: string): Promise<Patient[]> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "find_patients_by_phone",
+        { phone },
       );
-
-      if (error) {
-        console.error("merge_contacts.error", error);
-        throw new Error("Failed to merge contacts");
-      }
-
-      return data;
+      if (error) throw error;
+      return (data ?? []) as Patient[];
+    },
+    /** Creates a pipeline with a new, a won and a lost stage */
+    async createPipeline(name: string): Promise<Identifier> {
+      const { data, error } = await getSupabaseClient().rpc("create_pipeline", {
+        pipeline_name: name,
+      });
+      if (error) throw error;
+      return data as Identifier;
+    },
+    getOrganizationSettings,
+    async updateOrganizationSettings(
+      settings: Partial<Omit<OrganizationSettings, "organization_id">>,
+    ): Promise<OrganizationSettings> {
+      const current = await getOrganizationSettings();
+      const { data, error } = await getSupabaseClient()
+        .from("organization_settings")
+        .update(settings)
+        .eq("organization_id", current.organization_id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data as OrganizationSettings;
     },
     // One configuration row per organization; RLS returns the current one
     async getConfiguration(): Promise<ConfigurationContextValue> {
@@ -310,8 +325,8 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
     },
   },
   {
-    resource: "contact_notes",
-    beforeSave: async (data: ContactNote, _, __) => {
+    resource: "patient_notes",
+    beforeSave: async (data: PatientNote, _, __) => {
       if (data.attachments) {
         data.attachments = await Promise.all(
           data.attachments.map((fi) => uploadToBucket(fi)),
@@ -333,9 +348,8 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
   },
   {
     resource: "sales",
-    beforeGetList: async (params) => {
-      return applyFullTextSearch(["first_name", "last_name"])(params);
-    },
+    beforeGetList: async (params) =>
+      applySearch(["first_name", "last_name"])(params),
     beforeSave: async (data: Sale, _, __) => {
       if (data.avatar) {
         await uploadToBucket(data.avatar);
@@ -344,59 +358,55 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
     },
   },
   {
-    resource: "contacts",
-    beforeGetList: async (params) => {
-      return applyFullTextSearch([
-        "first_name",
-        "last_name",
-        "company_name",
-        "title",
-        "email",
-        "phone",
-        "background",
-      ])(params);
-    },
-  },
-  {
-    resource: "companies",
-    beforeGetList: async (params) => {
-      return applyFullTextSearch([
-        "name",
-        "phone_number",
-        "website",
-        "zipcode",
-        "city",
-        "state_abbr",
-      ])(params);
-    },
-    beforeCreate: async (params) => {
-      const createParams = await processCompanyLogo(params);
-
-      return {
-        ...createParams,
-        data: {
-          created_at: new Date().toISOString(),
-          ...createParams.data,
-        },
-      };
-    },
-    beforeUpdate: async (params) => {
-      return await processCompanyLogo(params);
-    },
-  },
-  {
-    resource: "contacts_summary",
-    beforeGetList: async (params) => {
-      return applyFullTextSearch(["first_name", "last_name"])(params);
-    },
+    resource: "patients",
+    beforeGetList: async (params) =>
+      applySearch(
+        ["last_name", "first_name", "middle_name"],
+        "phone_fts",
+      )(params),
+    // The view's computed columns cannot be written
+    beforeUpdate: async (params) => ({
+      ...params,
+      data: withoutKeys(params.data, PATIENT_VIEW_COLUMNS),
+    }),
   },
   {
     resource: "deals",
-    beforeGetList: async (params) => {
-      return applyFullTextSearch(["name", "category", "description"])(params);
-    },
+    beforeGetList: async (params) =>
+      applySearch(["search_text"], "search_text")(params),
+    beforeUpdate: async (params) => ({
+      ...params,
+      data: withoutKeys(params.data, DEAL_VIEW_COLUMNS),
+    }),
   },
 ];
+
+const PATIENT_VIEW_COLUMNS = [
+  "phone_fts",
+  "phones",
+  "nb_deals",
+  "nb_open_deals",
+  "nb_tasks",
+];
+const DEAL_VIEW_COLUMNS = [
+  "stage_kind",
+  "patient_first_name",
+  "patient_last_name",
+  "patient_phone",
+  "search_text",
+  "nb_open_tasks",
+  "next_task_due_at",
+  "paid_amount",
+  "created_at",
+  "updated_at",
+  "stage_changed_at",
+  "closed_at",
+];
+
+const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>
+  Object.fromEntries(
+    Object.entries(data).filter(([key]) => !keys.includes(key)),
+  ) as T;
 
 export const getDataProvider = () => {
   if (import.meta.env.VITE_SUPABASE_URL === undefined) {
@@ -411,36 +421,6 @@ export const getDataProvider = () => {
     getDataProviderWithCustomMethods(),
     lifeCycleCallbacks,
   ) as CrmDataProvider;
-};
-
-const applyFullTextSearch = (columns: string[]) => (params: GetListParams) => {
-  if (!params.filter?.q) {
-    return params;
-  }
-  const { q, ...filter } = params.filter;
-  return {
-    ...params,
-    filter: {
-      ...filter,
-      "@or": columns.reduce((acc, column) => {
-        if (column === "email")
-          return {
-            ...acc,
-            [`email_fts@ilike`]: q,
-          };
-        if (column === "phone")
-          return {
-            ...acc,
-            [`phone_fts@ilike`]: q,
-          };
-        else
-          return {
-            ...acc,
-            [`${column}@ilike`]: q,
-          };
-      }, {}),
-    },
-  };
 };
 
 const uploadToBucket = async (fi: RAFile) => {

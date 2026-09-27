@@ -6,8 +6,6 @@ import { formatMoney } from "../deals/kanbanFormat";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal, Sale, Task } from "../types";
 
-const CLOSED_STAGES = ["won", "lost"];
-
 const startOfToday = () => {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
@@ -34,11 +32,13 @@ export const DashboardSummary = () => {
     filter: { "disabled@neq": true },
   });
 
-  const openDeals = deals.filter((deal) => !CLOSED_STAGES.includes(deal.stage));
-  const pipeline = openDeals.reduce((sum, deal) => sum + (deal.amount ?? 0), 0);
-  const won = deals
-    .filter((deal) => deal.stage === "won")
-    .reduce((sum, deal) => sum + (deal.amount ?? 0), 0);
+  const openDeals = deals.filter((deal) => deal.stage_kind === "open");
+  const pipeline = openDeals.reduce(
+    (sum, deal) => sum + (deal.plan_amount ?? 0),
+    0,
+  );
+  // Money actually received on deals (payments)
+  const won = deals.reduce((sum, deal) => sum + (deal.paid_amount ?? 0), 0);
   const today = startOfToday();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
@@ -60,29 +60,21 @@ export const DashboardSummary = () => {
     <div className="mb-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
       <div className="glass grid grid-cols-2 gap-px overflow-hidden rounded-[1.75rem] md:grid-cols-4">
         <Stat
-          label={translate("crm.dashboard.summary.pipeline", {
-            _: "В воронке",
-          })}
+          label={translate("crm.dashboard.summary.pipeline")}
           value={formatMoney(pipeline, currency, pipeline >= 1_000_000)}
           to="/deals"
         />
         <Stat
-          label={translate("crm.dashboard.summary.open_deals", {
-            _: "Сделок в работе",
-          })}
+          label={translate("crm.dashboard.summary.open_deals")}
           value={String(openDeals.length)}
           to="/deals"
         />
         <Stat
-          label={translate("crm.dashboard.summary.due_today", {
-            _: "Задач на сегодня",
-          })}
+          label={translate("crm.dashboard.summary.due_today")}
           value={String(dueToday)}
         />
         <Stat
-          label={translate("crm.dashboard.summary.overdue", {
-            _: "Просрочено",
-          })}
+          label={translate("crm.dashboard.summary.overdue")}
           value={String(overdue)}
           tone={overdue > 0 ? "alert" : undefined}
         />
@@ -91,9 +83,7 @@ export const DashboardSummary = () => {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[13px] font-medium opacity-70">
-              {translate("crm.dashboard.summary.won", {
-                _: "Лечение завершено, сумма",
-              })}
+              {translate("crm.dashboard.summary.paid")}
             </p>
             <p className="mt-1 text-[1.9rem] font-bold leading-none tracking-[-0.03em] tabular-nums">
               {formatMoney(won, currency, won >= 1_000_000)}

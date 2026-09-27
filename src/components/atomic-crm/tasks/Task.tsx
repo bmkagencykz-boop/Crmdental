@@ -2,7 +2,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MoreVertical } from "lucide-react";
 import {
   useDeleteWithUndoController,
-  useGetRecordRepresentation,
   useNotify,
   useTranslate,
   useUpdate,
@@ -19,25 +18,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useConfigurationContext } from "../root/ConfigurationContext";
-import type { Contact, Task as TData } from "../types";
+import { Link } from "react-router";
+import { patientDisplayName } from "../patients/parsePatientText";
+import type { Deal, Task as TData } from "../types";
 import { TaskEdit } from "./TaskEdit";
-import { TaskEditSheet } from "./TaskEditSheet";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Task = ({
   task,
-  showContact,
+  showDeal,
 }: {
   task: TData;
-  showContact?: boolean;
+  /** Show the patient and deal the task is about (dashboard lists) */
+  showDeal?: boolean;
 }) => {
-  const isMobile = useIsMobile();
-  const { taskTypes } = useConfigurationContext();
   const notify = useNotify();
   const translate = useTranslate();
   const queryClient = useQueryClient();
-  const getContactRepresentation = useGetRecordRepresentation("contacts");
 
   const [openEdit, setOpenEdit] = useState(false);
 
@@ -91,10 +87,7 @@ export const Task = ({
   return (
     <>
       <div className="flex items-start justify-between">
-        <div
-          className="flex items-start gap-2 flex-1"
-          onClick={isMobile ? handleCheck() : undefined}
-        >
+        <div className="flex items-start gap-2 flex-1">
           <Checkbox
             id={labelId}
             checked={!!task.done_date}
@@ -104,17 +97,10 @@ export const Task = ({
           />
           <div className={`flex-grow ${task.done_date ? "line-through" : ""}`}>
             <div className="text-sm">
-              {task.type && task.type !== "none" && (
+              {task.type && (
                 <>
                   <span className="font-semibold text-sm">
-                    {(() => {
-                      const matchedTaskType = taskTypes.find(
-                        (taskType) => taskType.value === task.type,
-                      );
-                      return matchedTaskType
-                        ? matchedTaskType.label
-                        : task.type;
-                    })()}
+                    {translate(`crm.tasks.types.${task.type}`)}
                   </span>
                   &nbsp;
                 </>
@@ -125,21 +111,27 @@ export const Task = ({
               {translate("resources.tasks.fields.due_short")}
               &nbsp;
               <DateField source="due_date" record={task} showDate showTime />
-              {showContact && (
-                <ReferenceField<TData, Contact>
-                  source="contact_id"
-                  reference="contacts"
+              {showDeal && (
+                <ReferenceField<TData, Deal>
+                  source="deal_id"
+                  reference="deals"
                   record={task}
-                  link="show"
+                  link={false}
                   className="inline text-sm text-muted-foreground"
                   render={({ referenceRecord }) => {
                     if (!referenceRecord) return null;
                     return (
                       <>
-                        {" "}
-                        {translate("resources.tasks.regarding_contact", {
-                          name: getContactRepresentation(referenceRecord),
-                        })}
+                        {" · "}
+                        <Link
+                          to={`/deals/${referenceRecord.id}/show`}
+                          className="text-brand-link hover:underline"
+                        >
+                          {patientDisplayName({
+                            last_name: referenceRecord.patient_last_name,
+                            first_name: referenceRecord.patient_first_name,
+                          })}
+                        </Link>
                       </>
                     );
                   }}
@@ -167,9 +159,7 @@ export const Task = ({
                 update("tasks", {
                   id: task.id,
                   data: {
-                    due_date: new Date(Date.now() + 24 * 60 * 60 * 1000)
-                      .toISOString()
-                      .slice(0, 10),
+                    due_date: postpone(1),
                   },
                   previousData: task,
                 });
@@ -183,9 +173,7 @@ export const Task = ({
                 update("tasks", {
                   id: task.id,
                   data: {
-                    due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-                      .toISOString()
-                      .slice(0, 10),
+                    due_date: postpone(7),
                   },
                   previousData: task,
                 });
@@ -209,15 +197,11 @@ export const Task = ({
         </DropdownMenu>
       </div>
 
-      {isMobile ? (
-        <TaskEditSheet
-          taskId={task.id}
-          open={openEdit}
-          onOpenChange={setOpenEdit}
-        />
-      ) : (
-        <TaskEdit taskId={task.id} open={openEdit} close={handleCloseEdit} />
-      )}
+      <TaskEdit taskId={task.id} open={openEdit} close={handleCloseEdit} />
     </>
   );
 };
+
+/** Same time of day, n days later */
+const postpone = (days: number) =>
+  new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();

@@ -7,20 +7,14 @@ import { Error } from "@/components/admin/error";
 import { UserMenu } from "@/components/admin/user-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { DataImportProvider } from "../dataImport/DataImportProvider";
 import { useConfigurationLoader } from "../root/useConfigurationLoader";
 import { SIDEBAR_WIDTH, useNavItems } from "./navigation";
-import {
-  ChangelogMenuItem,
-  ImportFromJsonMenuItem,
-  ProfileMenu,
-  Sidebar,
-} from "./Sidebar";
+import { ChangelogMenuItem, ProfileMenu, Sidebar } from "./Sidebar";
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
   return (
-    <DataImportProvider>
+    <>
       <Sidebar />
       <div className="min-h-screen" style={{ paddingLeft: SIDEBAR_WIDTH }}>
         <div className="flex h-[5.25rem] items-center justify-between pr-8 pl-2">
@@ -33,7 +27,6 @@ export const Layout = ({ children }: { children: ReactNode }) => {
           </Link>
           <UserMenu>
             <ProfileMenu />
-            <ImportFromJsonMenuItem />
             <ChangelogMenuItem />
           </UserMenu>
         </div>
@@ -49,7 +42,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
         </main>
       </div>
       <Notification />
-    </DataImportProvider>
+    </>
   );
 };
 

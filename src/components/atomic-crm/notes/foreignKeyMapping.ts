@@ -1,4 +1,4 @@
 export const foreignKeyMapping = {
-  contacts: "contact_id",
+  patients: "patient_id",
   deals: "deal_id",
 };

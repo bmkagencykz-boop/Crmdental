@@ -1,32 +1,23 @@
-import type { ConfigurationContextValue } from "../root/ConfigurationContext";
-import type { Deal } from "../types";
+import type { Deal, Stage } from "../types";
 
-export type DealsByStage = Record<Deal["stage"], Deal[]>;
+export type DealsByStage = Record<string, Deal[]>;
 
+/**
+ * Groups the deals of a pipeline by stage id, each column ordered by index.
+ * Every stage gets a column, even without deals.
+ */
 export const getDealsByStage = (
-  unorderedDeals: Deal[],
-  dealStages: ConfigurationContextValue["dealStages"],
-) => {
-  if (!dealStages) return {};
-  const dealsByStage: Record<Deal["stage"], Deal[]> = unorderedDeals.reduce(
-    (acc, deal) => {
-      // if deal has a stage that does not exist in configuration, assign it to the first stage
-      const stage = dealStages.find((s) => s.value === deal.stage)
-        ? deal.stage
-        : dealStages[0].value;
-      acc[stage].push(deal);
-      return acc;
-    },
-    dealStages.reduce(
-      (obj, stage) => ({ ...obj, [stage.value]: [] }),
-      {} as Record<Deal["stage"], Deal[]>,
-    ),
+  deals: Deal[],
+  stages: Stage[],
+): DealsByStage => {
+  const byStage: DealsByStage = Object.fromEntries(
+    stages.map((stage) => [String(stage.id), [] as Deal[]]),
   );
-  // order each column by index
-  dealStages.forEach((stage) => {
-    dealsByStage[stage.value] = dealsByStage[stage.value].sort(
-      (recordA: Deal, recordB: Deal) => recordA.index - recordB.index,
-    );
+  deals.forEach((deal) => {
+    byStage[String(deal.stage_id)]?.push(deal);
   });
-  return dealsByStage;
+  Object.values(byStage).forEach((column) =>
+    column.sort((a, b) => a.index - b.index),
+  );
+  return byStage;
 };

@@ -30,10 +30,21 @@ select tests.throws(
 
 -- A self sign-up cannot join an existing clinic through user metadata
 insert into auth.users (email, raw_user_meta_data)
-values ('attacker@evil.kz', jsonb_build_object('organization_id', current_setting('t.org_a'), 'role', 'owner'));
+values ('attacker@evil.kz', jsonb_build_object('organization_name', 'Evil', 'organization_id', current_setting('t.org_a'), 'role', 'owner'));
 select tests.assert(
   (select organization_id from public.sales where email = 'attacker@evil.kz') not in (current_setting('t.org_a')::bigint, current_setting('t.org_b')::bigint),
   'user metadata cannot pick an organization');
+insert into auth.users (email, raw_user_meta_data)
+values ('stranger@evil.kz', jsonb_build_object('organization_id', current_setting('t.org_a'), 'role', 'owner'));
+select tests.assert(
+  not exists (select 1 from public.sales where email = 'stranger@evil.kz'),
+  'a user who neither signed up a clinic nor was invited gets no access');
+
+-- Staff do not move between clinics when app metadata changes later
+update auth.users
+set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('organization_id', current_setting('t.org_b')::bigint)
+where id = current_setting('t.manager')::uuid;
+select tests.assert(tests.org_of(current_setting('t.manager')::uuid) = current_setting('t.org_a')::bigint, 'an employee stays in their clinic');
 
 -- Everybody in the clinic sees colleagues
 select tests.login_as(current_setting('t.manager')::uuid);

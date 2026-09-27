@@ -7,7 +7,6 @@ import {
 import { AutocompleteInput } from "@/components/admin/autocomplete-input";
 import { ReferenceInput } from "@/components/admin/reference-input";
 import { ToggleFilterButton } from "@/components/admin/toggle-filter-button";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { Sale } from "../types";
 
@@ -23,7 +22,6 @@ export const AccountManagerInput = ({
   alwaysOn?: boolean;
 }) => {
   const translate = useTranslate();
-  const isMobile = useIsMobile();
   return (
     <ReferenceInput
       source={source}
@@ -35,7 +33,6 @@ export const AccountManagerInput = ({
         label={false}
         helperText={false}
         clearable
-        modal={isMobile}
         optionText={saleOptionRenderer}
         placeholder={translate("crm.common.account_manager")}
       />

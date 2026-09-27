@@ -96,3 +96,8 @@ create or replace trigger on_auth_user_created
 create or replace trigger on_auth_user_updated
     after update on auth.users
     for each row execute function public.handle_update_user();
+
+-- Clinic deletion: clinical data first, then the organization cascade
+create or replace trigger delete_organization_data
+    before delete on public.organizations
+    for each row execute function private.delete_organization_data();

@@ -30,7 +30,7 @@ export const StatusSelector = ({
   const { noteStatuses } = useConfigurationContext();
   const translate = useTranslate();
   const isMobile = useIsMobile();
-  const noneLabel = translate("resources.contacts.background.status_none", {
+  const noneLabel = translate("resources.patients.background.status_none", {
     _: "None",
   });
 
@@ -100,7 +100,7 @@ export const StatusSelector = ({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={NONE_VALUE}>
-          <Translate i18nKey="resources.contacts.background.status_none">
+          <Translate i18nKey="resources.patients.background.status_none">
             None
           </Translate>
         </SelectItem>

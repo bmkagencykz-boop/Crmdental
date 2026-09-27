@@ -1,105 +1,168 @@
-import { required, useTranslate } from "ra-core";
-import { AutocompleteArrayInput } from "@/components/admin/autocomplete-array-input";
-import { ReferenceArrayInput } from "@/components/admin/reference-array-input";
-import { ReferenceInput } from "@/components/admin/reference-input";
-import { TextInput } from "@/components/admin/text-input";
+import { useEffect, useRef } from "react";
+import { required, useRecordContext, useTranslate } from "ra-core";
+import { useFormContext, useWatch } from "react-hook-form";
+import { DateTimeInput } from "@/components/admin/date-time-input";
 import { NumberInput } from "@/components/admin/number-input";
-import { DateInput } from "@/components/admin/date-input";
 import { SelectInput } from "@/components/admin/select-input";
-import { Separator } from "@/components/ui/separator";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { TextInput } from "@/components/admin/text-input";
 
-import { contactOptionText } from "../misc/ContactOption";
-import { useConfigurationContext } from "../root/ConfigurationContext";
-import { AutocompleteCompanyInput } from "../companies/AutocompleteCompanyInput.tsx";
+import {
+  findById,
+  getPipelineStages,
+  toChoices,
+  useLeadSources,
+  useLostReasons,
+  useOrganizationSettings,
+  usePipelines,
+  useServices,
+  useStages,
+} from "../dictionaries/useDictionaries";
+import { PatientInput } from "../patients/PatientInput";
+import { AccountManagerInput } from "../sales/AccountManagerInput";
+import type { Deal } from "../types";
 
+/**
+ * Fields of a deal (spec §3): patient, pipeline and stage, source, service,
+ * plan amount, responsible, appointment and visit dates, lost reason.
+ */
 export const DealInputs = () => {
-  const isMobile = useIsMobile();
-  return (
-    <div className="flex flex-col gap-8">
-      <DealInfoInputs />
-
-      <div className={`flex gap-6 ${isMobile ? "flex-col" : "flex-row"}`}>
-        <DealLinkedToInputs />
-        <Separator orientation={isMobile ? "horizontal" : "vertical"} />
-        <DealMiscInputs />
-      </div>
-    </div>
-  );
-};
-
-const DealInfoInputs = () => {
-  return (
-    <div className="flex flex-col gap-4 flex-1">
-      <TextInput source="name" validate={required()} helperText={false} />
-      <TextInput source="description" multiline rows={3} helperText={false} />
-    </div>
-  );
-};
-
-const DealLinkedToInputs = () => {
   const translate = useTranslate();
   return (
-    <div className="flex flex-col gap-4 flex-1">
-      <h3 className="text-base font-medium">
-        {translate("resources.deals.inputs.linked_to")}
-      </h3>
-      <ReferenceInput source="company_id" reference="companies">
-        <AutocompleteCompanyInput
-          label="resources.deals.fields.company_id"
-          validate={required()}
-          modal
+    <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
+      <section className="flex flex-col gap-4">
+        <SectionTitle>{translate("crm.deals.sections.request")}</SectionTitle>
+        <PatientInput />
+        <TextInput
+          source="name"
+          helperText={false}
+          placeholder={translate("crm.deals.name_placeholder")}
         />
-      </ReferenceInput>
-
-      <ReferenceArrayInput source="contact_ids" reference="contacts_summary">
-        <AutocompleteArrayInput
-          label="resources.deals.fields.contact_ids"
-          optionText={contactOptionText}
+        <ServiceAndSourceInputs />
+        <NumberInput
+          source="plan_amount"
+          defaultValue={0}
+          min={0}
+          step={1000}
           helperText={false}
         />
-      </ReferenceArrayInput>
+      </section>
+      <section className="flex flex-col gap-4">
+        <SectionTitle>{translate("crm.deals.sections.pipeline")}</SectionTitle>
+        <PipelineAndStageInputs />
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">
+            {translate("resources.deals.fields.sales_id")}
+          </span>
+          <AccountManagerInput source="sales_id" />
+        </div>
+        <DateTimeInput source="appointment_at" helperText={false} />
+        <DateTimeInput source="visit_at" helperText={false} />
+      </section>
+      <section className="md:col-span-2">
+        <TextInput source="description" multiline rows={3} helperText={false} />
+      </section>
     </div>
   );
 };
 
-const DealMiscInputs = () => {
-  const { dealStages, dealCategories } = useConfigurationContext();
-  const translate = useTranslate();
-  return (
-    <div className="flex flex-col gap-4 flex-1">
-      <h3 className="text-base font-medium">
-        {translate("resources.deals.field_categories.misc")}
-      </h3>
+const SectionTitle = ({ children }: { children: string }) => (
+  <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+    {children}
+  </h3>
+);
 
+const ServiceAndSourceInputs = () => {
+  const { data: services } = useServices();
+  const { data: sources } = useLeadSources();
+  const serviceId = useWatch({ name: "service_id" });
+  const sourceId = useWatch({ name: "source_id" });
+  return (
+    <div className="grid grid-cols-2 gap-4">
       <SelectInput
-        source="category"
-        choices={dealCategories}
-        optionText="label"
-        optionValue="value"
+        source="service_id"
+        choices={toChoices(services, serviceId)}
         helperText={false}
-      />
-      <NumberInput
-        source="amount"
-        defaultValue={0}
-        helperText={false}
-        validate={required()}
-      />
-      <DateInput
-        validate={required()}
-        source="expected_closing_date"
-        helperText={false}
-        defaultValue={new Date().toISOString().split("T")[0]}
       />
       <SelectInput
-        source="stage"
-        choices={dealStages}
-        optionText="label"
-        optionValue="value"
-        defaultValue={dealStages[0]?.value}
+        source="source_id"
+        choices={toChoices(sources, sourceId)}
         helperText={false}
-        validate={required()}
       />
     </div>
+  );
+};
+
+/**
+ * Stages depend on the pipeline: changing the pipeline selects the first
+ * stage of the new one. Unless the clinic lets employees choose, a deal moved
+ * to another pipeline stays on that first stage (the database enforces it).
+ * A lost stage requires a reason.
+ */
+const PipelineAndStageInputs = () => {
+  const translate = useTranslate();
+  const record = useRecordContext<Deal>();
+  const { data: settings } = useOrganizationSettings();
+  const { data: pipelines } = usePipelines();
+  const { data: allStages } = useStages();
+  const { data: lostReasons } = useLostReasons();
+  const { setValue } = useFormContext();
+  const pipelineId = useWatch({ name: "pipeline_id" });
+  const stageId = useWatch({ name: "stage_id" });
+  const lostReasonId = useWatch({ name: "lost_reason_id" });
+  const stages = getPipelineStages(allStages, pipelineId);
+  const stage = findById(stages, stageId);
+  const lockedToFirstStage =
+    record?.id != null &&
+    String(record.pipeline_id) !== String(pipelineId) &&
+    settings?.pipeline_move_mode !== "choose_stage";
+
+  const previousPipeline = useRef(pipelineId);
+  useEffect(() => {
+    if (previousPipeline.current === pipelineId) return;
+    previousPipeline.current = pipelineId;
+    if (!findById(stages, stageId) && stages[0]) {
+      setValue("stage_id", stages[0].id, { shouldDirty: true });
+    }
+  }, [pipelineId, stageId, stages, setValue]);
+  useEffect(() => {
+    if (lockedToFirstStage && stages[0] && stageId !== stages[0].id) {
+      setValue("stage_id", stages[0].id, { shouldDirty: true });
+    }
+  }, [lockedToFirstStage, stageId, stages, setValue]);
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <SelectInput
+          source="pipeline_id"
+          choices={pipelines.map((p) => ({ id: p.id, name: p.name }))}
+          validate={required()}
+          helperText={false}
+        />
+        <SelectInput
+          source="stage_id"
+          choices={stages.map((s) => ({ id: s.id, name: s.name }))}
+          validate={required()}
+          helperText={false}
+          disabled={lockedToFirstStage}
+        />
+      </div>
+      {lockedToFirstStage ? (
+        <p className="text-xs text-muted-foreground">
+          {translate("crm.deals.moved_to_first_stage")}
+        </p>
+      ) : null}
+      {stage?.kind === "lost" ? (
+        <div className="flex flex-col gap-4 rounded-2xl bg-brand-red/10 p-4">
+          <SelectInput
+            source="lost_reason_id"
+            choices={toChoices(lostReasons, lostReasonId)}
+            validate={required()}
+            helperText={false}
+          />
+          <TextInput source="lost_comment" multiline helperText={false} />
+        </div>
+      ) : null}
+    </>
   );
 };

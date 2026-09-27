@@ -12,15 +12,15 @@ const createTask = (id: number, dueDate: Date, doneDate?: Date) => ({
   id,
   due_date: iso(dueDate),
   done_date: doneDate ? iso(doneDate) : null,
-  contact_id: null,
+  deal_id: null,
   sales_id: null,
-  type: "Call",
+  type: "call",
   text: `Task ${id}`,
 });
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <CoreAdminContext
-    dataProvider={fakeDataProvider({ tasks: [], contacts: [], sales: [] })}
+    dataProvider={fakeDataProvider({ tasks: [], deals: [], sales: [] })}
     i18nProvider={{
       translate: (key, options) => {
         if (typeof options?._ === "string") {
@@ -42,7 +42,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe("TaskListFilter", () => {
   it("renders nothing when tasks array is empty", async () => {
     const { container } = await render(
-      <TaskListFilter tasks={[]} title="Today" isMobile={false} />,
+      <TaskListFilter tasks={[]} title="Today" />,
       { wrapper: Wrapper },
     );
 
@@ -52,7 +52,7 @@ describe("TaskListFilter", () => {
   it("renders the section title", async () => {
     const tasks = [createTask(1, today)];
     const screen = await render(
-      <TaskListFilter tasks={tasks} title="Today" isMobile={false} />,
+      <TaskListFilter tasks={tasks} title="Today" />,
       {
         wrapper: Wrapper,
       },
@@ -63,7 +63,7 @@ describe("TaskListFilter", () => {
   it("does not show Load more when tasks fit in one page", async () => {
     const tasks = Array.from({ length: 3 }, (_, i) => createTask(i + 1, today));
     const screen = await render(
-      <TaskListFilter tasks={tasks} title="Today" isMobile={false} />,
+      <TaskListFilter tasks={tasks} title="Today" />,
       {
         wrapper: Wrapper,
       },
@@ -74,7 +74,7 @@ describe("TaskListFilter", () => {
   it("shows Load more when tasks exceed page size", async () => {
     const tasks = Array.from({ length: 8 }, (_, i) => createTask(i + 1, today));
     const screen = await render(
-      <TaskListFilter tasks={tasks} title="Today" isMobile={false} />,
+      <TaskListFilter tasks={tasks} title="Today" />,
       {
         wrapper: Wrapper,
       },
@@ -85,7 +85,7 @@ describe("TaskListFilter", () => {
   it("Load more increases visible page size", async () => {
     const tasks = Array.from({ length: 8 }, (_, i) => createTask(i + 1, today));
     const { container, getByText } = await render(
-      <TaskListFilter tasks={tasks} title="Today" isMobile={false} />,
+      <TaskListFilter tasks={tasks} title="Today" />,
       {
         wrapper: Wrapper,
       },

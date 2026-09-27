@@ -110,48 +110,64 @@ BEGIN
 END;
 $_$;
 
+-- Staff row of an auth user in an organization. Invitations only grant the
+-- head or manager role: an organization has a single owner, its creator.
+CREATE OR REPLACE FUNCTION "private"."create_sales_for_user"("auth_user" "auth"."users", "org_id" bigint, "user_role" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not exists (select 1 from public.organizations o where o.id = org_id) then
+    raise exception 'Organization % does not exist', org_id;
+  end if;
+  insert into public.sales (organization_id, first_name, last_name, email, user_id, role)
+  values (
+    org_id,
+    coalesce(auth_user.raw_user_meta_data ->> 'first_name', auth_user.raw_user_meta_data -> 'custom_claims' ->> 'first_name', 'Pending'),
+    coalesce(auth_user.raw_user_meta_data ->> 'last_name', auth_user.raw_user_meta_data -> 'custom_claims' ->> 'last_name', 'Pending'),
+    auth_user.email,
+    auth_user.id,
+    user_role
+  );
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "private"."invited_role"("app_metadata" "jsonb") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case when app_metadata ->> 'role' in ('head', 'manager') then app_metadata ->> 'role' else 'manager' end
+$$;
+
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 -- A new auth user either:
+--  * signed up by themselves (the sign-up form always sends organization_name
+--    in user metadata): a new organization is created and they own it;
 --  * was invited by a clinic owner: the users edge function (service role) puts
---    organization_id and role in app_metadata, which end users cannot write;
---  * signed up by themselves: a new organization is created and they own it.
+--    organization_id and role in app_metadata, which end users cannot write.
+--    Supabase Auth writes app_metadata with a second statement right after the
+--    insert, so the invited user usually joins in handle_update_user;
+--  * anything else gets no organization, hence no access.
 declare
   org_id bigint;
-  user_role text;
   org_name text;
 begin
   org_id := nullif(new.raw_app_meta_data ->> 'organization_id', '')::bigint;
 
   if org_id is not null then
-    if not exists (select 1 from public.organizations o where o.id = org_id) then
-      raise exception 'Organization % does not exist', org_id;
-    end if;
-    user_role := coalesce(new.raw_app_meta_data ->> 'role', 'manager');
-    if user_role not in ('head', 'manager') then
-      user_role := 'manager';
-    end if;
-  else
+    perform private.create_sales_for_user(new, org_id, private.invited_role(new.raw_app_meta_data));
+  elsif coalesce(new.raw_user_meta_data, '{}'::jsonb) ? 'organization_name' then
     org_name := coalesce(
       nullif(btrim(new.raw_user_meta_data ->> 'organization_name'), ''),
       'Моя клиника'
     );
     insert into public.organizations (name) values (org_name) returning id into org_id;
     perform private.seed_organization(org_id);
-    user_role := 'owner';
+    perform private.create_sales_for_user(new, org_id, 'owner');
   end if;
-
-  insert into public.sales (organization_id, first_name, last_name, email, user_id, role)
-  values (
-    org_id,
-    coalesce(new.raw_user_meta_data ->> 'first_name', new.raw_user_meta_data -> 'custom_claims' ->> 'first_name', 'Pending'),
-    coalesce(new.raw_user_meta_data ->> 'last_name', new.raw_user_meta_data -> 'custom_claims' ->> 'last_name', 'Pending'),
-    new.email,
-    new.id,
-    user_role
-  );
   return new;
 end;
 $$;
@@ -160,7 +176,18 @@ CREATE OR REPLACE FUNCTION "public"."handle_update_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  org_id bigint;
 begin
+  if not exists (select 1 from public.sales where user_id = new.id) then
+    -- Invitation: app_metadata arrived after the insert (see handle_new_user)
+    org_id := nullif(new.raw_app_meta_data ->> 'organization_id', '')::bigint;
+    if org_id is not null then
+      perform private.create_sales_for_user(new, org_id, private.invited_role(new.raw_app_meta_data));
+    end if;
+    return new;
+  end if;
+
   update public.sales
   set
     first_name = coalesce(new.raw_user_meta_data ->> 'first_name', new.raw_user_meta_data -> 'custom_claims' ->> 'first_name', 'Pending'),
@@ -470,6 +497,18 @@ begin
     if (to_jsonb(new) - 'index' - 'updated_at') is distinct from (to_jsonb(old) - 'index' - 'updated_at') then
       new.updated_at := now();
     end if;
+    -- Moved to another pipeline: to its first stage, unless the clinic lets
+    -- employees choose the stage (organization_settings.pipeline_move_mode)
+    if new.pipeline_id is distinct from old.pipeline_id and coalesce((
+      select os.pipeline_move_mode from public.organization_settings os
+      where os.organization_id = new.organization_id
+    ), 'first_stage') = 'first_stage' then
+      select s.id into new.stage_id
+      from public.stages s
+      where s.pipeline_id = new.pipeline_id
+      order by s.position, s.id
+      limit 1;
+    end if;
   end if;
 
   select s.kind into new_kind from public.stages s where s.id = new.stage_id;
@@ -565,5 +604,23 @@ begin
     and d.id in (new.deal_id, old.deal_id);
   perform set_config('crm.sync_paid_amount', 'off', true);
   return null;
+end;
+$$;
+
+--
+-- Organizations
+--
+
+-- Deleting a clinic removes its patients first. Every clinical row cascades
+-- from them, so nothing still points at the staff, pipelines or dictionaries
+-- that the organization cascade removes afterwards (cascades run in no
+-- guaranteed order, and foreign keys to those tables are checked right away).
+CREATE OR REPLACE FUNCTION "private"."delete_organization_data"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  delete from public.patients where organization_id = old.id;
+  return old;
 end;
 $$;

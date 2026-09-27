@@ -1,19 +1,19 @@
 import { useMemo } from "react";
 import { useStore } from "ra-core";
 
-import type { DealStage, LabeledValue, NoteStatus } from "../types";
+import type { NoteStatus } from "../types";
 import { defaultConfiguration } from "./defaultConfiguration";
 
 export const CONFIGURATION_STORE_KEY = "app.configuration";
 
+/**
+ * UI settings of a clinic (stored in the configuration table). Business
+ * dictionaries (pipelines, stages, services, sources, lost reasons) live in
+ * their own tables, see ../dictionaries.
+ */
 export interface ConfigurationContextValue {
-  companySectors: LabeledValue[];
   currency: string;
-  dealCategories: LabeledValue[];
-  dealPipelineStatuses: string[];
-  dealStages: DealStage[];
   noteStatuses: NoteStatus[];
-  taskTypes: LabeledValue[];
   title: string;
   darkModeLogo: string;
   lightModeLogo: string;

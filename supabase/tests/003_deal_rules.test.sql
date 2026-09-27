@@ -130,6 +130,30 @@ select tests.assert(
   (select changes ? 'pipeline_id' from public.deal_events where deal_id = current_setting('t.deal2')::bigint order by id desc limit 1),
   'moving to another pipeline is logged');
 
+-- By default a deal moved to another pipeline lands on its first stage...
+update public.deals
+set pipeline_id = (select id from public.pipelines where is_default),
+    stage_id = (select s.id from public.stages s join public.pipelines p on p.id = s.pipeline_id where p.is_default and s.name = 'Записан')
+where id = current_setting('t.deal2')::bigint;
+select tests.assert(
+  (select s.name from public.deals d join public.stages s on s.id = d.stage_id where d.id = current_setting('t.deal2')::bigint) = 'Новый лид',
+  'first_stage: a deal moved to another pipeline starts at its first stage');
+-- ...unless the clinic lets employees choose the stage
+update public.organization_settings set pipeline_move_mode = 'choose_stage';
+update public.deals
+set pipeline_id = current_setting('t.pipeline2')::bigint,
+    stage_id = (select id from public.stages where pipeline_id = current_setting('t.pipeline2')::bigint and kind = 'won')
+where id = current_setting('t.deal2')::bigint;
+select tests.assert(
+  (select s.kind from public.deals d join public.stages s on s.id = d.stage_id where d.id = current_setting('t.deal2')::bigint) = 'won',
+  'choose_stage: the chosen stage is kept');
+update public.organization_settings set pipeline_move_mode = 'first_stage';
+-- Back to the open stage of the second pipeline for the checks below
+update public.deals set pipeline_id = (select id from public.pipelines where is_default)
+where id = current_setting('t.deal2')::bigint;
+update public.deals set pipeline_id = current_setting('t.pipeline2')::bigint
+where id = current_setting('t.deal2')::bigint;
+
 -- Every pipeline keeps a won and a lost stage (checked at commit)
 do $$
 begin

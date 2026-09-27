@@ -13,7 +13,7 @@ import { AutocompleteInput } from "./autocomplete-input";
  * @example
  * import { Edit, SimpleForm, TextInput, ReferenceInput } from '@/components/admin';
  *
- * const ContactEdit = () => (
+ * const PatientEdit = () => (
  *   <Edit>
  *     <SimpleForm>
  *       <TextInput source="first_name" />

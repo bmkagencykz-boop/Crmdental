@@ -1,29 +1,37 @@
 import {
   withLifecycleCallbacks,
-  type CreateParams,
   type DataProvider,
+  type GetListParams,
   type Identifier,
   type ResourceCallbacks,
-  type UpdateParams,
 } from "ra-core";
 import fakeRestDataProvider from "ra-data-fakerest";
 
 import type {
-  Company,
-  Contact,
-  ContactNote,
   Deal,
+  DealEvent,
   DealNote,
+  DealPayment,
+  OrganizationSettings,
+  Patient,
+  PatientNote,
+  Pipeline,
   Sale,
   SalesFormData,
   SignUpData,
+  Stage,
   Task,
 } from "../../types";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
-import { getCompanyAvatar } from "../commons/getCompanyAvatar";
-import { getContactAvatar } from "../commons/getContactAvatar";
-import { mergeContacts } from "../commons/mergeContacts";
+import {
+  applyPipelineMove,
+  checkDealStageChange,
+  dealChanges,
+  normalizePatient,
+  normalizePhone,
+  pipelineHasClosingStages,
+} from "../commons/domain";
 import type { CrmDataProvider } from "../types";
 import {
   authProvider as defaultAuthProvider,
@@ -33,91 +41,39 @@ import generateData from "./dataGenerator";
 import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 
-const TASK_MARKED_AS_DONE = "TASK_MARKED_AS_DONE";
-const TASK_MARKED_AS_UNDONE = "TASK_MARKED_AS_UNDONE";
-const TASK_DONE_NOT_CHANGED = "TASK_DONE_NOT_CHANGED";
-
-const processCompanyLogo = async (params: any) => {
-  let logo = params.data.logo;
-
-  if (typeof logo !== "object" || logo === null || !logo.src) {
-    logo = await getCompanyAvatar(params.data);
-  } else if (logo.rawFile instanceof File) {
-    const base64Logo = await convertFileToBase64(logo);
-    logo = { src: base64Logo, title: logo.title };
-  }
-
-  return {
-    ...params,
-    data: {
-      ...params.data,
-      logo,
-    },
-  };
-};
-
-async function processContactAvatar(
-  params: UpdateParams<Contact>,
-): Promise<UpdateParams<Contact>>;
-
-async function processContactAvatar(
-  params: CreateParams<Contact>,
-): Promise<CreateParams<Contact>>;
-
-async function processContactAvatar(
-  params: CreateParams<Contact> | UpdateParams<Contact>,
-): Promise<CreateParams<Contact> | UpdateParams<Contact>> {
-  const { data } = params;
-  if (data.avatar?.src || !data.email_jsonb || !data.email_jsonb.length) {
-    return params;
-  }
-  const avatarUrl = await getContactAvatar(data);
-
-  // Clone the data and modify the clone
-  const newData = { ...data, avatar: { src: avatarUrl || undefined } };
-
-  return { ...params, data: newData };
-}
-
-async function fetchAndUpdateCompanyData(
-  params: UpdateParams<Contact>,
-  dataProvider: DataProvider,
-): Promise<UpdateParams<Contact>>;
-
-async function fetchAndUpdateCompanyData(
-  params: CreateParams<Contact>,
-  dataProvider: DataProvider,
-): Promise<CreateParams<Contact>>;
-
-async function fetchAndUpdateCompanyData(
-  params: CreateParams<Contact> | UpdateParams<Contact>,
-  dataProvider: DataProvider,
-): Promise<CreateParams<Contact> | UpdateParams<Contact>> {
-  const { data } = params;
-  const newData = { ...data };
-
-  if (!newData.company_id) {
-    return params;
-  }
-
-  const { data: company } = await dataProvider.getOne("companies", {
-    id: newData.company_id,
-  });
-
-  if (!company) {
-    return params;
-  }
-
-  newData.company_name = company.name;
-  return { ...params, data: newData };
-}
-
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
   latency?: number;
   authProvider?: Pick<typeof defaultAuthProvider, "getIdentity">;
   silent?: boolean;
 }
+
+const PATIENT_VIEW_COLUMNS = [
+  "phone_fts",
+  "nb_deals",
+  "nb_open_deals",
+  "nb_tasks",
+];
+const DEAL_VIEW_COLUMNS = [
+  "stage_kind",
+  "patient_first_name",
+  "patient_last_name",
+  "patient_phone",
+  "search_text",
+  "nb_open_tasks",
+  "next_task_due_at",
+];
+
+const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>
+  Object.fromEntries(
+    Object.entries(data).filter(([key]) => !keys.includes(key)),
+  ) as T;
+
+const everything: GetListParams = {
+  pagination: { page: 1, perPage: 1_000_000 },
+  sort: { field: "id", order: "ASC" },
+  filter: {},
+};
 
 const processConfigLogo = async (logo: any): Promise<string> => {
   if (typeof logo === "string") return logo;
@@ -139,6 +95,11 @@ const preserveAttachmentMimeType = <
   })),
 });
 
+/**
+ * In-browser data provider of the demo. It mirrors the database: summary
+ * views are computed on read, triggers run as lifecycle callbacks with the
+ * same rules (see ../commons/domain.ts).
+ */
 export const createDataProvider = ({
   db = generateData(),
   latency = 300,
@@ -146,67 +107,191 @@ export const createDataProvider = ({
   silent = false,
 }: CreateFakeRestDataProviderOptions = {}): CrmDataProvider => {
   const baseDataProvider = fakeRestDataProvider(db, !silent, latency);
-  let taskUpdateType = TASK_DONE_NOT_CHANGED;
   const getIdentity = async () =>
     authProvider?.getIdentity?.() ?? defaultAuthProvider.getIdentity?.();
+  const all = async <T>(resource: string) =>
+    (await baseDataProvider.getList(resource, everything)).data as T[];
 
-  const updateCompany = async (
-    companyId: Identifier,
-    updateFn: (company: Company) => Partial<Company>,
-  ) => {
-    const { data: company } = await dataProvider.getOne<Company>("companies", {
-      id: companyId,
-    });
+  // --- views ------------------------------------------------------------
 
-    return await dataProvider.update("companies", {
-      id: companyId,
-      data: {
-        ...updateFn(company),
-      },
-      previousData: company,
+  const patientsSummary = async () => {
+    const [patients, deals, stages, tasks] = await Promise.all([
+      all<Patient>("patients"),
+      all<Deal>("deals"),
+      all<Stage>("stages"),
+      all<Task>("tasks"),
+    ]);
+    const kind = new Map(stages.map((stage) => [stage.id, stage.kind]));
+    return patients.map((patient) => {
+      const own = deals.filter((deal) => deal.patient_id === patient.id);
+      const ids = new Set(own.map((deal) => deal.id));
+      return {
+        ...patient,
+        phone_fts: (patient.phones ?? []).join(" "),
+        nb_deals: own.length,
+        nb_open_deals: own.filter((deal) => kind.get(deal.stage_id) === "open")
+          .length,
+        nb_tasks: tasks.filter(
+          (task) => ids.has(task.deal_id) && !task.done_date,
+        ).length,
+      };
     });
   };
 
-  const dataProviderWithCustomMethod: CrmDataProvider = {
+  const dealsSummary = async () => {
+    const [deals, stages, patients, tasks] = await Promise.all([
+      all<Deal>("deals"),
+      all<Stage>("stages"),
+      all<Patient>("patients"),
+      all<Task>("tasks"),
+    ]);
+    const kind = new Map(stages.map((stage) => [stage.id, stage.kind]));
+    const patientsById = new Map(patients.map((p) => [p.id, p]));
+    return deals.map((deal) => {
+      const patient = patientsById.get(deal.patient_id);
+      const open = tasks.filter(
+        (task) => task.deal_id === deal.id && !task.done_date,
+      );
+      return {
+        ...deal,
+        stage_kind: kind.get(deal.stage_id),
+        patient_first_name: patient?.first_name ?? null,
+        patient_last_name: patient?.last_name ?? null,
+        patient_phone: patient?.phones?.[0] ?? null,
+        search_text: [
+          deal.name,
+          patient?.last_name,
+          patient?.first_name,
+          patient?.middle_name,
+          ...(patient?.phones ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+        nb_open_tasks: open.length,
+        next_task_due_at: open.map((task) => task.due_date).sort()[0] ?? null,
+      };
+    });
+  };
+
+  const views: Record<string, () => Promise<any[]>> = {
+    patients: patientsSummary,
+    deals: dealsSummary,
+  };
+  const viewProvider = async (resource: string) =>
+    fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
+
+  // --- custom methods ---------------------------------------------------
+
+  const custom = {
     ...baseDataProvider,
-    async getList(resource: string, params: any) {
+    async getList(resource: string, params: GetListParams) {
       if (resource === "activity_log") {
-        const { filter = {}, pagination } = params;
-        const all = await getActivityLog(
+        const activities = await getActivityLog(
           withSupabaseFilterAdapter(baseDataProvider),
-          filter.company_id,
-          filter.sales_id,
         );
-        const { page, perPage } = pagination;
+        const { page, perPage } = params.pagination ?? { page: 1, perPage: 20 };
         const start = (page - 1) * perPage;
-        return { data: all.slice(start, start + perPage), total: all.length };
+        return {
+          data: activities.slice(start, start + perPage),
+          total: activities.length,
+        };
+      }
+      if (views[resource]) {
+        return (await viewProvider(resource)).getList(resource, params);
       }
       return baseDataProvider.getList(resource, params);
     },
+    async getOne(resource: string, params: any) {
+      if (views[resource]) {
+        return (await viewProvider(resource)).getOne(resource, params);
+      }
+      return baseDataProvider.getOne(resource, params);
+    },
+    async getMany(resource: string, params: any) {
+      if (views[resource]) {
+        return (await viewProvider(resource)).getMany(resource, params);
+      }
+      return baseDataProvider.getMany(resource, params);
+    },
+    async getManyReference(resource: string, params: any) {
+      if (views[resource]) {
+        return (await viewProvider(resource)).getManyReference(
+          resource,
+          params,
+        );
+      }
+      return baseDataProvider.getManyReference(resource, params);
+    },
     unarchiveDeal: async (deal: Deal) => {
-      // get all deals where stage is the same as the deal to unarchive
-      const { data: deals } = await baseDataProvider.getList<Deal>("deals", {
-        filter: { stage: deal.stage },
-        pagination: { page: 1, perPage: 1000 },
-        sort: { field: "index", order: "ASC" },
-      });
-
-      // set index for each deal starting from 1, if the deal to unarchive is found, set its index to the last one
-      const updatedDeals = deals.map((d, index) => ({
-        ...d,
-        index: d.id === deal.id ? 0 : index + 1,
-        archived_at: d.id === deal.id ? null : d.archived_at,
-      }));
-
-      return await Promise.all(
-        updatedDeals.map((updatedDeal) =>
-          dataProvider.update("deals", {
-            id: updatedDeal.id,
-            data: updatedDeal,
-            previousData: deals.find((d) => d.id === updatedDeal.id),
+      const deals = (await all<Deal>("deals")).filter(
+        (d) => d.stage_id === deal.stage_id && !d.archived_at,
+      );
+      await Promise.all(
+        deals.map((d) =>
+          baseDataProvider.update("deals", {
+            id: d.id,
+            data: { index: d.index + 1 },
+            previousData: d,
           }),
         ),
       );
+      return dataProvider.update("deals", {
+        id: deal.id,
+        data: { index: 0, archived_at: null },
+        previousData: deal,
+      });
+    },
+    findPatientsByPhone: async (phone: string): Promise<Patient[]> => {
+      const number = normalizePhone(phone);
+      if (!number) return [];
+      return (await all<Patient>("patients")).filter((patient) =>
+        patient.phones?.includes(number),
+      );
+    },
+    createPipeline: async (name: string): Promise<Identifier> => {
+      const pipelines = await all<Pipeline>("pipelines");
+      const { data: pipeline } = await baseDataProvider.create("pipelines", {
+        data: {
+          name,
+          position: Math.max(-1, ...pipelines.map((p) => p.position)) + 1,
+          is_default: false,
+        },
+      });
+      for (const [position, [stageName, kind, color]] of [
+        ["Новый лид", "open", "#83A2DB"],
+        ["Успешно", "won", "#8CC9A7"],
+        ["Отказ", "lost", "#FD8E8C"],
+      ].entries()) {
+        await baseDataProvider.create("stages", {
+          data: {
+            pipeline_id: pipeline.id,
+            name: stageName,
+            position,
+            kind,
+            color,
+          },
+        });
+      }
+      return pipeline.id;
+    },
+    getOrganizationSettings: async (): Promise<OrganizationSettings> => {
+      const [settings] = await all<OrganizationSettings & { id: number }>(
+        "organization_settings",
+      );
+      return settings;
+    },
+    updateOrganizationSettings: async (
+      data: Partial<Omit<OrganizationSettings, "organization_id">>,
+    ): Promise<OrganizationSettings> => {
+      const [settings] = await all<OrganizationSettings & { id: number }>(
+        "organization_settings",
+      );
+      const { data: updated } = await baseDataProvider.update(
+        "organization_settings",
+        { id: settings.id, data, previousData: settings },
+      );
+      return updated as OrganizationSettings;
     },
     signUp: async ({
       email,
@@ -219,26 +304,14 @@ export const createDataProvider = ({
       password: string;
     }> => {
       const user = await baseDataProvider.create("sales", {
-        data: {
-          email,
-          first_name,
-          last_name,
-        },
+        data: { email, first_name, last_name, role: "owner" },
       });
-
-      return {
-        ...user.data,
-        password,
-      };
+      return { ...user.data, password };
     },
     salesCreate: async ({ ...data }: SalesFormData): Promise<Sale> => {
       const response = await dataProvider.create("sales", {
-        data: {
-          ...data,
-          password: "new_password",
-        },
+        data: { ...data, password: "new_password" },
       });
-
       return response.data;
     },
     salesUpdate: async (
@@ -248,11 +321,7 @@ export const createDataProvider = ({
       const { data: previousData } = await dataProvider.getOne<Sale>("sales", {
         id,
       });
-
-      if (!previousData) {
-        throw new Error("User not found");
-      }
-
+      if (!previousData) throw new Error("User not found");
       const { data: sale } = await dataProvider.update<Sale>("sales", {
         id,
         data,
@@ -260,43 +329,9 @@ export const createDataProvider = ({
       });
       return { ...sale, user_id: sale.id.toString() };
     },
-    isInitialized: async (): Promise<boolean> => {
-      const sales = await dataProvider.getList<Sale>("sales", {
-        filter: {},
-        pagination: { page: 1, perPage: 1 },
-        sort: { field: "id", order: "ASC" },
-      });
-      if (sales.data.length === 0) {
-        return false;
-      }
-      return true;
-    },
-    updatePassword: async (id: Identifier): Promise<true> => {
-      const currentUser = await getIdentity();
-      if (!currentUser) {
-        throw new Error("User not found");
-      }
-      const { data: previousData } = await dataProvider.getOne<Sale>("sales", {
-        id: currentUser.id,
-      });
-
-      if (!previousData) {
-        throw new Error("User not found");
-      }
-
-      await dataProvider.update("sales", {
-        id,
-        data: {
-          password: "demo_newPassword",
-        },
-        previousData,
-      });
-
-      return true;
-    },
-    mergeContacts: async (sourceId: Identifier, targetId: Identifier) => {
-      return mergeContacts(sourceId, targetId, baseDataProvider);
-    },
+    isInitialized: async (): Promise<boolean> =>
+      (await all<Sale>("sales")).length > 0,
+    updatePassword: async (): Promise<true> => true,
     getConfiguration: async (): Promise<ConfigurationContextValue> => {
       const { data } = await baseDataProvider.getOne("configuration", {
         id: 1,
@@ -318,8 +353,46 @@ export const createDataProvider = ({
     },
   };
 
+  // --- triggers -----------------------------------------------------------
+
+  const currentSalesId = async () => (await getIdentity())?.id;
+
+  const logDealEvent = async (event: Omit<DealEvent, "id" | "created_at">) =>
+    baseDataProvider.create("deal_events", {
+      data: {
+        ...event,
+        sales_id: event.sales_id ?? (await currentSalesId()) ?? null,
+        created_at: new Date().toISOString(),
+      },
+    });
+
+  // Same as handle_deal_payment_changed: deals.paid_amount = sum of payments
+  const syncPaidAmount = async (dealId: Identifier) => {
+    const payments = (await all<DealPayment>("deal_payments")).filter(
+      (payment) => payment.deal_id === dealId,
+    );
+    const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
+      id: dealId,
+    });
+    const paid_amount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    if (paid_amount === deal.paid_amount) return;
+    await baseDataProvider.update("deals", {
+      id: dealId,
+      data: { paid_amount, updated_at: new Date().toISOString() },
+      previousData: deal,
+    });
+    await logDealEvent({
+      deal_id: dealId,
+      type: "updated",
+      changes: { paid_amount: [deal.paid_amount, paid_amount] },
+    });
+  };
+
+  // Previous state of the deals being updated, for the log
+  const previousDeals = new Map<Identifier, Deal>();
+
   const dataProvider = withLifecycleCallbacks(
-    withSupabaseFilterAdapter(dataProviderWithCustomMethod),
+    withSupabaseFilterAdapter(custom as DataProvider),
     [
       {
         resource: "configuration",
@@ -339,269 +412,302 @@ export const createDataProvider = ({
         beforeCreate: async (params) => {
           const { data } = params;
           // New employees are managers unless stated otherwise
-          if (data.role == null) {
-            data.role = "manager";
-          }
+          if (data.role == null) data.role = "manager";
           data.administrator = data.role === "owner" || data.role === "head";
           return params;
         },
         afterSave: async (data) => {
-          // Since the current user is stored in localStorage in fakerest authProvider
-          // we need to update it to keep information up to date in the UI
+          // The fakerest auth provider keeps the current user in localStorage
           const currentUser = await getIdentity();
           if (currentUser?.id === data.id) {
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data));
           }
           return data;
         },
-        beforeDelete: async (params) => {
-          if (params.meta?.identity?.id == null) {
-            throw new Error("Identity MUST be set in meta");
-          }
-
-          const newSaleId = params.meta.identity.id as Identifier;
-
-          const [companies, contacts, contactNotes, deals] = await Promise.all([
-            dataProvider.getList("companies", {
-              filter: { sales_id: params.id },
-              pagination: {
-                page: 1,
-                perPage: 10_000,
-              },
-              sort: { field: "id", order: "ASC" },
-            }),
-            dataProvider.getList("contacts", {
-              filter: { sales_id: params.id },
-              pagination: {
-                page: 1,
-                perPage: 10_000,
-              },
-              sort: { field: "id", order: "ASC" },
-            }),
-            dataProvider.getList("contact_notes", {
-              filter: { sales_id: params.id },
-              pagination: {
-                page: 1,
-                perPage: 10_000,
-              },
-              sort: { field: "id", order: "ASC" },
-            }),
-            dataProvider.getList("deals", {
-              filter: { sales_id: params.id },
-              pagination: {
-                page: 1,
-                perPage: 10_000,
-              },
-              sort: { field: "id", order: "ASC" },
-            }),
-          ]);
-
-          await Promise.all([
-            dataProvider.updateMany("companies", {
-              ids: companies.data.map((company) => company.id),
-              data: {
-                sales_id: newSaleId,
-              },
-            }),
-            dataProvider.updateMany("contacts", {
-              ids: contacts.data.map((company) => company.id),
-              data: {
-                sales_id: newSaleId,
-              },
-            }),
-            dataProvider.updateMany("contact_notes", {
-              ids: contactNotes.data.map((company) => company.id),
-              data: {
-                sales_id: newSaleId,
-              },
-            }),
-            dataProvider.updateMany("deals", {
-              ids: deals.data.map((company) => company.id),
-              data: {
-                sales_id: newSaleId,
-              },
-            }),
-          ]);
-
-          return params;
-        },
       } satisfies ResourceCallbacks<Sale>,
       {
-        resource: "contacts",
-        beforeCreate: async (createParams, dataProvider) => {
-          const params = {
-            ...createParams,
-            data: {
-              ...createParams.data,
-              first_seen:
-                createParams.data.first_seen ?? new Date().toISOString(),
-              last_seen:
-                createParams.data.last_seen ?? new Date().toISOString(),
-            },
-          };
-          const newParams = await processContactAvatar(params);
-          return fetchAndUpdateCompanyData(newParams, dataProvider);
-        },
-        afterCreate: async (result) => {
-          if (result.data.company_id != null) {
-            await updateCompany(result.data.company_id, (company) => ({
-              nb_contacts: (company.nb_contacts ?? 0) + 1,
-            }));
-          }
-
-          return result;
-        },
-        beforeUpdate: async (params) => {
-          const newParams = await processContactAvatar(params);
-          return fetchAndUpdateCompanyData(newParams, dataProvider);
-        },
-        afterDelete: async (result) => {
-          if (result.data.company_id != null) {
-            await updateCompany(result.data.company_id, (company) => ({
-              nb_contacts: (company.nb_contacts ?? 1) - 1,
-            }));
-          }
-
-          return result;
-        },
-      } satisfies ResourceCallbacks<Contact>,
-      {
-        resource: "tasks",
-        afterCreate: async (result, dataProvider) => {
-          // update the task count in the related contact
-          const { contact_id } = result.data;
-          const { data: contact } = await dataProvider.getOne("contacts", {
-            id: contact_id,
-          });
-          await dataProvider.update("contacts", {
-            id: contact_id,
-            data: {
-              nb_tasks: (contact.nb_tasks ?? 0) + 1,
-            },
-            previousData: contact,
-          });
-          return result;
-        },
-        beforeUpdate: async (params) => {
-          const { data, previousData } = params;
-          if (previousData.done_date !== data.done_date) {
-            taskUpdateType = data.done_date
-              ? TASK_MARKED_AS_DONE
-              : TASK_MARKED_AS_UNDONE;
-          } else {
-            taskUpdateType = TASK_DONE_NOT_CHANGED;
-          }
-          return params;
-        },
-        afterUpdate: async (result, dataProvider) => {
-          // update the contact: if the task is done, decrement the nb tasks, otherwise increment it
-          const { contact_id } = result.data;
-          const { data: contact } = await dataProvider.getOne("contacts", {
-            id: contact_id,
-          });
-          if (taskUpdateType !== TASK_DONE_NOT_CHANGED) {
-            await dataProvider.update("contacts", {
-              id: contact_id,
-              data: {
-                nb_tasks:
-                  taskUpdateType === TASK_MARKED_AS_DONE
-                    ? (contact.nb_tasks ?? 0) - 1
-                    : (contact.nb_tasks ?? 0) + 1,
-              },
-              previousData: contact,
-            });
-          }
-          return result;
-        },
-        afterDelete: async (result, dataProvider) => {
-          // update the task count in the related contact
-          const { contact_id } = result.data;
-          const { data: contact } = await dataProvider.getOne("contacts", {
-            id: contact_id,
-          });
-          await dataProvider.update("contacts", {
-            id: contact_id,
-            data: {
-              nb_tasks: (contact.nb_tasks ?? 0) - 1,
-            },
-            previousData: contact,
-          });
-          return result;
-        },
-      } satisfies ResourceCallbacks<Task>,
-      {
-        resource: "companies",
-        beforeCreate: async (params) => {
-          const createParams = await processCompanyLogo(params);
-
-          return {
-            ...createParams,
-            data: {
-              ...createParams.data,
-              created_at: new Date().toISOString(),
-            },
-          };
-        },
-        beforeUpdate: async (params) => {
-          return await processCompanyLogo(params);
-        },
-        afterUpdate: async (result, dataProvider) => {
-          // get all contacts of the company and for each contact, update the company_name
-          const { id, name } = result.data;
-          const { data: contacts } = await dataProvider.getList("contacts", {
-            filter: { company_id: id },
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: "id", order: "ASC" },
-          });
-
-          const contactIds = contacts.map((contact) => contact.id);
-          await dataProvider.updateMany("contacts", {
-            ids: contactIds,
-            data: { company_name: name },
-          });
-          return result;
-        },
-      } satisfies ResourceCallbacks<Company>,
+        resource: "patients",
+        beforeCreate: async (params) => ({
+          ...params,
+          data: normalizePatient({
+            ...withoutKeys(params.data, PATIENT_VIEW_COLUMNS),
+            tags: params.data.tags ?? [],
+            sales_id: params.data.sales_id ?? (await currentSalesId()),
+            first_seen: params.data.first_seen ?? new Date().toISOString(),
+            last_seen: params.data.last_seen ?? new Date().toISOString(),
+          }),
+        }),
+        beforeUpdate: async (params) => ({
+          ...params,
+          data: normalizePatient(
+            withoutKeys(params.data, PATIENT_VIEW_COLUMNS),
+          ),
+        }),
+      } satisfies ResourceCallbacks<Patient>,
       {
         resource: "deals",
         beforeCreate: async (params) => {
+          const [pipelines, stages] = await Promise.all([
+            all<Pipeline>("pipelines"),
+            all<Stage>("stages"),
+          ]);
+          const data = withoutKeys(params.data, DEAL_VIEW_COLUMNS);
+          const pipeline_id =
+            data.pipeline_id ??
+            (pipelines.find((p) => p.is_default) ?? pipelines[0])?.id;
+          const stage_id =
+            data.stage_id ??
+            stages
+              .filter((s) => s.pipeline_id === pipeline_id)
+              .sort((a, b) => a.position - b.position)[0]?.id;
+          const { kind } = checkDealStageChange({
+            next: {
+              pipeline_id,
+              stage_id,
+              lost_reason_id: data.lost_reason_id,
+            },
+            stages,
+          });
+          const now = new Date().toISOString();
           return {
             ...params,
             data: {
-              ...params.data,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+              ...data,
+              pipeline_id,
+              stage_id,
+              plan_amount: Number(data.plan_amount ?? 0),
+              paid_amount: 0,
+              tags: data.tags ?? [],
+              index: data.index ?? 0,
+              sales_id:
+                data.sales_id === undefined
+                  ? await currentSalesId()
+                  : data.sales_id,
+              created_at: now,
+              updated_at: now,
+              stage_changed_at: now,
+              closed_at: kind === "open" ? null : now,
             },
           };
         },
         afterCreate: async (result) => {
-          await updateCompany(result.data.company_id, (company) => ({
-            nb_deals: (company.nb_deals ?? 0) + 1,
-          }));
-
+          const deal = result.data as Deal;
+          await logDealEvent({
+            deal_id: deal.id,
+            type: "created",
+            to_stage_id: deal.stage_id,
+            changes: {},
+          });
+          // Same as the database: the first deal gives the patient its source
+          if (deal.source_id != null) {
+            const { data: patient } = await baseDataProvider.getOne<Patient>(
+              "patients",
+              { id: deal.patient_id },
+            );
+            if (patient && patient.source_id == null) {
+              await baseDataProvider.update("patients", {
+                id: patient.id,
+                data: { source_id: deal.source_id },
+                previousData: patient,
+              });
+            }
+          }
           return result;
         },
         beforeUpdate: async (params) => {
+          const { data: previous } = await baseDataProvider.getOne<Deal>(
+            "deals",
+            { id: params.id },
+          );
+          const data = withoutKeys(params.data, [
+            ...DEAL_VIEW_COLUMNS,
+            "paid_amount",
+            "created_at",
+          ]);
+          const stages = await all<Stage>("stages");
+          const [settings] = await all<OrganizationSettings>(
+            "organization_settings",
+          );
+          const next = applyPipelineMove({
+            previous,
+            next: { ...previous, ...data } as Deal,
+            stages,
+            mode: settings?.pipeline_move_mode,
+          });
+          if (next.stage_id !== previous.stage_id) {
+            data.stage_id = next.stage_id;
+          }
+          const { changed, kind } = checkDealStageChange({
+            previous,
+            next,
+            stages,
+          });
+          previousDeals.set(params.id, previous);
+          const now = new Date().toISOString();
+          const onlyIndex = Object.keys(data).every((key) =>
+            ["index", "id"].includes(key),
+          );
           return {
             ...params,
             data: {
-              ...params.data,
-              updated_at: new Date().toISOString(),
+              ...data,
+              ...(onlyIndex ? {} : { updated_at: now }),
+              ...(changed
+                ? {
+                    stage_changed_at: now,
+                    closed_at: kind === "open" ? null : now,
+                  }
+                : {}),
             },
           };
         },
-        afterDelete: async (result) => {
-          await updateCompany(result.data.company_id, (company) => ({
-            nb_deals: (company.nb_deals ?? 1) - 1,
-          }));
-
+        afterUpdate: async (result) => {
+          const deal = result.data as Deal;
+          const previous = previousDeals.get(deal.id);
+          previousDeals.delete(deal.id);
+          if (!previous) return result;
+          const changes = dealChanges(previous, deal);
+          if (previous.stage_id !== deal.stage_id) {
+            await logDealEvent({
+              deal_id: deal.id,
+              type: "stage_changed",
+              from_stage_id: previous.stage_id,
+              to_stage_id: deal.stage_id,
+              changes,
+            });
+          } else if (Object.keys(changes).length) {
+            await logDealEvent({ deal_id: deal.id, type: "updated", changes });
+          }
           return result;
         },
       } satisfies ResourceCallbacks<Deal>,
       {
-        resource: "contact_notes",
+        resource: "deal_payments",
+        beforeCreate: async (params) => {
+          if (!(Number(params.data.amount) > 0)) {
+            throw new Error("Сумма оплаты должна быть больше нуля");
+          }
+          return {
+            ...params,
+            data: {
+              ...params.data,
+              amount: Number(params.data.amount),
+              paid_at:
+                params.data.paid_at ?? new Date().toISOString().slice(0, 10),
+              sales_id: await currentSalesId(),
+              created_at: new Date().toISOString(),
+            },
+          };
+        },
+        afterCreate: async (result) => {
+          await syncPaidAmount(result.data.deal_id);
+          return result;
+        },
+        afterUpdate: async (result) => {
+          await syncPaidAmount(result.data.deal_id);
+          return result;
+        },
+        afterDelete: async (result) => {
+          await syncPaidAmount(result.data.deal_id);
+          return result;
+        },
+      } satisfies ResourceCallbacks<DealPayment>,
+      {
+        resource: "stages",
+        beforeUpdate: async (params) => {
+          if (params.data.kind != null) {
+            const { data: stage } = await baseDataProvider.getOne<Stage>(
+              "stages",
+              { id: params.id },
+            );
+            const siblings = (await all<Stage>("stages"))
+              .filter((s) => s.pipeline_id === stage.pipeline_id)
+              .map((s) => (s.id === stage.id ? { ...s, ...params.data } : s));
+            if (!pipelineHasClosingStages(siblings)) {
+              throw new Error(
+                "В воронке должна быть хотя бы одна стадия «Успешно» и одна «Отказ»",
+              );
+            }
+          }
+          return params;
+        },
+        beforeDelete: async (params) => {
+          const deals = await all<Deal>("deals");
+          if (deals.some((deal) => deal.stage_id === params.id)) {
+            throw new Error("crm.settings.errors.in_use");
+          }
+          const { data: stage } = await baseDataProvider.getOne<Stage>(
+            "stages",
+            { id: params.id },
+          );
+          const remaining = (await all<Stage>("stages")).filter(
+            (s) => s.pipeline_id === stage.pipeline_id && s.id !== stage.id,
+          );
+          if (!pipelineHasClosingStages(remaining)) {
+            throw new Error(
+              "В воронке должна быть хотя бы одна стадия «Успешно» и одна «Отказ»",
+            );
+          }
+          return params;
+        },
+      } satisfies ResourceCallbacks<Stage>,
+      {
+        resource: "pipelines",
+        beforeDelete: async (params) => {
+          const deals = await all<Deal>("deals");
+          if (deals.some((deal) => deal.pipeline_id === params.id)) {
+            throw new Error("crm.settings.errors.in_use");
+          }
+          return params;
+        },
+        afterDelete: async (result) => {
+          const stages = (await all<Stage>("stages")).filter(
+            (stage) => stage.pipeline_id === result.data.id,
+          );
+          await Promise.all(
+            stages.map((stage) =>
+              baseDataProvider.delete("stages", {
+                id: stage.id,
+                previousData: stage,
+              }),
+            ),
+          );
+          return result;
+        },
+      } satisfies ResourceCallbacks<Pipeline>,
+      {
+        resource: "lead_sources",
+        beforeDelete: async (params) => {
+          if (params.previousData?.is_system) {
+            throw new Error("Системный источник нельзя удалить");
+          }
+          return params;
+        },
+      },
+      {
+        resource: "tasks",
+        beforeCreate: async (params) => ({
+          ...params,
+          data: {
+            ...params.data,
+            sales_id: params.data.sales_id ?? (await currentSalesId()),
+          },
+        }),
+      } satisfies ResourceCallbacks<Task>,
+      {
+        resource: "calls",
+        beforeCreate: async (params) => ({
+          ...params,
+          data: {
+            ...params.data,
+            sales_id: params.data.sales_id ?? (await currentSalesId()),
+          },
+        }),
+      },
+      {
+        resource: "patient_notes",
         beforeSave: async (params) => preserveAttachmentMimeType(params),
-      } satisfies ResourceCallbacks<ContactNote>,
+      } satisfies ResourceCallbacks<PatientNote>,
       {
         resource: "deal_notes",
         beforeSave: async (params) => preserveAttachmentMimeType(params),

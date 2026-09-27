@@ -10,6 +10,8 @@
 
 -- Extensions
 create extension if not exists "citext" with schema "extensions";
+-- net.http_post: note attachments cleanup (cleanup_note_attachments)
+create extension if not exists "pg_net" with schema "extensions";
 
 -- Private schema: helpers not exposed through the REST API
 create schema if not exists "private";

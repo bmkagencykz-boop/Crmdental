@@ -10,24 +10,10 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/admin/spinner";
 import { RotateCcw } from "lucide-react";
-import {
-  COMPANY_CREATED,
-  CONTACT_CREATED,
-  CONTACT_NOTE_CREATED,
-  DEAL_CREATED,
-  DEAL_NOTE_CREATED,
-} from "../consts";
 import type { Activity } from "../types";
-import { ActivityLogCompanyCreated } from "./ActivityLogCompanyCreated";
-import { ActivityLogContactCreated } from "./ActivityLogContactCreated";
-import { ActivityLogContactNoteCreated } from "./ActivityLogContactNoteCreated";
-import { ActivityLogDealCreated } from "./ActivityLogDealCreated";
-import { ActivityLogDealNoteCreated } from "./ActivityLogDealNoteCreated";
-import { InfinitePagination } from "../misc/InfinitePagination";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { ActivityLogItem } from "./ActivityLogItem";
 
 export function ActivityLogIterator() {
-  const isMobile = useIsMobile();
   const { data, isPending, error, refetch } = useListContext<Activity>();
   const { hasNextPage, fetchNextPage, isFetchingNextPage } =
     useInfinitePaginationContext();
@@ -72,13 +58,12 @@ export function ActivityLogIterator() {
     <div className="space-y-4">
       {data?.map((activity, index) => (
         <Fragment key={index}>
-          <ActivityItem activity={activity} />
+          <ActivityLogItem activity={activity} />
           {index < data.length - 1 && <Separator />}
         </Fragment>
       ))}
 
-      {/* Desktop: explicit Load More button */}
-      {!isMobile && hasNextPage && (
+      {hasNextPage && (
         <a
           href="#"
           onClick={(e) => {
@@ -94,37 +79,6 @@ export function ActivityLogIterator() {
           )}
         </a>
       )}
-
-      {/* Mobile: auto-load on scroll via IntersectionObserver */}
-      {isMobile && (
-        <div className="flex justify-center">
-          <InfinitePagination />
-        </div>
-      )}
     </div>
   );
-}
-
-function ActivityItem({ activity }: { activity: Activity }) {
-  if (activity.type === COMPANY_CREATED) {
-    return <ActivityLogCompanyCreated activity={activity} />;
-  }
-
-  if (activity.type === CONTACT_CREATED) {
-    return <ActivityLogContactCreated activity={activity} />;
-  }
-
-  if (activity.type === CONTACT_NOTE_CREATED) {
-    return <ActivityLogContactNoteCreated activity={activity} />;
-  }
-
-  if (activity.type === DEAL_CREATED) {
-    return <ActivityLogDealCreated activity={activity} />;
-  }
-
-  if (activity.type === DEAL_NOTE_CREATED) {
-    return <ActivityLogDealNoteCreated activity={activity} />;
-  }
-
-  return null;
 }

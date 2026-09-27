@@ -2,18 +2,26 @@ import { AutocompleteInput } from "@/components/admin/autocomplete-input";
 import { ReferenceInput } from "@/components/admin/reference-input";
 import { SelectInput } from "@/components/admin/select-input";
 import { TextInput } from "@/components/admin/text-input";
-import { required } from "ra-core";
+import { required, useTranslate } from "ra-core";
 import { DateTimeInput } from "@/components/admin";
 
-import { contactOptionText } from "../misc/ContactOption";
-import { useConfigurationContext } from "../root/ConfigurationContext";
+import { patientDisplayName } from "../patients/parsePatientText";
+import type { Deal } from "../types";
+import { taskTypeChoices } from "./taskTypes";
 
-export const TaskFormContent = ({
-  selectContact,
-}: {
-  selectContact?: boolean;
-}) => {
-  const { taskTypes } = useConfigurationContext();
+const dealOptionText = (deal: Deal) =>
+  [
+    patientDisplayName({
+      last_name: deal.patient_last_name,
+      first_name: deal.patient_first_name,
+    }),
+    deal.name,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+export const TaskFormContent = ({ selectDeal }: { selectDeal?: boolean }) => {
+  const translate = useTranslate();
   return (
     <div className="flex flex-col gap-4">
       <TextInput
@@ -24,11 +32,15 @@ export const TaskFormContent = ({
         className="m-0"
         helperText={false}
       />
-      {selectContact && (
-        <ReferenceInput source="contact_id" reference="contacts_summary">
+      {selectDeal && (
+        <ReferenceInput
+          source="deal_id"
+          reference="deals"
+          filter={{ "archived_at@is": null }}
+        >
           <AutocompleteInput
-            label="resources.tasks.fields.contact_id"
-            optionText={contactOptionText}
+            label="resources.tasks.fields.deal_id"
+            optionText={dealOptionText}
             helperText={false}
             validate={required()}
             modal
@@ -45,10 +57,8 @@ export const TaskFormContent = ({
         <SelectInput
           source="type"
           validate={required()}
-          choices={taskTypes}
-          optionText="label"
-          optionValue="value"
-          defaultValue="none"
+          choices={taskTypeChoices(translate)}
+          defaultValue="call"
           helperText={false}
         />
       </div>

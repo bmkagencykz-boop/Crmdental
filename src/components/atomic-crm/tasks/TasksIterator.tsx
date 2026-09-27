@@ -4,10 +4,10 @@ import { Task } from "./Task";
 import { isDone, isRecentlyDone } from "./tasksPredicate";
 
 export const TasksIterator = ({
-  showContact,
+  showDeal,
   className,
 }: {
-  showContact?: boolean;
+  showDeal?: boolean;
   className?: string;
 }) => {
   const { data, error, isPending } = useListContext();
@@ -19,7 +19,7 @@ export const TasksIterator = ({
   return (
     <div className={`space-y-4 md:space-y-2 ${className || ""}`}>
       {tasks.map((task) => (
-        <Task task={task} showContact={showContact} key={task.id} />
+        <Task task={task} showDeal={showDeal} key={task.id} />
       ))}
     </div>
   );

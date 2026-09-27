@@ -2,13 +2,11 @@ import { Plus } from "lucide-react";
 import {
   CreateBase,
   Form,
-  useDataProvider,
   useGetIdentity,
-  useGetRecordRepresentation,
   useNotify,
   useRecordContext,
+  useRefresh,
   useTranslate,
-  useUpdate,
 } from "ra-core";
 import { useState } from "react";
 import { SaveButton } from "@/components/admin/form";
@@ -27,41 +25,43 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import type { Deal } from "../types";
 import { TaskFormContent } from "./TaskFormContent";
 
+/** Tomorrow at 10:00, a sensible default for a follow-up call */
+const tomorrowMorning = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(10, 0, 0, 0);
+  return date.toISOString();
+};
+
+/**
+ * Adds a task to the deal of the record context, or to a deal picked in the
+ * form (selectDeal, e.g. from the dashboard).
+ */
 export const AddTask = ({
-  selectContact,
+  selectDeal,
   display = "chip",
 }: {
-  selectContact?: boolean;
+  selectDeal?: boolean;
   display?: "chip" | "icon";
 }) => {
   const { identity } = useGetIdentity();
-  const dataProvider = useDataProvider();
-  const [update] = useUpdate();
   const notify = useNotify();
+  const refresh = useRefresh();
   const translate = useTranslate();
-  const contact = useRecordContext();
+  const deal = useRecordContext<Deal>();
   const [open, setOpen] = useState(false);
   const handleOpen = () => {
     setOpen(true);
   };
-  const getContactRepresentation = useGetRecordRepresentation("contacts");
 
-  const handleSuccess = async (data: any) => {
+  const handleSuccess = async () => {
     setOpen(false);
-    const contact = await dataProvider.getOne("contacts", {
-      id: data.contact_id,
-    });
-    if (!contact.data) return;
-
-    await update("contacts", {
-      id: contact.data.id,
-      data: { last_seen: new Date().toISOString() },
-      previousData: contact.data,
-    });
-
     notify("resources.tasks.added");
+    // Board and deal counters (no task / overdue) depend on the tasks
+    refresh();
   };
 
   if (!identity) return null;
@@ -77,6 +77,7 @@ export const AddTask = ({
                 variant="ghost"
                 className="p-2 cursor-pointer"
                 onClick={handleOpen}
+                aria-label={translate("resources.tasks.action.create")}
               >
                 <Plus className="w-4 h-4" />
               </Button>
@@ -103,10 +104,10 @@ export const AddTask = ({
       <CreateBase
         resource="tasks"
         record={{
-          type: "none",
-          contact_id: contact?.id,
-          due_date: new Date().toISOString(),
-          sales_id: identity.id,
+          type: "call",
+          deal_id: selectDeal ? undefined : deal?.id,
+          due_date: tomorrowMorning(),
+          sales_id: (!selectDeal && deal?.sales_id) || identity.id,
         }}
         mutationOptions={{ onSuccess: handleSuccess }}
       >
@@ -115,14 +116,10 @@ export const AddTask = ({
             <Form className="flex flex-col gap-4">
               <DialogHeader>
                 <DialogTitle>
-                  {!selectContact
-                    ? translate("resources.tasks.dialog.create_for", {
-                        name: getContactRepresentation(contact!),
-                      })
-                    : translate("resources.tasks.dialog.create")}
+                  {translate("resources.tasks.dialog.create")}
                 </DialogTitle>
               </DialogHeader>
-              <TaskFormContent selectContact={selectContact} />
+              <TaskFormContent selectDeal={selectDeal} />
               <DialogFooter className="w-full justify-end">
                 <SaveButton />
               </DialogFooter>

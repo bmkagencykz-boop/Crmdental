@@ -2,9 +2,8 @@ import type { Identifier, RaRecord } from "ra-core";
 import type { ComponentType } from "react";
 
 import type {
-  COMPANY_CREATED,
-  CONTACT_CREATED,
-  CONTACT_NOTE_CREATED,
+  PATIENT_CREATED,
+  PATIENT_NOTE_CREATED,
   DEAL_CREATED,
   DEAL_NOTE_CREATED,
 } from "./consts";
@@ -63,62 +62,42 @@ export type Sale = {
   password?: string;
 } & Pick<RaRecord, "id">;
 
-export type Company = {
-  name: string;
-  logo: RAFile;
-  sector: string;
-  size: 1 | 10 | 50 | 250 | 500;
-  linkedin_url: string;
-  website: string;
-  phone_number: string;
-  address: string;
-  zipcode: string;
-  city: string;
-  state_abbr: string;
-  sales_id?: Identifier;
-  created_at: string;
-  description: string;
-  revenue: string;
-  tax_identifier: string;
-  country: string;
-  context_links?: string[];
-  nb_contacts?: number;
-  nb_deals?: number;
-} & Pick<RaRecord, "id">;
-
-export type EmailAndType = {
-  email: string;
-  type: "Work" | "Home" | "Other";
-};
-
 export type PhoneNumberAndType = {
   number: string;
-  type: "Work" | "Home" | "Other";
+  type?: string;
 };
 
-export type Contact = {
+export type Patient = {
+  organization_id?: Identifier;
   first_name: string;
   last_name: string;
-  title: string;
-  company_id?: Identifier | null;
-  email_jsonb: EmailAndType[];
+  middle_name?: string | null;
+  phone_jsonb: PhoneNumberAndType[];
+  /** Normalized numbers (+7XXXXXXXXXX), maintained by the database */
+  phones?: string[];
+  birth_date?: string | null;
+  city?: string | null;
+  whatsapp?: string | null;
+  instagram?: string | null;
+  telegram?: string | null;
+  /** Source of the first request */
+  source_id?: Identifier | null;
+  tags: number[];
+  sales_id?: Identifier | null;
+  gender?: string | null;
   avatar?: Partial<RAFile>;
-  linkedin_url?: string | null;
+  background?: string | null;
+  status?: string | null;
   first_seen: string;
   last_seen: string;
-  has_newsletter: boolean;
-  tags: number[];
-  gender: string;
-  sales_id?: Identifier;
-  status: string;
-  background: string;
-  phone_jsonb: PhoneNumberAndType[];
+  // patients_summary
+  nb_deals?: number;
+  nb_open_deals?: number;
   nb_tasks?: number;
-  company_name?: string;
 } & Pick<RaRecord, "id">;
 
-export type ContactNote = {
-  contact_id: Identifier;
+export type PatientNote = {
+  patient_id: Identifier;
   text: string;
   date: string;
   sales_id: Identifier;
@@ -126,21 +105,107 @@ export type ContactNote = {
   attachments?: AttachmentNote[];
 } & Pick<RaRecord, "id">;
 
-export type Deal = {
+export type StageKind = "open" | "won" | "lost";
+
+export type Pipeline = {
   name: string;
-  company_id: Identifier;
-  contact_ids: Identifier[];
-  category: string;
-  stage: string;
-  description: string;
-  amount: number;
+  position: number;
+  is_default: boolean;
+} & Pick<RaRecord, "id">;
+
+export type Stage = {
+  pipeline_id: Identifier;
+  name: string;
+  position: number;
+  color: string;
+  kind: StageKind;
+} & Pick<RaRecord, "id">;
+
+/** A clinic dictionary entry: services, lost reasons */
+export type DictionaryItem = {
+  name: string;
+  position: number;
+  is_archived: boolean;
+} & Pick<RaRecord, "id">;
+
+export type Service = DictionaryItem;
+export type LostReason = DictionaryItem;
+export type LeadSource = DictionaryItem & {
+  /** whatsapp, instagram, telegram, call, website, 2gis, referral, other */
+  code?: string | null;
+  is_system: boolean;
+};
+
+export type Deal = {
+  organization_id?: Identifier;
+  patient_id: Identifier;
+  pipeline_id: Identifier;
+  stage_id: Identifier;
+  name?: string | null;
+  source_id?: Identifier | null;
+  service_id?: Identifier | null;
+  /** Treatment plan, tenge */
+  plan_amount: number;
+  /** Sum of the payments, maintained by the database */
+  paid_amount: number;
+  sales_id?: Identifier | null;
+  lost_reason_id?: Identifier | null;
+  lost_comment?: string | null;
+  appointment_at?: string | null;
+  visit_at?: string | null;
+  tags: number[];
+  description?: string | null;
+  index: number;
   created_at: string;
   updated_at: string;
-  archived_at?: string;
-  expected_closing_date: string;
-  sales_id: Identifier;
-  index: number;
+  stage_changed_at?: string;
+  closed_at?: string | null;
+  first_response_at?: string | null;
+  archived_at?: string | null;
+  // deals_summary
+  stage_kind?: StageKind;
+  patient_first_name?: string | null;
+  patient_last_name?: string | null;
+  patient_phone?: string | null;
+  nb_open_tasks?: number;
+  next_task_due_at?: string | null;
 } & Pick<RaRecord, "id">;
+
+export type DealPayment = {
+  deal_id: Identifier;
+  amount: number;
+  paid_at: string;
+  comment?: string | null;
+  sales_id?: Identifier | null;
+  created_at: string;
+} & Pick<RaRecord, "id">;
+
+export type DealEvent = {
+  deal_id: Identifier;
+  type: "created" | "stage_changed" | "updated";
+  from_stage_id?: Identifier | null;
+  to_stage_id?: Identifier | null;
+  /** { field: [old, new] } */
+  changes: Record<string, [unknown, unknown]>;
+  sales_id?: Identifier | null;
+  created_at: string;
+} & Pick<RaRecord, "id">;
+
+export type Call = {
+  patient_id: Identifier;
+  deal_id?: Identifier | null;
+  direction: "in" | "out";
+  duration_seconds: number;
+  comment?: string | null;
+  called_at: string;
+  sales_id?: Identifier | null;
+} & Pick<RaRecord, "id">;
+
+export type OrganizationSettings = {
+  organization_id: Identifier;
+  manager_deal_visibility: "all" | "own" | "own_and_unassigned";
+  pipeline_move_mode: "first_stage" | "choose_stage";
+};
 
 export type DealNote = {
   deal_id: Identifier;
@@ -149,7 +214,7 @@ export type DealNote = {
   sales_id: Identifier;
   attachments?: AttachmentNote[];
 
-  // This is defined for compatibility with `ContactNote`
+  // This is defined for compatibility with `PatientNote`
   status?: undefined;
 } & Pick<RaRecord, "id">;
 
@@ -159,41 +224,35 @@ export type Tag = {
   color: string;
 };
 
+export type TaskType = "call" | "message" | "reminder" | "other";
+
 export type Task = {
-  contact_id: Identifier;
-  type: string;
+  deal_id: Identifier;
+  type: TaskType;
   text: string;
   due_date: string;
   done_date?: string | null;
   sales_id?: Identifier;
 } & Pick<RaRecord, "id">;
 
-export type ActivityCompanyCreated = {
-  type: typeof COMPANY_CREATED;
-  company_id: Identifier;
-  company: Company;
-  sales_id: Identifier;
+export type ActivityPatientCreated = {
+  type: typeof PATIENT_CREATED;
+  patient_id: Identifier;
+  sales_id?: Identifier;
+  patient: Patient;
   date: string;
 } & Pick<RaRecord, "id">;
 
-export type ActivityContactCreated = {
-  type: typeof CONTACT_CREATED;
-  company_id: Identifier;
+export type ActivityPatientNoteCreated = {
+  type: typeof PATIENT_NOTE_CREATED;
   sales_id?: Identifier;
-  contact: Contact;
-  date: string;
-} & Pick<RaRecord, "id">;
-
-export type ActivityContactNoteCreated = {
-  type: typeof CONTACT_NOTE_CREATED;
-  sales_id?: Identifier;
-  contactNote: ContactNote;
+  patientNote: PatientNote;
   date: string;
 } & Pick<RaRecord, "id">;
 
 export type ActivityDealCreated = {
   type: typeof DEAL_CREATED;
-  company_id: Identifier;
+  patient_id: Identifier;
   sales_id?: Identifier;
   deal: Deal;
   date: string;
@@ -208,9 +267,8 @@ export type ActivityDealNoteCreated = {
 
 export type Activity = RaRecord &
   (
-    | ActivityCompanyCreated
-    | ActivityContactCreated
-    | ActivityContactNoteCreated
+    | ActivityPatientCreated
+    | ActivityPatientNoteCreated
     | ActivityDealCreated
     | ActivityDealNoteCreated
   );
@@ -230,13 +288,11 @@ export interface LabeledValue {
   label: string;
 }
 
-export type DealStage = LabeledValue;
-
 export interface NoteStatus extends LabeledValue {
   color: string;
 }
 
-export interface ContactGender {
+export interface PatientGender {
   value: string;
   label: string;
   icon: ComponentType<{ className?: string }>;

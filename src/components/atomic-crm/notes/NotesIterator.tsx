@@ -10,7 +10,7 @@ export const NotesIterator = ({
   reference,
   showStatus,
 }: {
-  reference: "contacts" | "deals";
+  reference: "patients" | "deals";
   showStatus?: boolean;
 }) => {
   const { isPending, error, data = [] } = useListContext();

@@ -44,6 +44,12 @@ revoke all on function private.seed_organization(bigint) from public;
 grant execute on function private.seed_organization(bigint) to service_role;
 revoke all on function private.check_pipeline_stages() from public;
 grant execute on function private.check_pipeline_stages() to service_role;
+revoke all on function private.create_sales_for_user(auth.users, bigint, text) from public;
+grant execute on function private.create_sales_for_user(auth.users, bigint, text) to service_role;
+revoke all on function private.invited_role(jsonb) from public;
+grant execute on function private.invited_role(jsonb) to service_role;
+revoke all on function private.delete_organization_data() from public;
+grant execute on function private.delete_organization_data() to service_role;
 
 -- Function grants
 grant all on function public.cleanup_note_attachments() to anon;

@@ -347,4 +347,19 @@ select tests.assert(
   'a manager cannot cancel the messages of a deal they do not see');
 select tests.logout();
 
+--
+-- Stage scripts: written by the owner and the head, read by everyone
+--
+select tests.login_as(current_setting('t.owner')::uuid);
+update public.stages set script = 'Поздоровайтесь и представьтесь' where id = tests.stage('Новый лид');
+select tests.logout();
+select tests.login_as(current_setting('t.m1')::uuid);
+select tests.assert(
+  (select script from public.stages where id = tests.stage('Новый лид')) = 'Поздоровайтесь и представьтесь',
+  'employees read the script of a stage');
+select tests.assert(
+  tests.affected($q$update public.stages set script = 'x'$q$) = 0,
+  'managers cannot edit scripts');
+select tests.logout();
+
 rollback;

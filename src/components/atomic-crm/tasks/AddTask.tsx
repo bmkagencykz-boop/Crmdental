@@ -7,6 +7,7 @@ import {
   useRecordContext,
   useRefresh,
   useTranslate,
+  type Identifier,
 } from "ra-core";
 import { useState } from "react";
 import { SaveButton } from "@/components/admin/form";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import type { Deal } from "../types";
+import { defaultDuration } from "./calendarLayout";
 import { TaskFormContent } from "./TaskFormContent";
 
 /** Tomorrow at 10:00, a sensible default for a follow-up call */
@@ -101,32 +103,64 @@ export const AddTask = ({
         </div>
       )}
 
-      <CreateBase
-        resource="tasks"
+      <TaskCreateDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onSuccess={handleSuccess}
+        selectDeal={selectDeal}
         record={{
-          type: "call",
           deal_id: selectDeal ? undefined : deal?.id,
           due_date: tomorrowMorning(),
           sales_id: (!selectDeal && deal?.sales_id) || identity.id,
         }}
-        mutationOptions={{ onSuccess: handleSuccess }}
-      >
-        <Dialog open={open} onOpenChange={() => setOpen(false)}>
-          <DialogContent className="lg:max-w-xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
-            <Form className="flex flex-col gap-4">
-              <DialogHeader>
-                <DialogTitle>
-                  {translate("resources.tasks.dialog.create")}
-                </DialogTitle>
-              </DialogHeader>
-              <TaskFormContent selectDeal={selectDeal} />
-              <DialogFooter className="w-full justify-end">
-                <SaveButton />
-              </DialogFooter>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </CreateBase>
+      />
     </>
+  );
+};
+
+/**
+ * The «Новая задача» dialog. The calendar opens it on an empty slot with
+ * the slot's time.
+ */
+export const TaskCreateDialog = ({
+  open,
+  onClose,
+  onSuccess,
+  selectDeal,
+  record,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  selectDeal?: boolean;
+  record: { deal_id?: Identifier; due_date: string; sales_id?: Identifier };
+}) => {
+  const translate = useTranslate();
+  return (
+    <CreateBase
+      resource="tasks"
+      record={{
+        type: "call",
+        duration_minutes: defaultDuration("call"),
+        ...record,
+      }}
+      mutationOptions={{ onSuccess }}
+    >
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="lg:max-w-xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
+          <Form className="flex flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>
+                {translate("resources.tasks.dialog.create")}
+              </DialogTitle>
+            </DialogHeader>
+            <TaskFormContent selectDeal={selectDeal} />
+            <DialogFooter className="w-full justify-end">
+              <SaveButton />
+            </DialogFooter>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </CreateBase>
   );
 };

@@ -1,12 +1,15 @@
-import { CheckSquare } from "lucide-react";
-import { useTranslate } from "ra-core";
+import { CalendarDays, CheckSquare } from "lucide-react";
+import { useStore, useTranslate } from "ra-core";
+import { Link } from "react-router";
 import { Card } from "@/components/ui/card";
 
 import { AddTask } from "../tasks/AddTask";
 import { TasksListContent } from "../tasks/TasksListContent";
+import { TASKS_VIEW_STORE_KEY, type TasksView } from "../tasks/TasksPage";
 
 export const TasksList = () => {
   const translate = useTranslate();
+  const [, setTasksView] = useStore<TasksView>(TASKS_VIEW_STORE_KEY, "list");
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
@@ -18,6 +21,14 @@ export const TasksList = () => {
             _: "Upcoming Tasks",
           })}
         </h2>
+        <Link
+          to="/tasks"
+          onClick={() => setTasksView("week")}
+          className="mr-1 flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand-link hover:bg-accent"
+        >
+          <CalendarDays className="size-3.5" />
+          {translate("task_calendar.open_calendar")}
+        </Link>
         <AddTask display="icon" selectDeal />
       </div>
       <Card className="p-4 mb-2">

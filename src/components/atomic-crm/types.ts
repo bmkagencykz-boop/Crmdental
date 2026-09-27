@@ -335,6 +335,13 @@ export type TelephonyStatus = {
   last_event_at: string | null;
 };
 
+/** The clinic (public.organizations): its time zone drives the task calendar */
+export type Organization = {
+  id: Identifier;
+  name: string;
+  timezone: string;
+};
+
 export type OrganizationSettings = {
   organization_id: Identifier;
   manager_deal_visibility: "all" | "own" | "own_and_unassigned";
@@ -449,7 +456,7 @@ export type Tag = {
   color: string;
 };
 
-export type TaskType = "call" | "message" | "reminder" | "other";
+export type TaskType = "call" | "message" | "meeting" | "reminder" | "other";
 
 export type Task = {
   deal_id: Identifier;
@@ -461,6 +468,10 @@ export type Task = {
   created_at?: string;
   /** "Show to the employee first" automatic message: the task sends it */
   automessage_id?: Identifier | null;
+  /** Minutes; null: the default of the type (tasks/calendarLayout.ts) */
+  duration_minutes?: number | null;
+  /** «Результат», written when the task is completed */
+  result?: string | null;
 } & Pick<RaRecord, "id">;
 
 export type ActivityPatientCreated = {

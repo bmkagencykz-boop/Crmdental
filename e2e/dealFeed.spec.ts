@@ -75,6 +75,8 @@ test.describe("deal card and tasks screen", () => {
       .locator("xpath=ancestor::div[contains(@class,'items-start')][1]")
       .getByRole("checkbox")
       .click();
+    // Completing asks for the result (optional)
+    await page.getByRole("button", { name: "Complete" }).click();
     await expect(feed).toContainText("Task done");
     await expect(feed).toContainText("Send the treatment plan");
   });

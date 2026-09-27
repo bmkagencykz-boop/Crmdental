@@ -1,20 +1,14 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { MoreVertical } from "lucide-react";
-import {
-  useDeleteWithUndoController,
-  useNotify,
-  useTranslate,
-  useUpdate,
-} from "ra-core";
-import { useEffect, useState } from "react";
+import { useDeleteWithUndoController, useNotify, useTranslate } from "ra-core";
+import { useState } from "react";
 import { ReferenceField } from "@/components/admin/reference-field";
 import { DateField } from "@/components/admin/date-field";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -23,6 +17,12 @@ import { patientDisplayName } from "../patients/parsePatientText";
 import type { Deal, Task as TData } from "../types";
 import { useGetSalesName } from "../sales/useGetSalesName";
 import { AutomessageSendButton } from "./AutomessageSendButton";
+import { QUICK_RESCHEDULES } from "./calendarLayout";
+import {
+  formatTaskDuration,
+  TaskCheckbox,
+  useTaskActions,
+} from "./taskActions";
 import { TaskEdit } from "./TaskEdit";
 import { isOverdue } from "./tasksPredicate";
 
@@ -39,7 +39,7 @@ export const Task = ({
 }) => {
   const notify = useNotify();
   const translate = useTranslate();
-  const queryClient = useQueryClient();
+  const { rescheduleBy } = useTaskActions(task);
 
   const [openEdit, setOpenEdit] = useState(false);
 
@@ -47,8 +47,6 @@ export const Task = ({
     setOpenEdit(false);
   };
 
-  const [update, { isPending: isUpdatePending, isSuccess, variables }] =
-    useUpdate();
   const { handleDelete } = useDeleteWithUndoController({
     record: task,
     redirect: false,
@@ -65,29 +63,6 @@ export const Task = ({
     setOpenEdit(true);
   };
 
-  const handleCheck = () => () => {
-    update("tasks", {
-      id: task.id,
-      data: {
-        done_date: task.done_date ? null : new Date().toISOString(),
-      },
-      previousData: task,
-    });
-  };
-
-  useEffect(() => {
-    // We do not want to invalidate the query when a tack is checked or unchecked
-    if (
-      isUpdatePending ||
-      !isSuccess ||
-      variables?.data?.done_date != undefined
-    ) {
-      return;
-    }
-
-    queryClient.invalidateQueries({ queryKey: ["tasks", "getList"] });
-  }, [queryClient, isUpdatePending, isSuccess, variables]);
-
   const responsible = useGetSalesName(task.sales_id, {
     enabled: !!showResponsible && task.sales_id != null,
   });
@@ -98,15 +73,9 @@ export const Task = ({
     <>
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-2 flex-1">
-          <Checkbox
-            id={labelId}
-            checked={!!task.done_date}
-            onCheckedChange={handleCheck()}
-            disabled={isUpdatePending}
-            className="mt-1"
-          />
-          <div className={`flex-grow ${task.done_date ? "line-through" : ""}`}>
-            <div className="text-sm">
+          <TaskCheckbox task={task} id={labelId} className="mt-1" />
+          <div className="flex-grow">
+            <div className={`text-sm ${task.done_date ? "line-through" : ""}`}>
               {task.type && (
                 <>
                   <span className="font-semibold text-sm">
@@ -117,6 +86,11 @@ export const Task = ({
               )}
               <span className="whitespace-pre-line">{task.text}</span>
             </div>
+            {task.done_date && task.result ? (
+              <div className="text-sm text-muted-foreground">
+                {translate("task_calendar.result")}: {task.result}
+              </div>
+            ) : null}
             <AutomessageSendButton task={task} />
             <div className="text-sm text-muted-foreground">
               <span className={overdue ? "font-medium text-brand-red" : ""}>
@@ -136,6 +110,9 @@ export const Task = ({
                   }}
                 />
               </span>
+              {task.duration_minutes
+                ? ` · ${formatTaskDuration(task.duration_minutes, translate)}`
+                : null}
               {showResponsible && responsible ? ` · ${responsible}` : null}
               {showDeal && (
                 <ReferenceField<TData, Deal>
@@ -179,34 +156,16 @@ export const Task = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              className="cursor-pointer h-12 md:h-8 px-4 md:px-2 text-base md:text-sm"
-              onClick={() => {
-                update("tasks", {
-                  id: task.id,
-                  data: {
-                    due_date: postpone(1),
-                  },
-                  previousData: task,
-                });
-              }}
-            >
-              {translate("resources.tasks.actions.postpone_tomorrow")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer h-12 md:h-8 px-4 md:px-2 text-base md:text-sm"
-              onClick={() => {
-                update("tasks", {
-                  id: task.id,
-                  data: {
-                    due_date: postpone(7),
-                  },
-                  previousData: task,
-                });
-              }}
-            >
-              {translate("resources.tasks.actions.postpone_next_week")}
-            </DropdownMenuItem>
+            {QUICK_RESCHEDULES.map((kind) => (
+              <DropdownMenuItem
+                key={kind}
+                className="cursor-pointer h-12 md:h-8 px-4 md:px-2 text-base md:text-sm"
+                onClick={() => rescheduleBy(kind)}
+              >
+                {translate(`task_calendar.reschedule.${kind}`)}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer h-12 md:h-8 px-4 md:px-2 text-base md:text-sm"
               onClick={handleEdit}
@@ -227,7 +186,3 @@ export const Task = ({
     </>
   );
 };
-
-/** Same time of day, n days later */
-const postpone = (days: number) =>
-  new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();

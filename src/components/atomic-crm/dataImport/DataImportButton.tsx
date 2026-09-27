@@ -12,11 +12,17 @@ import type { ImportableResourceName } from "./useImportableResources";
  */
 export const DataImportButton = ({
   resource,
+  iconOnly = false,
 }: {
   resource?: ImportableResourceName;
+  /** Round icon button, the label becomes a tooltip */
+  iconOnly?: boolean;
 }) => {
   const translate = useTranslate();
   const { resources, isImporting, openDialog } = useDataImportContext();
+  const label = translate(
+    resource ? "crm.data_import.button" : "crm.data_import.title",
+  );
   const available = resource
     ? resources.filter(({ name }) => name === resource)
     : resources;
@@ -27,13 +33,20 @@ export const DataImportButton = ({
   return (
     <Button
       variant="outline"
+      size={iconOnly ? "icon" : "default"}
       onClick={() => openDialog(resource)}
       disabled={isImporting}
-      title={isImporting ? translate("crm.data_import.in_progress") : undefined}
+      title={
+        isImporting
+          ? translate("crm.data_import.in_progress")
+          : iconOnly
+            ? label
+            : undefined
+      }
       className="flex items-center gap-2 cursor-pointer"
     >
-      <Upload />{" "}
-      {translate(resource ? "crm.data_import.button" : "crm.data_import.title")}
+      <Upload />
+      <span className={iconOnly ? "sr-only" : undefined}>{label}</span>
     </Button>
   );
 };

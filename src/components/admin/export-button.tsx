@@ -43,6 +43,7 @@ export const ExportButton = (props: ExportButtonProps) => {
     onClick,
     label: labelProp,
     icon = defaultIcon,
+    iconOnly = false,
     exporter: customExporter,
     meta,
     className = "cursor-pointer",
@@ -107,12 +108,14 @@ export const ExportButton = (props: ExportButtonProps) => {
   return (
     <Button
       variant="outline"
+      size={iconOnly ? "icon" : "default"}
       onClick={handleClick}
       disabled={total === 0}
       className={className}
+      title={iconOnly && typeof label === "string" ? label : undefined}
     >
       {icon}
-      {label}
+      <span className={iconOnly ? "sr-only" : undefined}>{label}</span>
     </Button>
   );
 };
@@ -124,6 +127,8 @@ export interface ExportButtonProps {
   exporter?: Exporter;
   icon?: React.ReactNode;
   label?: string;
+  /** Round icon button, the label becomes a tooltip */
+  iconOnly?: boolean;
   maxResults?: number;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   resource?: string;

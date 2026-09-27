@@ -10,7 +10,7 @@ import { TopToolbar } from "../layout/TopToolbar";
 
 const SalesListActions = () => (
   <TopToolbar>
-    <ExportButton />
+    <ExportButton iconOnly />
     <CreateButton label="resources.sales.action.new" />
   </TopToolbar>
 );

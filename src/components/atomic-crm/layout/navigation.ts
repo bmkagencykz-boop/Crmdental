@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { Building2, Columns3, LayoutGrid, UsersRound } from "lucide-react";
 import { useTranslate } from "ra-core";
 
-export const SIDEBAR_WIDTH = "5.25rem";
+export const SIDEBAR_WIDTH = "6rem";
 
 export type NavItem = {
   to: string;

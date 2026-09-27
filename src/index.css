@@ -49,46 +49,57 @@
 }
 
 /*
- * Palette (from the Stratus reference): ink #262E3F, blue #83A2DB,
- * coral #FD8E8C, sand #FFCE87 on cool, slightly blue neutrals.
+ * Palette (Stratus reference): ink #262E3F, blue #83A2DB, coral #FD8E8C,
+ * sand #FFCE87. Soft cool background with a blue glow, glass surfaces with
+ * large radii and diffuse shadows, pills for controls.
  */
 :root {
-  --radius: 0.5rem;
-  --background: #f3f5f9;
-  --foreground: #262e3f;
+  --radius: 0.875rem;
+  --background: #e9edf3;
+  --foreground: #1f2635;
   --card: #ffffff;
-  --card-foreground: #262e3f;
+  --card-foreground: #1f2635;
   --popover: #ffffff;
-  --popover-foreground: #262e3f;
-  --primary: #262e3f;
+  --popover-foreground: #1f2635;
+  --primary: #1f2635;
   --primary-foreground: #ffffff;
-  --secondary: #eaeef4;
-  --secondary-foreground: #262e3f;
-  --muted: #eef1f6;
-  --muted-foreground: #737c8f;
-  --accent: #eaeef4;
-  --accent-foreground: #262e3f;
+  --secondary: #f1f3f7;
+  --secondary-foreground: #1f2635;
+  --muted: #f1f3f7;
+  --muted-foreground: #8a92a3;
+  --accent: #f1f3f7;
+  --accent-foreground: #1f2635;
   --destructive: #e0605d;
-  --border: #e3e7ee;
-  --input: #dde2ea;
+  --border: rgba(31, 38, 53, 0.08);
+  --input: rgba(31, 38, 53, 0.1);
   --ring: #83a2db;
   --brand-blue: #83a2db;
   --brand-link: #4c6db0;
   --brand-red: #fd8e8c;
   --brand-yellow: #ffce87;
   --brand-green: #8cc9a7;
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-strong: rgba(255, 255, 255, 0.9);
+  --surface-border: rgba(255, 255, 255, 0.75);
+  --shadow-soft:
+    0 1px 2px rgba(31, 38, 53, 0.04), 0 10px 30px -12px rgba(31, 38, 53, 0.14);
+  --shadow-card:
+    0 1px 2px rgba(31, 38, 53, 0.05), 0 6px 16px -10px rgba(31, 38, 53, 0.22);
+  --app-glow-1: rgba(131, 162, 219, 0.32);
+  --app-glow-2: rgba(253, 142, 140, 0.12);
+  --app-glow-3: rgba(255, 255, 255, 0.9);
   --chart-1: #83a2db;
   --chart-2: #fd8e8c;
   --chart-3: #ffce87;
-  --chart-4: #262e3f;
+  --chart-4: #1f2635;
   --chart-5: #8cc9a7;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #262e3f;
-  --sidebar-primary: #262e3f;
+  --sidebar: transparent;
+  --sidebar-foreground: #1f2635;
+  --sidebar-primary: #1f2635;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef1f6;
-  --sidebar-accent-foreground: #262e3f;
-  --sidebar-border: #e3e7ee;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #1f2635;
+  --sidebar-border: transparent;
   --sidebar-ring: #83a2db;
   --avatar-0: #dbe4f5;
   --avatar-1: #fde0df;
@@ -103,41 +114,51 @@
 }
 
 .dark {
-  --background: #1a2030;
-  --foreground: #e6eaf2;
+  --background: #141925;
+  --foreground: #e8ecf4;
   --card: #222a3b;
-  --card-foreground: #e6eaf2;
+  --card-foreground: #e8ecf4;
   --popover: #222a3b;
-  --popover-foreground: #e6eaf2;
-  --primary: #e6eaf2;
-  --primary-foreground: #1a2030;
-  --secondary: #2b3447;
-  --secondary-foreground: #e6eaf2;
-  --muted: #283043;
-  --muted-foreground: #8e97aa;
-  --accent: #2b3447;
-  --accent-foreground: #e6eaf2;
+  --popover-foreground: #e8ecf4;
+  --primary: #e8ecf4;
+  --primary-foreground: #141925;
+  --secondary: #283144;
+  --secondary-foreground: #e8ecf4;
+  --muted: #283144;
+  --muted-foreground: #8c95a8;
+  --accent: #283144;
+  --accent-foreground: #e8ecf4;
   --destructive: #fd8e8c;
-  --border: #303a4e;
-  --input: #364055;
+  --border: rgba(232, 236, 244, 0.08);
+  --input: rgba(232, 236, 244, 0.12);
   --ring: #83a2db;
   --brand-blue: #83a2db;
-  --brand-link: #9bb5e6;
+  --brand-link: #9fb8e8;
   --brand-red: #fd8e8c;
   --brand-yellow: #ffce87;
   --brand-green: #8cc9a7;
+  --surface: rgba(34, 42, 59, 0.55);
+  --surface-strong: rgba(38, 47, 66, 0.9);
+  --surface-border: rgba(255, 255, 255, 0.05);
+  --shadow-soft:
+    0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -14px rgba(0, 0, 0, 0.5);
+  --shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -12px rgba(0, 0, 0, 0.6);
+  --app-glow-1: rgba(131, 162, 219, 0.18);
+  --app-glow-2: rgba(253, 142, 140, 0.06);
+  --app-glow-3: rgba(255, 255, 255, 0.03);
   --chart-1: #83a2db;
   --chart-2: #fd8e8c;
   --chart-3: #ffce87;
-  --chart-4: #e6eaf2;
+  --chart-4: #e8ecf4;
   --chart-5: #8cc9a7;
-  --sidebar: #1e2536;
-  --sidebar-foreground: #e6eaf2;
-  --sidebar-primary: #e6eaf2;
-  --sidebar-primary-foreground: #1a2030;
-  --sidebar-accent: #2b3447;
-  --sidebar-accent-foreground: #e6eaf2;
-  --sidebar-border: #2c3548;
+  --sidebar: transparent;
+  --sidebar-foreground: #e8ecf4;
+  --sidebar-primary: #e8ecf4;
+  --sidebar-primary-foreground: #141925;
+  --sidebar-accent: #283144;
+  --sidebar-accent-foreground: #e8ecf4;
+  --sidebar-border: transparent;
   --sidebar-ring: #83a2db;
   --avatar-0: #34466b;
   --avatar-1: #5a3a44;
@@ -149,6 +170,25 @@
   --avatar-7: #3a4356;
   --avatar-8: #563a4c;
   --avatar-9: #3d4f37;
+}
+
+/* Frosted panel: the main surface of the app */
+@utility glass {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Solid floating control (round buttons, pills) */
+@utility soft {
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
 }
 
 a,
@@ -205,6 +245,20 @@ input[type="time"] {
 body {
   font-family: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(
+      60rem 36rem at 92% 108%,
+      var(--app-glow-1),
+      transparent 65%
+    ),
+    radial-gradient(
+      40rem 28rem at 55% 115%,
+      var(--app-glow-2),
+      transparent 70%
+    ),
+    radial-gradient(50rem 30rem at 0% -10%, var(--app-glow-3), transparent 70%),
+    var(--background);
+  background-attachment: fixed;
 }
 
 /* The mobile pull-to-refresh (see layout/PullToRefresh.tsx) owns the overscroll

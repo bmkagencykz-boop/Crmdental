@@ -228,6 +228,7 @@ export const FilterButton = (props: FilterButtonProps) => {
     disableSaveQuery,
     size,
     variant = "outline",
+    iconOnly = false,
     ...rest
   } = props;
   const filters = useFilterContext() || filtersProp;
@@ -334,11 +335,14 @@ export const FilterButton = (props: FilterButtonProps) => {
             type="button"
             className="add-filter"
             variant={variant}
-            size={size}
+            size={iconOnly ? "icon" : size}
             aria-haspopup="true"
+            title={iconOnly ? translate("ra.action.add_filter") : undefined}
           >
             <Filter className="h-4 w-4" />
-            {translate("ra.action.add_filter")}
+            <span className={iconOnly ? "sr-only" : undefined}>
+              {translate("ra.action.add_filter")}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
@@ -453,6 +457,8 @@ export interface FilterButtonProps extends HtmlHTMLAttributes<HTMLDivElement> {
     | "ghost"
     | "link";
   size?: "default" | "sm" | "lg" | "icon";
+  /** Round icon button, the label becomes a tooltip */
+  iconOnly?: boolean;
 }
 
 export const FilterButtonMenuItem = React.forwardRef<

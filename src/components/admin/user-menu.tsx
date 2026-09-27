@@ -61,9 +61,8 @@ export function UserMenu({ children }: UserMenuProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="w-56"
-          side="right"
           align="end"
-          sideOffset={12}
+          sideOffset={10}
           forceMount
         >
           <DropdownMenuLabel className="font-normal">

@@ -49,8 +49,8 @@ const CompanyListActions = () => {
   return (
     <TopToolbar>
       <SortButton fields={["name", "created_at", "nb_contacts"]} />
-      <DataImportButton resource="companies" />
-      <ExportButton />
+      <DataImportButton resource="companies" iconOnly />
+      <ExportButton iconOnly />
       <CreateButton
         label={translate("resources.companies.action.new", {
           _: "New Company",

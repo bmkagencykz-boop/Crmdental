@@ -115,10 +115,10 @@ const DealLayout = () => {
 };
 
 const DealActions = () => (
-  <TopToolbar>
-    <FilterButton />
-    <DataImportButton resource="deals" />
-    <ExportButton />
+  <TopToolbar className="items-center">
+    <FilterButton iconOnly />
+    <DataImportButton resource="deals" iconOnly />
+    <ExportButton iconOnly />
     <CreateButton label="resources.deals.action.new" />
   </TopToolbar>
 );

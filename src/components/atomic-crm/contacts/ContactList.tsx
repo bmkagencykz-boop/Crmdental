@@ -87,8 +87,8 @@ const ContactBulkActionButtons = () => (
 const ContactListActions = () => (
   <TopToolbar>
     <SortButton fields={["first_name", "last_name", "last_seen"]} />
-    <DataImportButton resource="contacts" />
-    <ExportButton exporter={exporter} />
+    <DataImportButton resource="contacts" iconOnly />
+    <ExportButton exporter={exporter} iconOnly />
     <CreateButton />
   </TopToolbar>
 );

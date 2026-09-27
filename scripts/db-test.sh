@@ -10,14 +10,14 @@
 #     produce the same database.
 #
 # Connection: standard libpq variables (PGHOST, PGPORT, PGUSER, PGPASSWORD).
-# Usage: scripts/db-test.sh [test-file ...]
+# Usage: [DB_PREFIX=name] scripts/db-test.sh [test-file ...]  (DB_PREFIX lets runs go in parallel)
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SUPA="$ROOT/supabase"
-DB_MIGRATIONS="crm_test_migrations"
-DB_SCHEMAS="crm_test_schemas"
+DB_MIGRATIONS="${DB_PREFIX:-crm_test}_migrations"
+DB_SCHEMAS="${DB_PREFIX:-crm_test}_schemas"
 PSQL=(psql -X -q -v ON_ERROR_STOP=1 --no-psqlrc)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 

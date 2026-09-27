@@ -2,6 +2,7 @@ import type {
   Call,
   Deal,
   DealEvent,
+  Doctor,
   DealNote,
   DealPayment,
   LeadSource,
@@ -34,6 +35,7 @@ export interface Db {
   services: Service[];
   lead_sources: LeadSource[];
   lost_reasons: LostReason[];
+  doctors: Doctor[];
   patients: Patient[];
   patient_notes: PatientNote[];
   deals: Deal[];

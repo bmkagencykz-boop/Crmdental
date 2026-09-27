@@ -3,6 +3,8 @@ import { useGetList, useTranslate } from "ra-core";
 import {
   findById,
   toChoices,
+  toDoctorChoices,
+  useDoctors,
   useLeadSources,
   useLostReasons,
   usePipelines,
@@ -49,6 +51,7 @@ export const DealFields = ({ deal }: { deal: Deal }) => {
   const { data: lostReasons } = useLostReasons();
   const { data: pipelines } = usePipelines();
   const { data: stages } = useStages();
+  const { data: doctors } = useDoctors();
   const { data: sales = [] } = useGetList<Sale>("sales", {
     filter: { "disabled@neq": true },
     sort: { field: "last_name", order: "ASC" },
@@ -80,6 +83,39 @@ export const DealFields = ({ deal }: { deal: Deal }) => {
         onSave={(sales_id) => save({ sales_id: sales_id as Deal["sales_id"] })}
       />
       <InlineField
+        label={field("doctor_id")}
+        value={deal.doctor_id}
+        display={
+          findById(doctors, deal.doctor_id)?.name ?? deal.doctor_name ?? null
+        }
+        editor={{
+          kind: "select",
+          choices: toDoctorChoices(doctors, deal.doctor_id),
+          emptyLabel: translate("doctors.deal.none"),
+        }}
+        onSave={(doctor_id) =>
+          save({ doctor_id: doctor_id as Deal["doctor_id"] })
+        }
+      />
+      <InlineField
+        label={field("consultation_amount")}
+        value={deal.consultation_amount}
+        display={
+          deal.consultation_amount == null
+            ? null
+            : formatMoney(deal.consultation_amount, currency)
+        }
+        editor={{ kind: "number", nullable: true }}
+        onSave={(consultation_amount) =>
+          save({
+            consultation_amount:
+              consultation_amount == null
+                ? null
+                : Math.max(0, Math.round(Number(consultation_amount))),
+          })
+        }
+      />
+      <InlineField
         label={field("plan_amount")}
         value={deal.plan_amount}
         display={formatMoney(deal.plan_amount, currency)}
@@ -90,6 +126,16 @@ export const DealFields = ({ deal }: { deal: Deal }) => {
         label={field("paid_amount")}
         value={deal.paid_amount}
         display={formatMoney(deal.paid_amount, currency)}
+        readOnly
+      />
+      <InlineField
+        label={field("prepayment_amount")}
+        value={deal.prepayment_amount ?? 0}
+        display={
+          <span title={translate("doctors.deal.prepayment_hint")}>
+            {formatMoney(deal.prepayment_amount ?? 0, currency)}
+          </span>
+        }
         readOnly
       />
       <InlineField

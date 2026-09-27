@@ -10,7 +10,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { useLeadSources, usePipelines } from "../dictionaries/useDictionaries";
+import {
+  useDoctors,
+  useLeadSources,
+  usePipelines,
+} from "../dictionaries/useDictionaries";
 import type { Sale } from "../types";
 import {
   REPORT_PERIODS,
@@ -97,6 +101,7 @@ const ReportFiltersBar = ({
   const translate = useTranslate();
   const { data: pipelines } = usePipelines();
   const { data: sources } = useLeadSources();
+  const { data: doctors } = useDoctors();
   const { data: sales = [] } = useGetList<Sale>("sales", {
     pagination: { page: 1, perPage: 200 },
     sort: { field: "last_name", order: "ASC" },
@@ -176,6 +181,13 @@ const ReportFiltersBar = ({
         value={state.source_id}
         choices={sources.map((s) => ({ id: String(s.id), name: s.name }))}
         onChange={(source_id) => set({ source_id })}
+      />
+      <ChoiceFilter
+        label={translate("doctors.reports.filter")}
+        allLabel={translate("doctors.reports.all")}
+        value={state.doctor_id}
+        choices={doctors.map((d) => ({ id: String(d.id), name: d.name }))}
+        onChange={(doctor_id) => set({ doctor_id })}
       />
     </div>
   );

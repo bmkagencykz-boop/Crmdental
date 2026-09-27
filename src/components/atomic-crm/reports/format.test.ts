@@ -38,6 +38,7 @@ describe("toReportFilters", () => {
       pipeline_id: null,
       sales_id: null,
       source_id: null,
+      doctor_id: null,
     });
     expect(toReportFilters({ period: "all" }, now).from).toBeNull();
   });
@@ -50,6 +51,7 @@ describe("toReportFilters", () => {
         to: "2026-09-30",
         pipeline_id: "1",
         sales_id: "",
+        doctor_id: "3",
       },
       now,
     );
@@ -59,6 +61,7 @@ describe("toReportFilters", () => {
       pipeline_id: "1",
       sales_id: null,
       source_id: null,
+      doctor_id: "3",
     });
   });
 });

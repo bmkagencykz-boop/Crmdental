@@ -6,7 +6,7 @@ import { useGetSalesName } from "../sales/useGetSalesName";
 import type { DealEvent } from "../types";
 import { formatMoney } from "./kanbanFormat";
 
-const MONEY_FIELDS = ["plan_amount", "paid_amount"];
+const MONEY_FIELDS = ["plan_amount", "paid_amount", "consultation_amount"];
 
 /** One entry of the deal log: date, author, stage change, changed fields */
 export const DealEventContent = ({ event }: { event: DealEvent }) => {

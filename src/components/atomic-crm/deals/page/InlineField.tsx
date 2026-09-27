@@ -10,7 +10,8 @@ export type Choice = { id: string | number; name: string };
 type Editor =
   | { kind: "text" }
   | { kind: "textarea" }
-  | { kind: "number" }
+  /** nullable: an empty value saves null instead of 0 */
+  | { kind: "number"; nullable?: boolean }
   | { kind: "datetime" }
   | { kind: "select"; choices: Choice[]; emptyLabel?: string };
 
@@ -140,7 +141,9 @@ const FieldEditor = ({
     if (editor.kind === "number") {
       next =
         raw.trim() === ""
-          ? 0
+          ? editor.nullable
+            ? null
+            : 0
           : Number(raw.replace(/\s/g, "").replace(",", "."));
       if (Number.isNaN(next)) return onDone(value, false);
     }

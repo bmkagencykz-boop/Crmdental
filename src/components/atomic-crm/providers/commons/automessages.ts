@@ -21,6 +21,7 @@ export const TEMPLATE_VARIABLES = [
   "услуга",
   "дата_визита",
   "клиника",
+  "врач",
 ] as const;
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number];
 export type TemplateValues = Partial<
@@ -211,18 +212,22 @@ export const automessageValues = ({
   patientFirstName,
   serviceName,
   clinicName,
+  doctorName,
   timeZone = DEFAULT_TIME_ZONE,
 }: {
   deal: Pick<Deal, "appointment_at" | "visit_at">;
   patientFirstName?: string | null;
   serviceName?: string | null;
   clinicName?: string | null;
+  /** Name of the deal's doctor (stage 13) */
+  doctorName?: string | null;
   timeZone?: string;
 }): TemplateValues => ({
   имя: patientFirstName?.trim() || null,
   услуга: serviceName ?? null,
   дата_визита: formatVisitDate(deal.appointment_at ?? deal.visit_at, timeZone),
   клиника: clinicName ?? null,
+  врач: doctorName?.trim() || null,
 });
 
 /** Sample values for the live preview of the settings */
@@ -238,6 +243,7 @@ export const previewValues = (clinicName?: string | null): TemplateValues => {
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     ),
     клиника: clinicName || "Клиника",
+    врач: "Ахметова Айгуль",
   };
 };
 

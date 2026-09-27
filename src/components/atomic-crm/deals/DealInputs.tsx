@@ -10,6 +10,8 @@ import {
   findById,
   getPipelineStages,
   toChoices,
+  toDoctorChoices,
+  useDoctors,
   useLeadSources,
   useLostReasons,
   useOrganizationSettings,
@@ -23,7 +25,7 @@ import type { Deal } from "../types";
 
 /**
  * Fields of a deal (spec §3): patient, pipeline and stage, source, service,
- * plan amount, responsible, appointment and visit dates, lost reason.
+ * doctor and consultation price (stage 13), plan amount, responsible, appointment and visit dates, lost reason.
  */
 export const DealInputs = () => {
   const translate = useTranslate();
@@ -38,6 +40,7 @@ export const DealInputs = () => {
           placeholder={translate("crm.deals.name_placeholder")}
         />
         <ServiceAndSourceInputs />
+        <DoctorAndConsultationInputs />
         <NumberInput
           source="plan_amount"
           defaultValue={0}
@@ -86,6 +89,28 @@ const ServiceAndSourceInputs = () => {
       <SelectInput
         source="source_id"
         choices={toChoices(sources, sourceId)}
+        helperText={false}
+      />
+    </div>
+  );
+};
+
+/** The doctor (active ones, the current one kept) and the consultation price */
+const DoctorAndConsultationInputs = () => {
+  const { data: doctors } = useDoctors();
+  const doctorId = useWatch({ name: "doctor_id" });
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <SelectInput
+        source="doctor_id"
+        choices={toDoctorChoices(doctors, doctorId)}
+        emptyText="doctors.deal.none"
+        helperText={false}
+      />
+      <NumberInput
+        source="consultation_amount"
+        min={0}
+        step={500}
         helperText={false}
       />
     </div>

@@ -138,6 +138,17 @@ export type LeadSource = DictionaryItem & {
   is_system: boolean;
 };
 
+/**
+ * A doctor of the clinic (stage 13): a dictionary entry, not a CRM user. An
+ * inactive doctor is hidden from the pickers and stays on the old deals.
+ */
+export type Doctor = {
+  name: string;
+  specialty?: string | null;
+  is_active: boolean;
+  position: number;
+} & Pick<RaRecord, "id">;
+
 export type Deal = {
   organization_id?: Identifier;
   patient_id: Identifier;
@@ -164,6 +175,9 @@ export type Deal = {
   closed_at?: string | null;
   first_response_at?: string | null;
   archived_at?: string | null;
+  doctor_id?: Identifier | null;
+  /** Price of the consultation, tenge */
+  consultation_amount?: number | null;
   // deals_summary
   stage_kind?: StageKind;
   patient_first_name?: string | null;
@@ -174,6 +188,9 @@ export type Deal = {
   nb_unread_messages?: number;
   last_message_at?: string | null;
   last_message_text?: string | null;
+  doctor_name?: string | null;
+  /** Sum of the prepayment-kind payments */
+  prepayment_amount?: number;
 } & Pick<RaRecord, "id">;
 
 export type MessengerTransport = "whatsapp" | "instagram" | "telegram";
@@ -213,9 +230,13 @@ export type MessengerStatus = {
   last_error: string | null;
 };
 
+export type DealPaymentKind = "prepayment" | "payment";
+
 export type DealPayment = {
   deal_id: Identifier;
   amount: number;
+  /** A prepayment or a regular payment (default) */
+  kind?: DealPaymentKind;
   paid_at: string;
   comment?: string | null;
   sales_id?: Identifier | null;

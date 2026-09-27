@@ -139,6 +139,47 @@ export const ConversionTab = ({ filters }: { filters: ReportFilters }) => {
           translate("reports.none.employee"),
         )}
       />
+      <ReportTable
+        title={translate("doctors.reports.by_doctor")}
+        filename="conversion_by_doctor"
+        rows={data.by_doctor ?? []}
+        rowKey={(row) => String(row.id)}
+        columns={[
+          {
+            label: translate("doctors.reports.column"),
+            render: (row: NamedRow & ConversionMetrics) =>
+              row.name ?? translate("doctors.reports.none"),
+          },
+          {
+            label: translate("reports.conversion.columns.deals"),
+            numeric: true,
+            render: (row: ConversionMetrics) => row.deals,
+          },
+          // The key conversions of the doctor: share and "how many of how many"
+          ...KEY_CONVERSIONS.map(([key, from, to]) => ({
+            label: translate(`reports.conversion.key.${key}`),
+            numeric: true,
+            render: (row: ConversionMetrics) => (
+              <span title={`${row[to]} / ${row[from]}`}>
+                {formatPercent(row[to], row[from])}
+              </span>
+            ),
+            csv: (row: ConversionMetrics) =>
+              `${formatPercent(row[to], row[from])} (${row[to]}/${row[from]})`,
+          })),
+          {
+            label: translate("reports.conversion.columns.won"),
+            numeric: true,
+            render: (row: ConversionMetrics) => row.won,
+          },
+          {
+            label: translate("reports.conversion.columns.win_rate"),
+            numeric: true,
+            render: (row: ConversionMetrics) =>
+              formatPercent(row.won, row.deals),
+          },
+        ]}
+      />
     </div>
   );
 };
@@ -368,8 +409,9 @@ export const MoneyTab = ({ filters }: { filters: ReportFilters }) => {
   if (error) return <Failed error={error} />;
   if (isPending || !data) return <Loading />;
 
+  const byDoctor = data.by_doctor ?? [];
   const topPaid = max(
-    [...data.by_service, ...data.by_sales].map((row) =>
+    [...data.by_service, ...data.by_sales, ...byDoctor].map((row) =>
       Number(row.paid_amount),
     ),
   );
@@ -394,6 +436,12 @@ export const MoneyTab = ({ filters }: { filters: ReportFilters }) => {
       render: (row: MoneyMetrics) => money(row.paid_amount),
       csv: (row: MoneyMetrics) => Number(row.paid_amount),
       bar: (row: MoneyMetrics) => Number(row.paid_amount) / topPaid,
+    },
+    {
+      label: translate("doctors.reports.prepaid_amount"),
+      numeric: true,
+      render: (row: MoneyMetrics) => money(row.prepaid_amount ?? 0),
+      csv: (row: MoneyMetrics) => Number(row.prepaid_amount ?? 0),
     },
     {
       label: translate("reports.money.columns.paying_deals"),
@@ -429,6 +477,9 @@ export const MoneyTab = ({ filters }: { filters: ReportFilters }) => {
         <Stat
           label={translate("reports.money.average_check")}
           value={money(data.totals.average_check)}
+          hint={`${translate("doctors.reports.prepaid")}: ${money(
+            data.totals.prepaid_amount ?? 0,
+          )}`}
         />
         <Stat
           label={translate("reports.money.paid_share")}
@@ -456,6 +507,16 @@ export const MoneyTab = ({ filters }: { filters: ReportFilters }) => {
         columns={columns(
           translate("reports.columns.employee"),
           translate("reports.none.employee"),
+        )}
+      />
+      <ReportTable
+        title={translate("doctors.reports.by_doctor")}
+        filename="money_by_doctor"
+        rows={byDoctor}
+        rowKey={(row) => String(row.id)}
+        columns={columns(
+          translate("doctors.reports.column"),
+          translate("doctors.reports.none"),
         )}
       />
     </div>

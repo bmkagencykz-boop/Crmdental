@@ -11,16 +11,20 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 import { useConfigurationContext } from "../root/ConfigurationContext";
-import type { Deal, DealPayment } from "../types";
+import type { Deal, DealPayment, DealPaymentKind } from "../types";
 import { formatMoney } from "./kanbanFormat";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const KINDS: DealPaymentKind[] = ["payment", "prepayment"];
+
 /**
  * Payments of a deal (entered by hand). The deal's paid amount is their sum,
- * computed by the database.
+ * computed by the database; the prepayment is the sum of the payments of
+ * kind "prepayment" (deals_summary).
  */
 export const DealPayments = ({ deal }: { deal: Deal }) => {
   const translate = useTranslate();
@@ -32,6 +36,7 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
   const [amount, setAmount] = useState("");
   const [paidAt, setPaidAt] = useState(today());
   const [comment, setComment] = useState("");
+  const [kind, setKind] = useState<DealPaymentKind>("payment");
   const { data: payments = [] } = useGetList<DealPayment>("deal_payments", {
     filter: { deal_id: deal.id },
     sort: { field: "paid_at", order: "DESC" },
@@ -51,12 +56,14 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
           amount: Math.round(value),
           paid_at: paidAt,
           comment: comment || null,
+          kind,
         },
       },
       {
         onSuccess: () => {
           setAmount("");
           setComment("");
+          setKind("payment");
           notify("crm.deals.payments.added", { type: "info" });
           refresh();
         },
@@ -77,7 +84,7 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Amount
           label={translate("resources.deals.fields.plan_amount")}
           value={formatMoney(deal.plan_amount, currency)}
@@ -85,6 +92,11 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
         <Amount
           label={translate("resources.deals.fields.paid_amount")}
           value={formatMoney(deal.paid_amount, currency)}
+        />
+        <Amount
+          label={translate("resources.deals.fields.prepayment_amount")}
+          value={formatMoney(deal.prepayment_amount ?? 0, currency)}
+          muted={!deal.prepayment_amount}
         />
         <Amount
           label={translate("crm.deals.payments.rest")}
@@ -103,6 +115,11 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
                 {new Date(payment.paid_at).toLocaleDateString("ru-RU")}
               </span>
               <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                {payment.kind === "prepayment" ? (
+                  <span className="mr-1.5 rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                    {translate("doctors.payments.prepayment")}
+                  </span>
+                ) : null}
                 {payment.comment}
               </span>
               <span className="font-semibold tabular-nums">
@@ -122,6 +139,29 @@ export const DealPayments = ({ deal }: { deal: Deal }) => {
         </ul>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="radiogroup"
+          aria-label={translate("doctors.payments.kind")}
+          className="flex rounded-md border border-border p-0.5"
+        >
+          {KINDS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={kind === value}
+              onClick={() => setKind(value)}
+              className={cn(
+                "rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors",
+                kind === value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {translate(`doctors.payments.${value}`)}
+            </button>
+          ))}
+        </div>
         <Input
           aria-label={translate("crm.deals.payments.amount")}
           placeholder={translate("crm.deals.payments.amount")}

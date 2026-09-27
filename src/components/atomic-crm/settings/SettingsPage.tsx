@@ -18,6 +18,7 @@ import type { CrmDataProvider } from "../providers/types";
 import { AccessSettings } from "./AccessSettings";
 import { AutomessagesSettings } from "./AutomessagesSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
+import { DoctorsEditor } from "./DoctorsEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
@@ -28,6 +29,7 @@ const SECTIONS = [
   "services",
   "sources",
   "lost_reasons",
+  "doctors",
   "messengers",
   "distribution",
   "automations",
@@ -37,10 +39,10 @@ const SECTIONS = [
 ] as const;
 type Section = (typeof SECTIONS)[number];
 
-/** Stage 6 keeps its texts in the automessages namespace */
+/** Stages 6 and 13 keep their texts in their own namespaces */
 const sectionKey = (id: Section, kind: "sections" | "hints") =>
-  id === "automessages"
-    ? `automessages.settings.${kind === "sections" ? "section" : "hint"}`
+  id === "automessages" || id === "doctors"
+    ? `${id}.settings.${kind === "sections" ? "section" : "hint"}`
     : `crm.settings.${kind}.${id}`;
 
 /**
@@ -91,6 +93,7 @@ export const SettingsPage = () => {
         {section === "lost_reasons" ? (
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
+        {section === "doctors" ? <DoctorsEditor /> : null}
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}

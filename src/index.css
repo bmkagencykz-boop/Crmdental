@@ -12,6 +12,9 @@
   --color-brand-yellow: var(--brand-yellow);
   --color-brand-green: var(--brand-green);
   --color-brand-lime: var(--brand-lime);
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-rose: var(--brand-rose);
+  --color-brand-blush: var(--brand-blush);
   --color-surface: var(--surface);
   --color-pill: var(--pill);
   --radius-sm: calc(var(--radius) - 4px);
@@ -52,68 +55,72 @@
 }
 
 /*
- * Palette (Katana reference): pure black canvas, near-black panels, dark
- * pill-shaped cards, white primary controls and three loud accents for
- * states and stages: yellow, electric blue, lime. One dark design.
+ * Palette: Katana layout, Smile Sales Agency colors. A warm, slightly pink
+ * dark canvas; the brand pink (#EF3B6E) for primary actions and alerts,
+ * its lighter shades (rose, blush) and warm neutrals for stages and states;
+ * light text kept readable on every dark surface.
  */
 :root,
 .dark {
   color-scheme: dark;
   --radius: 1rem;
-  --background: #000000;
-  --foreground: #ffffff;
-  --card: #1c1c1e;
-  --card-foreground: #ffffff;
-  --popover: #1c1c1e;
-  --popover-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #000000;
-  --secondary: #26262a;
-  --secondary-foreground: #ffffff;
-  --muted: #232326;
-  --muted-foreground: #8e8e93;
-  --accent: #2a2a2e;
-  --accent-foreground: #ffffff;
-  --destructive: #ff453a;
-  --border: rgba(255, 255, 255, 0.07);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: #2f6bff;
-  --brand-blue: #2f6bff;
-  --brand-link: #7ea4ff;
-  --brand-red: #ff453a;
-  --brand-yellow: #ffe500;
-  --brand-green: #c6f432;
-  --brand-lime: #c6f432;
-  /* Panels (columns, cards of pages) and pills (rows, controls) */
-  --surface: #0e0e10;
-  --surface-strong: #1c1c1e;
-  --surface-border: rgba(255, 255, 255, 0.05);
-  --pill: #1c1c1e;
+  --background: #0d0b0c;
+  --foreground: #f6f4f1;
+  --card: #1f1b1d;
+  --card-foreground: #f6f4f1;
+  --popover: #231e21;
+  --popover-foreground: #f6f4f1;
+  --primary: #ef3b6e;
+  --primary-foreground: #ffffff;
+  --secondary: #2a2427;
+  --secondary-foreground: #f6f4f1;
+  --muted: #2a2427;
+  --muted-foreground: #b9aeb3;
+  --accent: #2e272b;
+  --accent-foreground: #f6f4f1;
+  --destructive: #ff5c77;
+  --border: rgba(246, 244, 241, 0.09);
+  --input: rgba(246, 244, 241, 0.14);
+  --ring: #f47c9c;
+  --brand-blue: #ef3b6e;
+  --brand-link: #f7a3bb;
+  --brand-red: #ff5c77;
+  --brand-yellow: #e8a87c;
+  --brand-green: #f8b4c6;
+  --brand-lime: #f8b4c6;
+  --brand-pink: #ef3b6e;
+  --brand-rose: #f47c9c;
+  --brand-blush: #f8b4c6;
+  /* Panels (columns, page blocks) and pills (rows, controls) */
+  --surface: #151113;
+  --surface-strong: #241f22;
+  --surface-border: rgba(246, 244, 241, 0.07);
+  --pill: #1f1b1d;
   --shadow-soft: 0 10px 30px -16px rgba(0, 0, 0, 0.9);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
-  --chart-1: #2f6bff;
-  --chart-2: #ffe500;
-  --chart-3: #c6f432;
-  --chart-4: #ffffff;
-  --chart-5: #ff453a;
+  --chart-1: #ef3b6e;
+  --chart-2: #f47c9c;
+  --chart-3: #f8b4c6;
+  --chart-4: #f6f4f1;
+  --chart-5: #c58fa6;
   --sidebar: transparent;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #1c1c1e;
-  --sidebar-accent-foreground: #ffffff;
+  --sidebar-foreground: #f6f4f1;
+  --sidebar-primary: #ef3b6e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #241f22;
+  --sidebar-accent-foreground: #f6f4f1;
   --sidebar-border: transparent;
-  --sidebar-ring: #2f6bff;
-  --avatar-0: #2f6bff;
-  --avatar-1: #ffe500;
-  --avatar-2: #c6f432;
-  --avatar-3: #ffffff;
-  --avatar-4: #ff8a3d;
-  --avatar-5: #9b7bff;
-  --avatar-6: #3dd6d0;
-  --avatar-7: #ff5ca8;
-  --avatar-8: #8e8e93;
-  --avatar-9: #ffb800;
+  --sidebar-ring: #f47c9c;
+  --avatar-0: #ef3b6e;
+  --avatar-1: #f47c9c;
+  --avatar-2: #f8b4c6;
+  --avatar-3: #f6f4f1;
+  --avatar-4: #c58fa6;
+  --avatar-5: #e8a87c;
+  --avatar-6: #d96c8e;
+  --avatar-7: #9d8189;
+  --avatar-8: #b23a5b;
+  --avatar-9: #6e6468;
 }
 
 /* Panel: the main surface of the app (board columns, page blocks) */

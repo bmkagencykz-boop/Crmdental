@@ -79,7 +79,7 @@ export const DashboardSummary = () => {
           tone={overdue > 0 ? "alert" : undefined}
         />
       </div>
-      <div className="flex flex-col justify-between gap-4 rounded-[1.75rem] bg-brand-lime p-6 text-black">
+      <div className="flex flex-col justify-between gap-4 rounded-[1.75rem] bg-primary p-6 text-primary-foreground">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[13px] font-medium opacity-70">

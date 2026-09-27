@@ -164,7 +164,7 @@ const ConversationRow = ({
           {deal.last_message_text || translate("crm.messages.content.file")}
         </span>
         {unread ? (
-          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-lime px-1.5 text-[11px] font-bold text-black">
+          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
             {unread}
           </span>
         ) : null}

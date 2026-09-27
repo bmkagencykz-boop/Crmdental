@@ -8,7 +8,7 @@ import {
   useServices,
   useStages,
 } from "../dictionaries/useDictionaries";
-import { accent, onAccent } from "../misc/accent";
+import { accent, NO_TASK_COLOR, onAccent, OVERDUE_COLOR } from "../misc/accent";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { useGetSalesName } from "../sales/useGetSalesName";
 import { useTags } from "../tags/useTags";
@@ -70,9 +70,9 @@ export const DealCardContent = ({
   // Avatar: the state of the deal first (overdue, no task), else its stage
   const avatarColor =
     taskState === "overdue"
-      ? "#FF453A"
+      ? OVERDUE_COLOR
       : taskState === "no_task"
-        ? "#FFE500"
+        ? NO_TASK_COLOR
         : color;
   const date = formatCardDate(deal.created_at, {
     today: translate("crm.common.today"),
@@ -93,7 +93,7 @@ export const DealCardContent = ({
           "relative overflow-hidden rounded-[1.75rem] bg-pill py-2.5 pr-4 pl-2.5 text-[13px] leading-snug transition-all duration-200",
           snapshot?.isDragging
             ? "rotate-[1.5deg] ring-2 ring-white/40"
-            : "hover:bg-[#242427]",
+            : "hover:bg-[#292326]",
         )}
       >
         {/* Paid part of the treatment plan, like the progress lines of the reference */}
@@ -126,7 +126,7 @@ export const DealCardContent = ({
               <span className="flex shrink-0 items-center gap-1.5">
                 {deal.nb_unread_messages ? (
                   <span
-                    className="flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full bg-brand-lime px-1.5 text-[11px] font-bold text-black"
+                    className="flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground"
                     title={translate("crm.messages.unread", {
                       smart_count: deal.nb_unread_messages,
                     })}
@@ -160,7 +160,7 @@ export const DealCardContent = ({
                   <span
                     key={tag.id}
                     className="shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-black"
-                    style={{ backgroundColor: accent(tag.color) }}
+                    style={{ backgroundColor: tag.color }}
                   >
                     {tag.name}
                   </span>

@@ -82,16 +82,16 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
     >
       <span
         className={cn(
-          "relative flex size-11 items-center justify-center rounded-full transition-all duration-200",
+          "relative flex size-12 items-center justify-center rounded-full transition-all duration-200",
           active
-            ? "bg-primary text-primary-foreground shadow-soft"
-            : "soft text-foreground/70 group-hover:-translate-y-0.5 group-hover:text-foreground",
+            ? "bg-primary text-primary-foreground shadow-[0_10px_28px_-10px_rgba(239,59,110,0.7)]"
+            : "border border-white/10 bg-[#241f22] text-foreground group-hover:-translate-y-0.5 group-hover:border-brand-rose/60 group-hover:text-brand-blush",
         )}
       >
-        <Icon className="size-[1.1rem]" strokeWidth={1.8} />
+        <Icon className="size-[1.3rem]" strokeWidth={2} />
         {item.badge ? (
           <span
-            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-lime px-1 text-[10px] font-bold text-black ring-2 ring-background"
+            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-blush px-1 text-[10px] font-bold text-[#1A1517] ring-2 ring-background"
             data-testid="nav-badge"
             aria-hidden
           >
@@ -101,10 +101,10 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
       </span>
       <span
         className={cn(
-          "text-center text-[10.5px] leading-[1.15] transition-colors",
+          "text-center text-[11px] leading-[1.15] transition-colors",
           active
-            ? "font-semibold text-foreground"
-            : "font-medium text-muted-foreground group-hover:text-foreground",
+            ? "font-semibold text-brand-blush"
+            : "font-medium text-foreground/85 group-hover:text-foreground",
         )}
       >
         {item.label}

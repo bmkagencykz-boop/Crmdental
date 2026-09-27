@@ -37,7 +37,9 @@ export const DealColumn = ({
           className="flex size-11 shrink-0 items-center justify-center rounded-full text-[1.35rem] font-semibold tabular-nums"
           style={{
             backgroundColor:
-              ink === "#000000" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.14)",
+              ink === "#FFFFFF"
+                ? "rgba(255,255,255,0.16)"
+                : "rgba(26,21,23,0.08)",
           }}
           title={translate("crm.deals.count", {
             smart_count: deals.length,

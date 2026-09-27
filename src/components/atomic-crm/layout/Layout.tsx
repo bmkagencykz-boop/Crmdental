@@ -23,7 +23,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             className="text-[1.35rem] tracking-[-0.02em] text-foreground no-underline"
           >
             <span className="font-bold tracking-[-0.03em]">dental</span>
-            <span className="font-bold text-brand-yellow">crm</span>
+            <span className="font-bold text-brand-pink">crm</span>
           </Link>
           <UserMenu>
             <ProfileMenu />

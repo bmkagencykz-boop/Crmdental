@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { supabaseAdminAs } from "../_shared/auditActor.ts";
 import { corsHeaders, OptionsMiddleware } from "../_shared/cors.ts";
 import { createErrorResponse } from "../_shared/utils.ts";
 import { AuthMiddleware, UserMiddleware } from "../_shared/authentication.ts";
@@ -37,10 +38,12 @@ Deno.serve(async (req: Request) =>
           return createErrorResponse(403, "Forbidden");
         }
         const organizationId = sale.organization_id;
+        // The audit log names the employee who connects or disconnects
+        const asEmployee = supabaseAdminAs(sale.id);
         const body = await req.json().catch(() => ({}));
 
         if (body.disconnect) {
-          await supabaseAdmin
+          await asEmployee
             .from("messenger_integrations")
             .update({ api_key: null, connected_at: null, last_error: null })
             .eq("organization_id", organizationId);
@@ -67,7 +70,7 @@ Deno.serve(async (req: Request) =>
           (await channelsResponse.json()) as WazzupChannel[],
         );
 
-        const { data: integration, error } = await supabaseAdmin
+        const { data: integration, error } = await asEmployee
           .from("messenger_integrations")
           .upsert(
             {

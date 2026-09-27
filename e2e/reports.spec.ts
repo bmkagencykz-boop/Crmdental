@@ -106,7 +106,9 @@ test.describe("reports", () => {
 
   test("a manager has no reports", async ({ page, login }) => {
     await login("manager@smile.kz");
-    await expect(page.getByRole("link", { name: "Deals" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Deals", exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Reports", exact: true }),
     ).toHaveCount(0);

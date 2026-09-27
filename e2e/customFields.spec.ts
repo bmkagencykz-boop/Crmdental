@@ -131,6 +131,8 @@ test.describe("custom fields", () => {
     ).toHaveValue("Полис ДМС");
 
     await page.goto(`/#/patients/${patient.id}`);
+    // The form resets when the record arrives: wait for it before typing
+    await expect(page.getByLabel("First name")).toHaveValue("Madina");
     await page.getByLabel("Полис ДМС").fill("ДМС-000123");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("ДМС-000123").first()).toBeVisible();

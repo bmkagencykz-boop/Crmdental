@@ -7,6 +7,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
+import { useEffect } from "react";
+import { useLocation } from "react-router";
 
 import { UNSORTED_FILTER } from "../unsorted/unsorted";
 
@@ -29,7 +31,7 @@ export type NavItem = {
 export const useNavItems = (): NavItem[] => {
   const translate = useTranslate();
   // Conversations waiting for an answer
-  const { total: unread } = useGetList(
+  const { total: unread, refetch: refetchUnread } = useGetList(
     "deals",
     {
       filter: { "nb_unread_messages@gt": 0 },
@@ -39,7 +41,7 @@ export const useNavItems = (): NavItem[] => {
     { refetchInterval: 30_000 },
   );
   // Leads waiting in «Неразобранное» (stage 18)
-  const { total: unsorted } = useGetList(
+  const { total: unsorted, refetch: refetchUnsorted } = useGetList(
     "deals",
     {
       filter: UNSORTED_FILTER,
@@ -48,6 +50,12 @@ export const useNavItems = (): NavItem[] => {
     },
     { refetchInterval: 30_000 },
   );
+  // Counters are fresh on every screen change, not only every 30 s
+  const { pathname } = useLocation();
+  useEffect(() => {
+    refetchUnread();
+    refetchUnsorted();
+  }, [pathname, refetchUnread, refetchUnsorted]);
   return [
     {
       to: "/",

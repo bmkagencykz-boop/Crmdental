@@ -4,6 +4,7 @@ import { useDataProvider, useGetList, type Identifier } from "ra-core";
 import type { CrmDataProvider } from "../providers/types";
 
 import type {
+  Doctor,
   LeadSource,
   LostReason,
   Pipeline,
@@ -32,6 +33,7 @@ export const useStages = () => useDictionary<Stage>("stages");
 export const useServices = () => useDictionary<Service>("services");
 export const useLeadSources = () => useDictionary<LeadSource>("lead_sources");
 export const useLostReasons = () => useDictionary<LostReason>("lost_reasons");
+export const useDoctors = () => useDictionary<Doctor>("doctors");
 
 /** Clinic rules (Settings → Access) */
 export const useOrganizationSettings = () => {
@@ -71,3 +73,14 @@ export const toChoices = <
   items
     .filter((item) => !item.is_archived || String(item.id) === String(selected))
     .map((item) => ({ id: item.id, name: item.name }));
+
+/** Doctor choices: inactive doctors hidden unless selected */
+export const toDoctorChoices = (
+  doctors: Doctor[],
+  selected?: Identifier | null,
+) =>
+  doctors
+    .filter(
+      (doctor) => doctor.is_active || String(doctor.id) === String(selected),
+    )
+    .map((doctor) => ({ id: doctor.id, name: doctor.name }));

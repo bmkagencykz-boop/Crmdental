@@ -584,7 +584,8 @@ declare
   tracked text[] := array[
     'name', 'patient_id', 'pipeline_id', 'sales_id', 'source_id', 'service_id',
     'plan_amount', 'paid_amount', 'lost_reason_id', 'lost_comment',
-    'appointment_at', 'visit_at', 'tags', 'archived_at'
+    'appointment_at', 'visit_at', 'tags', 'archived_at',
+    'doctor_id', 'consultation_amount'
   ];
   field text;
   old_json jsonb;

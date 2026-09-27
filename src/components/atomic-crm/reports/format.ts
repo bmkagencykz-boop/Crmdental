@@ -63,6 +63,7 @@ export type ReportFilterState = {
   pipeline_id?: string | null;
   sales_id?: string | null;
   source_id?: string | null;
+  doctor_id?: string | null;
 };
 
 const startOfLocalDay = (date: string) => {
@@ -96,5 +97,6 @@ export const toReportFilters = (
     pipeline_id: state.pipeline_id || null,
     sales_id: state.sales_id || null,
     source_id: state.source_id || null,
+    doctor_id: state.doctor_id || null,
   };
 };

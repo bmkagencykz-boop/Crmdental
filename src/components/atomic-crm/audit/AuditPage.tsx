@@ -32,6 +32,7 @@ import {
 import {
   useLeadSources,
   useLostReasons,
+  useDoctors,
   usePipelines,
   useServices,
   useStages,
@@ -214,6 +215,7 @@ const useAuditLookups = (enabled: boolean): AuditLookups => {
   const { data: lostReasons } = useLostReasons();
   const { data: sources } = useLeadSources();
   const { data: services } = useServices();
+  const { data: doctors } = useDoctors();
   return useMemo(
     () => ({
       currency: currency ?? "KZT",
@@ -224,8 +226,19 @@ const useAuditLookups = (enabled: boolean): AuditLookups => {
       lostReasons,
       sources,
       services,
+      doctors,
     }),
-    [currency, sales, tags, stages, pipelines, lostReasons, sources, services],
+    [
+      currency,
+      sales,
+      tags,
+      stages,
+      pipelines,
+      lostReasons,
+      sources,
+      services,
+      doctors,
+    ],
   );
 };
 const SORT_BY_NAME = { field: "name", order: "ASC" as const };

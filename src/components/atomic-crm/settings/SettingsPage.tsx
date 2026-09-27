@@ -21,6 +21,7 @@ import { ImportWizard } from "../import/ImportWizard";
 import { AccessSettings } from "./AccessSettings";
 import { AutomessagesSettings } from "./AutomessagesSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
+import { DoctorsEditor } from "./DoctorsEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { LeadSettings } from "../leads/LeadSettings";
@@ -37,6 +38,7 @@ const SECTIONS = [
   "services",
   "sources",
   "lost_reasons",
+  "doctors",
   "messengers",
   "leads",
   "telephony",
@@ -62,7 +64,9 @@ const isSection = (value: string | null): value is Section =>
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
   section === "quick_replies"
     ? `quick_replies.${kind}`
-    : section === "automessages" || section === "recalls"
+    : section === "automessages" ||
+        section === "recalls" ||
+        section === "doctors"
       ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
       : section === "leads"
         ? `leads.${kind === "title" ? "section" : "hint"}`
@@ -147,6 +151,7 @@ export const SettingsPage = () => {
         {section === "lost_reasons" ? (
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
+        {section === "doctors" ? <DoctorsEditor /> : null}
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "leads" ? <LeadSettings /> : null}
         {section === "telephony" ? <TelephonySettings /> : null}

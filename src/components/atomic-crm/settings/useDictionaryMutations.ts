@@ -13,7 +13,10 @@ import {
  * database shown as is (e.g. "a stage with deals cannot be deleted"), and
  * the dictionary caches refreshed everywhere.
  */
-export const useDictionaryMutations = (resource: string) => {
+export const useDictionaryMutations = (
+  resource: string,
+  { inUseMessage }: { inUseMessage?: string } = {},
+) => {
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [create] = useCreate();
@@ -26,8 +29,13 @@ export const useDictionaryMutations = (resource: string) => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
     }
   };
-  const onError = (error: any) =>
-    notify(explainError(error), { type: "error" });
+  const onError = (error: any) => {
+    const message = explainError(error);
+    notify(
+      inUseMessage && message === IN_USE_MESSAGE ? inUseMessage : message,
+      { type: "error" },
+    );
+  };
   const options = {
     onSuccess: refresh,
     onError,
@@ -45,11 +53,13 @@ export const useDictionaryMutations = (resource: string) => {
   };
 };
 
+const IN_USE_MESSAGE = "crm.settings.errors.in_use";
+
 /** Human message for the constraint errors of the database */
 export const explainError = (error: any): string => {
   const message: string = error?.message ?? "";
   if (/foreign key|violates foreign key|_fkey/i.test(message)) {
-    return "crm.settings.errors.in_use";
+    return IN_USE_MESSAGE;
   }
   return message || "ra.notification.http_error";
 };

@@ -517,6 +517,7 @@ const getDataProviderWithCustomMethods = () => {
         filter_pipeline_id: filters.pipeline_id ?? null,
         filter_sales_id: filters.sales_id ?? null,
         filter_source_id: filters.source_id ?? null,
+        filter_doctor_id: filters.doctor_id ?? null,
       });
       if (error) throw error;
       return data as ReportResult[Name];
@@ -732,6 +733,8 @@ const DEAL_VIEW_COLUMNS = [
   "nb_unread_messages",
   "last_message_at",
   "last_message_text",
+  "doctor_name",
+  "prepayment_amount",
 ];
 
 const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>

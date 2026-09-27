@@ -4,6 +4,7 @@ import type {
   Deal,
   DealEvent,
   DealPayment,
+  Doctor,
   LeadSource,
   LostReason,
   Message,
@@ -18,7 +19,8 @@ import type {
 /**
  * Report computations of the demo (FakeRest). They are the TypeScript twin of
  * the public.report_* functions of the database (supabase/schemas/09_reports.sql)
- * and return the same shapes.
+ * and return the same shapes. Stage 13 adds the doctor filter, the conversion
+ * and the money by doctor, and the prepayments.
  */
 
 export type ReportFilters = {
@@ -29,6 +31,7 @@ export type ReportFilters = {
   pipeline_id?: Identifier | null;
   sales_id?: Identifier | null;
   source_id?: Identifier | null;
+  doctor_id?: Identifier | null;
 };
 
 export type ReportData = {
@@ -43,6 +46,7 @@ export type ReportData = {
   lead_sources: LeadSource[];
   services: Service[];
   lost_reasons: LostReason[];
+  doctors?: Doctor[];
   /** Clinic time zone: the dates of the payments are local dates */
   timeZone?: string;
 };
@@ -71,6 +75,7 @@ export type ConversionReport = {
   totals: ConversionMetrics;
   by_source: Array<NamedRow & ConversionMetrics>;
   by_sales: Array<NamedRow & ConversionMetrics>;
+  by_doctor: Array<NamedRow & ConversionMetrics>;
 };
 
 export type SpeedReport = {
@@ -115,6 +120,8 @@ export type MoneyMetrics = {
   agreed_deals: number;
   agreed_amount: number;
   paid_amount: number;
+  /** Payments of kind "prepayment" among the paid amount */
+  prepaid_amount: number;
   paying_deals: number;
   average_check: number | null;
 };
@@ -123,6 +130,7 @@ export type MoneyReport = {
   totals: MoneyMetrics;
   by_service: Array<NamedRow & MoneyMetrics>;
   by_sales: Array<NamedRow & MoneyMetrics>;
+  by_doctor: Array<NamedRow & MoneyMetrics>;
 };
 
 export type ReportName = "conversion" | "speed" | "lost_reasons" | "money";
@@ -247,7 +255,10 @@ export type DealProgress = {
 
 export const dealProgress = (
   data: ReportData,
-  filters: Pick<ReportFilters, "pipeline_id" | "sales_id" | "source_id">,
+  filters: Pick<
+    ReportFilters,
+    "pipeline_id" | "sales_id" | "source_id" | "doctor_id"
+  >,
 ): DealProgress[] => {
   const stagesById = new Map(data.stages.map((s) => [String(s.id), s]));
   const keysByPipeline = new Map<string, KeyStages>();
@@ -271,7 +282,9 @@ export const dealProgress = (
         (filters.pipeline_id == null ||
           same(deal.pipeline_id, filters.pipeline_id)) &&
         (filters.sales_id == null || same(deal.sales_id, filters.sales_id)) &&
-        (filters.source_id == null || same(deal.source_id, filters.source_id)),
+        (filters.source_id == null ||
+          same(deal.source_id, filters.source_id)) &&
+        (filters.doctor_id == null || same(deal.doctor_id, filters.doctor_id)),
     )
     .map((deal) => {
       const stage = stagesById.get(String(deal.stage_id));
@@ -376,6 +389,7 @@ export const conversionReport = (
   );
   const sources = new Map(data.lead_sources.map((s) => [String(s.id), s]));
   const sales = new Map(data.sales.map((s) => [String(s.id), s]));
+  const doctors = doctorsById(data);
 
   return {
     pipeline_id: pipelineId,
@@ -438,8 +452,29 @@ export const conversionReport = (
         ),
       )
       .map(({ _order, ...row }) => row),
+    by_doctor: groupBy(cohort, (row) => row.deal.doctor_id)
+      .map(({ id, rows }) => {
+        const doctor = id == null ? undefined : doctors.get(String(id));
+        return {
+          id,
+          name: doctor?.name ?? null,
+          ...conversionMetrics(rows),
+          _order: [doctor?.position ?? Infinity, num(id)],
+        };
+      })
+      .sort(
+        byOrder(
+          (r) => -r.deals,
+          (r) => r._order[0],
+          (r) => r._order[1],
+        ),
+      )
+      .map(({ _order, ...row }) => row),
   };
 };
+
+const doctorsById = (data: ReportData) =>
+  new Map((data.doctors ?? []).map((d) => [String(d.id), d]));
 
 // --- speed and KPI -------------------------------------------------------------
 
@@ -481,6 +516,8 @@ export const speedReport = (
     if (filters.sales_id != null && !same(deal.sales_id, filters.sales_id))
       continue;
     if (filters.source_id != null && !same(deal.source_id, filters.source_id))
+      continue;
+    if (filters.doctor_id != null && !same(deal.doctor_id, filters.doctor_id))
       continue;
     const sorted = [...rows].sort(
       (a, b) =>
@@ -692,6 +729,7 @@ type MoneyRow = {
   deal: Deal;
   agreed: boolean;
   paid: number;
+  prepaid: number;
 };
 
 const moneyMetrics = (rows: MoneyRow[]): MoneyMetrics => {
@@ -705,6 +743,7 @@ const moneyMetrics = (rows: MoneyRow[]): MoneyMetrics => {
       0,
     ),
     paid_amount: paid,
+    prepaid_amount: rows.reduce((sum, row) => sum + row.prepaid, 0),
     paying_deals: paying,
     average_check: paying ? Math.round(paid / paying) : null,
   };
@@ -732,15 +771,25 @@ export const moneyReport = (
       rows.reduce((sum, p) => sum + Number(p.amount), 0),
     ]),
   );
+  const prepaidByDeal = new Map(
+    paymentsByDeal.map(({ id, rows }) => [
+      String(id),
+      rows
+        .filter((p) => p.kind === "prepayment")
+        .reduce((sum, p) => sum + Number(p.amount), 0),
+    ]),
+  );
   const rows: MoneyRow[] = dealProgress(data, filters)
     .map((row) => ({
       deal: row.deal,
       agreed: row.agreed_at != null && inPeriod(row.agreed_at, filters),
       paid: paidByDeal.get(String(row.deal.id)) ?? 0,
+      prepaid: prepaidByDeal.get(String(row.deal.id)) ?? 0,
     }))
     .filter((row) => row.agreed || row.paid > 0);
   const services = new Map(data.services.map((s) => [String(s.id), s]));
   const sales = new Map(data.sales.map((s) => [String(s.id), s]));
+  const doctors = doctorsById(data);
 
   return {
     totals: moneyMetrics(rows),
@@ -771,6 +820,25 @@ export const moneyReport = (
           name: fullName(sale),
           ...moneyMetrics(rows),
           _order: [sale?.last_name ?? "￿", num(id)] as const,
+        };
+      })
+      .sort(
+        byOrder(
+          (r) => -r.paid_amount,
+          (r) => -r.agreed_amount,
+          (r) => r._order[0],
+          (r) => r._order[1],
+        ),
+      )
+      .map(({ _order, ...row }) => row),
+    by_doctor: groupBy(rows, (row) => row.deal.doctor_id)
+      .map(({ id, rows }) => {
+        const doctor = id == null ? undefined : doctors.get(String(id));
+        return {
+          id,
+          name: doctor?.name ?? null,
+          ...moneyMetrics(rows),
+          _order: [doctor?.position ?? Infinity, num(id)],
         };
       })
       .sort(

@@ -4,6 +4,7 @@ import {
   getDefaultPipeline,
   getPipelineStages,
   toChoices,
+  toDoctorChoices,
 } from "./useDictionaries";
 
 const pipeline = (id: number, is_default = false): Pipeline => ({
@@ -40,5 +41,14 @@ describe("dictionaries", () => {
     ];
     expect(toChoices(items).map((c) => c.id)).toEqual([1]);
     expect(toChoices(items, 2).map((c) => c.id)).toEqual([1, 2]);
+  });
+
+  it("hides inactive doctors unless selected", () => {
+    const doctors = [
+      { id: 1, name: "Ахметова", is_active: true, position: 0 },
+      { id: 2, name: "Сериков", is_active: false, position: 1 },
+    ];
+    expect(toDoctorChoices(doctors)).toEqual([{ id: 1, name: "Ахметова" }]);
+    expect(toDoctorChoices(doctors, "2").map((c) => c.id)).toEqual([1, 2]);
   });
 });

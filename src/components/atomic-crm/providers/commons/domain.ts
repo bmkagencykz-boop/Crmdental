@@ -96,6 +96,8 @@ export const TRACKED_DEAL_FIELDS = [
   "visit_at",
   "tags",
   "archived_at",
+  "doctor_id",
+  "consultation_amount",
 ] as const;
 
 export const dealChanges = (

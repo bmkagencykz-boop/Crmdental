@@ -1,7 +1,8 @@
 --
 -- Reports (stage 7): conversion, speed and KPI, lost reasons, money on a small
 -- clinic with known timestamps; filters; only the owner and the head may call
--- them; another clinic sees nothing of this one.
+-- them; another clinic sees nothing of this one. Stage 13: the doctor filter,
+-- the conversion and the money by doctor, the prepayments.
 --
 begin;
 \ir helpers.sql
@@ -26,6 +27,9 @@ $$;
 create function tests.stage(stage_name text) returns bigint language sql as $$
   select s.id from public.stages s join public.pipelines p on p.id = s.pipeline_id
   where p.organization_id = current_setting('t.org')::bigint and p.is_default and s.name = stage_name
+$$;
+create function tests.doctor(doctor_name text) returns bigint language sql as $$
+  select id from public.doctors where organization_id = current_setting('t.org')::bigint and name = doctor_name
 $$;
 create function tests.deal(deal_name text) returns bigint language sql as $$
   select id from public.deals where organization_id = current_setting('t.org')::bigint and name = deal_name
@@ -70,28 +74,32 @@ begin
 end;
 $$;
 
--- The clinic: four deals in September, one a year before
+-- The clinic: four deals in September, one a year before. Doctors: Ахметова
+-- leads d1, d2 and d5, Сериков d4, d3 has none.
 select tests.login_as(current_setting('t.owner')::uuid);
+insert into public.doctors (name, specialty, position) values
+  ('Ахметова Айгуль', 'хирург-имплантолог', 0),
+  ('Сериков Бахыт', 'ортодонт', 1);
 insert into public.patients (first_name) values ('Пациент');
-insert into public.deals (patient_id, name, source_id, service_id, sales_id, plan_amount)
-select p.id, v.name, tests.source(v.source), tests.service(v.service), v.sales_id, v.plan_amount
+insert into public.deals (patient_id, name, source_id, service_id, sales_id, plan_amount, doctor_id)
+select p.id, v.name, tests.source(v.source), tests.service(v.service), v.sales_id, v.plan_amount, tests.doctor(v.doctor)
 from public.patients p, (values
-  ('d1', 'whatsapp', 'Имплантация', current_setting('t.m1_id')::bigint, 300000),
-  ('d2', 'whatsapp', 'Терапия', current_setting('t.m1_id')::bigint, 50000),
-  ('d3', 'instagram', 'Гигиена', current_setting('t.head_id')::bigint, 20000),
-  ('d4', 'instagram', 'Ортодонтия', current_setting('t.head_id')::bigint, 200000),
-  ('d5', 'whatsapp', 'Имплантация', current_setting('t.m1_id')::bigint, 400000)
-) as v(name, source, service, sales_id, plan_amount);
+  ('d1', 'whatsapp', 'Имплантация', current_setting('t.m1_id')::bigint, 300000, 'Ахметова Айгуль'),
+  ('d2', 'whatsapp', 'Терапия', current_setting('t.m1_id')::bigint, 50000, 'Ахметова Айгуль'),
+  ('d3', 'instagram', 'Гигиена', current_setting('t.head_id')::bigint, 20000, null),
+  ('d4', 'instagram', 'Ортодонтия', current_setting('t.head_id')::bigint, 200000, 'Сериков Бахыт'),
+  ('d5', 'whatsapp', 'Имплантация', current_setting('t.m1_id')::bigint, 400000, 'Ахметова Айгуль')
+) as v(name, source, service, sales_id, plan_amount, doctor);
 
 select tests.walk('d1', array['Записан', 'Пришёл на консультацию', 'План согласован', 'В лечении']);
 select tests.walk('d2', array['Записан', 'Отказ']);
 select tests.walk('d4', array['В работе', 'План согласован', 'Лечение завершено']);
 select tests.walk('d5', array['Записан']);
 
-insert into public.deal_payments (deal_id, amount, paid_at) values
-  (tests.deal('d1'), 100000, '2026-09-12'),
-  (tests.deal('d1'), 50000, '2026-08-01'),
-  (tests.deal('d4'), 200000, '2026-09-13');
+insert into public.deal_payments (deal_id, amount, paid_at, kind) values
+  (tests.deal('d1'), 100000, '2026-09-12', 'prepayment'),
+  (tests.deal('d1'), 50000, '2026-08-01', 'prepayment'),
+  (tests.deal('d4'), 200000, '2026-09-13', 'payment');
 
 -- Tasks of m1: one done late, one done in time, one still open past its due date
 insert into public.tasks (deal_id, text, sales_id, created_at, due_date, done_date) values
@@ -157,7 +165,26 @@ select tests.assert(
     = jsonb_build_array(current_setting('t.m1_id')::bigint, current_setting('t.head_id')::bigint),
   'conversion by employee');
 
+select tests.assert(
+  (select jsonb_agg(x - 'id' order by ord) from conv, jsonb_array_elements(r -> 'by_doctor') with ordinality as t(x, ord))
+    = '[{"name": "Ахметова Айгуль", "deals": 2, "appointment": 2, "visit": 1, "plan": 1, "paid": 1, "won": 0, "lost": 1},
+        {"name": "Сериков Бахыт", "deals": 1, "appointment": 1, "visit": 1, "plan": 1, "paid": 1, "won": 1, "lost": 0},
+        {"name": null, "deals": 1, "appointment": 0, "visit": 0, "plan": 0, "paid": 0, "won": 0, "lost": 0}]'::jsonb,
+  'conversion by doctor: most deals first, the deals without a doctor last');
+select tests.assert(
+  (select (x ->> 'id')::bigint from conv, jsonb_array_elements(r -> 'by_doctor') x where x ->> 'name' = 'Сериков Бахыт')
+    = tests.doctor('Сериков Бахыт'),
+  'a doctor row carries the doctor id');
+
 -- Filters
+select tests.assert(
+  (public.report_conversion(current_setting('t.from')::timestamptz, current_setting('t.to')::timestamptz, null, null, null, tests.doctor('Ахметова Айгуль')) -> 'totals')
+    = '{"deals": 2, "appointment": 2, "visit": 1, "plan": 1, "paid": 1, "won": 0, "lost": 1}'::jsonb
+  and (public.report_conversion(null, null, null, null, null, tests.doctor('Ахметова Айгуль')) -> 'totals' ->> 'deals')::int = 3,
+  'doctor filter');
+select tests.assert(
+  jsonb_array_length(public.report_conversion(null, null, null, null, null, tests.doctor('Сериков Бахыт')) -> 'by_doctor') = 1,
+  'doctor filter: one doctor row');
 select tests.assert(
   (public.report_conversion(current_setting('t.from')::timestamptz, current_setting('t.to')::timestamptz, null, null, tests.source('instagram')) -> 'totals' ->> 'deals')::int = 2,
   'source filter');
@@ -199,6 +226,12 @@ select tests.assert(
 select tests.assert(
   jsonb_array_length(public.report_speed(null, null, null, current_setting('t.m1_id')::bigint) -> 'by_sales') = 1,
   'employee filter on the KPI');
+select tests.assert(
+  (select x ->> 'avg_seconds' from jsonb_array_elements(public.report_speed(current_setting('t.from')::timestamptz, current_setting('t.to')::timestamptz,
+     null, null, null, tests.doctor('Ахметова Айгуль')) -> 'stages') x where x ->> 'name' = 'План согласован') = '14400'
+  and (public.report_speed(current_setting('t.from')::timestamptz, current_setting('t.to')::timestamptz,
+     null, null, null, tests.doctor('Ахметова Айгуль')) -> 'first_response') = '{"deals": 1, "avg_seconds": 1800}'::jsonb,
+  'doctor filter on the speed: only the stays and answers of the doctor''s deals');
 
 -- Lost reasons
 select tests.assert(
@@ -211,14 +244,18 @@ select tests.assert(
 select tests.assert(
   (public.report_lost_reasons('2026-10-01', null) -> 'totals' ->> 'deals')::int = 0,
   'lost reasons follow the period');
+select tests.assert(
+  (public.report_lost_reasons(null, null, null, null, null, tests.doctor('Ахметова Айгуль')) -> 'totals' ->> 'deals')::int = 1
+  and (public.report_lost_reasons(null, null, null, null, null, tests.doctor('Сериков Бахыт')) -> 'totals' ->> 'deals')::int = 0,
+  'doctor filter on the lost reasons');
 
 -- Money
 create temporary table money on commit drop as
 select public.report_money(current_setting('t.from')::timestamptz, current_setting('t.to')::timestamptz) as r;
 select tests.assert(
   (select r -> 'totals' from money)
-    = '{"agreed_deals": 2, "agreed_amount": 500000, "paid_amount": 300000, "paying_deals": 2, "average_check": 150000}'::jsonb,
-  'agreed plans, payments of the period and the average check');
+    = '{"agreed_deals": 2, "agreed_amount": 500000, "paid_amount": 300000, "prepaid_amount": 100000, "paying_deals": 2, "average_check": 150000}'::jsonb,
+  'agreed plans, payments and prepayments of the period and the average check');
 select tests.assert(
   (select jsonb_object_agg(x ->> 'name', x -> 'paid_amount') from money, jsonb_array_elements(r -> 'by_service') x)
     = '{"Имплантация": 100000, "Ортодонтия": 200000}'::jsonb,
@@ -227,8 +264,17 @@ select tests.assert(
   (select x -> 'agreed_amount' from money, jsonb_array_elements(r -> 'by_sales') x where (x ->> 'id')::bigint = current_setting('t.m1_id')::bigint) = '300000'::jsonb,
   'money by employee');
 select tests.assert(
-  (public.report_money(null, null) -> 'totals' ->> 'paid_amount')::int = 350000,
-  'no period: every payment');
+  (public.report_money(null, null) -> 'totals' ->> 'paid_amount')::int = 350000
+  and (public.report_money(null, null) -> 'totals' ->> 'prepaid_amount')::int = 150000,
+  'no period: every payment, every prepayment');
+select tests.assert(
+  (select jsonb_agg(x - 'id' order by ord) from money, jsonb_array_elements(r -> 'by_doctor') with ordinality as t(x, ord))
+    = '[{"name": "Сериков Бахыт", "agreed_deals": 1, "agreed_amount": 200000, "paid_amount": 200000, "prepaid_amount": 0, "paying_deals": 1, "average_check": 200000},
+        {"name": "Ахметова Айгуль", "agreed_deals": 1, "agreed_amount": 300000, "paid_amount": 100000, "prepaid_amount": 100000, "paying_deals": 1, "average_check": 100000}]'::jsonb,
+  'money by doctor: plans, payments, prepayments, average check');
+select tests.assert(
+  (public.report_money(current_setting('t.from')::timestamptz, current_setting('t.to')::timestamptz, null, null, null, tests.doctor('Сериков Бахыт')) -> 'totals' ->> 'paid_amount')::int = 200000,
+  'doctor filter on the money');
 select tests.logout();
 
 -- Another clinic sees nothing of this one

@@ -119,6 +119,9 @@ export const englishCrmMessages = {
         tags: "Tags",
         archived_at: "Archive",
         stage: "Stage",
+        doctor_id: "Doctor",
+        consultation_amount: "Consultation",
+        prepayment_amount: "Prepayment",
       },
     },
     notes: {
@@ -1106,6 +1109,8 @@ export const englishCrmMessages = {
       is_active: "Enabled",
       provider: "Service",
       connected: "Connected",
+      doctor_id: "Doctor",
+      consultation_amount: "Consultation",
     },
     values: {
       yes: "Yes",
@@ -1609,6 +1614,38 @@ export const englishCrmMessages = {
         won: "won",
         lost: "lost",
       },
+    },
+  },
+  doctors: {
+    settings: {
+      section: "Doctors",
+      hint: "Doctors of the clinic for the deals and the reports. A doctor is not a CRM user. An inactive doctor is hidden from the pickers and stays on the old deals.",
+      name: "Doctor's name",
+      specialty: "Specialty",
+      specialty_placeholder: "e.g. orthodontist",
+      new_name: "New doctor",
+      add: "Add doctor",
+      active: "Active",
+      empty: "No doctors yet. Add the first one below.",
+      in_use: "The doctor has deals: switch them off instead of deleting",
+    },
+    deal: {
+      none: "Not chosen",
+      prepayment_hint: "Prepayment-kind payments, added on the Payments tab",
+    },
+    payments: {
+      kind: "Kind",
+      prepayment: "Prepayment",
+      payment: "Payment",
+    },
+    reports: {
+      filter: "Doctor",
+      all: "All doctors",
+      column: "Doctor",
+      none: "No doctor",
+      by_doctor: "By doctor",
+      prepaid: "Prepayments",
+      prepaid_amount: "Prepayment",
     },
   },
 } as const;

@@ -21,6 +21,7 @@ import {
   findById,
   getDefaultPipeline,
   toChoices,
+  useDoctors,
   useLeadSources,
   usePipelines,
   useServices,
@@ -55,6 +56,7 @@ const DealList = () => {
   const translate = useTranslate();
   const { data: services } = useServices();
   const { data: sources } = useLeadSources();
+  const { data: doctors } = useDoctors();
   const { current } = useCurrentPipeline();
   const { canAccess: canAccessSalesList, isPending } = useCanAccess({
     resource: "sales",
@@ -93,6 +95,15 @@ const DealList = () => {
         label={false}
         emptyText="resources.deals.fields.service_id"
         choices={toChoices(services)}
+      />
+    </WrapperField>,
+    <WrapperField source="doctor_id" label="resources.deals.fields.doctor_id">
+      <SelectInput
+        source="doctor_id"
+        label={false}
+        emptyText="resources.deals.fields.doctor_id"
+        // Inactive doctors too: their old deals stay findable
+        choices={doctors.map((d) => ({ id: d.id, name: d.name }))}
       />
     </WrapperField>,
     <WrapperField source="created_at@gte" label="crm.deals.period">

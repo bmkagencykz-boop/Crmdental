@@ -34,6 +34,7 @@ const lookups: AuditLookups = {
   ],
   pipelines: [{ id: 1, name: "Основная" }],
   lostReasons: [{ id: 5, name: "Дорого" }],
+  doctors: [{ id: 3, name: "Ахметова Г. С." }],
   sources: [{ id: 3, name: "WhatsApp" }],
   services: [{ id: 4, name: "Имплантация" }],
   tags: [
@@ -324,5 +325,16 @@ describe("toAuditCsvRows", () => {
     expect(row["Объект"]).toBe("Сделка «Имплантация»");
     expect(row["Действие"]).toBe("Изменение");
     expect(plain(row["Изменения"])).toBe("Сумма: 100 000 ₸ → 120 000 ₸");
+  });
+  it("names the doctor of a deal and formats the consultation price", () => {
+    const lines = describeAuditChanges(
+      entry({
+        changes: { doctor_id: [null, 3], consultation_amount: [null, 15000] },
+      }),
+      lookups,
+      t,
+    ).map(plain);
+    expect(lines[0]).toContain("Ахметова Г. С.");
+    expect(lines[1]).toContain("15 000");
   });
 });

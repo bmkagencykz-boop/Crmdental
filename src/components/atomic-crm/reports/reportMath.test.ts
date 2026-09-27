@@ -61,6 +61,9 @@ const sale = (id: number, first_name: string, disabled = false): Sale => ({
 const OWNER = 1;
 const HEAD = 2;
 const M1 = 3;
+// Doctors: Ахметова leads d1, d2 and d5, Сериков d4, d3 has none
+const AKHMETOVA = 1;
+const SERIKOV = 2;
 
 const buildData = (): ReportData => {
   const deals: Deal[] = [];
@@ -77,6 +80,7 @@ const buildData = (): ReportData => {
       steps: number[];
       paid?: number;
       firstResponseMinutes?: number;
+      doctor?: number;
     },
   ) => {
     const times = [options.created];
@@ -119,6 +123,7 @@ const buildData = (): ReportData => {
         options.firstResponseMinutes != null
           ? at(options.created, options.firstResponseMinutes / 60)
           : null,
+      doctor_id: options.doctor ?? null,
     });
   };
   const sept10 = "2026-09-10T10:00:00+05:00";
@@ -132,6 +137,7 @@ const buildData = (): ReportData => {
     steps: [1, 2, 3, 4],
     paid: 150000,
     firstResponseMinutes: 30,
+    doctor: AKHMETOVA,
   });
   addDeal(2, {
     source: 1,
@@ -141,6 +147,7 @@ const buildData = (): ReportData => {
     created: sept10,
     path: ["Записан", "Отказ"],
     steps: [1, 4],
+    doctor: AKHMETOVA,
   });
   addDeal(3, {
     source: 2,
@@ -161,6 +168,7 @@ const buildData = (): ReportData => {
     path: ["В работе", "План согласован", "Лечение завершено"],
     steps: [1, 1, 1],
     paid: 200000,
+    doctor: SERIKOV,
   });
   addDeal(5, {
     source: 1,
@@ -170,17 +178,19 @@ const buildData = (): ReportData => {
     created: "2025-09-10T10:00:00+05:00",
     path: ["Записан"],
     steps: [1],
+    doctor: AKHMETOVA,
   });
 
   const payments: DealPayment[] = [
-    [1, 100000, "2026-09-12"],
-    [1, 50000, "2026-08-01"],
-    [4, 200000, "2026-09-13"],
-  ].map(([deal_id, amount, paid_at], index) => ({
+    [1, 100000, "2026-09-12", "prepayment"],
+    [1, 50000, "2026-08-01", "prepayment"],
+    [4, 200000, "2026-09-13", "payment"],
+  ].map(([deal_id, amount, paid_at, kind], index) => ({
     id: index + 1,
     deal_id: deal_id as number,
     amount: amount as number,
     paid_at: paid_at as string,
+    kind: kind as DealPayment["kind"],
     created_at: paid_at as string,
   }));
   const tasks: Task[] = [
@@ -240,6 +250,22 @@ const buildData = (): ReportData => {
     })),
     services: dictionary(["Имплантация", "Ортодонтия", "Терапия", "Гигиена"]),
     lost_reasons: dictionary(["Дорого"]),
+    doctors: [
+      {
+        id: AKHMETOVA,
+        name: "Ахметова Айгуль",
+        specialty: "хирург-имплантолог",
+        is_active: true,
+        position: 0,
+      },
+      {
+        id: SERIKOV,
+        name: "Сериков Бахыт",
+        specialty: "ортодонт",
+        is_active: true,
+        position: 1,
+      },
+    ],
   };
 };
 
@@ -352,6 +378,66 @@ describe("conversionReport", () => {
     expect(conversionReport(data, {}).totals.deals).toBe(5);
     expect(conversionReport(data, { pipeline_id: 2 }).totals.deals).toBe(0);
   });
+
+  it("breaks the conversion down by doctor, deals without one last", () => {
+    const report = conversionReport(buildData(), SEPTEMBER);
+    expect(report.by_doctor).toEqual([
+      {
+        id: AKHMETOVA,
+        name: "Ахметова Айгуль",
+        deals: 2,
+        appointment: 2,
+        visit: 1,
+        plan: 1,
+        paid: 1,
+        won: 0,
+        lost: 1,
+      },
+      {
+        id: SERIKOV,
+        name: "Сериков Бахыт",
+        deals: 1,
+        appointment: 1,
+        visit: 1,
+        plan: 1,
+        paid: 1,
+        won: 1,
+        lost: 0,
+      },
+      {
+        id: null,
+        name: null,
+        deals: 1,
+        appointment: 0,
+        visit: 0,
+        plan: 0,
+        paid: 0,
+        won: 0,
+        lost: 0,
+      },
+    ]);
+  });
+
+  it("filters by doctor", () => {
+    const data = buildData();
+    expect(
+      conversionReport(data, { ...SEPTEMBER, doctor_id: AKHMETOVA }).totals,
+    ).toEqual({
+      deals: 2,
+      appointment: 2,
+      visit: 1,
+      plan: 1,
+      paid: 1,
+      won: 0,
+      lost: 1,
+    });
+    expect(conversionReport(data, { doctor_id: AKHMETOVA }).totals.deals).toBe(
+      3,
+    );
+    expect(
+      conversionReport(data, { doctor_id: SERIKOV }).by_doctor,
+    ).toHaveLength(1);
+  });
 });
 
 describe("speedReport", () => {
@@ -390,6 +476,18 @@ describe("speedReport", () => {
       speedReport(buildData(), { sales_id: M1 }, NOW).by_sales,
     ).toHaveLength(1);
   });
+
+  it("filters the stays and answers by doctor", () => {
+    const own = speedReport(
+      buildData(),
+      { ...SEPTEMBER, doctor_id: AKHMETOVA },
+      NOW,
+    );
+    expect(
+      own.stages.find((s) => s.name === "План согласован")?.avg_seconds,
+    ).toBe(14400);
+    expect(own.first_response).toEqual({ deals: 1, avg_seconds: 1800 });
+  });
 });
 
 describe("lostReport", () => {
@@ -411,6 +509,12 @@ describe("lostReport", () => {
       lostReport(buildData(), { from: "2026-10-01T00:00:00+05:00" }).totals
         .deals,
     ).toBe(0);
+    expect(lostReport(buildData(), { doctor_id: AKHMETOVA }).totals.deals).toBe(
+      1,
+    );
+    expect(lostReport(buildData(), { doctor_id: SERIKOV }).totals.deals).toBe(
+      0,
+    );
   });
 });
 
@@ -421,6 +525,7 @@ describe("moneyReport", () => {
       agreed_deals: 2,
       agreed_amount: 500000,
       paid_amount: 300000,
+      prepaid_amount: 100000,
       paying_deals: 2,
       average_check: 150000,
     });
@@ -431,6 +536,37 @@ describe("moneyReport", () => {
       300000,
     );
     expect(moneyReport(buildData(), {}).totals.paid_amount).toBe(350000);
+    expect(moneyReport(buildData(), {}).totals.prepaid_amount).toBe(150000);
+  });
+
+  it("breaks the money down by doctor, with the prepayments", () => {
+    const report = moneyReport(buildData(), SEPTEMBER);
+    expect(report.by_doctor).toEqual([
+      {
+        id: SERIKOV,
+        name: "Сериков Бахыт",
+        agreed_deals: 1,
+        agreed_amount: 200000,
+        paid_amount: 200000,
+        prepaid_amount: 0,
+        paying_deals: 1,
+        average_check: 200000,
+      },
+      {
+        id: AKHMETOVA,
+        name: "Ахметова Айгуль",
+        agreed_deals: 1,
+        agreed_amount: 300000,
+        paid_amount: 100000,
+        prepaid_amount: 100000,
+        paying_deals: 1,
+        average_check: 100000,
+      },
+    ]);
+    expect(
+      moneyReport(buildData(), { ...SEPTEMBER, doctor_id: SERIKOV }).totals
+        .paid_amount,
+    ).toBe(200000);
   });
 
   it("takes payment dates in the clinic time zone", () => {

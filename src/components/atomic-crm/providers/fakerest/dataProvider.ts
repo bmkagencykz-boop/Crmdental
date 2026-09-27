@@ -13,6 +13,7 @@ import type {
   DealEvent,
   DealNote,
   DealPayment,
+  Doctor,
   OrganizationSettings,
   Patient,
   PatientNote,
@@ -118,6 +119,8 @@ const DEAL_VIEW_COLUMNS = [
   "nb_unread_messages",
   "last_message_at",
   "last_message_text",
+  "doctor_name",
+  "prepayment_amount",
 ];
 
 // Demo lead webhook and Telegram bot (nothing is really reachable)
@@ -290,12 +293,13 @@ export const createDataProvider = ({
   };
 
   const renderAutomessage = async (deal: Deal, template: MessageTemplate) => {
-    const [patient, services, configuration] = await Promise.all([
+    const [patient, services, doctors, configuration] = await Promise.all([
       baseDataProvider
         .getOne<Patient>("patients", { id: deal.patient_id })
         .then((r) => r.data)
         .catch(() => undefined),
       all<Service>("services"),
+      all<Doctor>("doctors"),
       baseDataProvider
         .getOne("configuration", { id: 1 })
         .then((r) => r.data)
@@ -307,6 +311,7 @@ export const createDataProvider = ({
         deal,
         patientFirstName: patient?.first_name,
         serviceName: services.find((s) => s.id === deal.service_id)?.name,
+        doctorName: doctors.find((d) => d.id === deal.doctor_id)?.name,
         clinicName: configuration?.config?.title || DEMO_CLINIC_NAME,
       }),
     );
@@ -470,15 +475,19 @@ export const createDataProvider = ({
   };
 
   const dealsSummary = async () => {
-    const [deals, stages, patients, tasks, messages] = await Promise.all([
-      all<Deal>("deals"),
-      all<Stage>("stages"),
-      all<Patient>("patients"),
-      all<Task>("tasks"),
-      all<Message>("messages"),
-    ]);
+    const [deals, stages, patients, tasks, messages, doctors, payments] =
+      await Promise.all([
+        all<Deal>("deals"),
+        all<Stage>("stages"),
+        all<Patient>("patients"),
+        all<Task>("tasks"),
+        all<Message>("messages"),
+        all<Doctor>("doctors"),
+        all<DealPayment>("deal_payments"),
+      ]);
     const kind = new Map(stages.map((stage) => [stage.id, stage.kind]));
     const patientsById = new Map(patients.map((p) => [p.id, p]));
+    const doctorsById = new Map(doctors.map((d) => [d.id, d]));
     return deals.map((deal) => {
       const patient = patientsById.get(deal.patient_id);
       const open = tasks.filter(
@@ -505,6 +514,15 @@ export const createDataProvider = ({
         ...messageSummary(
           messages.filter((message) => message.deal_id === deal.id),
         ),
+        doctor_id: deal.doctor_id ?? null,
+        doctor_name:
+          deal.doctor_id != null
+            ? (doctorsById.get(deal.doctor_id)?.name ?? null)
+            : null,
+        consultation_amount: deal.consultation_amount ?? null,
+        prepayment_amount: payments
+          .filter((p) => p.deal_id === deal.id && p.kind === "prepayment")
+          .reduce((sum, p) => sum + Number(p.amount), 0),
       };
     });
   };
@@ -1155,6 +1173,7 @@ export const createDataProvider = ({
         "lead_sources",
         "services",
         "lost_reasons",
+        "doctors",
       ] as const;
       const rows = await Promise.all(resources.map((r) => all<any>(r)));
       return computeReport(
@@ -1579,6 +1598,7 @@ export const createDataProvider = ({
             data: {
               ...params.data,
               amount: Number(params.data.amount),
+              kind: params.data.kind ?? "payment",
               paid_at:
                 params.data.paid_at ?? new Date().toISOString().slice(0, 10),
               sales_id: await currentSalesId(),
@@ -1664,6 +1684,27 @@ export const createDataProvider = ({
           return result;
         },
       } satisfies ResourceCallbacks<Pipeline>,
+      {
+        // Same as the composite foreign key deals.doctor_id: a doctor with
+        // deals is switched off, not deleted
+        resource: "doctors",
+        beforeCreate: async (params) => ({
+          ...params,
+          data: {
+            ...params.data,
+            specialty: params.data.specialty ?? null,
+            is_active: params.data.is_active ?? true,
+            position: params.data.position ?? 0,
+          },
+        }),
+        beforeDelete: async (params) => {
+          const deals = await all<Deal>("deals");
+          if (deals.some((deal) => deal.doctor_id === params.id)) {
+            throw new Error("crm.settings.errors.in_use");
+          }
+          return params;
+        },
+      } satisfies ResourceCallbacks<Doctor>,
       {
         resource: "lead_sources",
         beforeDelete: async (params) => {

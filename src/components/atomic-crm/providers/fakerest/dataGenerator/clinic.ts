@@ -11,6 +11,7 @@ import {
   roundedAmount,
   taskTexts,
 } from "./kz";
+import { assignDoctors } from "./doctors";
 import type { Db } from "./types";
 import { randomDate } from "./utils";
 
@@ -141,6 +142,8 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
           : null,
         first_response_at: null,
         archived_at: null,
+        doctor_id: null,
+        consultation_amount: null,
       });
       if (patient.source_id == null) patient.source_id = source.id;
     }
@@ -153,6 +156,7 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       .forEach((deal, index) => (deal.index = index)),
   );
   db.deals = deals;
+  assignDoctors(db, deals);
 
   // Stage history: every deal walks through the stages up to its current one
   // (sometimes skipping one), a lost deal leaves from an open stage. The log
@@ -218,21 +222,22 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
     return entry ? new Date(entry.at) : new Date(deal.created_at);
   };
 
-  // Payments on deals with an agreed plan, in treatment or finished
+  // Payments on deals with an agreed plan, in treatment or finished; some
+  // start with a prepayment. Some booked patients prepay the visit.
   db.deal_payments = [];
-  deals.forEach((deal) => {
-    const stage = db.stages.find((s) => s.id === deal.stage_id)!;
-    const paying =
-      stage.kind === "won" || (stage.kind === "open" && stage.position >= 4);
-    if (!paying) return;
-    const share = stage.kind === "won" ? 1 : random.arrayElement([0.3, 0.5]);
-    const amount = Math.round((deal.plan_amount * share) / 1000) * 1000;
+  const pay = (
+    deal: Deal,
+    amount: number,
+    kind: "prepayment" | "payment",
+    after: Date,
+  ) => {
     if (amount <= 0) return;
     db.deal_payments.push({
       id: db.deal_payments.length,
       deal_id: deal.id,
       amount,
-      paid_at: randomDate(planReachedAt(deal)).toISOString().slice(0, 10),
+      kind,
+      paid_at: randomDate(after).toISOString().slice(0, 10),
       comment: random.arrayElement([
         "Kaspi",
         "Наличные",
@@ -243,6 +248,33 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       created_at: deal.updated_at,
     });
     deal.paid_amount += amount;
+  };
+  deals.forEach((deal) => {
+    const stage = db.stages.find((s) => s.id === deal.stage_id)!;
+    const paying =
+      stage.kind === "won" || (stage.kind === "open" && stage.position >= 4);
+    if (!paying) {
+      const booked =
+        stage.kind === "open" && stage.position >= 2 && deal.doctor_id != null;
+      if (booked && random.number(9) < 3) {
+        pay(
+          deal,
+          random.arrayElement([5000, 10000, 20000]),
+          "prepayment",
+          new Date(deal.created_at),
+        );
+      }
+      return;
+    }
+    const share = stage.kind === "won" ? 1 : random.arrayElement([0.3, 0.5]);
+    const amount = Math.round((deal.plan_amount * share) / 1000) * 1000;
+    if (random.number(9) < 4) {
+      const prepayment = Math.round((amount * 0.2) / 1000) * 1000;
+      pay(deal, prepayment, "prepayment", planReachedAt(deal));
+      pay(deal, amount - prepayment, "payment", planReachedAt(deal));
+    } else {
+      pay(deal, amount, "payment", planReachedAt(deal));
+    }
   });
 
   // Tasks done along the way: most in time, some late

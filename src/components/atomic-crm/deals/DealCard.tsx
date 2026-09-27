@@ -129,6 +129,15 @@ export const DealCardContent = ({
         </div>
         <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
           {deal.name || service?.name || translate("crm.deals.untitled")}
+          {deal.doctor_name ? (
+            <span
+              className="text-[11px]"
+              title={translate("resources.deals.fields.doctor_id")}
+            >
+              {" · "}
+              {deal.doctor_name}
+            </span>
+          ) : null}
         </p>
         <WaitingBadge dealId={deal.id} />
         {deal.plan_amount > 0 ? (

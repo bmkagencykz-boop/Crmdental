@@ -190,6 +190,19 @@ describe("automessageValues", () => {
       услуга: "Гигиена",
       дата_визита: "12 марта в 14:30",
       клиника: "Жемчуг",
+      врач: null,
     });
+  });
+
+  it("gives the doctor's name for {врач}", () => {
+    const values = automessageValues({
+      deal: { appointment_at: null, visit_at: null },
+      patientFirstName: "Асель",
+      doctorName: " Ахметова Айгуль ",
+    });
+    expect(values.врач).toBe("Ахметова Айгуль");
+    expect(renderTemplate("{имя}, ваш врач — {врач}.", values)).toBe(
+      "Асель, ваш врач — Ахметова Айгуль.",
+    );
   });
 });

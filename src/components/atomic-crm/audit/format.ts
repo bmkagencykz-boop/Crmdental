@@ -29,9 +29,15 @@ export type AuditLookups = {
   sources: Named[];
   services: Named[];
   tags: Named[];
+  doctors: Named[];
 };
 
-const MONEY_FIELDS = new Set(["plan_amount", "paid_amount", "amount"]);
+const MONEY_FIELDS = new Set([
+  "plan_amount",
+  "paid_amount",
+  "amount",
+  "consultation_amount",
+]);
 const DATE_TIME_FIELDS = new Set([
   "due_date",
   "done_date",
@@ -64,6 +70,7 @@ const REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
   lost_reason_id: "lostReasons",
   source_id: "sources",
   service_id: "services",
+  doctor_id: "doctors",
 };
 const LIST_REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
   tags: "tags",

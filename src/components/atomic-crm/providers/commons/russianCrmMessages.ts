@@ -123,6 +123,9 @@ export const russianCrmMessages: CrmMessages = {
         tags: "Теги",
         archived_at: "Архив",
         stage: "Этап",
+        doctor_id: "Врач",
+        consultation_amount: "Консультация",
+        prepayment_amount: "Предоплата",
       },
     },
     notes: {
@@ -1113,6 +1116,8 @@ export const russianCrmMessages: CrmMessages = {
       is_active: "Включено",
       provider: "Сервис",
       connected: "Подключено",
+      doctor_id: "Врач",
+      consultation_amount: "Консультация",
     },
     values: {
       yes: "Да",
@@ -1619,6 +1624,39 @@ export const russianCrmMessages: CrmMessages = {
         won: "успешно",
         lost: "отказ",
       },
+    },
+  },
+  doctors: {
+    settings: {
+      section: "Врачи",
+      hint: "Врачи клиники для сделок и отчётов. Врач — не пользователь CRM. Неактивный врач не предлагается в сделках, но остаётся в старых.",
+      name: "ФИО врача",
+      specialty: "Специальность",
+      specialty_placeholder: "Например: ортодонт",
+      new_name: "Новый врач",
+      add: "Добавить врача",
+      active: "Активен",
+      empty: "Врачей пока нет. Добавьте первого ниже.",
+      in_use: "У врача есть сделки: выключите его вместо удаления",
+    },
+    deal: {
+      none: "Не выбран",
+      prepayment_hint:
+        "Платежи с видом «Предоплата», добавляются во вкладке «Оплаты»",
+    },
+    payments: {
+      kind: "Вид",
+      prepayment: "Предоплата",
+      payment: "Оплата",
+    },
+    reports: {
+      filter: "Врач",
+      all: "Все врачи",
+      column: "Врач",
+      none: "Без врача",
+      by_doctor: "По врачам",
+      prepaid: "Предоплаты",
+      prepaid_amount: "Предоплата",
     },
   },
 };

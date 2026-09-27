@@ -31,6 +31,7 @@ import type { Deal } from "../types";
 import { TagsListEdit } from "../patients/TagsListEdit";
 import { DealPayments } from "./DealPayments";
 import { DealTimeline } from "./DealTimeline";
+import { StageChecklist } from "./StageChecklist";
 
 export const DealShow = ({ open, id }: { open: boolean; id?: string }) => {
   const redirect = useRedirect();
@@ -168,6 +169,7 @@ const DealShowContent = () => {
               </p>
             ) : null}
           </Panel>
+          <StageChecklist deal={record} />
           <Panel title={translate("crm.deals.sections.tags")}>
             <TagsListEdit resource="deals" />
           </Panel>

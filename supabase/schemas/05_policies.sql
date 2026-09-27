@@ -33,6 +33,9 @@ alter table public.messenger_integrations enable row level security;
 alter table public.messenger_channels enable row level security;
 alter table public.patient_chats enable row level security;
 alter table public.messages enable row level security;
+alter table public.task_rules enable row level security;
+alter table public.stage_checklist_items enable row level security;
+alter table public.deal_checklist_checks enable row level security;
 
 -- Organizations: members read their clinic, only the owner edits it
 create policy "Organization members can read" on public.organizations for select to authenticated
@@ -226,3 +229,30 @@ create policy "Rows of visible deals can be read" on public.messages for select 
 create policy "Rows of visible deals can be updated" on public.messages for update to authenticated
     using (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = messages.organization_id and d.id = messages.deal_id))
     with check (organization_id = (select private.current_organization_id()));
+
+-- Automations: rules and checklists are settings (owner and head); checks
+-- follow the deal
+create policy "Organization members can read" on public.task_rules for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Owner and head can insert" on public.task_rules for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can update" on public.task_rules for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Owner and head can delete" on public.task_rules for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Organization members can read" on public.stage_checklist_items for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Owner and head can insert" on public.stage_checklist_items for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can update" on public.stage_checklist_items for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Owner and head can delete" on public.stage_checklist_items for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Rows of visible deals can be read" on public.deal_checklist_checks for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = deal_checklist_checks.organization_id and d.id = deal_checklist_checks.deal_id));
+create policy "Rows of visible deals can be inserted" on public.deal_checklist_checks for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = deal_checklist_checks.organization_id and d.id = deal_checklist_checks.deal_id));
+create policy "Rows of visible deals can be deleted" on public.deal_checklist_checks for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = deal_checklist_checks.organization_id and d.id = deal_checklist_checks.deal_id));

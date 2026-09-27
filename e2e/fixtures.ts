@@ -235,6 +235,15 @@ async function createDeal({
   return data;
 }
 
+/** Turns the clinic's task rules off (tests about deals without tasks) */
+async function disableTaskRules() {
+  const { error } = await adminSupabase
+    .from("task_rules")
+    .update({ is_active: false })
+    .eq("organization_id", requireTestOrganization());
+  if (error) throw new Error(`Failed to disable task rules: ${error.message}`);
+}
+
 /** What wazzup_connect stores: the clinic's key and webhook token */
 async function connectMessenger() {
   const token = `test-token-${requireTestOrganization()}`;
@@ -311,6 +320,7 @@ export const test = base.extend<{
   createPatient: typeof createPatient;
   createDeal: typeof createDeal;
   connectMessenger: typeof connectMessenger;
+  disableTaskRules: typeof disableTaskRules;
   receiveMessage: typeof receiveMessage;
   createNotes: typeof createNotes;
   menu: ReturnType<typeof getMenuMethod>;
@@ -339,6 +349,10 @@ export const test = base.extend<{
   // eslint-disable-next-line no-empty-pattern
   createPatient: async ({}, cb) => {
     await cb(createPatient);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  disableTaskRules: async ({}, cb) => {
+    await cb(disableTaskRules);
   },
   // eslint-disable-next-line no-empty-pattern
   connectMessenger: async ({}, cb) => {

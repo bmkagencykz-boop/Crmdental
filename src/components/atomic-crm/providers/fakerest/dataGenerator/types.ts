@@ -5,6 +5,7 @@ import type {
   DealNote,
   DealPayment,
   LeadSource,
+  DealChecklistCheck,
   LostReason,
   Message,
   MessengerChannel,
@@ -15,8 +16,10 @@ import type {
   Sale,
   Service,
   Stage,
+  StageChecklistItem,
   Tag,
   Task,
+  TaskRule,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 
@@ -38,6 +41,9 @@ export interface Db {
   calls: Call[];
   messages: Message[];
   messenger_channels: MessengerChannel[];
+  task_rules: TaskRule[];
+  stage_checklist_items: StageChecklistItem[];
+  deal_checklist_checks: DealChecklistCheck[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
 }

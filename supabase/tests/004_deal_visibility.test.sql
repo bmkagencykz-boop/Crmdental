@@ -15,6 +15,7 @@ select set_config('t.m2_id', (select id from public.sales where email = 'm2@clin
 
 -- Three deals: one per manager and one without a responsible, each with a task
 select tests.login_as(current_setting('t.owner')::uuid);
+update public.task_rules set is_active = false;  -- only the tasks below
 insert into public.patients (first_name) values ('Пациент');
 insert into public.deals (patient_id, name, sales_id)
 select p.id, d.name, d.sales_id

@@ -83,6 +83,37 @@ export const generateDictionaries = (db: Db) => {
       organization_id: 1,
       manager_deal_visibility: "all",
       pipeline_move_mode: "first_stage",
+      lead_distribution: "first_response",
+      lead_distribution_sales_ids: [],
     },
   ];
+  // Same defaults as private.seed_organization, plus a checklist example
+  db.task_rules = [
+    {
+      id: 1,
+      event: "deal_created",
+      stage_id: null,
+      type: "call",
+      text: "Связаться с пациентом по новому обращению",
+      due_in_minutes: 15,
+      is_active: true,
+      position: 0,
+    },
+    {
+      id: 2,
+      event: "stage_entered",
+      stage_id: 4,
+      type: "message",
+      text: "Отправить план лечения и стоимость",
+      due_in_minutes: 24 * 60,
+      is_active: true,
+      position: 1,
+    },
+  ];
+  db.stage_checklist_items = [
+    { id: 1, stage_id: 4, text: "Сделать снимок (КТ или ОПТГ)", position: 0 },
+    { id: 2, stage_id: 4, text: "Составить план лечения", position: 1 },
+    { id: 3, stage_id: 4, text: "Озвучить стоимость и рассрочку", position: 2 },
+  ];
+  db.deal_checklist_checks = [];
 };

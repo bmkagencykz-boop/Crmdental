@@ -243,7 +243,34 @@ export type OrganizationSettings = {
   organization_id: Identifier;
   manager_deal_visibility: "all" | "own" | "own_and_unassigned";
   pipeline_move_mode: "first_stage" | "choose_stage";
+  lead_distribution: "off" | "round_robin" | "first_response";
+  lead_distribution_sales_ids: Identifier[];
+  last_distributed_sales_id?: Identifier | null;
 };
+
+/** A task created on its own when a deal is created or enters a stage */
+export type TaskRule = {
+  event: "deal_created" | "stage_entered";
+  stage_id?: Identifier | null;
+  type: TaskType;
+  text: string;
+  due_in_minutes: number;
+  is_active: boolean;
+  position: number;
+} & Pick<RaRecord, "id">;
+
+export type StageChecklistItem = {
+  stage_id: Identifier;
+  text: string;
+  position: number;
+} & Pick<RaRecord, "id">;
+
+export type DealChecklistCheck = {
+  deal_id: Identifier;
+  item_id: Identifier;
+  sales_id?: Identifier | null;
+  checked_at: string;
+} & Pick<RaRecord, "id">;
 
 export type DealNote = {
   deal_id: Identifier;

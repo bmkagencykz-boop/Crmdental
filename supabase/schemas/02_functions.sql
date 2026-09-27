@@ -372,6 +372,16 @@ begin
     (org_id, 'Страх лечения', 5),
     (org_id, 'Нет времени', 6),
     (org_id, 'Другое', 7);
+
+  -- Default automations: contact every new request, send the plan after the
+  -- consultation (the clinic edits them in Settings → Automations)
+  insert into public.task_rules (organization_id, event, stage_id, type, text, due_in_minutes, position)
+  values (org_id, 'deal_created', null, 'call', 'Связаться с пациентом по новому обращению', 15, 0);
+  insert into public.task_rules (organization_id, event, stage_id, type, text, due_in_minutes, position)
+  select org_id, 'stage_entered', s.id, 'message', 'Отправить план лечения и стоимость', 24 * 60, 1
+  from public.stages s
+    join public.pipelines p on p.id = s.pipeline_id
+  where p.organization_id = org_id and p.is_default and s.name = 'Пришёл на консультацию';
 end;
 $$;
 
@@ -488,6 +498,10 @@ begin
     end if;
     new.paid_amount := 0;
     new.stage_changed_at := now();
+    -- A lead coming from outside (no user) is distributed by the clinic rules
+    if new.sales_id is null and auth.uid() is null then
+      new.sales_id := private.next_responsible(new.organization_id);
+    end if;
   else
     new.created_at := old.created_at;
     -- paid_amount is the total of the payments, only their trigger writes it
@@ -521,6 +535,22 @@ begin
     if old_kind = 'lost' then
       raise exception 'Сделка в отказе не возвращается в работу. Для повторного обращения создайте новую сделку.'
         using errcode = 'check_violation', hint = 'deal_lost_locked';
+    end if;
+    -- The checklist of the stage blocks moving forward (refusing is always possible)
+    if new.pipeline_id = old.pipeline_id and new_kind is distinct from 'lost'
+      and (select s.position from public.stages s where s.id = new.stage_id)
+        > (select s.position from public.stages s where s.id = old.stage_id)
+      and exists (
+        select 1 from public.stage_checklist_items i
+        where i.stage_id = old.stage_id
+          and not exists (
+            select 1 from public.deal_checklist_checks c
+            where c.deal_id = old.id and c.item_id = i.id
+          )
+      )
+    then
+      raise exception 'Выполните чек-лист этапа «%»', (select s.name from public.stages s where s.id = old.stage_id)
+        using errcode = 'check_violation', hint = 'stage_checklist_incomplete';
     end if;
   end if;
 
@@ -565,7 +595,33 @@ begin
         and id = new.patient_id
         and source_id is null;
     end if;
+    if new.sales_id is not null then
+      update public.patients
+      set sales_id = new.sales_id
+      where organization_id = new.organization_id
+        and id = new.patient_id
+        and sales_id is null;
+    end if;
+    perform private.create_rule_tasks(new, 'deal_created', null);
+    perform private.create_rule_tasks(new, 'stage_entered', new.stage_id);
     return null;
+  end if;
+
+  -- A responsible assigned later (first answer, by hand) takes the
+  -- unassigned open tasks of the deal
+  if new.sales_id is not null and old.sales_id is null then
+    update public.tasks
+    set sales_id = new.sales_id
+    where organization_id = new.organization_id and deal_id = new.id
+      and sales_id is null and done_date is null;
+    update public.patients
+    set sales_id = new.sales_id
+    where organization_id = new.organization_id
+      and id = new.patient_id
+      and sales_id is null;
+  end if;
+  if new.stage_id is distinct from old.stage_id then
+    perform private.create_rule_tasks(new, 'stage_entered', new.stage_id);
   end if;
 
   old_json := to_jsonb(old);
@@ -832,7 +888,81 @@ begin
     set first_response_at = new.sent_at
     where d.organization_id = new.organization_id and d.id = new.deal_id
       and d.first_response_at is null;
+    -- "First to answer takes the lead", among the chosen employees
+    if new.sales_id is not null then
+      update public.deals d
+      set sales_id = new.sales_id
+      where d.organization_id = new.organization_id and d.id = new.deal_id
+        and d.sales_id is null
+        and exists (
+          select 1 from public.organization_settings s
+          where s.organization_id = new.organization_id
+            and s.lead_distribution = 'first_response'
+            and (cardinality(s.lead_distribution_sales_ids) = 0
+              or new.sales_id = any(s.lead_distribution_sales_ids))
+        );
+    end if;
   end if;
   return null;
+end;
+$$;
+
+--
+-- Automations
+--
+
+-- Round robin among the chosen active employees (organization_settings);
+-- null when the clinic does not distribute this way
+CREATE OR REPLACE FUNCTION "private"."next_responsible"("org_id" bigint) RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  settings public.organization_settings;
+  last_position bigint;
+  chosen bigint;
+begin
+  select * into settings from public.organization_settings s
+  where s.organization_id = org_id
+  for update;
+  if not found or settings.lead_distribution <> 'round_robin' then
+    return null;
+  end if;
+  select c.position into last_position
+  from unnest(settings.lead_distribution_sales_ids) with ordinality as c(sales_id, position)
+  where c.sales_id = settings.last_distributed_sales_id;
+  select s.id into chosen
+  from unnest(settings.lead_distribution_sales_ids) with ordinality as c(sales_id, position)
+    join public.sales s on s.id = c.sales_id and s.organization_id = org_id and not s.disabled
+  order by c.position <= coalesce(last_position, 0), c.position
+  limit 1;
+  if chosen is not null then
+    update public.organization_settings
+    set last_distributed_sales_id = chosen
+    where organization_id = org_id;
+  end if;
+  return chosen;
+end;
+$$;
+
+-- Tasks of the rules matching an event of a deal
+CREATE OR REPLACE FUNCTION "private"."create_rule_tasks"("deal" "public"."deals", "rule_event" "text", "rule_stage_id" bigint) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  created integer;
+begin
+  insert into public.tasks (organization_id, deal_id, type, text, due_date, sales_id)
+  select deal.organization_id, deal.id, r.type, r.text,
+    now() + make_interval(mins => r.due_in_minutes), deal.sales_id
+  from public.task_rules r
+  where r.organization_id = deal.organization_id
+    and r.is_active
+    and r.event = rule_event
+    and r.stage_id is not distinct from rule_stage_id
+  order by r.position, r.id;
+  get diagnostics created = row_count;
+  return created;
 end;
 $$;

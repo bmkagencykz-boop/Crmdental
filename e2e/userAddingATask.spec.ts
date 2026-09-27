@@ -3,30 +3,34 @@ import { expect, test } from "./fixtures";
 test.describe("tasks on a deal", () => {
   let dealId: number;
 
-  test.beforeEach(async ({ createSales, createPatient, createDeal }) => {
-    const sales = await createSales({
-      first_name: "Aigerim",
-      last_name: "Saparova",
-      email: "owner@smile.kz",
-      password: "password",
-    });
+  test.beforeEach(
+    async ({ createSales, createPatient, createDeal, disableTaskRules }) => {
+      const sales = await createSales({
+        first_name: "Aigerim",
+        last_name: "Saparova",
+        email: "owner@smile.kz",
+        password: "password",
+      });
+      // These scenarios are about deals without any task yet
+      await disableTaskRules();
 
-    const patient = await createPatient({
-      first_name: "Daulet",
-      last_name: "Akhmetov",
-      phone: "+77015551234",
-      sales_id: sales.id,
-      notes: [{ text: "Asked about implants on Instagram." }],
-    });
+      const patient = await createPatient({
+        first_name: "Daulet",
+        last_name: "Akhmetov",
+        phone: "+77015551234",
+        sales_id: sales.id,
+        notes: [{ text: "Asked about implants on Instagram." }],
+      });
 
-    const deal = await createDeal({
-      patient_id: patient.id,
-      sales_id: sales.id,
-      name: "Implants",
-      plan_amount: 450000,
-    });
-    dealId = deal.id;
-  });
+      const deal = await createDeal({
+        patient_id: patient.id,
+        sales_id: sales.id,
+        name: "Implants",
+        plan_amount: 450000,
+      });
+      dealId = deal.id;
+    },
+  );
 
   test("a deal without a task is flagged, then gets its next step", async ({
     page,

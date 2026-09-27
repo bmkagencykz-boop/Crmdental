@@ -319,3 +319,21 @@ revoke all on function public.messenger_status() from public, anon;
 grant execute on function public.messenger_status() to authenticated, service_role;
 revoke all on function private.handle_message_created() from public;
 grant execute on function private.handle_message_created() to service_role;
+
+-- Automations
+grant all on table public.task_rules to anon;
+grant all on table public.task_rules to authenticated;
+grant all on table public.task_rules to service_role;
+grant all on table public.stage_checklist_items to anon;
+grant all on table public.stage_checklist_items to authenticated;
+grant all on table public.stage_checklist_items to service_role;
+grant all on table public.deal_checklist_checks to anon;
+grant all on table public.deal_checklist_checks to authenticated;
+grant all on table public.deal_checklist_checks to service_role;
+grant all on sequence public.task_rules_id_seq to anon, authenticated, service_role;
+grant all on sequence public.stage_checklist_items_id_seq to anon, authenticated, service_role;
+grant all on sequence public.deal_checklist_checks_id_seq to anon, authenticated, service_role;
+revoke all on function private.next_responsible(bigint) from public;
+grant execute on function private.next_responsible(bigint) to authenticated, service_role;
+revoke all on function private.create_rule_tasks(public.deals, text, bigint) from public;
+grant execute on function private.create_rule_tasks(public.deals, text, bigint) to authenticated, service_role;

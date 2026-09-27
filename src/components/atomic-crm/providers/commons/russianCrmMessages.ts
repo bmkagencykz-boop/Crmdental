@@ -361,6 +361,11 @@ export const russianCrmMessages: CrmMessages = {
         month: "30 дней",
         quarter: "90 дней",
       },
+      checklist: {
+        title: "Чек-лист этапа",
+        progress: "%{done} из %{total}",
+        hint: "Сделка перейдёт дальше, когда все пункты выполнены.",
+      },
     },
     roles: {
       owner: "Владелец",
@@ -405,6 +410,8 @@ export const russianCrmMessages: CrmMessages = {
         access: "Доступ",
         clinic: "Клиника",
         messengers: "Мессенджеры",
+        distribution: "Распределение",
+        automations: "Автозадачи",
       },
       hints: {
         pipelines:
@@ -418,6 +425,10 @@ export const russianCrmMessages: CrmMessages = {
         clinic: "Название и логотип в приложении.",
         messengers:
           "WhatsApp, Instagram и Telegram через Wazzup24. Входящее сообщение само создаёт пациента и сделку.",
+        distribution:
+          "Кому достаётся новое обращение из мессенджера или с сайта.",
+        automations:
+          "Задачи, которые создаются сами для ответственного по сделке.",
       },
       errors: {
         in_use: "Используется в сделках — сначала перенесите их.",
@@ -466,6 +477,39 @@ export const russianCrmMessages: CrmMessages = {
         connect_error: "Не удалось подключить Wazzup24",
         disconnect: "Отключить",
         channels: "Каналы",
+      },
+      checklist: {
+        title: "Чек-лист: %{stage}",
+        hint: "Сделка уйдёт с этого этапа (кроме отказа), только когда все пункты отмечены.",
+        new_item: "Новый пункт",
+      },
+      distribution: {
+        mode: "Новые обращения",
+        modes: {
+          off: "Распределяет руководитель",
+          round_robin: "По очереди",
+          first_response: "Кто первый ответил",
+        },
+        employees: "Кто принимает обращения",
+        round_robin_hint:
+          "Каждое новое обращение получает следующий по списку сотрудник. Отключённые пропускаются.",
+        first_response_hint:
+          "Обращение получает тот из выбранных, кто первым ответит пациенту. Если никто не выбран — любой сотрудник.",
+      },
+      automations: {
+        add: "Добавить правило",
+        default_text: "Связаться с пациентом",
+        when: "Когда",
+        deal_created: "При создании сделки",
+        stage_entered: "При переходе на «%{stage}»",
+        due_in: "срок через",
+        unit: "Единица",
+        units: {
+          minutes: "минут",
+          hours: "часов",
+          days: "дней",
+        },
+        text: "Текст задачи",
       },
     },
     theme: {

@@ -31,6 +31,7 @@ import {
   useStages,
 } from "../dictionaries/useDictionaries";
 import type { CrmDataProvider } from "../providers/types";
+import { ChecklistEditor } from "./ChecklistEditor";
 import type { Stage, StageKind } from "../types";
 import {
   explainError,
@@ -305,6 +306,7 @@ const StageRow = ({
           ))}
         </SelectContent>
       </Select>
+      <ChecklistEditor stage={stage} />
       <Button
         variant="ghost"
         size="icon"

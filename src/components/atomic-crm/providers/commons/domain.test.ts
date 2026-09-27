@@ -3,6 +3,8 @@ import type { Stage } from "../../types";
 import {
   applyPipelineMove,
   checkDealStageChange,
+  checkStageChecklist,
+  ruleTasks,
   dealChanges,
   normalizePatient,
   normalizePhone,
@@ -147,5 +149,109 @@ describe("applyPipelineMove", () => {
         stages,
       }),
     ).toEqual({ pipeline_id: 1, stage_id: 2 });
+  });
+});
+
+describe("checkStageChecklist", () => {
+  const items = [{ id: 10, stage_id: 1, text: "Снимок", position: 0 }];
+  const deal = { id: 7, stage_id: 1, pipeline_id: 1 };
+
+  it("blocks moving forward with the checklist undone", () => {
+    expect(() =>
+      checkStageChecklist({
+        previous: deal,
+        next: { stage_id: 2, pipeline_id: 1 },
+        stages,
+        items,
+        checks: [],
+      }),
+    ).toThrow("Выполните чек-лист этапа «S1»");
+  });
+
+  it("lets the deal go once every item is checked", () => {
+    expect(() =>
+      checkStageChecklist({
+        previous: deal,
+        next: { stage_id: 2, pipeline_id: 1 },
+        stages,
+        items,
+        checks: [{ id: 1, deal_id: 7, item_id: 10, checked_at: "" }],
+      }),
+    ).not.toThrow();
+  });
+
+  it("always lets a deal be lost", () => {
+    expect(() =>
+      checkStageChecklist({
+        previous: deal,
+        next: { stage_id: 3, pipeline_id: 1 },
+        stages,
+        items,
+        checks: [],
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("ruleTasks", () => {
+  const rules = [
+    {
+      id: 1,
+      event: "deal_created" as const,
+      type: "call" as const,
+      text: "Связаться",
+      due_in_minutes: 15,
+      is_active: true,
+      position: 0,
+    },
+    {
+      id: 2,
+      event: "stage_entered" as const,
+      stage_id: 2,
+      type: "message" as const,
+      text: "План",
+      due_in_minutes: 60,
+      is_active: true,
+      position: 0,
+    },
+    {
+      id: 3,
+      event: "deal_created" as const,
+      type: "other" as const,
+      text: "Выключено",
+      due_in_minutes: 0,
+      is_active: false,
+      position: 1,
+    },
+  ];
+  const now = new Date("2026-10-01T10:00:00Z");
+
+  it("creates the active tasks of an event, for the responsible", () => {
+    expect(
+      ruleTasks({
+        deal: { id: 5, sales_id: 3 },
+        rules,
+        event: "deal_created",
+        now,
+      }),
+    ).toEqual([
+      {
+        deal_id: 5,
+        type: "call",
+        text: "Связаться",
+        due_date: "2026-10-01T10:15:00.000Z",
+        done_date: null,
+        sales_id: 3,
+      },
+    ]);
+    expect(
+      ruleTasks({
+        deal: { id: 5 },
+        rules,
+        event: "stage_entered",
+        stageId: 2,
+        now,
+      }).map((t) => t.text),
+    ).toEqual(["План"]);
   });
 });

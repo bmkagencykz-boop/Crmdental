@@ -23,12 +23,17 @@ import type {
   Task,
   Message,
   MessengerStatus,
+  DealChecklistCheck,
+  StageChecklistItem,
+  TaskRule,
 } from "../../types";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
 import {
   applyPipelineMove,
   checkDealStageChange,
+  checkStageChecklist,
+  ruleTasks,
   dealChanges,
   normalizePatient,
   normalizePhone,
@@ -117,6 +122,23 @@ export const createDataProvider = ({
     authProvider?.getIdentity?.() ?? defaultAuthProvider.getIdentity?.();
   const all = async <T>(resource: string) =>
     (await baseDataProvider.getList(resource, everything)).data as T[];
+
+  // Same as private.create_rule_tasks
+  const createRuleTasks = async (
+    deal: Deal,
+    event: TaskRule["event"],
+    stageId: Identifier | null = null,
+  ) => {
+    const tasks = ruleTasks({
+      deal,
+      rules: await all<TaskRule>("task_rules"),
+      event,
+      stageId,
+    });
+    for (const task of tasks) {
+      await baseDataProvider.create("tasks", { data: task });
+    }
+  };
 
   // --- views ------------------------------------------------------------
 
@@ -313,10 +335,25 @@ export const createDataProvider = ({
           sent_at: new Date().toISOString(),
         },
       });
-      if (!deal.first_response_at) {
-        await baseDataProvider.update("deals", {
+      const [settings] = await all<OrganizationSettings>(
+        "organization_settings",
+      );
+      const takesLead =
+        deal.sales_id == null &&
+        settings?.lead_distribution === "first_response" &&
+        (!settings.lead_distribution_sales_ids.length ||
+          settings.lead_distribution_sales_ids.some(
+            (id) => String(id) === String(data.sales_id),
+          ));
+      if (!deal.first_response_at || takesLead) {
+        await dataProvider.update("deals", {
           id: deal.id,
-          data: { first_response_at: data.sent_at },
+          data: {
+            ...(deal.first_response_at
+              ? {}
+              : { first_response_at: data.sent_at }),
+            ...(takesLead ? { sales_id: data.sales_id } : {}),
+          },
           previousData: deal,
         });
       }
@@ -591,6 +628,8 @@ export const createDataProvider = ({
               });
             }
           }
+          await createRuleTasks(deal, "deal_created");
+          await createRuleTasks(deal, "stage_entered", deal.stage_id);
           return result;
         },
         beforeUpdate: async (params) => {
@@ -621,6 +660,13 @@ export const createDataProvider = ({
             next,
             stages,
           });
+          checkStageChecklist({
+            previous,
+            next,
+            stages,
+            items: await all<StageChecklistItem>("stage_checklist_items"),
+            checks: await all<DealChecklistCheck>("deal_checklist_checks"),
+          });
           previousDeals.set(params.id, previous);
           const now = new Date().toISOString();
           const onlyIndex = Object.keys(data).every((key) =>
@@ -646,6 +692,22 @@ export const createDataProvider = ({
           previousDeals.delete(deal.id);
           if (!previous) return result;
           const changes = dealChanges(previous, deal);
+          // A responsible assigned later takes the unassigned open tasks
+          if (previous.sales_id == null && deal.sales_id != null) {
+            const tasks = (await all<Task>("tasks")).filter(
+              (task) =>
+                task.deal_id === deal.id &&
+                task.sales_id == null &&
+                !task.done_date,
+            );
+            for (const task of tasks) {
+              await baseDataProvider.update("tasks", {
+                id: task.id,
+                data: { sales_id: deal.sales_id },
+                previousData: task,
+              });
+            }
+          }
           if (previous.stage_id !== deal.stage_id) {
             await logDealEvent({
               deal_id: deal.id,
@@ -654,6 +716,7 @@ export const createDataProvider = ({
               to_stage_id: deal.stage_id,
               changes,
             });
+            await createRuleTasks(deal, "stage_entered", deal.stage_id);
           } else if (Object.keys(changes).length) {
             await logDealEvent({ deal_id: deal.id, type: "updated", changes });
           }

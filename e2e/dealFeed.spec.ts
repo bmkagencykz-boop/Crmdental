@@ -4,32 +4,36 @@ test.describe("deal card and tasks screen", () => {
   let dealId: number;
   let otherDealId: number;
 
-  test.beforeEach(async ({ createSales, createPatient, createDeal }) => {
-    const sales = await createSales({
-      first_name: "Aigerim",
-      last_name: "Saparova",
-      email: "owner@smile.kz",
-      password: "password",
-    });
-    const patient = await createPatient({
-      first_name: "Daulet",
-      last_name: "Akhmetov",
-      phone: "+77015551234",
-      sales_id: sales.id,
-    });
-    const deal = await createDeal({
-      patient_id: patient.id,
-      sales_id: sales.id,
-      name: "Implants",
-    });
-    dealId = deal.id;
-    const other = await createDeal({
-      patient_id: patient.id,
-      sales_id: sales.id,
-      name: "Cleaning",
-    });
-    otherDealId = other.id;
-  });
+  test.beforeEach(
+    async ({ createSales, createPatient, createDeal, disableTaskRules }) => {
+      const sales = await createSales({
+        first_name: "Aigerim",
+        last_name: "Saparova",
+        email: "owner@smile.kz",
+        password: "password",
+      });
+      // These scenarios are about deals without any task yet
+      await disableTaskRules();
+      const patient = await createPatient({
+        first_name: "Daulet",
+        last_name: "Akhmetov",
+        phone: "+77015551234",
+        sales_id: sales.id,
+      });
+      const deal = await createDeal({
+        patient_id: patient.id,
+        sales_id: sales.id,
+        name: "Implants",
+      });
+      dealId = deal.id;
+      const other = await createDeal({
+        patient_id: patient.id,
+        sales_id: sales.id,
+        name: "Cleaning",
+      });
+      otherDealId = other.id;
+    },
+  );
 
   test("notes, calls and finished tasks share one feed", async ({
     page,

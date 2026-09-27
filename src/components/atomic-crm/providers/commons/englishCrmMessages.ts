@@ -356,6 +356,11 @@ export const englishCrmMessages = {
         month: "Last 30 days",
         quarter: "Last 90 days",
       },
+      checklist: {
+        title: "Stage checklist",
+        progress: "%{done} of %{total}",
+        hint: "The deal moves further once every item is done.",
+      },
     },
     roles: {
       owner: "Owner",
@@ -400,6 +405,8 @@ export const englishCrmMessages = {
         access: "Access",
         clinic: "Clinic",
         messengers: "Messengers",
+        distribution: "Lead distribution",
+        automations: "Automations",
       },
       hints: {
         pipelines:
@@ -412,6 +419,9 @@ export const englishCrmMessages = {
         clinic: "Name and logo shown in the app.",
         messengers:
           "WhatsApp, Instagram and Telegram through Wazzup24. Incoming messages create the patient and the deal.",
+        distribution: "Who gets a new lead from a messenger or a website form.",
+        automations:
+          "Tasks created on their own for the responsible of the deal.",
       },
       errors: {
         in_use: "It is still used by deals: move them first.",
@@ -460,6 +470,39 @@ export const englishCrmMessages = {
         connect_error: "Could not connect Wazzup24",
         disconnect: "Disconnect",
         channels: "Channels",
+      },
+      checklist: {
+        title: "Checklist: %{stage}",
+        hint: "Deals leave this stage (except to a refusal) only with every item checked.",
+        new_item: "New item",
+      },
+      distribution: {
+        mode: "New leads",
+        modes: {
+          off: "The head assigns them",
+          round_robin: "In turn",
+          first_response: "First to answer",
+        },
+        employees: "Employees who take leads",
+        round_robin_hint:
+          "Each new lead goes to the next chosen employee. Disabled employees are skipped.",
+        first_response_hint:
+          "The lead goes to the first chosen employee who answers the patient. With nobody chosen, anyone can take it.",
+      },
+      automations: {
+        add: "Add a rule",
+        default_text: "Contact the patient",
+        when: "When",
+        deal_created: "When a deal is created",
+        stage_entered: "On entering «%{stage}»",
+        due_in: "due in",
+        unit: "Unit",
+        units: {
+          minutes: "minutes",
+          hours: "hours",
+          days: "days",
+        },
+        text: "Task text",
       },
     },
     theme: {

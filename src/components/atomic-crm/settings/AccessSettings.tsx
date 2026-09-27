@@ -62,7 +62,7 @@ export const AccessSettings = () => {
   );
 };
 
-const Choice = <T extends string>({
+export const Choice = <T extends string>({
   title,
   value,
   options,

@@ -31,19 +31,32 @@ import {
 import { ACCENTS } from "../misc/accent";
 import type { CrmDataProvider } from "../providers/types";
 import { colors as tagColors } from "../tags/colors";
-import type { ImportBatchResult, Sale, Stage, Tag } from "../types";
+import type {
+  CustomField,
+  ImportBatchResult,
+  Sale,
+  Stage,
+  Tag,
+} from "../types";
+import {
+  entityFields,
+  useCustomFields,
+} from "../custom-fields/useCustomFields";
 import {
   buildBatchRows,
   cellText,
   chunk,
   collectValues,
   CREATABLE_KINDS,
+  customTarget,
   DEAL_FIELDS,
+  effectiveMapping,
   errorRowsCsv,
   guessMapping,
   guessMode,
   IMPORT_FIELDS,
   initialResolutions,
+  isDealTarget,
   parseRows,
   rowPipeline,
   sampleCsv,
@@ -52,8 +65,8 @@ import {
   type ColumnMapping,
   type DictionaryKind,
   type ImportDictionaries,
-  type ImportField,
   type ImportMode,
+  type MappingTarget,
   type ImportSystem,
   type ParsedRow,
   type Resolution,
@@ -109,13 +122,18 @@ export const ImportWizard = () => {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
   const dictionaries = useImportDictionaries();
+  const { data: customFields } = useCustomFields();
   const headers = useMemo(() => (sheet[0] ?? []).map(cellText), [sheet]);
   const rows = useMemo(
     () =>
       step === "upload"
         ? []
-        : parseRows(sheet, effectiveMapping(mapping, mode)),
-    [sheet, mapping, mode, step],
+        : parseRows(
+            sheet,
+            effectiveMapping(mapping, mode, customFields),
+            customFields,
+          ),
+    [sheet, mapping, mode, step, customFields],
   );
 
   if (accessPending) return null;
@@ -141,7 +159,11 @@ export const ImportWizard = () => {
       {step === "upload" ? (
         <UploadStep
           onLoaded={(name, data) => {
-            const guess = guessMapping(data[0].map(cellText));
+            const guess = guessMapping(
+              data[0].map(cellText),
+              // Archived fields take no new values
+              customFields.filter((field) => field.is_active),
+            );
             setFileName(name);
             setSheet(data);
             setMapping(guess.mapping);
@@ -158,6 +180,7 @@ export const ImportWizard = () => {
           sheet={sheet}
           mapping={mapping}
           onMappingChange={setMapping}
+          customFields={customFields}
           system={system}
           mode={mode}
           onModeChange={setMode}
@@ -201,14 +224,6 @@ export const ImportWizard = () => {
     </div>
   );
 };
-
-/** Deal columns do not count when only patients are imported */
-const effectiveMapping = (mapping: ColumnMapping, mode: ImportMode) =>
-  mode === "deals"
-    ? mapping
-    : mapping.map((field) =>
-        field && DEAL_FIELDS.includes(field) ? null : field,
-      );
 
 const useImportDictionaries = (): ImportDictionaries => {
   const { data: pipelines } = usePipelines();
@@ -353,6 +368,7 @@ const MappingStep = ({
   sheet,
   mapping,
   onMappingChange,
+  customFields,
   system,
   mode,
   onModeChange,
@@ -364,6 +380,7 @@ const MappingStep = ({
   sheet: Cell[][];
   mapping: ColumnMapping;
   onMappingChange: (mapping: ColumnMapping) => void;
+  customFields: CustomField[];
   system: ImportSystem;
   mode: ImportMode;
   onModeChange: (mode: ImportMode) => void;
@@ -379,6 +396,11 @@ const MappingStep = ({
   const fields = IMPORT_FIELDS.filter(
     (field) => mode === "deals" || !DEAL_FIELDS.includes(field),
   );
+  // Custom fields (stage 19): the patient's, and the deal's for deals
+  const custom = [
+    ...entityFields(customFields, "patient"),
+    ...(mode === "deals" ? entityFields(customFields, "deal") : []),
+  ];
   const hasNameOrPhone = mapping.some(
     (field) =>
       field != null &&
@@ -429,9 +451,7 @@ const MappingStep = ({
             {headers.map((header, index) => {
               const field = mapping[index];
               const hidden =
-                field != null &&
-                mode === "patients" &&
-                DEAL_FIELDS.includes(field);
+                mode === "patients" && isDealTarget(field, customFields);
               return (
                 <tr key={index} className="border-t border-border">
                   <td className="px-3 py-2 font-medium">{header || "—"}</td>
@@ -444,7 +464,7 @@ const MappingStep = ({
                       onValueChange={(value) => {
                         const next = [...mapping];
                         next[index] =
-                          value === SKIP ? null : (value as ImportField);
+                          value === SKIP ? null : (value as MappingTarget);
                         onMappingChange(next);
                       }}
                     >
@@ -461,6 +481,17 @@ const MappingStep = ({
                         {fields.map((option) => (
                           <SelectItem key={option} value={option}>
                             {translate(`import.fields.${option}`)}
+                          </SelectItem>
+                        ))}
+                        {custom.map((customField) => (
+                          <SelectItem
+                            key={customField.id}
+                            value={customTarget(customField)}
+                          >
+                            {translate(
+                              `custom_fields.import.${customField.entity}_field`,
+                              { name: customField.name },
+                            )}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -791,10 +822,15 @@ const errorText = (
   translate: ReturnType<typeof useTranslate>,
   error: RowError,
 ) =>
-  translate(
-    `import.errors.${error.code}`,
-    "value" in error ? { value: error.value } : {},
-  );
+  error.code === "bad_custom"
+    ? translate("custom_fields.import.bad_value", {
+        field: error.field,
+        value: error.value,
+      })
+    : translate(
+        `import.errors.${error.code}`,
+        "value" in error ? { value: error.value } : {},
+      );
 
 /** Creates what the user chose to create, then imports in batches */
 const ImportRunner = ({

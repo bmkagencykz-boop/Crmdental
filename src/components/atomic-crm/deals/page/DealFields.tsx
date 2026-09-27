@@ -15,6 +15,7 @@ import { useConfigurationContext } from "../../root/ConfigurationContext";
 import type { Deal, Sale } from "../../types";
 import { formatMoney } from "../kanbanFormat";
 import { InlineField } from "./InlineField";
+import { DealCustomFields } from "../../custom-fields/DealCustomFields";
 import { useDealUpdate } from "./useDealUpdate";
 
 export const formatDateTime = (value?: string | null) =>
@@ -241,6 +242,7 @@ export const DealFields = ({ deal }: { deal: Deal }) => {
         display={formatDelay(deal.created_at, deal.first_response_at)}
         readOnly
       />
+      <DealCustomFields deal={deal} save={save} />
     </div>
   );
 };

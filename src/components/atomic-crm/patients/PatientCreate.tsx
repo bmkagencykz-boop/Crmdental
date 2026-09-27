@@ -17,6 +17,7 @@ export const PatientCreate = () => {
             sales_id: identity?.id,
             phone_jsonb: defaultPhoneJsonb,
             tags: [],
+            custom_values: {},
           }}
         >
           <Card>

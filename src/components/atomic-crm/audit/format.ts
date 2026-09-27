@@ -6,7 +6,11 @@ import {
   toReportFilters,
   type ReportPeriod,
 } from "../reports/format";
-import type { AuditLogEntry } from "../types";
+import {
+  changeFieldId,
+  displayCustomValue,
+} from "../custom-fields/customFields";
+import type { AuditLogEntry, CustomField } from "../types";
 
 /**
  * Pure formatting of the audit log (stage 15): values, human-readable
@@ -30,6 +34,8 @@ export type AuditLookups = {
   services: Named[];
   tags: Named[];
   doctors: Named[];
+  /** Custom fields (stage 19), archived ones too: "cf:<id>" changes */
+  customFields?: CustomField[];
 };
 
 const MONEY_FIELDS = new Set([
@@ -63,7 +69,10 @@ const ENUM_FIELDS = new Set([
   "pipeline_move_mode",
   "provider",
 ]);
-const REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
+const REFERENCES: Record<
+  string,
+  keyof Omit<AuditLookups, "currency" | "customFields">
+> = {
   sales_id: "sales",
   stage_id: "stages",
   pipeline_id: "pipelines",
@@ -72,7 +81,10 @@ const REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
   service_id: "services",
   doctor_id: "doctors",
 };
-const LIST_REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
+const LIST_REFERENCES: Record<
+  string,
+  keyof Omit<AuditLookups, "currency" | "customFields">
+> = {
   tags: "tags",
   lead_distribution_sales_ids: "sales",
 };
@@ -91,6 +103,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "task_rule",
     "checklist_item",
     "messenger",
+    "custom_field",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -158,6 +171,54 @@ export const formatAuditValue = (
   return String(value);
 };
 
+/**
+ * A custom field change ("cf:<id>", stage 19): the name of the field and
+ * its values as the screens show them. A deleted field reads «Поле #12».
+ */
+const customChange = (
+  key: string,
+  lookups: AuditLookups,
+  translate: Translate,
+) => {
+  const id = changeFieldId(key);
+  if (id == null) return null;
+  const field = lookups.customFields?.find((f) => String(f.id) === id);
+  return {
+    label: field?.name ?? translate("custom_fields.audit.unknown", { id }),
+    format: (value: unknown) =>
+      (field
+        ? displayCustomValue(field, value as never, {
+            formatMoney: (amount) => formatMoney(amount, lookups.currency),
+            yes: translate("audit.values.yes"),
+            no: translate("audit.values.no"),
+          })
+        : value == null
+          ? null
+          : Array.isArray(value)
+            ? value.join(", ")
+            : String(value)) ?? EMPTY,
+  };
+};
+
+/** Fields of a custom field definition (entity custom_field) */
+const definitionChange = (field: string, translate: Translate) => ({
+  label: translate(`custom_fields.audit.fields.${field}`, { _: field }),
+  format: (value: unknown) =>
+    value == null || value === ""
+      ? EMPTY
+      : field === "type"
+        ? translate(`custom_fields.types.${value}`, { _: String(value) })
+        : field === "entity"
+          ? translate(`custom_fields.entities.${value}`, { _: String(value) })
+          : typeof value === "boolean"
+            ? translate(value ? "audit.values.yes" : "audit.values.no")
+            : Array.isArray(value)
+              ? value.length
+                ? value.join(", ")
+                : EMPTY
+              : String(value),
+});
+
 /** Actions that only have an "after" (or a "before") side */
 const CREATION_ACTIONS = new Set(["create", "invite"]);
 const DELETION_ACTIONS = new Set(["delete"]);
@@ -167,15 +228,24 @@ const DELETION_ACTIONS = new Set(["delete"]);
  * «Сумма: 100 000 ₸ → 120 000 ₸». A created or deleted row shows its values.
  */
 export const describeAuditChanges = (
-  entry: Pick<AuditLogEntry, "action" | "changes">,
+  entry: Pick<AuditLogEntry, "action" | "changes"> &
+    Partial<Pick<AuditLogEntry, "entity">>,
   lookups: AuditLookups,
   translate: Translate,
 ): string[] =>
   Object.entries(entry.changes ?? {}).map(([field, pair]) => {
     const [before, after] = Array.isArray(pair) ? pair : [null, pair];
-    const label = translate(`audit.fields.${field}`, { _: field });
+    const special =
+      customChange(field, lookups, translate) ??
+      ((entry as Partial<AuditLogEntry>).entity === "custom_field"
+        ? definitionChange(field, translate)
+        : null);
+    const label =
+      special?.label ?? translate(`audit.fields.${field}`, { _: field });
     const format = (value: unknown) =>
-      formatAuditValue(field, value, lookups, translate);
+      special
+        ? special.format(value)
+        : formatAuditValue(field, value, lookups, translate);
     if (CREATION_ACTIONS.has(entry.action)) return `${label}: ${format(after)}`;
     if (DELETION_ACTIONS.has(entry.action))
       return `${label}: ${format(before)}`;
@@ -183,7 +253,8 @@ export const describeAuditChanges = (
   });
 
 export const auditSummary = (
-  entry: Pick<AuditLogEntry, "action" | "changes">,
+  entry: Pick<AuditLogEntry, "action" | "changes"> &
+    Partial<Pick<AuditLogEntry, "entity">>,
   lookups: AuditLookups,
   translate: Translate,
 ) => describeAuditChanges(entry, lookups, translate).join("; ");
@@ -220,9 +291,12 @@ export const auditEntityLabel = (
   lookups: AuditLookups,
   translate: Translate,
 ) => {
-  const kind = translate(`audit.entities.${entry.entity}`, {
-    _: entry.entity,
-  });
+  const kind =
+    entry.entity === "custom_field"
+      ? translate("custom_fields.audit.entity")
+      : translate(`audit.entities.${entry.entity}`, {
+          _: entry.entity,
+        });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -251,6 +325,14 @@ export const auditEntityLabel = (
     case "pipeline":
       name = findName(lookups.pipelines, entry.entity_id) ?? changedName(entry);
       break;
+    case "custom_field":
+      name =
+        lookups.customFields?.find(
+          (field) => String(field.id) === String(entry.entity_id),
+        )?.name ??
+        changedName(entry) ??
+        ref;
+      break;
     case "task_rule":
     case "checklist_item":
       name = changedName(entry, "text") ?? ref;
@@ -269,6 +351,7 @@ export const auditEntityLabel = (
     "stage",
     "pipeline",
     "file",
+    "custom_field",
   ].includes(entry.entity)
     ? `«${name}»`
     : name;

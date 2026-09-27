@@ -142,7 +142,8 @@ end;
 $$;
 
 -- Values of the template variables for a deal. plpgsql: {врач} reads
--- deals.doctor_id and public.doctors, declared later in 13_doctors.sql.
+-- deals.doctor_id and public.doctors, declared later in 13_doctors.sql, and
+-- {поле:Название} the custom fields of 19_custom_fields.sql.
 CREATE OR REPLACE FUNCTION "private"."automessage_vars"("deal" "public"."deals") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -155,7 +156,7 @@ begin
       'дата_визита', private.format_visit_date(coalesce(deal.appointment_at, deal.visit_at), o.timezone),
       'клиника', coalesce(nullif(btrim(c.config ->> 'title'), ''), o.name),
       'врач', nullif(btrim(dr.name), '')
-    )
+    ) || private.custom_field_vars(o.id, 'deal', deal.custom_values, o.timezone)
     from public.organizations o
       left join public.configuration c on c.organization_id = o.id
       left join public.patients p on p.organization_id = o.id and p.id = deal.patient_id

@@ -183,6 +183,22 @@ export const generateAuditLog = (db: Db) => {
         patient_id: patient.id,
       });
     }
+    // Custom fields (stage 19): one line per field, "cf:<id>"
+    const customValues = Object.entries(patient.custom_values ?? {});
+    if (customValues.length) {
+      rows.push({
+        at: iso(Math.min(now - HOUR, first + DAY)),
+        ...actor(patient.sales_id),
+        entity: "patient",
+        entity_id: patient.id,
+        action: "update",
+        changes: Object.fromEntries(
+          customValues.map(([id, value]) => [`cf:${id}`, [null, value]]),
+        ),
+        deal_id: null,
+        patient_id: patient.id,
+      });
+    }
   });
 
   // Deals: their history (deal_events), amount and responsible changes,

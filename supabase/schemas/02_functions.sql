@@ -639,6 +639,8 @@ begin
       changes := changes || jsonb_build_object(field, jsonb_build_array(old_json -> field, new_json -> field));
     end if;
   end loop;
+  -- Custom fields (19_custom_fields.sql): one entry per field, "cf:<id>"
+  changes := changes || private.custom_values_diff(old_json -> 'custom_values', new_json -> 'custom_values');
 
   if new.stage_id is distinct from old.stage_id then
     insert into public.deal_events (organization_id, deal_id, type, from_stage_id, to_stage_id, changes, sales_id)

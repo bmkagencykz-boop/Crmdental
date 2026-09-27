@@ -3,7 +3,12 @@ import { useTranslate } from "ra-core";
 import { findById, useStages } from "../dictionaries/useDictionaries";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { useGetSalesName } from "../sales/useGetSalesName";
-import type { DealEvent } from "../types";
+import type { CustomValue, DealEvent } from "../types";
+import { changeFieldId } from "../custom-fields/customFields";
+import {
+  useCustomFields,
+  useCustomValueText,
+} from "../custom-fields/useCustomFields";
 import { formatMoney } from "./kanbanFormat";
 
 const MONEY_FIELDS = ["plan_amount", "paid_amount", "consultation_amount"];
@@ -19,6 +24,14 @@ export const DealEventContent = ({ event }: { event: DealEvent }) => {
   const stageName = (id: DealEvent["to_stage_id"]) =>
     findById(stages, id)?.name ?? "—";
   const changedFields = Object.keys(event.changes ?? {});
+  // Custom fields (stage 19): "cf:<id>" with the name and the values
+  const { data: customFields } = useCustomFields();
+  const customText = useCustomValueText();
+  const customField = (key: string) => {
+    const id = changeFieldId(key);
+    if (id == null) return undefined;
+    return customFields.find((f) => String(f.id) === id) ?? null;
+  };
 
   return (
     <div className="text-sm">
@@ -53,6 +66,20 @@ export const DealEventContent = ({ event }: { event: DealEvent }) => {
         <ul className="mt-0.5 text-muted-foreground">
           {changedFields.map((field) => {
             const [before, after] = event.changes[field];
+            const custom = customField(field);
+            if (custom !== undefined) {
+              return (
+                <li key={field}>
+                  {custom?.name ??
+                    translate("custom_fields.audit.unknown", {
+                      id: changeFieldId(field),
+                    })}
+                  {custom
+                    ? `: ${customText(custom, before as CustomValue) ?? "—"} → ${customText(custom, after as CustomValue) ?? "—"}`
+                    : null}
+                </li>
+              );
+            }
             return (
               <li key={field}>
                 {translate(`resources.deals.fields.${field}`)}

@@ -20,12 +20,14 @@ import {
   useStages,
 } from "../dictionaries/useDictionaries";
 import { PatientInput } from "../patients/PatientInput";
+import { CustomFieldInputs } from "../custom-fields/CustomFieldInputs";
 import { AccountManagerInput } from "../sales/AccountManagerInput";
 import type { Deal } from "../types";
 
 /**
  * Fields of a deal (spec §3): patient, pipeline and stage, source, service,
- * doctor and consultation price (stage 13), plan amount, responsible, appointment and visit dates, lost reason.
+ * doctor and consultation price (stage 13), plan amount, responsible, appointment and visit dates, lost reason,
+ * custom fields (stage 19).
  */
 export const DealInputs = () => {
   const translate = useTranslate();
@@ -64,6 +66,7 @@ export const DealInputs = () => {
       <section className="md:col-span-2">
         <TextInput source="description" multiline rows={3} helperText={false} />
       </section>
+      <CustomFieldInputs entity="deal" className="md:col-span-2" />
     </div>
   );
 };

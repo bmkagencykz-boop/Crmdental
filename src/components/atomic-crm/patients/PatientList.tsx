@@ -28,6 +28,9 @@ import type { Patient } from "../types";
 import { BulkTagButton } from "./BulkTagButton";
 import { patientDisplayName } from "./parsePatientText";
 import { TagsList } from "./TagsList";
+import { customFieldsExporter } from "../custom-fields/exporters";
+
+const patientExporter = customFieldsExporter("patient");
 
 /** Patients: search by name or phone, filters, bulk tags */
 export const PatientList = () => {
@@ -73,6 +76,7 @@ export const PatientList = () => {
       filters={filters}
       perPage={50}
       sort={{ field: "last_seen", order: "DESC" }}
+      exporter={patientExporter}
     >
       <PatientTable />
     </List>

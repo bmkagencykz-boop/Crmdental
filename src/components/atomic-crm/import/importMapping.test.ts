@@ -16,8 +16,10 @@ import {
   sampleCsv,
   splitFullName,
   unresolvedValues,
+  effectiveMapping,
   type ImportDictionaries,
 } from "./importMapping";
+import type { CustomField } from "../types";
 
 const dictionaries: ImportDictionaries = {
   pipelines: [
@@ -358,6 +360,7 @@ describe("rows", () => {
           tags: [],
           background: "Email: asel@example.kz",
           created_at: "2026-03-01T10:00:00+05:00",
+          custom_values: {},
         },
         deal: {
           external_id: null,
@@ -372,6 +375,7 @@ describe("rows", () => {
           tags: [3, 4],
           description: "Первичная",
           created_at: "2026-03-01T10:00:00+05:00",
+          custom_values: {},
         },
       },
     ]);
@@ -490,5 +494,122 @@ describe("files", () => {
     const rows = parseRows(sheet, mapping);
     expect(rows).toHaveLength(3);
     expect(rows.flatMap((row) => row.errors)).toEqual([]);
+  });
+});
+
+describe("custom fields (stage 19)", () => {
+  const custom = (
+    id: number,
+    entity: CustomField["entity"],
+    name: string,
+    type: CustomField["type"],
+    options: string[] = [],
+  ): CustomField => ({
+    id,
+    entity,
+    name,
+    type,
+    options,
+    required: false,
+    position: id,
+    is_active: true,
+    show_on_card: false,
+  });
+  const customFields = [
+    custom(1, "deal", "Откуда узнал", "select", ["Инстаграм", "2GIS"]),
+    custom(2, "deal", "Есть снимок КТ", "checkbox"),
+    custom(3, "patient", "Полис ДМС", "text"),
+    custom(4, "deal", "Дата снимка", "date"),
+    custom(5, "deal", "Рассрочка", "money"),
+    custom(6, "deal", "Аллергии", "multiselect", ["Латекс", "Лидокаин"]),
+  ];
+  const headers = [
+    ...amoHeaders,
+    "Откуда узнал",
+    "Есть снимок КТ",
+    "Полис ДМС (контакт)",
+    "Дата снимка",
+    "Рассрочка",
+    "Аллергии",
+    "Непонятная колонка",
+  ];
+
+  it("maps amoCRM extra columns to the fields of the same name", () => {
+    const { mapping, system } = guessMapping(headers, customFields);
+    expect(system).toBe("amocrm");
+    expect(mapping.slice(amoHeaders.length)).toEqual([
+      "custom:1",
+      "custom:2",
+      "custom:3",
+      "custom:4",
+      "custom:5",
+      "custom:6",
+      null,
+    ]);
+    // Without fields, nothing changes for the standard columns
+    expect(guessMapping(headers).mapping.slice(0, amoHeaders.length)).toEqual(
+      mapping.slice(0, amoHeaders.length),
+    );
+  });
+
+  it("reads the values with the rules of the fields", () => {
+    const { mapping } = guessMapping(headers, customFields);
+    const base = amoHeaders.map(() => "");
+    base[6] = "Нурланова Асель";
+    const [row, bad] = parseRows(
+      [
+        headers,
+        [
+          ...base,
+          "инстаграм",
+          "да",
+          "ДМС-123",
+          "01.03.2026",
+          "150 000 ₸",
+          "Латекс, лидокаин",
+          "x",
+        ],
+        [...base, "Telegram", "", "", "", "", "", ""],
+      ],
+      mapping,
+      customFields,
+    );
+    expect(row.errors).toEqual([]);
+    expect(row.custom).toEqual({
+      patient: { "3": "ДМС-123" },
+      deal: {
+        "1": "Инстаграм",
+        "2": true,
+        "4": "2026-03-01",
+        "5": 150000,
+        "6": ["Латекс", "Лидокаин"],
+      },
+    });
+    expect(bad.errors).toEqual([
+      { code: "bad_custom", field: "Откуда узнал", value: "Telegram" },
+    ]);
+  });
+
+  it("sends the values to import_batch; patients only drop the deal fields", () => {
+    const { mapping } = guessMapping(headers, customFields);
+    const base = amoHeaders.map(() => "");
+    base[6] = "Нурланова Асель";
+    const sheet = [headers, [...base, "2GIS", "нет", "ДМС-1", "", "", "", ""]];
+    const rows = parseRows(sheet, mapping, customFields);
+    const { ready } = buildBatchRows({
+      rows,
+      mode: "deals",
+      system: "amocrm",
+      resolutions: initialResolutions(rows, "deals", dictionaries),
+      dictionaries,
+      tagIds: {},
+    });
+    expect(ready[0].patient.custom_values).toEqual({ "3": "ДМС-1" });
+    expect(ready[0].deal?.custom_values).toEqual({ "1": "2GIS", "2": false });
+    expect(
+      effectiveMapping(mapping, "patients", customFields).slice(
+        amoHeaders.length,
+      ),
+    ).toEqual([null, null, "custom:3", null, null, null, null]);
   });
 });

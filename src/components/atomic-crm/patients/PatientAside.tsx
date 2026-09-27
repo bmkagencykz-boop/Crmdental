@@ -9,6 +9,8 @@ import { useGetSalesName } from "../sales/useGetSalesName";
 import type { Patient } from "../types";
 import { TagsListEdit } from "./TagsListEdit";
 import { PatientOptOutToggle } from "../mailings/PatientOptOutToggle";
+import { CustomFieldValue } from "../custom-fields/CustomFieldValue";
+import { useEntityFields } from "../custom-fields/useCustomFields";
 
 /** Contact card of a patient: phones, messengers, clinic info, tags */
 export const PatientAside = () => {
@@ -72,6 +74,8 @@ export const PatientAside = () => {
         ) : null}
       </Section>
 
+      <PatientCustomFields patient={record} />
+
       <Section title={translate("resources.tags.name", { smart_count: 2 })}>
         <TagsListEdit />
       </Section>
@@ -118,3 +122,27 @@ const Term = ({ label, children }: { label: string; children: ReactNode }) => (
     <dd className="min-w-0 break-words">{children || "—"}</dd>
   </>
 );
+
+/** «Дополнительные поля» of the patient (stage 19), edited in the form */
+const PatientCustomFields = ({ patient }: { patient: Patient }) => {
+  const translate = useTranslate();
+  const { data: fields } = useEntityFields("patient");
+  if (!fields.length) return null;
+  const values = patient.custom_values ?? {};
+  return (
+    <Section title={translate("custom_fields.section")}>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+        {fields.map((field) => (
+          <Term key={field.id} label={field.name}>
+            {values[String(field.id)] != null ? (
+              <CustomFieldValue
+                field={field}
+                value={values[String(field.id)]}
+              />
+            ) : null}
+          </Term>
+        ))}
+      </dl>
+    </Section>
+  );
+};

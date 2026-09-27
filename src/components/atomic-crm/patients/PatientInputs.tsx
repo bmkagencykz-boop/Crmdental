@@ -12,6 +12,7 @@ import { toChoices, useLeadSources } from "../dictionaries/useDictionaries";
 import type { CrmDataProvider } from "../providers/types";
 import { phoneQueryDigits } from "../providers/commons/search";
 import { AccountManagerInput } from "../sales/AccountManagerInput";
+import { CustomFieldInputs } from "../custom-fields/CustomFieldInputs";
 import type { Patient } from "../types";
 import { patientDisplayName } from "./parsePatientText";
 
@@ -77,6 +78,7 @@ export const PatientInputs = () => {
         <SectionTitle>{translate("crm.patients.sections.notes")}</SectionTitle>
         <TextInput source="background" multiline rows={4} helperText={false} />
       </section>
+      <CustomFieldInputs entity="patient" className="md:col-span-2" />
     </div>
   );
 };

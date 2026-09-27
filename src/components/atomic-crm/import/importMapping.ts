@@ -6,7 +6,13 @@
  */
 import type { Identifier } from "ra-core";
 
+import {
+  CustomFieldError,
+  findFieldByName,
+  normalizeCustomValue,
+} from "../custom-fields/customFields";
 import { normalizePhone } from "../providers/commons/domain";
+import type { CustomField, CustomValue, CustomValues } from "../types";
 
 /** A cell as read from the file (xlsx cells keep numbers and dates) */
 export type Cell = string | number | boolean | Date | null | undefined;
@@ -53,8 +59,47 @@ const MULTI_FIELDS: ImportField[] = ["phone", "tags", "comment"];
 export type ImportMode = "patients" | "deals";
 export type ImportSystem = "excel" | "amocrm";
 
+/** A custom field of the clinic (stage 19): "custom:<field id>" */
+export type CustomTarget = `custom:${string}`;
+export type MappingTarget = ImportField | CustomTarget;
+
 /** Column index → field (null: the column is not imported) */
-export type ColumnMapping = Array<ImportField | null>;
+export type ColumnMapping = Array<MappingTarget | null>;
+
+export const customTarget = (field: Pick<CustomField, "id">): CustomTarget =>
+  `custom:${field.id}`;
+
+/** The custom field of a mapping target, if it is one */
+export const targetCustomField = (
+  target: MappingTarget | null | undefined,
+  customFields: CustomField[],
+) =>
+  target?.startsWith("custom:")
+    ? customFields.find(
+        (field) => String(field.id) === target.slice("custom:".length),
+      )
+    : undefined;
+
+/** A column that only matters when deals are imported */
+export const isDealTarget = (
+  target: MappingTarget | null | undefined,
+  customFields: CustomField[] = [],
+) =>
+  target != null &&
+  (DEAL_FIELDS.includes(target as ImportField) ||
+    targetCustomField(target, customFields)?.entity === "deal");
+
+/** Deal columns do not count when only patients are imported */
+export const effectiveMapping = (
+  mapping: ColumnMapping,
+  mode: ImportMode,
+  customFields: CustomField[] = [],
+): ColumnMapping =>
+  mode === "deals"
+    ? mapping
+    : mapping.map((target) =>
+        isDealTarget(target, customFields) ? null : target,
+      );
 
 const clean = (header: string) =>
   header
@@ -145,21 +190,52 @@ const AMO_COLUMNS: Record<string, ImportField> = {
   примечание: "comment",
 };
 
-/** Mapping of every column; amoCRM exports get their own preset */
+/**
+ * A column named like a custom field of the clinic. amoCRM puts the fields
+ * of the contact in "Название (контакт)" columns: patient fields; its other
+ * extra columns are the fields of the deal.
+ */
+export const guessCustomField = (
+  header: string,
+  customFields: CustomField[],
+): CustomField | undefined => {
+  const text = header.trim();
+  const contact = text.match(/^(.*?)\s*\((контакт|contact)\)$/i);
+  if (contact) return findFieldByName(customFields, "patient", contact[1]);
+  return (
+    findFieldByName(customFields, "deal", text) ??
+    findFieldByName(customFields, "patient", text)
+  );
+};
+
+/**
+ * Mapping of every column; amoCRM exports get their own preset. Columns
+ * named like a custom field of the clinic go to that field.
+ */
 export const guessMapping = (
   headers: string[],
+  customFields: CustomField[] = [],
 ): { mapping: ColumnMapping; system: ImportSystem } => {
   const system: ImportSystem = isAmoCrmExport(headers) ? "amocrm" : "excel";
-  const used = new Set<ImportField>();
+  const used = new Set<MappingTarget>();
   const mapping = headers.map((header) => {
-    const field =
-      (system === "amocrm" ? AMO_COLUMNS[clean(header)] : undefined) ??
+    const amo = system === "amocrm" ? AMO_COLUMNS[clean(header)] : undefined;
+    const custom = amo ? undefined : guessCustomField(header, customFields);
+    const field: MappingTarget | null =
+      amo ??
+      (custom ? customTarget(custom) : undefined) ??
       (system === "amocrm" && /\(контакт\)$/.test(clean(header))
         ? // Other contact columns of amoCRM (position, company...) are skipped
           contactColumn(header)
         : guessField(header));
     if (!field) return null;
-    if (used.has(field) && !MULTI_FIELDS.includes(field)) return null;
+    if (
+      used.has(field) &&
+      !MULTI_FIELDS.includes(field as ImportField) &&
+      !field.startsWith("custom:")
+    ) {
+      return null;
+    }
     used.add(field);
     return field;
   });
@@ -337,7 +413,9 @@ export type RowError =
   | { code: "bad_email"; value: string }
   | { code: "no_name_or_phone" }
   | { code: "unknown_stage"; value: string }
-  | { code: "unknown_value"; kind: DictionaryKind; value: string };
+  | { code: "unknown_value"; kind: DictionaryKind; value: string }
+  /** A value a custom field refuses (stage 19) */
+  | { code: "bad_custom"; field: string; value: string };
 
 export type ParsedRow = {
   /** Line of the file (the header is line 1) */
@@ -363,7 +441,48 @@ export type ParsedRow = {
   comment?: string;
   created_at?: string;
   external_id?: string;
+  /** Custom fields (stage 19), per entity: { "<field id>": value } */
+  custom: { patient: CustomValues; deal: CustomValues };
   errors: RowError[];
+};
+
+/**
+ * A cell for a custom field: dates of the file (01.03.2026, xlsx dates),
+ * amounts with ₸, lists split on commas, then the rules of the field.
+ */
+export const parseCustomCells = (
+  field: CustomField,
+  cells: Cell[],
+): CustomValue | null => {
+  const filled = cells.filter((cell) => cellText(cell));
+  if (!filled.length) return null;
+  const first = filled[0];
+  let value: unknown = cellText(first);
+  if (field.type === "multiselect") {
+    value = splitList(filled);
+  } else if (field.type === "checkbox" && typeof first === "boolean") {
+    value = first;
+  } else if (field.type === "date" || field.type === "datetime") {
+    const parsed = parseDateCell(first);
+    if (parsed === undefined) {
+      throw new CustomFieldError(
+        `Поле «${field.name}»: ожидается ${field.type === "date" ? "дата" : "дата и время"}`,
+        "custom_field_invalid",
+        field.id,
+      );
+    }
+    value = parsed
+      ? field.type === "date"
+        ? parsed.date
+        : toTimestamp(parsed)
+      : null;
+  } else if (field.type === "money") {
+    const amount = parseAmount(first);
+    value = amount != null && Number.isNaN(amount) ? cellText(first) : amount;
+  } else if (field.type === "number" && typeof first === "number") {
+    value = first;
+  }
+  return normalizeCustomValue(field, value);
 };
 
 /** Reads one row with the mapping; errors are kept on the row */
@@ -371,12 +490,20 @@ export const parseRow = (
   cells: Cell[],
   mapping: ColumnMapping,
   line: number,
+  customFields: CustomField[] = [],
 ): ParsedRow => {
-  const columns = (field: ImportField) =>
+  const columns = (field: MappingTarget) =>
     mapping.flatMap((f, index) => (f === field ? [cells[index]] : []));
   const text = (field: ImportField) =>
     columns(field).map(cellText).filter(Boolean).join(" ").trim() || undefined;
-  const row: ParsedRow = { line, cells, phones: [], tags: [], errors: [] };
+  const row: ParsedRow = {
+    line,
+    cells,
+    phones: [],
+    tags: [],
+    custom: { patient: {}, deal: {} },
+    errors: [],
+  };
 
   const fullName = text("full_name");
   if (fullName) Object.assign(row, splitFullName(fullName));
@@ -429,6 +556,22 @@ export const parseRow = (
   const comments = columns("comment").map(cellText).filter(Boolean);
   row.comment = comments.length ? comments.join("\n") : undefined;
 
+  for (const target of new Set(mapping)) {
+    const field = targetCustomField(target, customFields);
+    if (!field || !field.is_active) continue;
+    const fieldCells = columns(target!);
+    try {
+      const value = parseCustomCells(field, fieldCells);
+      if (value != null) row.custom[field.entity][String(field.id)] = value;
+    } catch {
+      row.errors.push({
+        code: "bad_custom",
+        field: field.name,
+        value: fieldCells.map(cellText).filter(Boolean).join(", "),
+      });
+    }
+  }
+
   if (!row.phones.length && !row.first_name && !row.last_name) {
     row.errors.push({ code: "no_name_or_phone" });
   }
@@ -436,12 +579,16 @@ export const parseRow = (
 };
 
 /** Every non-empty data row of the sheet (rows[0] is the header) */
-export const parseRows = (rows: Cell[][], mapping: ColumnMapping) =>
+export const parseRows = (
+  rows: Cell[][],
+  mapping: ColumnMapping,
+  customFields: CustomField[] = [],
+) =>
   rows
     .slice(1)
     .map((cells, index) => ({ cells, line: index + 2 }))
     .filter(({ cells }) => cells.some((cell) => cellText(cell)))
-    .map(({ cells, line }) => parseRow(cells, mapping, line));
+    .map(({ cells, line }) => parseRow(cells, mapping, line, customFields));
 
 //
 // Dictionaries: values of the file → rows of the clinic
@@ -661,6 +808,7 @@ export type BatchRow = {
     tags: Identifier[];
     background?: string | null;
     created_at?: string | null;
+    custom_values?: CustomValues;
   };
   deal?: {
     external_id?: string | null;
@@ -675,6 +823,7 @@ export type BatchRow = {
     tags: Identifier[];
     description?: string | null;
     created_at?: string | null;
+    custom_values?: CustomValues;
   };
 };
 
@@ -769,6 +918,7 @@ export const buildBatchRows = ({
         tags: mode === "patients" ? tags : [],
         background,
         created_at: row.created_at ?? null,
+        custom_values: row.custom.patient,
       },
     };
     if (mode === "deals") {
@@ -805,6 +955,7 @@ export const buildBatchRows = ({
         tags,
         description: row.comment ?? null,
         created_at: row.created_at ?? null,
+        custom_values: row.custom.deal,
       };
     }
     ready.push(batchRow);

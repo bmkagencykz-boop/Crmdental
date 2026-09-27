@@ -26,6 +26,11 @@ import {
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { AutomessageRule, MessageTemplate } from "../types";
 import { useDictionaryMutations } from "./useDictionaryMutations";
+import {
+  sampleCustomText,
+  templateVariable,
+} from "../custom-fields/customFields";
+import { useEntityFields } from "../custom-fields/useCustomFields";
 
 const UNITS = [
   { key: "minutes", minutes: 1 },
@@ -154,6 +159,7 @@ const TemplateCard = ({
     const text = value.trim();
     if (text && text !== template.body) update(template, { body: text });
   };
+  const { data: dealFields } = useEntityFields("deal");
   const insert = (variable: string) => {
     const element = textarea.current;
     const token = `{${variable}}`;
@@ -222,6 +228,19 @@ const TemplateCard = ({
                 {`{${variable}}`}
               </button>
             ))}
+            {/* Custom fields of the deals (stage 19): {поле:Название} */}
+            {dealFields.map((field) => (
+              <button
+                key={field.id}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => insert(templateVariable(field))}
+                title={translate("custom_fields.templates.hint")}
+                className="rounded-md border border-dashed bg-muted px-2 py-0.5 font-mono text-xs text-foreground hover:bg-accent"
+              >
+                {`{${templateVariable(field)}}`}
+              </button>
+            ))}
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -232,7 +251,15 @@ const TemplateCard = ({
             className="whitespace-pre-line rounded-md bg-muted px-3 py-2 text-sm"
             data-testid="template-preview"
           >
-            {renderTemplate(body, previewValues(config.title))}
+            {renderTemplate(body, {
+              ...previewValues(config.title),
+              ...Object.fromEntries(
+                dealFields.map((field) => [
+                  templateVariable(field),
+                  sampleCustomText(field),
+                ]),
+              ),
+            })}
           </p>
         </div>
       </div>

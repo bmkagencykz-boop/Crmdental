@@ -3,9 +3,11 @@ import type { Identifier } from "ra-core";
 import type {
   Automessage,
   AutomessageRule,
+  CustomField,
   Deal,
   MessageTemplate,
 } from "../../types";
+import { customFieldVars } from "../../custom-fields/customFields";
 
 /**
  * Automatic messages (stage 6): the same rules as the database
@@ -24,9 +26,11 @@ export const TEMPLATE_VARIABLES = [
   "врач",
 ] as const;
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number];
+/** The variables, plus {поле:Название} of the custom fields (stage 19) */
 export type TemplateValues = Partial<
   Record<TemplateVariable, string | null | undefined>
->;
+> &
+  Record<string, string | null | undefined>;
 
 /**
  * Replaces {variable} with its value (a missing value gives an empty string)
@@ -213,14 +217,17 @@ export const automessageValues = ({
   serviceName,
   clinicName,
   doctorName,
+  customFields = [],
   timeZone = DEFAULT_TIME_ZONE,
 }: {
-  deal: Pick<Deal, "appointment_at" | "visit_at">;
+  deal: Pick<Deal, "appointment_at" | "visit_at" | "custom_values">;
   patientFirstName?: string | null;
   serviceName?: string | null;
   clinicName?: string | null;
   /** Name of the deal's doctor (stage 13) */
   doctorName?: string | null;
+  /** Custom fields of the clinic: {поле:Название} (stage 19) */
+  customFields?: CustomField[];
   timeZone?: string;
 }): TemplateValues => ({
   имя: patientFirstName?.trim() || null,
@@ -228,6 +235,7 @@ export const automessageValues = ({
   дата_визита: formatVisitDate(deal.appointment_at ?? deal.visit_at, timeZone),
   клиника: clinicName ?? null,
   врач: doctorName?.trim() || null,
+  ...customFieldVars(customFields, "deal", deal.custom_values, timeZone),
 });
 
 /** Sample values for the live preview of the settings */

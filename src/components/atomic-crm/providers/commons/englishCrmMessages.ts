@@ -1737,6 +1737,91 @@ export const englishCrmMessages = {
     rescheduled: "Task moved: %{date}",
     drag_hint: "Drag a task to another time or day",
   },
+  custom_fields: {
+    section: "Additional fields",
+    settings: {
+      section: "Fields",
+      hint: "Additional fields of deals and patients, like in amoCRM: they show in the cards and forms, the filters, the import, the CSV export and the message templates.",
+      deal: "Deal fields",
+      patient: "Patient fields",
+      required_hint_deal:
+        "A required field must be filled for the deal to leave the first stage of its pipeline (refusing is always possible).",
+      required_hint_patient:
+        "A required field must be filled when the patient card is saved.",
+      on_card_hint: "At most %{max} fields show on the kanban card.",
+      empty: "No fields yet. Add the first one below.",
+      name: "Field name",
+      type: "Type",
+      options: "Options",
+      options_count: "%{smart_count} option |||| %{smart_count} options",
+      options_hint:
+        "One option per line. A removed option stays on the deals that have it.",
+      options_placeholder: "One option per line",
+      required: "Required",
+      on_card: "On the card",
+      active: "Active",
+      template_hint: "In message templates: %{variable}",
+      new_name: "New field name",
+      add: "Add field",
+      delete_title: "Delete the field «%{name}»?",
+      delete_content:
+        "Its values will no longer show anywhere. To keep them, switch the field off (archive) instead.",
+    },
+    types: {
+      text: "Text",
+      textarea: "Long text",
+      number: "Number",
+      money: "Amount, ₸",
+      date: "Date",
+      datetime: "Date and time",
+      checkbox: "Checkbox",
+      select: "List",
+      multiselect: "Multiple choice",
+      phone: "Phone",
+      url: "Link",
+    },
+    entities: {
+      deal: "Deal",
+      patient: "Patient",
+    },
+    values: {
+      yes: "Yes",
+      no: "No",
+      none: "—",
+      done: "Done",
+    },
+    errors: {
+      name_required: "Enter the field name",
+      name_braces: "A field name cannot contain braces",
+      name_taken: "A field with this name already exists",
+      options_required: "Add the options of the list",
+      card_limit: "At most %{max} fields show on the kanban card",
+    },
+    filter: {
+      label: "Additional fields",
+    },
+    import: {
+      deal_field: "Deal field: %{name}",
+      patient_field: "Patient field: %{name}",
+      bad_value: "Field «%{field}»: the value «%{value}» does not fit",
+    },
+    templates: {
+      hint: "Additional field of the deal",
+    },
+    audit: {
+      entity: "Field",
+      unknown: "Field #%{id}",
+      fields: {
+        entity: "Section",
+        name: "Name",
+        type: "Type",
+        options: "Options",
+        required: "Required",
+        is_active: "Active",
+        show_on_card: "On the card",
+      },
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

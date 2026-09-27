@@ -55,7 +55,7 @@
   - RLS: читают все сотрудники клиники, правят владелец и руководитель (`private.current_organization_id()`, `private.current_user_role()`);
   - индексы `doctors (organization_id, position)` и `deals (organization_id, doctor_id)`.
 - **Идентификаторы врачей постоянные.** Для будущей интеграции с МИС врачей будут сопоставлять с внешними id через таблицу `external_refs`, которую делает этап импорта. Поэтому врача со сделками нельзя удалить: его id должен сохраниться.
-- **`deals_summary` перенесено из `03_views.sql` в `13_doctors.sql`** вместе с правами. Файлы схемы загружаются по порядку, а представление берёт ФИО врача из таблицы `doctors`, которая объявлена в файле 13. В конец представления добавлены колонки `doctor_id`, `doctor_name`, `consultation_amount`, `prepayment_amount`, поэтому миграция делает `create or replace view`.
+- **`deals_summary` перенесено из `03_views.sql` в `13_doctors.sql`** вместе с правами. Файлы схемы загружаются по порядку, а представление берёт ФИО врача из таблицы `doctors`, которая объявлена в файле 13. В конец представления добавлены колонки `doctor_id`, `doctor_name`, `consultation_amount`, `prepayment_amount`, поэтому миграция делает `create or replace view`. На этапе 19 представление переехало в `19_custom_fields.sql` (см. `docs/stages/19-custom-fields.md`).
 - **Функции, которые читают новые колонки**, объявлены в файлах до 13-го. Их тела на `plpgsql` разбираются только при вызове, поэтому они остались в своих файлах:
   - `private.automessage_vars` (`08_automessages.sql`) переписана с `sql` на `plpgsql` и отдаёт `врач`;
   - `private.report_deal_progress` (`09_reports.sql`) тоже переведена на `plpgsql` с `#variable_conflict use_column`. Запрос не изменился, добавлены фильтр и колонка `doctor_id`.

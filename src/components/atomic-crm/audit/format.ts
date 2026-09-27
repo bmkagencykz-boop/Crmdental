@@ -52,6 +52,7 @@ const DATE_TIME_FIELDS = new Set([
   "archived_at",
   "unsorted_at",
   "scheduled_at",
+  "revoked_at",
 ]);
 const DATE_FIELDS = new Set(["paid_at", "month"]);
 const BOOLEAN_FIELDS = new Set([
@@ -83,6 +84,9 @@ const REFERENCES: Record<
   source_id: "sources",
   service_id: "services",
   doctor_id: "doctors",
+  target_stage_id: "stages",
+  target_sales_id: "sales",
+  tag_id: "tags",
 };
 const LIST_REFERENCES: Record<
   string,
@@ -110,6 +114,9 @@ export const AUDIT_ENTITY_GROUPS = {
     "custom_field",
     "sales_plan",
     "mailing",
+    "stage_trigger",
+    "webhook",
+    "api_key",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -170,7 +177,15 @@ export const formatAuditValue = (
   }
   if (field === "due_in_minutes") return formatDuration(Number(value) * 60);
   if (ENUM_FIELDS.has(field)) {
-    return translate(`audit.values.${field}.${value}`, { _: String(value) });
+    return translate(`audit.values.${field}.${value}`, {
+      // Events of the digital pipeline triggers (stage 20)
+      _:
+        field === "event"
+          ? translate(`pipeline_automation.events.${value}`, {
+              _: String(value),
+            })
+          : String(value),
+    });
   }
   const list = REFERENCES[field];
   if (list) return findName(lookups[list], value) ?? `#${value}`;
@@ -352,6 +367,13 @@ export const auditEntityLabel = (
       break;
     case "file":
       name = changedName(entry) ?? ref;
+      break;
+    case "stage_trigger":
+    case "api_key":
+      name = changedName(entry) ?? ref;
+      break;
+    case "webhook":
+      name = changedName(entry) ?? changedName(entry, "url") ?? ref;
       break;
     default:
       name = undefined;

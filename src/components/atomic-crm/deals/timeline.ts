@@ -1,3 +1,4 @@
+import type { StageTriggerRun } from "../pipeline-automation/types";
 import type {
   Call,
   DealEvent,
@@ -13,13 +14,14 @@ export type TimelineItem =
   | { kind: "call"; date: string; key: string; call: Call }
   | { kind: "event"; date: string; key: string; event: DealEvent }
   | { kind: "message"; date: string; key: string; message: Message }
-  | { kind: "file"; date: string; key: string; file: DealFile };
+  | { kind: "file"; date: string; key: string; file: DealFile }
+  | { kind: "automation"; date: string; key: string; run: StageTriggerRun };
 
 /**
  * One feed for the deal card (spec §4.2): messages, notes, completed tasks,
- * calls, the deal log and the files uploaded on the «Файлы» tab (files of
- * the chat are in their message), newest first. Open tasks are shown apart,
- * above the feed.
+ * calls, the deal log, the files uploaded on the «Файлы» tab (files of the
+ * chat are in their message) and what the digital pipeline did to the deal,
+ * newest first. Open tasks are shown apart, above the feed.
  */
 export const buildTimeline = ({
   notes = [],
@@ -28,6 +30,7 @@ export const buildTimeline = ({
   events = [],
   messages = [],
   files = [],
+  automations = [],
 }: {
   notes?: DealNote[];
   tasks?: Task[];
@@ -35,6 +38,7 @@ export const buildTimeline = ({
   events?: DealEvent[];
   messages?: Message[];
   files?: DealFile[];
+  automations?: StageTriggerRun[];
 }): TimelineItem[] =>
   [
     ...messages.map(
@@ -89,4 +93,12 @@ export const buildTimeline = ({
           file,
         }),
       ),
+    ...automations.map(
+      (run): TimelineItem => ({
+        kind: "automation",
+        date: run.created_at,
+        key: `automation-${run.id}`,
+        run,
+      }),
+    ),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

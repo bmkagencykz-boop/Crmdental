@@ -4,6 +4,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   StickyNote,
+  Zap,
 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
 import { Fragment, useEffect, useRef } from "react";
@@ -23,6 +24,8 @@ import type {
   Task,
 } from "../../types";
 import { DealEventContent } from "../DealEvents";
+import { AutomationRunLine } from "../../pipeline-automation/AutomationRunLine";
+import type { StageTriggerRun } from "../../pipeline-automation/types";
 import { buildTimeline, type TimelineItem } from "../timeline";
 
 const dayKey = (value: string) => new Date(value).toDateString();
@@ -86,6 +89,15 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
   });
   const { data: messages = [] } = useDealMessages(deal.id);
   const { data: files = [] } = useDealFiles(deal.id);
+  // What the digital pipeline did (stage 20)
+  const { data: automations = [] } = useGetList<StageTriggerRun>(
+    "stage_trigger_runs",
+    {
+      filter: { deal_id: deal.id },
+      sort: { field: "created_at", order: "DESC" },
+      pagination: { page: 1, perPage: 200 },
+    },
+  );
   const items = buildTimeline({
     notes,
     tasks,
@@ -93,6 +105,7 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
     events,
     messages,
     files,
+    automations,
   }).reverse();
 
   const bottom = useRef<HTMLDivElement>(null);
@@ -148,6 +161,17 @@ const FeedItem = ({ item }: { item: TimelineItem }) => {
       return <DoneTaskItem task={item.task} />;
     case "file":
       return <FileItem file={item.file} />;
+    case "automation":
+      return (
+        <div className="flex justify-center" data-testid="automation-run">
+          <div className="flex max-w-[85%] items-start gap-1.5 text-center text-xs text-muted-foreground">
+            <Zap className="mt-0.5 size-3 shrink-0" />
+            <span>
+              {time(item.date)} · <AutomationRunLine run={item.run} />
+            </span>
+          </div>
+        </div>
+      );
   }
 };
 

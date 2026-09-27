@@ -43,6 +43,13 @@ import type {
   Recall,
   RecallRule,
 } from "../../../mailings/types";
+import type {
+  ApiKey,
+  StageTrigger,
+  StageTriggerRun,
+  Webhook,
+  WebhookDelivery,
+} from "../../../pipeline-automation/types";
 
 export interface Db {
   sales: Sale[];
@@ -90,4 +97,10 @@ export interface Db {
   // Deal list and sales plan (stage 21)
   saved_filters: SavedFilter[];
   sales_plans: SalesPlan[];
+  // Digital pipeline, webhooks and API keys (stage 20)
+  stage_triggers: StageTrigger[];
+  stage_trigger_runs: StageTriggerRun[];
+  webhooks: Webhook[];
+  webhook_deliveries: WebhookDelivery[];
+  api_keys: ApiKey[];
 }

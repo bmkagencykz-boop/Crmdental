@@ -51,6 +51,7 @@ import { getFileMethods, uploadToDealFolder } from "./fileMethods";
 import { getUnsortedMethods } from "./unsortedMethods";
 import { getListPlanMethods } from "./listPlanMethods";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
+import { getPipelineAutomationMethods } from "./pipelineAutomationMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -104,6 +105,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getUnsortedMethods(),
     // Deal list and sales plan (stage 21)
     ...getListPlanMethods(),
+    // Webhooks and API keys (stage 20)
+    ...getPipelineAutomationMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

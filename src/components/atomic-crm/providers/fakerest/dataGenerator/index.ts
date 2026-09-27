@@ -8,6 +8,7 @@ import { generateListsPlans } from "./plans";
 import { generateDoctors } from "./doctors";
 import { generateDealFiles } from "./files";
 import { generateCustomFields } from "./customFields";
+import { generateDigitalPipeline } from "./digitalPipeline";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import { generateUnsorted } from "./unsorted";
@@ -30,6 +31,7 @@ export default (): Db => {
   generateMailings(db);
   generateUnsorted(db);
   generateListsPlans(db);
+  generateDigitalPipeline(db);
   db.configuration = [
     {
       id: 1,

@@ -59,7 +59,7 @@ export const DealAutomessages = ({ deal }: { deal: Deal }) => {
   const templateName = (row: Automessage) => {
     const rule = rules.find((r) => String(r.id) === String(row.rule_id));
     const template = templates.find(
-      (t) => String(t.id) === String(rule?.template_id),
+      (t) => String(t.id) === String(row.template_id ?? rule?.template_id),
     );
     return template?.name ?? translate("automessages.deal.rule_deleted");
   };

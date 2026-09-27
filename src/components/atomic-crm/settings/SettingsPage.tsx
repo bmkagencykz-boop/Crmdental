@@ -35,9 +35,12 @@ import { ResponseControlSettings } from "../notifications/ResponseControlSetting
 import { RecallRulesSettings } from "../mailings/RecallRulesSettings";
 import { UnsortedSettings } from "../unsorted/UnsortedSettings";
 import { DuplicatesSettings } from "../duplicates/DuplicatesSettings";
+import { DigitalPipelineSettings } from "../pipeline-automation/DigitalPipelineSettings";
+import { ApiSettings } from "../pipeline-automation/ApiSettings";
 
 const SECTIONS = [
   "pipelines",
+  "pipeline_automation",
   "services",
   "sources",
   "lost_reasons",
@@ -53,6 +56,7 @@ const SECTIONS = [
   "automessages",
   "quick_replies",
   "recalls",
+  "api",
   "access",
   "clinic",
   "duplicates",
@@ -70,23 +74,25 @@ const isSection = (value: string | null): value is Section =>
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
   section === "custom_fields"
     ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
-    : section === "quick_replies"
-      ? `quick_replies.${kind}`
-      : section === "automessages" ||
-          section === "recalls" ||
-          section === "doctors" ||
-          section === "unsorted" ||
-          section === "duplicates"
-        ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-        : section === "leads"
-          ? `leads.${kind === "title" ? "section" : "hint"}`
-          : section === "import" || section === "mis"
-            ? `${section}.${kind}`
-            : section === "telephony"
-              ? `telephony.${kind === "title" ? "section" : "hint"}`
-              : section === "response"
-                ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-                : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+    : section === "pipeline_automation" || section === "api"
+      ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+      : section === "quick_replies"
+        ? `quick_replies.${kind}`
+        : section === "automessages" ||
+            section === "recalls" ||
+            section === "doctors" ||
+            section === "unsorted" ||
+            section === "duplicates"
+          ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+          : section === "leads"
+            ? `leads.${kind === "title" ? "section" : "hint"}`
+            : section === "import" || section === "mis"
+              ? `${section}.${kind}`
+              : section === "telephony"
+                ? `telephony.${kind === "title" ? "section" : "hint"}`
+                : section === "response"
+                  ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+                  : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -115,7 +121,7 @@ export const SettingsPage = () => {
   if (isPending) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <nav
         className="flex flex-row flex-wrap gap-1 lg:flex-col"
         aria-label={translate("crm.settings.title")}
@@ -152,6 +158,7 @@ export const SettingsPage = () => {
         hint={translate(sectionLabel(section, "hint"))}
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
+        {section === "pipeline_automation" ? <DigitalPipelineSettings /> : null}
         {section === "services" ? (
           <DictionaryEditor resource="services" items={services} />
         ) : null}
@@ -174,6 +181,7 @@ export const SettingsPage = () => {
         {section === "automessages" ? <AutomessagesSettings /> : null}
         {section === "quick_replies" ? <QuickRepliesEditor /> : null}
         {section === "recalls" ? <RecallRulesSettings /> : null}
+        {section === "api" ? <ApiSettings /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
         {section === "import" ? <ImportWizard /> : null}

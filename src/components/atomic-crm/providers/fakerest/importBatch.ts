@@ -1,7 +1,14 @@
 import type { DataProvider, GetListParams, Identifier } from "ra-core";
 
 import type { BatchRow, ImportMode } from "../../import/importMapping";
+import {
+  customValuesDiff,
+  sanitizeCustomValues,
+} from "../../custom-fields/customFields";
 import type {
+  CustomField,
+  CustomFieldEntity,
+  CustomValues,
   Deal,
   DealPayment,
   ExternalRef,
@@ -64,11 +71,32 @@ export const importBatchInMemory = async ({
     deals_updated: 0,
     errors: [],
   };
-  const [pipelines, stages, lostReasons] = await Promise.all([
+  const [pipelines, stages, lostReasons, customFields] = await Promise.all([
     all<Pipeline>("pipelines"),
     all<Stage>("stages"),
     all<LostReason>("lost_reasons"),
+    all<CustomField>("custom_fields"),
   ]);
+  // Custom fields of the file: checked like the database does, an existing
+  // row only gets the fields it has no value for
+  const importedValues = (
+    entity: CustomFieldEntity,
+    incoming: CustomValues | null | undefined,
+    previous?: CustomValues | null,
+  ): CustomValues | undefined => {
+    const before = previous ?? {};
+    if (!incoming || typeof incoming !== "object") return previous ?? {};
+    const values = sanitizeCustomValues({
+      fields: customFields,
+      entity,
+      previous: before,
+      next: { ...incoming, ...before },
+    });
+    // Unchanged: the row as it was (no false "updated")
+    return Object.keys(customValuesDiff(before, values)).length
+      ? values
+      : (previous ?? {});
+  };
 
   const findRef = async (
     entity: ExternalRef["entity"],
@@ -166,6 +194,7 @@ export const importBatchInMemory = async ({
           background: text(p.background),
           first_seen: created,
           last_seen: created,
+          custom_values: importedValues("patient", p.custom_values),
         }) as Patient,
       });
       patient = data;
@@ -196,6 +225,11 @@ export const importBatchInMemory = async ({
             .filter((t) => !previous.tags.includes(t)),
         ],
         background: previous.background || text(p.background),
+        custom_values: importedValues(
+          "patient",
+          p.custom_values,
+          previous.custom_values,
+        ),
       });
       if (JSON.stringify(next) !== JSON.stringify(normalizePatient(previous))) {
         const { data } = await base.update<Patient>("patients", {
@@ -275,6 +309,7 @@ export const importBatchInMemory = async ({
           lost_reason_id: stage?.kind === "lost" ? reasonId : null,
           tags: (d.tags ?? []).map(Number),
           description: text(d.description),
+          custom_values: importedValues("deal", d.custom_values),
           index: 0,
           created_at: created,
           updated_at: now,
@@ -335,6 +370,11 @@ export const importBatchInMemory = async ({
             .filter((t) => !previous.tags.includes(t)),
         ],
         description: previous.description || text(d.description),
+        custom_values: importedValues(
+          "deal",
+          d.custom_values,
+          previous.custom_values,
+        ),
         stage_id: moves ? target!.id : previous.stage_id,
         lost_reason_id:
           moves && target!.kind === "lost"

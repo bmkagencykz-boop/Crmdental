@@ -97,6 +97,8 @@ export type Patient = {
   /** No mailings nor recall messages (stage 17) */
   messaging_opt_out?: boolean;
   messaging_opt_out_at?: string | null;
+  /** Custom fields (stage 19): { "<field id>": value } */
+  custom_values?: CustomValues;
   // patients_summary
   nb_deals?: number;
   nb_open_deals?: number;
@@ -156,6 +158,39 @@ export type Doctor = {
   position: number;
 } & Pick<RaRecord, "id">;
 
+/** Custom fields (stage 19), «Дополнительные поля» of deals and patients */
+export type CustomFieldEntity = "deal" | "patient";
+export type CustomFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "money"
+  | "date"
+  | "datetime"
+  | "checkbox"
+  | "select"
+  | "multiselect"
+  | "phone"
+  | "url";
+export type CustomField = {
+  organization_id?: Identifier;
+  entity: CustomFieldEntity;
+  name: string;
+  type: CustomFieldType;
+  /** Options of select and multiselect */
+  options: string[];
+  required: boolean;
+  position: number;
+  /** Archived fields are hidden, their values stay */
+  is_active: boolean;
+  /** Shown on the kanban card (deal fields, two at most) */
+  show_on_card: boolean;
+  created_at?: string;
+} & Pick<RaRecord, "id">;
+/** string (text, dates, phone, url, select), number, boolean, string[] */
+export type CustomValue = string | number | boolean | string[];
+export type CustomValues = Record<string, CustomValue>;
+
 export type Deal = {
   organization_id?: Identifier;
   patient_id: Identifier;
@@ -185,6 +220,8 @@ export type Deal = {
   doctor_id?: Identifier | null;
   /** Price of the consultation, tenge */
   consultation_amount?: number | null;
+  /** Custom fields (stage 19): { "<field id>": value } */
+  custom_values?: CustomValues;
   // deals_summary
   stage_kind?: StageKind;
   patient_first_name?: string | null;

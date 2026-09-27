@@ -41,7 +41,18 @@ import type {
   TelegramBotStatus,
   CrmNotification,
   NotificationPreferences,
+  CustomField,
+  CustomFieldEntity,
+  CustomValues,
 } from "../../types";
+import {
+  checkRequiredFields,
+  customValuesDiff,
+  dealChecksRequired,
+  MAX_CARD_FIELDS,
+  normalizeDefinition,
+  sanitizeCustomValues,
+} from "../../custom-fields/customFields";
 import {
   leadNoteText,
   leadWebhookUrl,
@@ -293,18 +304,20 @@ export const createDataProvider = ({
   };
 
   const renderAutomessage = async (deal: Deal, template: MessageTemplate) => {
-    const [patient, services, doctors, configuration] = await Promise.all([
-      baseDataProvider
-        .getOne<Patient>("patients", { id: deal.patient_id })
-        .then((r) => r.data)
-        .catch(() => undefined),
-      all<Service>("services"),
-      all<Doctor>("doctors"),
-      baseDataProvider
-        .getOne("configuration", { id: 1 })
-        .then((r) => r.data)
-        .catch(() => undefined),
-    ]);
+    const [patient, services, doctors, configuration, customFields] =
+      await Promise.all([
+        baseDataProvider
+          .getOne<Patient>("patients", { id: deal.patient_id })
+          .then((r) => r.data)
+          .catch(() => undefined),
+        all<Service>("services"),
+        all<Doctor>("doctors"),
+        baseDataProvider
+          .getOne("configuration", { id: 1 })
+          .then((r) => r.data)
+          .catch(() => undefined),
+        all<CustomField>("custom_fields"),
+      ]);
     return renderTemplate(
       template.body,
       automessageValues({
@@ -313,6 +326,7 @@ export const createDataProvider = ({
         serviceName: services.find((s) => s.id === deal.service_id)?.name,
         doctorName: doctors.find((d) => d.id === deal.doctor_id)?.name,
         clinicName: configuration?.config?.title || DEMO_CLINIC_NAME,
+        customFields,
       }),
     );
   };
@@ -1209,6 +1223,36 @@ export const createDataProvider = ({
 
   const currentSalesId = async () => (await getIdentity())?.id;
 
+  /**
+   * Same as private.handle_custom_values: the values a write stores (changed
+   * ones normalized, unknown keys dropped, archived fields kept) and the
+   * required fields, checked for employees when `checksRequired` says so.
+   */
+  const writeCustomValues = async (
+    entity: CustomFieldEntity,
+    provided: CustomValues | null | undefined,
+    previous: CustomValues | null | undefined,
+    checksRequired: (valuesChanged: boolean) => boolean,
+  ) => {
+    const before = previous ?? {};
+    const fields = await all<CustomField>("custom_fields");
+    const values =
+      provided === undefined
+        ? before
+        : sanitizeCustomValues({
+            fields,
+            entity,
+            previous: before,
+            next: provided ?? {},
+          });
+    const valuesChanged =
+      Object.keys(customValuesDiff(before, values)).length > 0;
+    if ((await currentSalesId()) != null && checksRequired(valuesChanged)) {
+      checkRequiredFields(fields, entity, values);
+    }
+    return values;
+  };
+
   // Same as the audit triggers (supabase/schemas/15_audit.sql)
   const logAudit = async (
     row: Omit<AuditLogEntry, "id" | "at" | "sales_id" | "source">,
@@ -1333,6 +1377,50 @@ export const createDataProvider = ({
 
   // Previous state of the deals being updated, for the log
   const previousDeals = new Map<Identifier, Deal>();
+  // Previous custom values of the patients being updated, for the log
+  const previousPatientValues = new Map<Identifier, CustomValues>();
+
+  /** Same as the constraints of public.custom_fields and its trigger */
+  const checkDefinition = async (
+    data: CustomField,
+    previous?: CustomField,
+    rightsOnly = false,
+  ) => {
+    const salesId = await currentSalesId();
+    const role = (await all<Sale>("sales")).find(
+      (sale) => sale.id === salesId,
+    )?.role;
+    if (role !== "owner" && role !== "head") {
+      throw new Error("Поля настраивают владелец и руководитель клиники");
+    }
+    if (rightsOnly) return;
+    if (!data.name) throw new Error("Укажите название поля");
+    if (/[{}]/.test(data.name)) {
+      throw new Error("Название поля не может содержать фигурные скобки");
+    }
+    const others = (await all<CustomField>("custom_fields")).filter(
+      (field) => field.id !== previous?.id,
+    );
+    if (
+      others.some(
+        (field) =>
+          field.entity === data.entity &&
+          field.name.toLowerCase() === data.name.toLowerCase(),
+      )
+    ) {
+      throw new Error("Поле с таким названием уже есть");
+    }
+    if (["select", "multiselect"].includes(data.type) && !data.options.length) {
+      throw new Error("Добавьте варианты списка");
+    }
+    if (
+      data.show_on_card &&
+      !previous?.show_on_card &&
+      others.filter((field) => field.show_on_card).length >= MAX_CARD_FIELDS
+    ) {
+      throw new Error("На карточке канбана можно показать не больше двух полей");
+    }
+  };
 
   const dataProvider = withLifecycleCallbacks(
     withSupabaseFilterAdapter(custom as DataProvider),
@@ -1379,15 +1467,92 @@ export const createDataProvider = ({
             sales_id: params.data.sales_id ?? (await currentSalesId()),
             first_seen: params.data.first_seen ?? new Date().toISOString(),
             last_seen: params.data.last_seen ?? new Date().toISOString(),
+            custom_values: await writeCustomValues(
+              "patient",
+              params.data.custom_values ?? {},
+              {},
+              (changed) => changed,
+            ),
           }),
         }),
-        beforeUpdate: async (params) => ({
-          ...params,
-          data: normalizePatient(
-            withoutKeys(params.data, PATIENT_VIEW_COLUMNS),
-          ),
-        }),
+        beforeUpdate: async (params) => {
+          const data = withoutKeys(params.data, PATIENT_VIEW_COLUMNS);
+          if (data.custom_values !== undefined) {
+            const { data: previous } = await baseDataProvider.getOne<Patient>(
+              "patients",
+              { id: params.id },
+            );
+            data.custom_values = await writeCustomValues(
+              "patient",
+              data.custom_values,
+              previous.custom_values,
+              (changed) => changed,
+            );
+            previousPatientValues.set(params.id, previous.custom_values ?? {});
+          }
+          return { ...params, data: normalizePatient(data) };
+        },
+        // Same as the audit trigger of patients: one line per custom field
+        afterUpdate: async (result) => {
+          const patient = result.data as Patient;
+          const before = previousPatientValues.get(patient.id);
+          previousPatientValues.delete(patient.id);
+          if (!before) return result;
+          const changes = customValuesDiff(before, patient.custom_values);
+          if (Object.keys(changes).length) {
+            await logAudit({
+              entity: "patient",
+              entity_id: patient.id,
+              action: "update",
+              changes: changes as AuditLogEntry["changes"],
+              patient_id: patient.id,
+            });
+          }
+          return result;
+        },
       } satisfies ResourceCallbacks<Patient>,
+      {
+        // Same as private.handle_custom_field_write and the RLS policies
+        resource: "custom_fields",
+        beforeCreate: async (params) => {
+          const data = normalizeDefinition({
+            is_active: true,
+            show_on_card: false,
+            required: false,
+            options: [],
+            position: 0,
+            ...params.data,
+          } as CustomField);
+          await checkDefinition(data);
+          return {
+            ...params,
+            data: { ...data, created_at: new Date().toISOString() },
+          };
+        },
+        beforeUpdate: async (params) => {
+          const { data: previous } =
+            await baseDataProvider.getOne<CustomField>("custom_fields", {
+              id: params.id,
+            });
+          if (
+            (params.data.type != null && params.data.type !== previous.type) ||
+            (params.data.entity != null &&
+              params.data.entity !== previous.entity)
+          ) {
+            throw new Error("Тип поля изменить нельзя: создайте новое поле");
+          }
+          const data = normalizeDefinition({
+            ...previous,
+            ...params.data,
+          } as CustomField);
+          await checkDefinition(data, previous);
+          return { ...params, data };
+        },
+        beforeDelete: async (params) => {
+          await checkDefinition(params.previousData as CustomField, params.previousData as CustomField, true);
+          return params;
+        },
+      } satisfies ResourceCallbacks<CustomField>,
       {
         resource: "deals",
         // Quick filter «Ждут ответа»: the overdue deals of deals_waiting
@@ -1422,11 +1587,25 @@ export const createDataProvider = ({
             },
             stages,
           });
+          const custom_values = await writeCustomValues(
+            "deal",
+            data.custom_values ?? {},
+            {},
+            (valuesChanged) =>
+              dealChecksRequired({
+                stages,
+                deal: { pipeline_id, stage_id },
+                isNew: true,
+                stageChanged: false,
+                valuesChanged,
+              }),
+          );
           const now = new Date().toISOString();
           return {
             ...params,
             data: {
               ...data,
+              custom_values,
               pipeline_id,
               stage_id,
               plan_amount: Number(data.plan_amount ?? 0),
@@ -1506,6 +1685,24 @@ export const createDataProvider = ({
             items: await all<StageChecklistItem>("stage_checklist_items"),
             checks: await all<DealChecklistCheck>("deal_checklist_checks"),
           });
+          const stageChanged =
+            next.stage_id !== previous.stage_id ||
+            next.pipeline_id !== previous.pipeline_id;
+          if (data.custom_values !== undefined || stageChanged) {
+            data.custom_values = await writeCustomValues(
+              "deal",
+              data.custom_values,
+              previous.custom_values,
+              (valuesChanged) =>
+                dealChecksRequired({
+                  stages,
+                  deal: next,
+                  isNew: false,
+                  stageChanged,
+                  valuesChanged,
+                }),
+            );
+          }
           previousDeals.set(params.id, previous);
           const now = new Date().toISOString();
           const onlyIndex = Object.keys(data).every((key) =>
@@ -1530,7 +1727,10 @@ export const createDataProvider = ({
           const previous = previousDeals.get(deal.id);
           previousDeals.delete(deal.id);
           if (!previous) return result;
-          const changes = dealChanges(previous, deal);
+          const changes = {
+            ...dealChanges(previous, deal),
+            ...customValuesDiff(previous.custom_values, deal.custom_values),
+          };
           // A responsible assigned later takes the unassigned open tasks
           if (previous.sales_id == null && deal.sales_id != null) {
             const tasks = (await all<Task>("tasks")).filter(

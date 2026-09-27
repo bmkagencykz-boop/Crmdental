@@ -242,6 +242,22 @@ describe("getList", () => {
     });
   });
 
+  it("should transform a jsonb '@cs' into a partial object match", async () => {
+    const getList = vi.fn();
+    const mockDataProvider = {
+      getList,
+    } as unknown as DataProvider;
+    getList.mockResolvedValueOnce([{ id: 1 }]);
+    const { getList: getListAdapter } =
+      withSupabaseFilterAdapter(mockDataProvider);
+    await getListAdapter("resource", {
+      filter: { "custom_values@cs": '{"12":"Инстаграм","15":true}' },
+    });
+    expect(getList).toHaveBeenCalledWith("resource", {
+      filter: { custom_values: { "12": "Инстаграм", "15": true } },
+    });
+  });
+
   it("should transform '@or'", async () => {
     const getList = vi.fn();
     const mockDataProvider = {

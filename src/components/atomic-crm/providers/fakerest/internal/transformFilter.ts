@@ -40,8 +40,11 @@ export function transformFilter(filter: Record<string, any>) {
     }
 
     if (key.endsWith("@cs")) {
+      // jsonb containment (custom_values@cs '{"12":"Инстаграм"}'): FakeRest
+      // matches an object value partially, like @>
+      const object = parseJsonObject(value);
       transformedFilters[`${key.slice(0, -3)}`] =
-        transformContainsFilter(value);
+        object ?? transformContainsFilter(value);
       continue;
     }
 
@@ -55,3 +58,18 @@ export function transformFilter(filter: Record<string, any>) {
   }
   return transformedFilters;
 }
+
+/** '{"12":"a","15":true}' → the object; anything else (array literals) → null */
+const parseJsonObject = (value: unknown): Record<string, unknown> | null => {
+  if (typeof value !== "string" || !/^\{\s*"[^"]*"\s*:/.test(value)) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+};

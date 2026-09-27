@@ -5,6 +5,7 @@ import { generateDictionaries } from "./dictionaries";
 import { generateNotifications } from "./notifications";
 import { generateMailings } from "./mailings";
 import { generateDoctors } from "./doctors";
+import { generateCustomFields } from "./customFields";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import type { Db } from "./types";
@@ -16,6 +17,7 @@ export default (): Db => {
   generateDictionaries(db);
   generateDoctors(db);
   generateClinic(db);
+  generateCustomFields(db);
   generateAutomessages(db);
   generateAuditLog(db);
   db.external_refs = [];

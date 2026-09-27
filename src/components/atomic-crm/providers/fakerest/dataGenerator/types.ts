@@ -3,6 +3,7 @@ import type {
   Call,
   Deal,
   DealEvent,
+  CustomField,
   Doctor,
   DealNote,
   DealPayment,
@@ -48,6 +49,7 @@ export interface Db {
   lead_sources: LeadSource[];
   lost_reasons: LostReason[];
   doctors: Doctor[];
+  custom_fields: CustomField[];
   patients: Patient[];
   patient_notes: PatientNote[];
   deals: Deal[];

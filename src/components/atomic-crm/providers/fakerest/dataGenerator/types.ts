@@ -11,6 +11,7 @@ import type {
   LostReason,
   Message,
   MessengerChannel,
+  Organization,
   OrganizationSettings,
   Patient,
   PatientNote,
@@ -68,6 +69,8 @@ export interface Db {
   quick_replies: QuickReply[];
   notifications: CrmNotification[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
+  /** The demo clinic (its time zone: task calendar) */
+  organizations: Organization[];
   external_refs: Array<ExternalRef & { id: number }>;
   integrations: Array<IntegrationStatus & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;

@@ -219,6 +219,14 @@ const DoneTaskItem = ({ task }: { task: Task }) => {
         {translate(`crm.tasks.types.${task.type}`)}
       </span>{" "}
       {task.text}
+      {task.result ? (
+        <p className="mt-1">
+          <span className="text-muted-foreground">
+            {translate("task_calendar.result")}:
+          </span>{" "}
+          {task.result}
+        </p>
+      ) : null}
     </Card>
   );
 };

@@ -1,4 +1,6 @@
 import { DEFAULT_RESPONSE_SETTINGS } from "../../commons/responseTime";
+import { DEFAULT_TIME_ZONE } from "../../commons/automessages";
+import { DEMO_CLINIC_NAME } from "./automessages";
 import type { Db } from "./types";
 
 /**
@@ -78,6 +80,9 @@ export const generateDictionaries = (db: Db) => {
     position: index,
     is_archived: false,
   }));
+  db.organizations = [
+    { id: 1, name: DEMO_CLINIC_NAME, timezone: DEFAULT_TIME_ZONE },
+  ];
   db.organization_settings = [
     {
       id: 1,

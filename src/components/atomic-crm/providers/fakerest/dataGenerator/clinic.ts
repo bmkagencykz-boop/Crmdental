@@ -1,14 +1,24 @@
 import { random } from "faker/locale/en_US";
 
+import { DEFAULT_TIME_ZONE } from "../../commons/automessages";
 import { normalizePatient } from "../../commons/domain";
-import type { Deal, DealEvent, Patient, Stage } from "../../../types";
+import {
+  addDays,
+  dayKeyOf,
+  minuteOfDay,
+  todayKey,
+  zonedMoment,
+} from "../../../tasks/calendarLayout";
+import type { Deal, DealEvent, Patient, Stage, TaskType } from "../../../types";
 import {
   dealAmounts,
   dealTitles,
   kzPerson,
   kzPhone,
   noteTexts,
+  meetingTexts,
   roundedAmount,
+  taskResults,
   taskTexts,
 } from "./kz";
 import { assignDoctors } from "./doctors";
@@ -277,6 +287,38 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
     }
   });
 
+  // Tasks sit at working hours of the clinic, on the half hour (calendar)
+  const workingTime = () =>
+    random.arrayElement([
+      9 * 60,
+      9 * 60 + 30,
+      10 * 60,
+      10 * 60 + 30,
+      11 * 60,
+      11 * 60 + 30,
+      12 * 60,
+      12 * 60 + 30,
+      14 * 60,
+      14 * 60 + 30,
+      15 * 60,
+      15 * 60 + 30,
+      16 * 60,
+      16 * 60 + 30,
+      17 * 60,
+      17 * 60 + 30,
+      18 * 60,
+      19 * 60,
+    ]) as number;
+  const atWorkingHours = (time: number) => {
+    const day = dayKeyOf(new Date(time), DEFAULT_TIME_ZONE);
+    const minutes = minuteOfDay(new Date(time), DEFAULT_TIME_ZONE);
+    const rounded = Math.round(minutes / 30) * 30;
+    return zonedMoment(
+      day,
+      rounded >= 9 * 60 && rounded <= 19 * 60 ? rounded : workingTime(),
+    ).getTime();
+  };
+
   // Tasks done along the way: most in time, some late
   db.tasks = [];
   deals.forEach((deal) => {
@@ -284,7 +326,9 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
     entries.slice(0, -1).forEach((entry, index) => {
       if (random.number(9) < 3) return;
       const next = entries[index + 1].at;
-      const due = entry.at + random.arrayElement([1, 4, 24, 48]) * HOUR;
+      const due = atWorkingHours(
+        entry.at + random.arrayElement([1, 4, 24, 48]) * HOUR,
+      );
       const done = Math.min(
         next,
         random.number(9) < 7 ? due - HOUR : due + random.number(48) * HOUR,
@@ -296,6 +340,7 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
         text: random.arrayElement(taskTexts),
         created_at: new Date(entry.at).toISOString(),
         due_date: new Date(due).toISOString(),
+        duration_minutes: 30,
         done_date: new Date(
           Math.max(done, entry.at + 10 * 60 * 1000),
         ).toISOString(),
@@ -304,29 +349,63 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
     });
   });
 
-  // Tasks on open deals: some overdue, some deals left without any
+  // Tasks on open deals over the days around today at working hours (task
+  // calendar): mostly the coming week, some overdue, a few done this week
+  // with a result, some deals left without any
+  const today = todayKey(DEFAULT_TIME_ZONE, new Date(now));
   deals.forEach((deal) => {
     const stage = db.stages.find((s) => s.id === deal.stage_id)!;
     if (stage.kind !== "open" || random.number(9) < 2) return;
-    const hours = random.arrayElement([
-      -60, -20, -3, 2, 5, 20, 30, 48, 96, 168,
-    ]);
+    const day = random.arrayElement([
+      -3, -1, 0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 9,
+    ]) as number;
+    const type = random.arrayElement([
+      "call",
+      "call",
+      "call",
+      "message",
+      "message",
+      "meeting",
+      "reminder",
+      "other",
+    ]) as TaskType;
+    const due = zonedMoment(addDays(today, day), workingTime());
     db.tasks.push({
       id: db.tasks.length,
       deal_id: deal.id,
-      type: random.arrayElement([
-        "call",
-        "call",
-        "message",
-        "reminder",
-        "other",
-      ]),
-      text: random.arrayElement(taskTexts),
+      type,
+      text:
+        type === "meeting"
+          ? random.arrayElement(meetingTexts)
+          : random.arrayElement(taskTexts),
       created_at: deal.stage_changed_at,
-      due_date: new Date(now + hours * 60 * 60 * 1000).toISOString(),
+      due_date: due.toISOString(),
+      duration_minutes:
+        type === "meeting"
+          ? random.arrayElement([60, 60, 90])
+          : random.arrayElement([15, 30, 30, 30, 45]),
       done_date: null,
       sales_id: deal.sales_id ?? undefined,
     });
+    // Done in the last days, with what came out of it
+    const doneDue = zonedMoment(
+      addDays(today, -random.number(5)),
+      workingTime(),
+    );
+    if (random.number(9) < 5 && doneDue.getTime() < now - HOUR) {
+      db.tasks.push({
+        id: db.tasks.length,
+        deal_id: deal.id,
+        type: random.arrayElement(["call", "call", "message", "meeting"]),
+        text: random.arrayElement(taskTexts),
+        created_at: new Date(doneDue.getTime() - DAY).toISOString(),
+        due_date: doneDue.toISOString(),
+        duration_minutes: 30,
+        done_date: new Date(doneDue.getTime() + 20 * 60 * 1000).toISOString(),
+        result: random.arrayElement(taskResults),
+        sales_id: deal.sales_id ?? undefined,
+      });
+    }
   });
 
   db.patient_notes = db.patients

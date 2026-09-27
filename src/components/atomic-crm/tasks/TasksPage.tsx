@@ -11,11 +11,18 @@ import { cn } from "@/lib/utils";
 
 import type { Sale, Task as TaskRecord } from "../types";
 import { AddTask } from "./AddTask";
+import type { CalendarView } from "./calendarLayout";
 import { Task } from "./Task";
+import { TaskCalendar } from "./TaskCalendar";
 import { isDueToday, isOverdue } from "./tasksPredicate";
 
 export type TasksTab = "today" | "overdue" | "open" | "done";
 const TABS: TasksTab[] = ["today", "overdue", "open", "done"];
+
+/** The list of tabs, or the calendar of a day, a week or a month */
+export type TasksView = "list" | CalendarView;
+const VIEWS: TasksView[] = ["list", "day", "week", "month"];
+export const TASKS_VIEW_STORE_KEY = "tasks.view";
 
 /** Whose tasks: the current user, everybody, or one employee (by id) */
 export type TasksOwner = "me" | "all" | string;
@@ -54,6 +61,8 @@ export const TasksPage = () => {
   });
   const [tab, setTab] = useStore<TasksTab>("tasks.tab", "today");
   const [owner, setOwner] = useStore<TasksOwner>("tasks.owner", "me");
+  const [view, setView] = useStore<TasksView>(TASKS_VIEW_STORE_KEY, "list");
+  const isList = view === "list";
 
   const { data: sales = [] } = useGetList<Sale>(
     "sales",
@@ -84,7 +93,7 @@ export const TasksPage = () => {
         ...(done ? { "done_date@not.is": null } : { "done_date@is": null }),
       },
     },
-    { enabled: identity != null },
+    { enabled: identity != null && isList },
   );
   const { data: openTasks = [] } = useGetList<TaskRecord>(
     "tasks",
@@ -107,8 +116,28 @@ export const TasksPage = () => {
   const shown = filterTasksByTab(tasks, tab);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className={cn("flex flex-col gap-6", isList && "max-w-4xl")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          className="flex flex-wrap gap-1 rounded-lg bg-muted p-1"
+          role="group"
+          aria-label={translate("task_calendar.view_label")}
+        >
+          {VIEWS.map((value) => (
+            <Pill
+              key={value}
+              small
+              active={view === value}
+              onClick={() => setView(value)}
+            >
+              {translate(`task_calendar.views.${value}`)}
+            </Pill>
+          ))}
+        </div>
+        <AddTask selectDeal />
+      </div>
+
+      {isList ? (
         <div className="flex flex-wrap gap-2" role="tablist">
           {TABS.map((value) => (
             <Pill
@@ -127,8 +156,7 @@ export const TasksPage = () => {
             </Pill>
           ))}
         </div>
-        <AddTask selectDeal />
-      </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">
@@ -154,22 +182,28 @@ export const TasksPage = () => {
           ))}
       </div>
 
-      <section className="glass rounded-lg p-6">
-        {isPending ? null : shown.length ? (
-          <div className="flex flex-col gap-4">
-            {shown.map((task, index) => (
-              <Fragment key={task.id}>
-                <Task task={task} showDeal showResponsible={owner !== "me"} />
-                {index < shown.length - 1 ? <Separator /> : null}
-              </Fragment>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {translate(`crm.tasks.empty.${tab}`)}
-          </p>
-        )}
-      </section>
+      {!isList ? (
+        <TaskCalendar view={view} setView={setView} salesFilter={salesFilter} />
+      ) : null}
+
+      {isList ? (
+        <section className="glass rounded-lg p-6">
+          {isPending ? null : shown.length ? (
+            <div className="flex flex-col gap-4">
+              {shown.map((task, index) => (
+                <Fragment key={task.id}>
+                  <Task task={task} showDeal showResponsible={owner !== "me"} />
+                  {index < shown.length - 1 ? <Separator /> : null}
+                </Fragment>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {translate(`crm.tasks.empty.${tab}`)}
+            </p>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 };

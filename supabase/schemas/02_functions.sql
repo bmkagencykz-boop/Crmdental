@@ -591,6 +591,9 @@ declare
   old_json jsonb;
   new_json jsonb;
   changes jsonb := '{}'::jsonb;
+  -- A change made by a trigger of the digital pipeline has no author
+  actor_id bigint := case when coalesce(nullif(current_setting('crm.automation_depth', true), ''), '0') = '0'
+    then private.current_sales_id() end;
 begin
   if tg_op = 'INSERT' then
     insert into public.deal_events (organization_id, deal_id, type, to_stage_id, sales_id)
@@ -642,10 +645,10 @@ begin
 
   if new.stage_id is distinct from old.stage_id then
     insert into public.deal_events (organization_id, deal_id, type, from_stage_id, to_stage_id, changes, sales_id)
-    values (new.organization_id, new.id, 'stage_changed', old.stage_id, new.stage_id, changes, private.current_sales_id());
+    values (new.organization_id, new.id, 'stage_changed', old.stage_id, new.stage_id, changes, actor_id);
   elsif changes <> '{}'::jsonb then
     insert into public.deal_events (organization_id, deal_id, type, changes, sales_id)
-    values (new.organization_id, new.id, 'updated', changes, private.current_sales_id());
+    values (new.organization_id, new.id, 'updated', changes, actor_id);
   end if;
   return null;
 end;

@@ -172,3 +172,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.messenger_send]
 verify_jwt = false
+[functions.leads_webhook]
+verify_jwt = false
+[functions.telegram_connect]
+verify_jwt = false
+[functions.telegram_webhook]
+verify_jwt = false

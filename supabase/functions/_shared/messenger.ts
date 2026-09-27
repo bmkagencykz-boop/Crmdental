@@ -6,7 +6,8 @@
 
 export const WAZZUP_API = "https://api.wazzup24.com/v3";
 
-export type Transport = "whatsapp" | "instagram" | "telegram";
+/** telegram_bot: the clinic's own bot (Bot API, _shared/telegram.ts) */
+export type Transport = "whatsapp" | "instagram" | "telegram" | "telegram_bot";
 
 /** Wazzup transports / chat types we support, and ours */
 const TRANSPORTS: Record<string, Transport> = {

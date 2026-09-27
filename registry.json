@@ -454,6 +454,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/misc/accent.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/misc/Status.tsx",
           "type": "registry:component"
         },

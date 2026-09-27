@@ -61,7 +61,8 @@ export const createListPlanDemo = ({
       (sale) => String(sale.id) === String(salesId),
     );
   };
-  const isAdmin = (sale?: Sale) => sale?.role === "owner" || sale?.role === "head";
+  const isAdmin = (sale?: Sale) =>
+    sale?.role === "owner" || sale?.role === "head";
 
   /** Same as the RLS policy of deals */
   const canSeeDeal = async (deal: Deal) => {
@@ -134,7 +135,8 @@ export const createListPlanDemo = ({
       if (visible.length) {
         const { data } = await dataProvider.create("mailings", {
           data: {
-            name: params.name?.trim() || template?.name || "Сообщение по сделкам",
+            name:
+              params.name?.trim() || template?.name || "Сообщение по сделкам",
             segment: { deal_ids: visible.map((deal) => deal.id) },
             template_id: template?.id ?? null,
             body,
@@ -202,7 +204,9 @@ export const createListPlanDemo = ({
                       lost_reason_id:
                         params.lost_reason_id ?? deal.lost_reason_id ?? null,
                       lost_comment:
-                        params.lost_comment?.trim() || deal.lost_comment || null,
+                        params.lost_comment?.trim() ||
+                        deal.lost_comment ||
+                        null,
                     }
                   : {}),
               });
@@ -213,9 +217,11 @@ export const createListPlanDemo = ({
             case "add_tags":
             case "remove_tags":
               await update({
-                tags: nextTags(action, deal.tags ?? [], params.tag_ids ?? []).map(
-                  Number,
-                ),
+                tags: nextTags(
+                  action,
+                  deal.tags ?? [],
+                  params.tag_ids ?? [],
+                ).map(Number),
               });
               break;
             case "archive":

@@ -111,9 +111,9 @@ describe("saved filter serialization", () => {
     expect(
       deserializeFilter(serializeFilter(values, context), context),
     ).toEqual(values);
-    expect(isSameFilter(serializeFilter(values, context), values, context)).toBe(
-      true,
-    );
+    expect(
+      isSameFilter(serializeFilter(values, context), values, context),
+    ).toBe(true);
     expect(isSameFilter({ sales_id: ME }, values, context)).toBe(false);
   });
 

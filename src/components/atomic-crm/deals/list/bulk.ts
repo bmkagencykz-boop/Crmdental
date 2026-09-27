@@ -23,19 +23,12 @@ export type BulkActionId = (typeof BULK_ACTIONS)[number];
 export type BulkDealsAction = Exclude<BulkActionId, "export">;
 
 /** Actions for the owner and the head only (checked by the database too) */
-export const ADMIN_ACTIONS: BulkActionId[] = [
-  "message",
-  "archive",
-  "delete",
-];
+export const ADMIN_ACTIONS: BulkActionId[] = ["message", "archive", "delete"];
 
 export const isAllowedAction = (
   action: BulkActionId,
   role: string | undefined,
-) =>
-  !ADMIN_ACTIONS.includes(action) ||
-  role === "owner" ||
-  role === "head";
+) => !ADMIN_ACTIONS.includes(action) || role === "owner" || role === "head";
 
 export type BulkParams = {
   stage_id?: Identifier;

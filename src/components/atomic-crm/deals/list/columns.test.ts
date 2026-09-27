@@ -26,7 +26,12 @@ describe("normalizeColumns", () => {
     expect(settings.order.slice(0, 3)).toEqual(["tags", "name", "patient"]);
     expect([...settings.order].sort()).toEqual([...DEAL_COLUMNS].sort());
     // Missing columns hidden by default stay hidden
-    expect(settings.hidden).toEqual(["tags", "pipeline", "doctor", "last_activity_at"]);
+    expect(settings.hidden).toEqual([
+      "tags",
+      "pipeline",
+      "doctor",
+      "last_activity_at",
+    ]);
   });
 
   it("never hides the deal name and the patient", () => {

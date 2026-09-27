@@ -65,7 +65,9 @@ export const monthOf = (
   timeZone = DEFAULT_TIME_ZONE,
 ) => {
   const day =
-    typeof value === "string" ? value : localDate(value.toISOString(), timeZone);
+    typeof value === "string"
+      ? value
+      : localDate(value.toISOString(), timeZone);
   return `${day.slice(0, 7)}-01`;
 };
 
@@ -83,7 +85,9 @@ export const daysInMonth = (month: string) => {
 
 /** Days between two YYYY-MM-DD dates */
 const dayDiff = (a: string, b: string) =>
-  Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 864e5);
+  Math.round(
+    (Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 864e5,
+  );
 
 /** Days of the month gone by on `today` (today included), 0..days */
 export const daysElapsed = (month: string, today: string) =>
@@ -167,7 +171,7 @@ export const isEmptyPlan = (plan: Partial<PlanValues> | null | undefined) =>
 
 /** An input of the editor ("12 000", "", "abc") as a target */
 export const parseTarget = (value: string): number | null => {
-  const digits = value.replace(/[\s ]/g, "");
+  const digits = value.replace(/\s/g, ""); // \s also matches the non-breaking space
   if (!digits) return null;
   const number = Number(digits);
   return Number.isFinite(number) && number >= 0 ? Math.round(number) : null;

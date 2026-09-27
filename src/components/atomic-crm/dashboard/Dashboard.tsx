@@ -1,6 +1,7 @@
 import { DashboardActivityLog } from "./DashboardActivityLog";
 import { DashboardSummary } from "./DashboardSummary";
 import { HotPatients } from "./HotPatients";
+import { MonthPlanWidget } from "./MonthPlanWidget";
 import { TasksList } from "./TasksList";
 import { WaitingDeals } from "../notifications/WaitingDeals";
 
@@ -15,6 +16,7 @@ export const Dashboard = () => (
         <DashboardActivityLog />
       </div>
       <div className="flex flex-col gap-8 md:col-span-3">
+        <MonthPlanWidget />
         <WaitingDeals />
         <HotPatients />
       </div>

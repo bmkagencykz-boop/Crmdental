@@ -5,10 +5,7 @@ import type {
   BulkDealsResult,
   BulkParams,
 } from "../../deals/list/bulk";
-import type {
-  SalesPlanInput,
-  SalesPlanReport,
-} from "../../reports/salesPlan";
+import type { SalesPlanInput, SalesPlanReport } from "../../reports/salesPlan";
 import { getSupabaseClient } from "./supabase";
 
 /**
@@ -32,17 +29,13 @@ export const getListPlanMethods = () => ({
   },
   /** Targets and facts of a month (owner and head) */
   async getSalesPlanReport(month?: string | null): Promise<SalesPlanReport> {
-    const { data, error } = await getSupabaseClient().rpc(
-      "report_sales_plan",
-      { target_month: month ?? null },
-    );
+    const { data, error } = await getSupabaseClient().rpc("report_sales_plan", {
+      target_month: month ?? null,
+    });
     if (error) throw error;
     return data as SalesPlanReport;
   },
-  async saveSalesPlan(
-    month: string,
-    plans: SalesPlanInput[],
-  ): Promise<number> {
+  async saveSalesPlan(month: string, plans: SalesPlanInput[]): Promise<number> {
     const { data, error } = await getSupabaseClient().rpc("save_sales_plan", {
       target_month: month,
       plans,

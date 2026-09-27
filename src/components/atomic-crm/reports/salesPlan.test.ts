@@ -39,8 +39,7 @@ const STAGES: Stage[] = [
   kind: kind as Stage["kind"],
   color: "#000",
 }));
-const stage = (name: string) =>
-  Number(STAGES.find((s) => s.name === name)!.id);
+const stage = (name: string) => Number(STAGES.find((s) => s.name === name)!.id);
 
 const sale = (id: number, last_name: string): Sale => ({
   id,
@@ -103,11 +102,35 @@ const data = {
   stages: STAGES,
   sales: [sale(1, "Owner"), sale(2, "Manager")],
   deals: [
-    deal(1, 2, "2026-09-05T05:00:00Z", stage("Лечение завершено"), "2026-09-20T05:00:00Z"),
-    deal(2, 2, "2026-09-06T05:00:00Z", stage("Пришёл на консультацию"), "2026-09-12T05:00:00Z"),
+    deal(
+      1,
+      2,
+      "2026-09-05T05:00:00Z",
+      stage("Лечение завершено"),
+      "2026-09-20T05:00:00Z",
+    ),
+    deal(
+      2,
+      2,
+      "2026-09-06T05:00:00Z",
+      stage("Пришёл на консультацию"),
+      "2026-09-12T05:00:00Z",
+    ),
     deal(3, 1, "2026-09-07T05:00:00Z", stage("Новый лид")),
-    deal(4, null, "2026-09-08T05:00:00Z", stage("Лечение завершено"), "2026-09-09T05:00:00Z"),
-    deal(5, 2, "2025-09-05T05:00:00Z", stage("Лечение завершено"), "2025-09-20T05:00:00Z"),
+    deal(
+      4,
+      null,
+      "2026-09-08T05:00:00Z",
+      stage("Лечение завершено"),
+      "2026-09-09T05:00:00Z",
+    ),
+    deal(
+      5,
+      2,
+      "2025-09-05T05:00:00Z",
+      stage("Лечение завершено"),
+      "2025-09-20T05:00:00Z",
+    ),
     // 1:00 on September 1st in Almaty: September; 0:30 on October 1st: October
     deal(6, 1, "2026-08-31T20:00:00Z", stage("Новый лид")),
     deal(7, 1, "2026-09-30T19:30:00Z", stage("Новый лид")),
@@ -206,7 +229,9 @@ describe("salesPlanReport (same as public.report_sales_plan)", () => {
     expect(august.month).toBe("2026-08-01");
     expect(august.days_elapsed).toBe(31);
     expect(august.clinic.fact.paid_amount).toBe(70000);
-    expect(august.by_sales.find((row) => row.id === 1)?.plan?.new_deals).toBe(1);
+    expect(august.by_sales.find((row) => row.id === 1)?.plan?.new_deals).toBe(
+      1,
+    );
     const october = salesPlanReport(data, "2026-10-01", NOW);
     expect(october.days_elapsed).toBe(0);
     expect(october.clinic.fact.new_deals).toBe(1);
@@ -255,7 +280,12 @@ describe("progress and forecast", () => {
       days_total: 30,
       days_elapsed: 10,
       clinic: {
-        plan: { new_deals: 20, won_deals: null, paid_amount: null, visits: null },
+        plan: {
+          new_deals: 20,
+          won_deals: null,
+          paid_amount: null,
+          visits: null,
+        },
         fact: { new_deals: 5, won_deals: 1, paid_amount: 100, visits: 0 },
       },
       by_sales: [
@@ -333,8 +363,17 @@ describe("plan editor", () => {
       ],
     );
     expect(upsert).toEqual([
-      expect.objectContaining({ id: 2, sales_id: 2, new_deals: 7, won_deals: null }),
-      expect.objectContaining({ sales_id: 1, month: "2026-09-01", new_deals: 3 }),
+      expect.objectContaining({
+        id: 2,
+        sales_id: 2,
+        new_deals: 7,
+        won_deals: null,
+      }),
+      expect.objectContaining({
+        sales_id: 1,
+        month: "2026-09-01",
+        new_deals: 3,
+      }),
     ]);
     expect(upsert[1].id).toBeUndefined();
     expect(remove.map((row) => row.id)).toEqual([1]);

@@ -28,6 +28,7 @@ import {
   SpeedTab,
 } from "./ReportTabs";
 import { RecallsTab } from "../mailings/RecallsTab";
+import { SalesPlanTab } from "./SalesPlanTab";
 
 const TABS = [
   "conversion",
@@ -35,6 +36,7 @@ const TABS = [
   "lost_reasons",
   "money",
   "recalls",
+  "sales_plan",
 ] as const;
 const ALL = "all";
 
@@ -70,13 +72,20 @@ export const ReportsPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <ReportFiltersBar state={state} onChange={setState} />
+      {/* The sales plan has its own month */}
+      {tab === "sales_plan" ? null : (
+        <ReportFiltersBar state={state} onChange={setState} />
+      )}
       <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
         <TabsList className="rounded-md">
           {TABS.map((value) => (
             <TabsTrigger key={value} value={value} className="rounded-md">
               {translate(
-                value === "recalls" ? "recalls.title" : `reports.tabs.${value}`,
+                value === "recalls"
+                  ? "recalls.title"
+                  : value === "sales_plan"
+                    ? "sales_plan.tab"
+                    : `reports.tabs.${value}`,
               )}
             </TabsTrigger>
           ))}
@@ -95,6 +104,9 @@ export const ReportsPage = () => {
         </TabsContent>
         <TabsContent value="recalls" className="mt-4">
           <RecallsTab filters={filters} />
+        </TabsContent>
+        <TabsContent value="sales_plan" className="mt-4">
+          <SalesPlanTab />
         </TabsContent>
       </Tabs>
     </div>

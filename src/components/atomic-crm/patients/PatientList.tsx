@@ -110,9 +110,19 @@ const PatientTable = () => {
           source="phone_fts"
           label="resources.patients.fields.phone_number"
           disableSort
-          render={(patient) => (
-            <span className="tabular-nums">{patient.phones?.[0] ?? "—"}</span>
-          )}
+          render={(patient) =>
+            patient.phones?.[0] ? (
+              <a
+                href={`tel:${patient.phones[0]}`}
+                onClick={(event) => event.stopPropagation()}
+                className="tabular-nums hover:underline"
+              >
+                {patient.phones[0]}
+              </a>
+            ) : (
+              "—"
+            )
+          }
         />
         <DataTable.Col source="city" />
         <DataTable.Col

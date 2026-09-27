@@ -34,6 +34,8 @@ import type {
 } from "../../types";
 import type { BatchRow, ImportMode } from "../../import/importMapping";
 import { applySearch } from "../commons/search";
+import { telephonyWebhookUrl } from "../../telephony/telephony";
+import type { TelephonyProvider, TelephonyStatus } from "../../types";
 import { applyWaitingFilter, WAITING_FILTER } from "../commons/responseTime";
 import type {
   ReportFilters,
@@ -423,6 +425,68 @@ const getDataProviderWithCustomMethods = () => {
       const { error } = await getSupabaseClient().functions.invoke(
         "telegram_connect",
         { method: "POST", body: { disconnect: true } },
+      );
+      if (error) throw error;
+    },
+    /** Telephony connection of the clinic, with the address for the PBX */
+    async getTelephonyStatus(): Promise<TelephonyStatus | null> {
+      const { data, error } = await getSupabaseClient().rpc("telephony_status");
+      if (error) throw error;
+      const row = ((data as Omit<TelephonyStatus, "webhook_url">[]) ?? [])[0];
+      if (!row) return null;
+      return {
+        ...row,
+        webhook_url: telephonyWebhookUrl(
+          import.meta.env.VITE_SUPABASE_URL,
+          row.provider,
+          row.webhook_token,
+        ),
+      };
+    },
+    /** Connects the PBX; a null secret or key keeps the stored one */
+    async saveTelephony({
+      provider,
+      secret,
+      apiKey,
+    }: {
+      provider: TelephonyProvider;
+      secret?: string | null;
+      apiKey?: string | null;
+    }): Promise<void> {
+      const { error } = await getSupabaseClient().rpc("save_telephony", {
+        telephony_provider: provider,
+        new_secret: secret ?? null,
+        new_api_key: apiKey ?? null,
+      });
+      if (error) throw error;
+    },
+    async regenerateTelephonyToken(): Promise<string> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "regenerate_telephony_token",
+      );
+      if (error) throw error;
+      return data as string;
+    },
+    async disconnectTelephony(): Promise<void> {
+      const { error } = await getSupabaseClient().rpc("disconnect_telephony");
+      if (error) throw error;
+    },
+    /** «Тестовый звонок»: a missed call from a test number */
+    async simulateTelephonyCall(): Promise<{ deal_id: Identifier }> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "telephony_test_call",
+      );
+      if (error) throw error;
+      return data as { deal_id: Identifier };
+    },
+    /** Internal number of an employee in the PBX (owner and head) */
+    async setSalesPhoneExtension(
+      salesId: Identifier,
+      extension: string | null,
+    ): Promise<void> {
+      const { error } = await getSupabaseClient().rpc(
+        "set_sales_phone_extension",
+        { target_sales_id: salesId, extension: extension ?? "" },
       );
       if (error) throw error;
     },

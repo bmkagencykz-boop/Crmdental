@@ -58,6 +58,13 @@ export function SalesList() {
         <DataTable.Col source="first_name" />
         <DataTable.Col source="last_name" />
         <DataTable.Col source="email" />
+        <DataTable.Col
+          source="phone_extension"
+          label="telephony.extension"
+          render={(sale) => (
+            <span className="tabular-nums">{sale.phone_extension ?? ""}</span>
+          )}
+        />
         <DataTable.Col label={false}>
           <OptionsField />
         </DataTable.Col>

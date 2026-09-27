@@ -25,6 +25,7 @@ import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { LeadSettings } from "../leads/LeadSettings";
 import { MisSettings } from "./MisSettings";
+import { TelephonySettings } from "../telephony/TelephonySettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
@@ -37,6 +38,7 @@ const SECTIONS = [
   "lost_reasons",
   "messengers",
   "leads",
+  "telephony",
   "distribution",
   "response",
   "automations",
@@ -64,11 +66,12 @@ const sectionLabel = (section: Section, kind: "title" | "hint") =>
         ? `leads.${kind === "title" ? "section" : "hint"}`
         : section === "import" || section === "mis"
           ? `${section}.${kind}`
-          : section === "response"
-            ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-            : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+          : section === "telephony"
+            ? `telephony.${kind === "title" ? "section" : "hint"}`
+            : section === "response"
+              ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+              : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
-// Import and MIS keep their texts in their own namespaces (import.*, mis.*)
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
  * rules and branding. Everything is stored in tables, not in code.
@@ -144,6 +147,7 @@ export const SettingsPage = () => {
         ) : null}
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "leads" ? <LeadSettings /> : null}
+        {section === "telephony" ? <TelephonySettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "response" ? <ResponseControlSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}

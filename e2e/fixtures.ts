@@ -307,6 +307,35 @@ async function connectTelegramBot(username = "smile_clinic_bot") {
   return data as { webhook_token: string; secret_token: string };
 }
 
+/** What the telephony settings store: the clinic's PBX and webhook token */
+async function connectTelephony(
+  provider: "binotel" | "zadarma" | "mango" | "generic" = "generic",
+) {
+  const token = `test-telephony-${requireTestOrganization()}`;
+  const { error } = await adminSupabase.from("telephony_integrations").upsert({
+    organization_id: requireTestOrganization(),
+    provider,
+    webhook_token: token,
+  });
+  if (error) throw new Error(`Failed to connect telephony: ${error.message}`);
+  return token;
+}
+
+/** What telephony_webhook does with a call event of the PBX */
+async function receiveCall(
+  token: string,
+  call: Record<string, unknown>,
+  provider: "binotel" | "zadarma" | "mango" | "generic" = "generic",
+) {
+  const { data, error } = await adminSupabase.rpc("ingest_call", {
+    webhook_token: token,
+    provider,
+    call,
+  });
+  if (error) throw new Error(`Failed to ingest call: ${error.message}`);
+  return data as { call_id: number; patient_id: number; deal_id: number };
+}
+
 const getMenuMethod = ({ page }: { page: Page; isMobile: boolean }) => ({
   goToDashboard: async () => {
     await page.getByRole("link", { name: "Dashboard", exact: true }).click();
@@ -365,6 +394,8 @@ export const test = base.extend<{
   connectLeads: typeof connectLeads;
   receiveLead: typeof receiveLead;
   connectTelegramBot: typeof connectTelegramBot;
+  connectTelephony: typeof connectTelephony;
+  receiveCall: typeof receiveCall;
   createNotes: typeof createNotes;
   menu: ReturnType<typeof getMenuMethod>;
   login: (email: string, password?: string) => Promise<void>;
@@ -416,6 +447,14 @@ export const test = base.extend<{
   // eslint-disable-next-line no-empty-pattern
   connectTelegramBot: async ({}, cb) => {
     await cb(connectTelegramBot);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  connectTelephony: async ({}, cb) => {
+    await cb(connectTelephony);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  receiveCall: async ({}, cb) => {
+    await cb(receiveCall);
   },
   // eslint-disable-next-line no-empty-pattern
   createDeal: async ({}, cb) => {

@@ -1368,6 +1368,82 @@ export const englishCrmMessages = {
         "At three times the limit, the owner and the heads are alerted once more.",
     },
   },
+  telephony: {
+    section: "Telephony",
+    hint: "Calls of your PBX land in the deals: new numbers become patients, missed calls become call-back tasks.",
+    provider: "PBX",
+    providers: {
+      binotel: "Binotel",
+      zadarma: "Zadarma",
+      mango: "Mango Office",
+      generic: "Other PBX (JSON)",
+    },
+    status_connected: "Telephony connected: %{provider}",
+    status_disconnected: "Telephony is not connected",
+    last_event: "Last event from the PBX: %{date}",
+    no_events: "No event from the PBX yet",
+    secret: "Secret",
+    api_key: "API key",
+    stored: "Saved — type a new one to replace it",
+    optional: "Optional",
+    secret_help: {
+      binotel: "Binotel API secret: used with the key to fetch recordings",
+      zadarma:
+        "Zadarma API secret: checks the signature of notifications and fetches recordings",
+      mango:
+        "Mango Office signature key (salt): checks the signature of events and signs recording links",
+      generic:
+        "When set, the PBX sends it in the X-Webhook-Secret header or signs the body (X-Signature)",
+    },
+    api_key_help: {
+      binotel: "Binotel API key, for the recordings",
+      zadarma: "Zadarma API key, for the recordings",
+      mango: "Unique code of your PBX (vpbx_api_key)",
+      generic: "Not used by the generic format",
+    },
+    connect: "Connect",
+    save: "Save",
+    saved: "Telephony settings saved",
+    save_error: "Could not save the telephony settings",
+    webhook_url: "Address for the PBX",
+    copy: "Copy",
+    copied: "Address copied",
+    regenerate: "New address",
+    regenerated:
+      "New address: paste it in the PBX again, the old one no longer works",
+    test_call: "Test call",
+    test_call_done: "Test call received: a missed call from +7 700 000 00 00",
+    open_deal: "Open deal",
+    disconnect: "Disconnect",
+    setup_title: "How to set it up",
+    instructions: {
+      binotel:
+        "Ask Binotel support to send the «API CALL COMPLETED» webhook (and, if you wish, the start of calls) to the address below.\nFor recordings, paste the Binotel API key and secret (Settings → API) in the fields below: the CRM fetches the recording after each answered call.\nSet each employee's Binotel internal number below (for example 901).",
+      zadarma:
+        "Zadarma account → Settings → Integrations and API → PBX call notifications.\nPaste the address below and tick NOTIFY_START, NOTIFY_END, NOTIFY_OUT_START, NOTIFY_OUT_END and NOTIFY_RECORD. Zadarma checks the address: the CRM answers by itself.\nPaste the Key and the Secret of «API keys» below: the CRM checks the signature and fetches the recordings.\nTurn call recording on in the PBX if you need recordings, and set the employees' internal numbers below.",
+      mango:
+        "Mango Office account → Integrations → API connector.\nPaste the address below as the «External system address»: Mango Office appends /events/... by itself.\nPaste the «Unique code of your PBX» as the API key and the «Signature key» as the secret.\nTurn on call events and recordings, and set the employees' internal numbers below.",
+      generic:
+        "Make the PBX post JSON to the address below when a call starts and when it ends.\nFields: call_id (same for the start and the end), direction (in/out), phone (patient's number), employee_ext (employee's internal number), started_at (ISO 8601 or Unix time), duration (seconds of talk), status (answered/missed; empty while the call goes on), record_url (recording link, may come later with the same call_id).\nWith a secret, send it in the X-Webhook-Secret header, or sign the body: X-Signature = hex HMAC-SHA256(body, secret).",
+    },
+    extension: "Internal number",
+    extensions: {
+      title: "Internal numbers of the employees",
+      help: "A call answered or made from this number is shown with the employee.",
+      placeholder: "e.g. 101",
+      saved: "Internal number saved",
+      taken: "Another employee already has this internal number",
+    },
+    call: {
+      status: {
+        in_progress: "In progress",
+        answered: "Answered",
+        missed: "Missed",
+        no_answer: "No answer",
+      },
+      recording: "Call recording",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

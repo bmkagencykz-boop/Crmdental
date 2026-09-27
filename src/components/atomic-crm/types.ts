@@ -25,6 +25,7 @@ export type SalesFormData = {
   last_name: string;
   role: AssignableSaleRole;
   disabled: boolean;
+  phone_extension?: string | null;
 };
 
 /**
@@ -53,6 +54,9 @@ export type Sale = {
   email: string;
 
   secondary_emails?: string[];
+
+  /** Internal number in the clinic's PBX: maps calls to the employee */
+  phone_extension?: string | null;
 
   /**
    * This is used by the fake rest provider to store the password
@@ -280,7 +284,32 @@ export type Call = {
   comment?: string | null;
   called_at: string;
   sales_id?: Identifier | null;
+  /** Telephony: null for calls logged by hand */
+  provider?: TelephonyProvider | null;
+  status?: CallStatus;
+  /** Provider call id */
+  external_id?: string | null;
+  recording_url?: string | null;
+  /** Patient's number and employee's internal number as the PBX sent them */
+  phone?: string | null;
+  extension?: string | null;
 } & Pick<RaRecord, "id">;
+
+export type CallStatus = "in_progress" | "answered" | "missed";
+
+export type TelephonyProvider = "binotel" | "zadarma" | "mango" | "generic";
+
+/** Telephony connection of the clinic (owner and head; secrets stay hidden) */
+export type TelephonyStatus = {
+  provider: TelephonyProvider;
+  webhook_token: string;
+  /** Address to paste in the PBX */
+  webhook_url: string;
+  has_secret: boolean;
+  has_api_key: boolean;
+  created_at: string;
+  last_event_at: string | null;
+};
 
 export type OrganizationSettings = {
   organization_id: Identifier;

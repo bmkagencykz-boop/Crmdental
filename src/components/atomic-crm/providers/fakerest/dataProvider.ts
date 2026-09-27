@@ -24,6 +24,10 @@ import type {
   Task,
   Message,
   MessengerStatus,
+  Call,
+  LeadSource,
+  TelephonyProvider,
+  TelephonyStatus,
   DealChecklistCheck,
   StageChecklistItem,
   TaskRule,
@@ -32,7 +36,6 @@ import type {
   MessageTemplate,
   Service,
   QuickReply,
-  LeadSource,
   LeadWebhook,
   TelegramBotStatus,
   CrmNotification,
@@ -88,6 +91,7 @@ import generateData from "./dataGenerator";
 import { importBatchInMemory } from "./importBatch";
 import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
+import { telephonyWebhookUrl } from "../../telephony/telephony";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -163,6 +167,29 @@ export const createDataProvider = ({
 }: CreateFakeRestDataProviderOptions = {}): CrmDataProvider => {
   const baseDataProvider = fakeRestDataProvider(db, !silent, latency);
   let messengerConnected = true;
+  // Demo: the clinic is connected to Zadarma, the last event is the latest call
+  const demoTelephony = (
+    provider: TelephonyProvider,
+    token = "demo-telephony-token",
+  ): TelephonyStatus => ({
+    provider,
+    webhook_token: token,
+    webhook_url: telephonyWebhookUrl(
+      "https://demo.supabase.co",
+      provider,
+      token,
+    ),
+    has_secret: true,
+    has_api_key: true,
+    created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    last_event_at:
+      db.calls
+        .filter((call) => call.provider)
+        .map((call) => call.called_at)
+        .sort()
+        .at(-1) ?? null,
+  });
+  let telephony: TelephonyStatus | null = demoTelephony("zadarma");
   let telegramBotConnected = true;
   let leadToken = "demo-token";
   let notificationPreferences: NotificationPreferences = {
@@ -807,6 +834,146 @@ export const createDataProvider = ({
     disconnectTelegramBot: async (): Promise<void> => {
       telegramBotConnected = false;
     },
+    getTelephonyStatus: async (): Promise<TelephonyStatus | null> => telephony,
+    saveTelephony: async ({
+      provider,
+      secret,
+      apiKey,
+    }: {
+      provider: TelephonyProvider;
+      secret?: string | null;
+      apiKey?: string | null;
+    }): Promise<void> => {
+      const current = telephony ?? {
+        ...demoTelephony(provider),
+        has_secret: false,
+        has_api_key: false,
+        last_event_at: null,
+      };
+      telephony = {
+        ...current,
+        provider,
+        webhook_url: telephonyWebhookUrl(
+          "https://demo.supabase.co",
+          provider,
+          current.webhook_token,
+        ),
+        has_secret: secret == null ? current.has_secret : !!secret.trim(),
+        has_api_key: apiKey == null ? current.has_api_key : !!apiKey.trim(),
+      };
+    },
+    regenerateTelephonyToken: async (): Promise<string> => {
+      if (!telephony) throw new Error("Telephony is not connected");
+      const token = `demo-${Math.random().toString(36).slice(2, 12)}`;
+      telephony = {
+        ...telephony,
+        webhook_token: token,
+        webhook_url: telephonyWebhookUrl(
+          "https://demo.supabase.co",
+          telephony.provider,
+          token,
+        ),
+      };
+      return token;
+    },
+    disconnectTelephony: async (): Promise<void> => {
+      telephony = null;
+    },
+    // Same as public.telephony_test_call: a missed call from a test number
+    simulateTelephonyCall: async (): Promise<{ deal_id: Identifier }> => {
+      if (!telephony) throw new Error("Telephony is not connected");
+      const phone = "+77000000000";
+      const source = (await all<LeadSource>("lead_sources")).find(
+        (item) => item.code === "call",
+      );
+      let patient = (await all<Patient>("patients")).find((item) =>
+        item.phones?.includes(phone),
+      );
+      if (!patient) {
+        ({ data: patient } = await dataProvider.create<Patient>("patients", {
+          data: {
+            first_name: "Тестовый звонок",
+            last_name: "",
+            phone_jsonb: [{ number: phone, type: "mobile" }],
+            source_id: source?.id ?? null,
+            sales_id: null,
+          } as Partial<Patient>,
+        }));
+      }
+      const openStages = new Set(
+        (await all<Stage>("stages"))
+          .filter((stage) => stage.kind === "open")
+          .map((stage) => stage.id),
+      );
+      let deal = (await all<Deal>("deals"))
+        .filter(
+          (item) =>
+            item.patient_id === patient.id &&
+            openStages.has(item.stage_id) &&
+            !item.archived_at,
+        )
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+      if (!deal) {
+        ({ data: deal } = await dataProvider.create<Deal>("deals", {
+          data: {
+            patient_id: patient.id,
+            source_id: source?.id ?? null,
+            sales_id: null,
+          } as Partial<Deal>,
+        }));
+      }
+      const now = new Date().toISOString();
+      await baseDataProvider.create<Call>("calls", {
+        data: {
+          patient_id: patient.id,
+          deal_id: deal.id,
+          direction: "in",
+          duration_seconds: 0,
+          called_at: now,
+          sales_id: null,
+          provider: "generic",
+          status: "missed",
+          external_id: `test-${Date.now()}`,
+          phone,
+        },
+      });
+      await baseDataProvider.create<Task>("tasks", {
+        data: {
+          deal_id: deal.id,
+          type: "call",
+          text: "Перезвонить",
+          due_date: now,
+          done_date: null,
+          sales_id: deal.sales_id ?? undefined,
+        },
+      });
+      telephony = { ...telephony, last_event_at: now };
+      return { deal_id: deal.id };
+    },
+    setSalesPhoneExtension: async (
+      salesId: Identifier,
+      extension: string | null,
+    ): Promise<void> => {
+      const value = extension?.trim() || null;
+      const sales = await all<Sale>("sales");
+      if (
+        value &&
+        sales.some(
+          (sale) => sale.id !== salesId && sale.phone_extension === value,
+        )
+      ) {
+        throw Object.assign(new Error("telephony.extensions.taken"), {
+          code: "23505",
+        });
+      }
+      const previousData = sales.find((sale) => sale.id === salesId);
+      if (!previousData) throw new Error("User not found");
+      await baseDataProvider.update("sales", {
+        id: salesId,
+        data: { phone_extension: value },
+        previousData,
+      });
+    },
     getOrganizationSettings: async (): Promise<OrganizationSettings> => {
       const [settings] = await all<OrganizationSettings & { id: number }>(
         "organization_settings",
@@ -889,9 +1056,11 @@ export const createDataProvider = ({
         id,
       });
       if (!previousData) throw new Error("User not found");
+      // The internal number goes through setSalesPhoneExtension, as in the database
+      const { phone_extension: _extension, ...fields } = data;
       const { data: sale } = await dataProvider.update<Sale>("sales", {
         id,
-        data,
+        data: fields,
         previousData,
       });
       return { ...sale, user_id: sale.id.toString() };

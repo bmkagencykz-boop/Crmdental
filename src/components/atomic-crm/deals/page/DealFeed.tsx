@@ -9,7 +9,7 @@ import { Fragment, useEffect, useRef } from "react";
 
 import { MessageBubble } from "../../messages/MessageBubble";
 import { useDealMessages } from "../../messages/useMessages";
-import { formatDuration } from "../../patients/PatientCalls";
+import { CallSummary } from "../../patients/PatientCalls";
 import { useGetSalesName } from "../../sales/useGetSalesName";
 import type { Call, Deal, DealEvent, DealNote, Task } from "../../types";
 import { DealEventContent } from "../DealEvents";
@@ -59,11 +59,16 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
     sort: { field: "due_date", order: "ASC" },
     pagination: { page: 1, perPage: 500 },
   });
-  const { data: calls = [] } = useGetList<Call>("calls", {
-    filter: { deal_id: deal.id },
-    sort: { field: "called_at", order: "DESC" },
-    pagination: { page: 1, perPage: 500 },
-  });
+  // Calls from the PBX arrive without reloading, like messages
+  const { data: calls = [] } = useGetList<Call>(
+    "calls",
+    {
+      filter: { deal_id: deal.id },
+      sort: { field: "called_at", order: "DESC" },
+      pagination: { page: 1, perPage: 500 },
+    },
+    { refetchInterval: 15_000 },
+  );
   const { data: events = [] } = useGetList<DealEvent>("deal_events", {
     filter: { deal_id: deal.id },
     sort: { field: "created_at", order: "DESC" },
@@ -174,13 +179,14 @@ const CallItem = ({ call }: { call: Call }) => {
     enabled: call.sales_id != null,
   });
   const Icon = call.direction === "out" ? PhoneOutgoing : PhoneIncoming;
+  const missed = call.status === "missed" && !!call.provider;
   return (
     <Card
-      icon={<Icon className="size-4" />}
+      icon={<Icon className={missed ? "size-4 text-destructive" : "size-4"} />}
       meta={`${time(call.called_at)} · ${translate(`crm.calls.direction.${call.direction}`)}${author ? ` · ${author}` : ""}`}
+      tone={missed ? "bg-card border-l-4 border-destructive" : undefined}
     >
-      {formatDuration(call.duration_seconds)}
-      {call.comment ? ` — ${call.comment}` : ""}
+      <CallSummary call={call} />
     </Card>
   );
 };

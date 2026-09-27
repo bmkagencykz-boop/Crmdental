@@ -96,9 +96,11 @@ const DuplicatePhoneHint = () => {
   const record = useRecordContext<Patient>();
   const dataProvider = useDataProvider<CrmDataProvider>();
   const phones: { number?: string }[] = useWatch({ name: "phone_jsonb" }) ?? [];
-  const numbers = phones
-    .map((phone) => phone?.number ?? "")
-    .filter((number) => (phoneQueryDigits(number) ?? "").length >= 10);
+  const whatsapp: string | null = useWatch({ name: "whatsapp" });
+  const numbers = [
+    ...phones.map((phone) => phone?.number ?? ""),
+    whatsapp ?? "",
+  ].filter((number) => (phoneQueryDigits(number) ?? "").length >= 10);
   const key = numbers.join(",");
   const [duplicates, setDuplicates] = useState<Patient[]>([]);
 
@@ -130,8 +132,12 @@ const DuplicatePhoneHint = () => {
 
   if (!duplicates.length) return null;
   return (
-    <div className="rounded-lg bg-brand-yellow/30 px-4 py-3 text-sm">
-      {translate("crm.patients.duplicate_phone")}{" "}
+    <div
+      className="rounded-lg bg-brand-yellow/30 px-4 py-3 text-sm"
+      role="status"
+      data-testid="duplicate-phone-hint"
+    >
+      <span className="font-semibold">{translate("duplicates.possible")}</span>{" "}
       {duplicates.map((patient, index) => (
         <span key={patient.id}>
           {index > 0 ? ", " : ""}
@@ -142,7 +148,10 @@ const DuplicatePhoneHint = () => {
             {patientDisplayName(patient)}
           </Link>
         </span>
-      ))}
+      ))}{" "}
+      <span className="text-muted-foreground">
+        ({translate("duplicates.reasons.phone")})
+      </span>
     </div>
   );
 };

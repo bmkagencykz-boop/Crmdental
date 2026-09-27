@@ -7,6 +7,7 @@ import { generateMailings } from "./mailings";
 import { generateDoctors } from "./doctors";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
+import { generateUnsorted } from "./unsorted";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -22,6 +23,7 @@ export default (): Db => {
   db.integrations = [];
   generateNotifications(db);
   generateMailings(db);
+  generateUnsorted(db);
   db.configuration = [
     {
       id: 1,

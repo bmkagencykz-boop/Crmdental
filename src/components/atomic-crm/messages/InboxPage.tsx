@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { findById, useStages } from "../dictionaries/useDictionaries";
 import { patientDisplayName } from "../patients/parsePatientText";
 import type { Deal } from "../types";
+import { UnsortedActions } from "../unsorted/UnsortedActions";
+import { UNSORTED_FILTER } from "../unsorted/unsorted";
 import { formatMessageTime, MessageBubble } from "./MessageBubble";
 import { MessageComposer } from "./MessageComposer";
 import {
@@ -34,14 +36,16 @@ export const InboxPage = () => {
   const [selectedId, setSelectedId] = useStore<Identifier | undefined>(
     "inbox.deal_id",
   );
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  // All, unread, or the leads waiting in «Неразобранное» (stage 18)
+  const [tab, setTab] = useState<InboxTab>("all");
   const [search, setSearch] = useState("");
   const { data: deals = [], isPending } = useGetList<Deal>(
     "deals",
     {
       filter: {
         "last_message_at@not.is": null,
-        ...(unreadOnly ? { "nb_unread_messages@gt": 0 } : {}),
+        ...(tab === "unread" ? { "nb_unread_messages@gt": 0 } : {}),
+        ...(tab === "unsorted" ? UNSORTED_FILTER : {}),
         ...(search.trim() ? { q: search.trim() } : {}),
       },
       sort: { field: "last_message_at", order: "DESC" },
@@ -62,21 +66,25 @@ export const InboxPage = () => {
             aria-label={translate("crm.deals.search")}
           />
           <div className="flex gap-1" role="tablist">
-            {[false, true].map((value) => (
+            {INBOX_TABS.map((value) => (
               <button
-                key={String(value)}
+                key={value}
                 type="button"
                 role="tab"
-                aria-selected={unreadOnly === value}
-                onClick={() => setUnreadOnly(value)}
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                  unreadOnly === value
+                  tab === value
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {translate(value ? "crm.inbox.unread" : "crm.inbox.all")}
+                {translate(
+                  value === "unsorted"
+                    ? "unsorted.inbox_tab"
+                    : `crm.inbox.${value}`,
+                )}
               </button>
             ))}
           </div>
@@ -103,7 +111,11 @@ export const InboxPage = () => {
       </section>
       <section className="glass flex min-h-0 flex-col rounded-lg">
         {selectedId != null ? (
-          <Conversation dealId={selectedId} fallback={selected} />
+          <Conversation
+            dealId={selectedId}
+            fallback={selected}
+            onSelect={setSelectedId}
+          />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
             <MessagesSquare className="size-10" />
@@ -116,6 +128,9 @@ export const InboxPage = () => {
 };
 
 InboxPage.path = "/inbox";
+
+const INBOX_TABS = ["all", "unread", "unsorted"] as const;
+type InboxTab = (typeof INBOX_TABS)[number];
 
 const ConversationRow = ({
   deal,
@@ -176,9 +191,12 @@ const ConversationRow = ({
 const Conversation = ({
   dealId,
   fallback,
+  onSelect,
 }: {
   dealId: Identifier;
   fallback?: Deal;
+  /** A merged lead is gone: show the deal it went into */
+  onSelect: (dealId: Identifier) => void;
 }) => {
   const translate = useTranslate();
   const { data: deal = fallback } = useGetOne<Deal>(
@@ -219,6 +237,14 @@ const Conversation = ({
           </Link>
         </Button>
       </header>
+      {deal.unsorted_at ? (
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-6 py-2.5">
+          <span className="text-sm font-semibold">
+            {translate("unsorted.banner.title")}
+          </span>
+          <UnsortedActions lead={deal} onMerged={onSelect} />
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
         <div className="flex flex-col gap-2">
           {messages.map((message) => (

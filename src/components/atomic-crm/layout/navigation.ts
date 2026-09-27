@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
 
+import { UNSORTED_FILTER } from "../unsorted/unsorted";
+
 export const SIDEBAR_WIDTH = "6rem";
 
 export type NavItem = {
@@ -15,8 +17,10 @@ export type NavItem = {
   match: string;
   icon: LucideIcon;
   label: string;
-  /** Counter shown on the icon (unread conversations) */
+  /** Counter shown on the icon (unread conversations, unsorted leads) */
   badge?: number;
+  /** What the counter counts (screen readers, tooltip) */
+  badgeLabel?: string;
 };
 
 /**
@@ -34,6 +38,16 @@ export const useNavItems = (): NavItem[] => {
     },
     { refetchInterval: 30_000 },
   );
+  // Leads waiting in «Неразобранное» (stage 18)
+  const { total: unsorted } = useGetList(
+    "deals",
+    {
+      filter: UNSORTED_FILTER,
+      pagination: { page: 1, perPage: 1 },
+      sort: { field: "id", order: "ASC" },
+    },
+    { refetchInterval: 30_000 },
+  );
   return [
     {
       to: "/",
@@ -46,6 +60,8 @@ export const useNavItems = (): NavItem[] => {
       match: "/deals/*",
       icon: Columns3,
       label: translate("resources.deals.name", { smart_count: 2 }),
+      badge: unsorted ?? 0,
+      badgeLabel: translate("unsorted.nav_badge", { count: unsorted ?? 0 }),
     },
     {
       to: "/inbox",

@@ -117,6 +117,7 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
           <span
             className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-blush px-1 text-[10px] font-bold text-[#1A1517] ring-2 ring-background"
             data-testid="nav-badge"
+            title={item.badgeLabel}
             aria-hidden
           >
             {item.badge > 99 ? "99+" : item.badge}

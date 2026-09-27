@@ -21,6 +21,7 @@ import { NotesIterator } from "../notes/NotesIterator";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { accent } from "../misc/accent";
 import type { Deal, Patient } from "../types";
+import { DuplicateWarning } from "../duplicates/DuplicateWarning";
 import { PatientAside } from "./PatientAside";
 import { PatientCalls } from "./PatientCalls";
 import { patientDisplayName } from "./parsePatientText";
@@ -45,6 +46,7 @@ const PatientShowContent = () => {
       <h2 className="text-[1.6rem] font-bold tracking-[-0.02em]">
         {patientDisplayName(record)}
       </h2>
+      <DuplicateWarning patientId={record.id} className="-mt-3" />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-6">
           <Panel

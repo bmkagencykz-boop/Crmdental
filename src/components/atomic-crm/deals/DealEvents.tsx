@@ -53,6 +53,12 @@ export const DealEventContent = ({ event }: { event: DealEvent }) => {
         <ul className="mt-0.5 text-muted-foreground">
           {changedFields.map((field) => {
             const [before, after] = event.changes[field];
+            // Stage 18: the lead left «Неразобранное»
+            if (field === "unsorted_at") {
+              return (
+                <li key={field}>{translate("unsorted.event_accepted")}</li>
+              );
+            }
             return (
               <li key={field}>
                 {translate(`resources.deals.fields.${field}`)}

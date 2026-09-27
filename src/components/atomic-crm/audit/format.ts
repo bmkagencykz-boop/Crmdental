@@ -44,6 +44,7 @@ const DATE_TIME_FIELDS = new Set([
   "appointment_at",
   "visit_at",
   "archived_at",
+  "unsorted_at",
 ]);
 const DATE_FIELDS = new Set(["paid_at"]);
 const BOOLEAN_FIELDS = new Set([
@@ -51,6 +52,7 @@ const BOOLEAN_FIELDS = new Set([
   "is_active",
   "is_default",
   "connected",
+  "unsorted_enabled",
 ]);
 /** Values translated through audit.values.<field>.<value> */
 const ENUM_FIELDS = new Set([
@@ -75,6 +77,7 @@ const REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
 const LIST_REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
   tags: "tags",
   lead_distribution_sales_ids: "sales",
+  unsorted_source_ids: "sources",
 };
 
 /** Entity types of the filter, and the logged entities they cover */
@@ -171,16 +174,23 @@ export const describeAuditChanges = (
   lookups: AuditLookups,
   translate: Translate,
 ): string[] =>
-  Object.entries(entry.changes ?? {}).map(([field, pair]) => {
-    const [before, after] = Array.isArray(pair) ? pair : [null, pair];
-    const label = translate(`audit.fields.${field}`, { _: field });
-    const format = (value: unknown) =>
-      formatAuditValue(field, value, lookups, translate);
-    if (CREATION_ACTIONS.has(entry.action)) return `${label}: ${format(after)}`;
-    if (DELETION_ACTIONS.has(entry.action))
-      return `${label}: ${format(before)}`;
-    return `${label}: ${format(before)} → ${format(after)}`;
-  });
+  Object.entries(entry.changes ?? {})
+    // A merge of patients (stage 18) names both patients with their ids
+    .filter(
+      ([field]) =>
+        !(field === "merged_patient_id" && "merged_patient" in entry.changes),
+    )
+    .map(([field, pair]) => {
+      const [before, after] = Array.isArray(pair) ? pair : [null, pair];
+      const label = translate(`audit.fields.${field}`, { _: field });
+      const format = (value: unknown) =>
+        formatAuditValue(field, value, lookups, translate);
+      if (CREATION_ACTIONS.has(entry.action))
+        return `${label}: ${format(after)}`;
+      if (DELETION_ACTIONS.has(entry.action))
+        return `${label}: ${format(before)}`;
+      return `${label}: ${format(before)} → ${format(after)}`;
+    });
 
 export const auditSummary = (
   entry: Pick<AuditLogEntry, "action" | "changes">,

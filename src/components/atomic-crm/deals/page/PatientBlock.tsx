@@ -2,6 +2,7 @@ import { Instagram, MessageCircle, Phone, Send } from "lucide-react";
 import { useGetOne, useTranslate } from "ra-core";
 import { Link } from "react-router";
 
+import { DuplicateWarning } from "../../duplicates/DuplicateWarning";
 import { patientDisplayName } from "../../patients/parsePatientText";
 import type { Deal, Patient } from "../../types";
 
@@ -57,6 +58,7 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
           </div>
         </div>
       </div>
+      <DuplicateWarning patientId={patient.id} />
       <dl className="grid grid-cols-[9.5rem_1fr] gap-x-3 gap-y-1.5 text-sm">
         {phones.map((phone) => (
           <div key={phone} className="contents">

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getPipelineStages, useStages } from "../dictionaries/useDictionaries";
 import type { Deal } from "../types";
+import { UnsortedColumn } from "../unsorted/UnsortedColumn";
 import { DealColumn } from "./DealColumn";
 import { LostReasonDialog } from "./LostReasonDialog";
 import { getDealsByStage, type DealsByStage } from "./stages";
@@ -119,6 +120,7 @@ export const DealListContent = ({ pipelineId }: { pipelineId: Identifier }) => {
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="-mx-8 overflow-x-auto px-8 pb-4">
           <div className="flex w-max gap-4">
+            <UnsortedColumn pipelineId={pipelineId} />
             {stages.map((stage, index) => (
               <DealColumn
                 key={stage.id}

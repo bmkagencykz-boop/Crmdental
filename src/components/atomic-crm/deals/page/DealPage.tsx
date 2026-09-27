@@ -14,6 +14,7 @@ import { DealFeed } from "./DealFeed";
 import { DealFields } from "./DealFields";
 import { DealHeader } from "./DealHeader";
 import { PatientBlock } from "./PatientBlock";
+import { UnsortedBanner } from "../../unsorted/UnsortedBanner";
 
 /**
  * The deal card as a page, amoCRM layout in the CRM design: on the left the
@@ -39,6 +40,7 @@ const DealPageContent = () => {
   return (
     <div className="grid h-[calc(100vh-7.5rem)] min-h-[36rem] grid-cols-[27rem_1fr] gap-5">
       <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
+        <UnsortedBanner deal={deal} />
         <DealHeader deal={deal} />
         <div className="px-6 pb-3">
           <TagsListEdit resource="deals" />

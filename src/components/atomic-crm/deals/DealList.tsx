@@ -37,6 +37,7 @@ import { OnlyMineInput } from "./OnlyMineInput";
 import { WaitingOnlyInput } from "../notifications/WaitingOnlyInput";
 import { WAITING_FILTER } from "../providers/commons/responseTime";
 import { periodChoices } from "./periods";
+import { SORTED_FILTER } from "../unsorted/unsorted";
 
 export const DEAL_PIPELINE_STORE_KEY = "deals.pipeline_id";
 
@@ -132,7 +133,12 @@ const DealList = () => {
       <List
         key={current.id}
         perPage={500}
-        filter={{ "archived_at@is": null, pipeline_id: current.id }}
+        // Unsorted leads have their own column (stage 18)
+        filter={{
+          "archived_at@is": null,
+          ...SORTED_FILTER,
+          pipeline_id: current.id,
+        }}
         title={false}
         sort={{ field: "index", order: "ASC" }}
         filters={dealFilters}

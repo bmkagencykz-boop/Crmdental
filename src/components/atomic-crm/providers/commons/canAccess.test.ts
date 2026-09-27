@@ -60,6 +60,18 @@ describe("canAccess", () => {
     ).toBe(false);
   });
 
+  it("lets the owner and the head merge duplicate patients", () => {
+    expect(
+      canAccess("owner", { resource: "duplicates", action: "merge" }),
+    ).toBe(true);
+    expect(canAccess("head", { resource: "duplicates", action: "merge" })).toBe(
+      true,
+    );
+    expect(
+      canAccess("manager", { resource: "duplicates", action: "merge" }),
+    ).toBe(false);
+  });
+
   it("shows the mailings to the owner and the head only", () => {
     expect(canAccess("owner", { resource: "mailings", action: "list" })).toBe(
       true,

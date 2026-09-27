@@ -19,10 +19,6 @@ install: package.json ## install dependencies
 install-playwright-browsers: install ## install the playwright browsers matching the repo's pinned version
 	npx playwright install chromium chromium-headless-shell
 
-install-claude-plugins:
-	claude plugin marketplace update claude-plugins-official
-	claude plugin install typescript-lsp@claude-plugins-official
-
 install-lsp:
 	npm install -g typescript-language-server
 
@@ -131,6 +127,9 @@ publish:
 
 typecheck:
 	npm run typecheck
+
+test-db: ## run database migrations + RLS tests on a plain Postgres (PGHOST/PGPORT/PGUSER)
+	scripts/db-test.sh
 
 doc-install:
 	@(cd doc && npm install)

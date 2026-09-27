@@ -8,60 +8,53 @@ import lightModeLogo from "./logos/logo_atomic_crm_light.svg";
 export const defaultDarkModeLogo = darkModeLogo;
 export const defaultLightModeLogo = lightModeLogo;
 
-export const defaultCurrency = "USD";
+export const defaultCurrency = "KZT";
 
-export const defaultTitle = "Atomic CRM";
+export const defaultTitle = "Dental CRM";
 
 export const defaultCompanySectors = [
-  { value: "communication-services", label: "Communication Services" },
-  { value: "consumer-discretionary", label: "Consumer Discretionary" },
-  { value: "consumer-staples", label: "Consumer Staples" },
-  { value: "energy", label: "Energy" },
-  { value: "financials", label: "Financials" },
-  { value: "health-care", label: "Health Care" },
-  { value: "industrials", label: "Industrials" },
-  { value: "information-technology", label: "Information Technology" },
-  { value: "materials", label: "Materials" },
-  { value: "real-estate", label: "Real Estate" },
-  { value: "utilities", label: "Utilities" },
+  { value: "insurance", label: "Страховая компания" },
+  { value: "corporate", label: "Корпоративный клиент" },
+  { value: "partner", label: "Партнёр" },
+  { value: "other", label: "Другое" },
 ];
 
+// Temporary: pipelines and stages move to database tables in stage 2
 export const defaultDealStages = [
-  { value: "opportunity", label: "Opportunity" },
-  { value: "proposal-sent", label: "Proposal Sent" },
-  { value: "in-negociation", label: "In Negotiation" },
-  { value: "won", label: "Won" },
-  { value: "lost", label: "Lost" },
-  { value: "delayed", label: "Delayed" },
+  { value: "new-lead", label: "Новый лид" },
+  { value: "in-progress", label: "В работе" },
+  { value: "booked", label: "Записан" },
+  { value: "consultation", label: "Пришёл на консультацию" },
+  { value: "plan-agreed", label: "План согласован" },
+  { value: "in-treatment", label: "В лечении" },
+  { value: "won", label: "Лечение завершено" },
+  { value: "lost", label: "Отказ" },
 ];
 
 export const defaultDealPipelineStatuses = ["won"];
 
 export const defaultDealCategories = [
-  { value: "other", label: "Other" },
-  { value: "copywriting", label: "Copywriting" },
-  { value: "print-project", label: "Print project" },
-  { value: "ui-design", label: "UI Design" },
-  { value: "website-design", label: "Website design" },
+  { value: "implantation", label: "Имплантация" },
+  { value: "orthodontics", label: "Ортодонтия" },
+  { value: "therapy", label: "Терапия" },
+  { value: "hygiene", label: "Гигиена" },
+  { value: "prosthetics", label: "Протезирование" },
+  { value: "surgery", label: "Хирургия" },
+  { value: "other", label: "Другое" },
 ];
 
 export const defaultNoteStatuses = [
-  { value: "cold", label: "Cold", color: "#7dbde8" },
-  { value: "warm", label: "Warm", color: "#e8cb7d" },
-  { value: "hot", label: "Hot", color: "#e88b7d" },
-  { value: "in-contract", label: "In Contract", color: "#a4e87d" },
+  { value: "cold", label: "Холодный", color: "#7dbde8" },
+  { value: "warm", label: "Тёплый", color: "#e8cb7d" },
+  { value: "hot", label: "Горячий", color: "#e88b7d" },
+  { value: "in-treatment", label: "На лечении", color: "#a4e87d" },
 ];
 
 export const defaultTaskTypes = [
-  { value: "none", label: "None" },
-  { value: "email", label: "Email" },
-  { value: "demo", label: "Demo" },
-  { value: "lunch", label: "Lunch" },
-  { value: "meeting", label: "Meeting" },
-  { value: "follow-up", label: "Follow-up" },
-  { value: "thank-you", label: "Thank you" },
-  { value: "ship", label: "Ship" },
-  { value: "call", label: "Call" },
+  { value: "call", label: "Звонок" },
+  { value: "message", label: "Написать" },
+  { value: "reminder", label: "Напомнить" },
+  { value: "other", label: "Другое" },
 ];
 
 export const defaultConfiguration: ConfigurationContextValue = {

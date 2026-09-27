@@ -11,6 +11,7 @@ select set_config('t.other', tests.sign_up('owner@clinic-b.kz', 'Клиника 
 select set_config('t.org_b', tests.org_of(current_setting('t.other')::uuid)::text, true);
 
 -- Invitations (created by the users edge function with the service role)
+select set_config('t.nb_orgs', (select count(*) from public.organizations)::text, true);
 select set_config('t.head', tests.invite('head@clinic-a.kz', current_setting('t.org_a')::bigint, 'head')::text, true);
 select set_config('t.manager', tests.invite('admin@clinic-a.kz', current_setting('t.org_a')::bigint, 'manager')::text, true);
 select set_config('t.sneaky', tests.invite('sneaky@clinic-a.kz', current_setting('t.org_a')::bigint, 'owner')::text, true);
@@ -22,7 +23,7 @@ select tests.assert(
   (select administrator from public.sales where user_id = current_setting('t.head')::uuid)
   and not (select administrator from public.sales where user_id = current_setting('t.manager')::uuid),
   'administrator flag follows the role');
-select tests.assert((select count(*) from public.organizations) = 2, 'invitations do not create organizations');
+select tests.assert((select count(*) from public.organizations) = current_setting('t.nb_orgs')::bigint, 'invitations do not create organizations');
 select tests.throws(
   'select tests.invite(''ghost@nowhere.kz'', -1, ''manager'')',
   'P0001', 'inviting into a missing organization fails');

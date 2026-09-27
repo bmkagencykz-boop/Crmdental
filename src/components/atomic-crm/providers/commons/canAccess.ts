@@ -1,3 +1,5 @@
+import type { SaleRole } from "../../types";
+
 // FIXME: This should be exported from the ra-core package
 type CanAccessParams<
   RecordType extends Record<string, any> = Record<string, any>,
@@ -7,25 +9,32 @@ type CanAccessParams<
   record?: RecordType;
 };
 
+/**
+ * UI access rules per role. The database enforces the same rules through RLS
+ * and the users edge function; this only hides what a role cannot use.
+ *
+ * - owner: everything, including staff management
+ * - head: everything but staff management (can list the staff)
+ * - manager: day-to-day work, no settings
+ */
 export const canAccess = <
   RecordType extends Record<string, any> = Record<string, any>,
 >(
-  role: string,
+  role: SaleRole | undefined,
   params: CanAccessParams<RecordType>,
 ) => {
-  if (role === "admin") {
+  if (role === "owner") {
     return true;
   }
 
-  // Non admins can't access the sales resource
+  // Only the owner manages the staff; heads can see it (e.g. to filter deals)
   if (params.resource === "sales") {
-    return false;
+    return role === "head" && ["list", "show"].includes(params.action);
   }
 
-  // Non admins can't access the configuration resource
   if (params.resource === "configuration") {
-    return false;
+    return role === "head";
   }
 
-  return true;
+  return role === "head" || role === "manager";
 };

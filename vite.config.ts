@@ -48,9 +48,6 @@ export default defineConfig({
           "import.meta.env.VITE_SB_PUBLISHABLE_KEY": JSON.stringify(
             process.env.VITE_SB_PUBLISHABLE_KEY,
           ),
-          "import.meta.env.VITE_INBOUND_EMAIL": JSON.stringify(
-            process.env.VITE_INBOUND_EMAIL,
-          ),
           "import.meta.env.VITE_ATTACHMENTS_BUCKET": JSON.stringify(
             process.env.VITE_ATTACHMENTS_BUCKET,
           ),

@@ -31,6 +31,8 @@ export const createTestAuthProvider = (): AuthProvider => ({
 });
 
 const baseSale: Sale = {
+  organization_id: 1,
+  role: "owner",
   administrator: true,
   avatar: DEFAULT_USER.avatar as Sale["avatar"],
   disabled: false,

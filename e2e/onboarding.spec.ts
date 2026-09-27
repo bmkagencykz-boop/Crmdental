@@ -4,9 +4,13 @@ test("user onboarding", async ({ page, isMobile, menu, dismissToast }) => {
   await page.goto("/");
 
   // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/Atomic CRM/);
-  await expect(page.getByText("Welcome to Atomic CRM")).toBeVisible();
+  await expect(page).toHaveTitle(/Dental CRM/);
 
+  // Any visitor can register a new clinic from the login page
+  await page.getByRole("link", { name: "Register a new clinic" }).click();
+  await expect(page.getByText("Welcome to Dental CRM")).toBeVisible();
+
+  await page.getByLabel("Clinic name").fill("Smile Clinic");
   await page.getByLabel("First name").fill("John");
   await page.getByLabel("Last name").fill("Doe");
   await page.getByLabel("Email").fill("john@doe.com");
@@ -15,7 +19,7 @@ test("user onboarding", async ({ page, isMobile, menu, dismissToast }) => {
 
   await expect(page.getByText("What's next?")).toBeVisible();
   await expect(page.getByText("1/3 done")).toBeVisible();
-  await expect(page.getByText("Install Atomic CRM")).toBeVisible();
+  await expect(page.getByText("Install Dental CRM")).toBeVisible();
   await expect(page.getByText("Add your first contact")).toBeVisible();
   await expect(page.getByText("Add your first note")).toBeVisible();
   await expect(page.getByRole("button", { name: "Import data" })).toBeVisible();

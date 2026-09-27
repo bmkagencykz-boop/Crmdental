@@ -338,10 +338,11 @@ export const createDataProvider = ({
         resource: "sales",
         beforeCreate: async (params) => {
           const { data } = params;
-          // If administrator role is not set, we simply set it to false
-          if (data.administrator == null) {
-            data.administrator = false;
+          // New employees are managers unless stated otherwise
+          if (data.role == null) {
+            data.role = "manager";
           }
+          data.administrator = data.role === "owner" || data.role === "head";
           return params;
         },
         afterSave: async (data) => {

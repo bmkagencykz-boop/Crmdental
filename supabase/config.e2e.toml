@@ -160,8 +160,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 verify_jwt = false
 [functions.delete_note_attachments]
 verify_jwt = false
-[functions.postmark]
-verify_jwt = false
 [functions.update_password]
 verify_jwt = false
 [functions.users]

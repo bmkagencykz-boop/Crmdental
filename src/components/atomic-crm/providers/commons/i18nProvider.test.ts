@@ -6,60 +6,64 @@ afterEach(() => {
 });
 
 describe("i18nProvider", () => {
-  it("registers en and fr locales", () => {
+  it("registers ru and en locales", () => {
     expect(i18nProvider.getLocales?.()).toEqual([
+      { locale: "ru", name: "Русский" },
       { locale: "en", name: "English" },
-      { locale: "fr", name: "Français" },
     ]);
   });
 
-  it("translates the language key in french", async () => {
-    await i18nProvider.changeLocale("fr");
+  it("translates crm keys in russian", async () => {
+    await i18nProvider.changeLocale("ru");
 
-    expect(i18nProvider.translate("crm.language")).toBe("Langue");
+    expect(i18nProvider.translate("crm.language")).toBe("Язык");
+    expect(i18nProvider.translate("crm.roles.owner")).toBe("Владелец");
   });
 
-  it("falls back to english for unknown locales", async () => {
+  it("translates react-admin and ra-supabase keys in russian", async () => {
+    await i18nProvider.changeLocale("ru");
+
+    expect(i18nProvider.translate("ra.action.save")).toBe("Сохранить");
+    expect(i18nProvider.translate("ra-supabase.auth.forgot_password")).toBe(
+      "Забыли пароль?",
+    );
+  });
+
+  it("uses russian plural forms", async () => {
+    await i18nProvider.changeLocale("ru");
+
+    expect(
+      i18nProvider.translate("crm.common.task_count", { smart_count: 1 }),
+    ).toBe("1 задача");
+    expect(
+      i18nProvider.translate("crm.common.task_count", { smart_count: 3 }),
+    ).toBe("3 задачи");
+    expect(
+      i18nProvider.translate("crm.common.task_count", { smart_count: 5 }),
+    ).toBe("5 задач");
+  });
+
+  it("falls back to russian for unknown locales", async () => {
     await i18nProvider.changeLocale("es");
 
-    expect(i18nProvider.translate("crm.language")).toBe("Language");
+    expect(i18nProvider.translate("crm.language")).toBe("Язык");
   });
 
-  it("uses customized password reset overrides for en and fr", async () => {
-    await i18nProvider.changeLocale("en");
-    expect(i18nProvider.translate("ra-supabase.auth.password_reset")).toBe(
-      "Check your emails for a Reset Password message.",
-    );
-
-    await i18nProvider.changeLocale("fr");
-    expect(i18nProvider.translate("ra-supabase.auth.password_reset")).toBe(
-      "Consultez vos emails pour trouver le message de reinitialisation du mot de passe.",
-    );
-  });
-
-  it("translates recently added fr crm keys", async () => {
-    await i18nProvider.changeLocale("fr");
-
-    expect(i18nProvider.translate("resources.deals.empty.title")).toBe(
-      "Aucune affaire trouvée",
-    );
-  });
-
-  it("uses browser french locale when available", () => {
+  it("uses english when the browser prefers it", () => {
     vi.stubGlobal("navigator", {
-      language: "fr-FR",
-      languages: ["fr-FR", "en-US"],
-    });
-
-    expect(getInitialLocale()).toBe("fr");
-  });
-
-  it("falls back to english when browser locale is unsupported", () => {
-    vi.stubGlobal("navigator", {
-      language: "es-ES",
-      languages: ["es-ES", "pt-BR"],
+      language: "en-US",
+      languages: ["en-US"],
     });
 
     expect(getInitialLocale()).toBe("en");
+  });
+
+  it("defaults to russian for other browser locales", () => {
+    vi.stubGlobal("navigator", {
+      language: "kk-KZ",
+      languages: ["kk-KZ", "ru-RU"],
+    });
+
+    expect(getInitialLocale()).toBe("ru");
   });
 });

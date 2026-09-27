@@ -17,6 +17,8 @@ export const generateSales = (_: Db): Sale[] => {
       email,
       secondary_emails: [],
       password: "demo",
+      organization_id: 1,
+      role: "manager" as const,
       administrator: false,
       disabled: false,
     };
@@ -30,6 +32,8 @@ export const generateSales = (_: Db): Sale[] => {
       email: "janedoe@atomic.dev",
       secondary_emails: [],
       password: "demo",
+      organization_id: 1,
+      role: "owner" as const,
       administrator: true,
       disabled: false,
       avatar: {

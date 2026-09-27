@@ -85,8 +85,6 @@ export default defineConfig({
               __dirname,
               "node_modules/@supabase/supabase-js",
             ),
-            "npm:tldts": path.resolve(__dirname, "node_modules/tldts"),
-            "npm:pgsql-ast-parser@^12": "pgsql-ast-parser",
           },
         },
         test: {

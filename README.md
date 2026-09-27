@@ -1,122 +1,50 @@
-# Atomic CRM
+# Dental CRM
 
-A full-featured CRM built with React, shadcn-admin-kit, and Supabase.
+SaaS CRM продаж для стоматологических клиник: лиды, воронки, переписка, задачи, отчёты. Это не МИС и не расписание.
 
-<https://github.com/user-attachments/assets/0d7554b5-49ef-41c6-bcc9-a76214fc5c99>
+Построена на форке [Atomic CRM](https://github.com/marmelab/atomic-crm) (MIT): React, react-admin (shadcn-admin-kit), Supabase.
 
-Atomic CRM is free and open-source. You can test it online at <https://marmelab.com/atomic-crm-demo>.
+- ТЗ: [`docs/SPEC.md`](docs/SPEC.md)
+- Согласованные решения по ТЗ: [`docs/DECISIONS.md`](docs/DECISIONS.md)
+- Что сделано по этапам: [`docs/stages/`](docs/stages/)
 
-## Features
+## Запуск локально
 
-- 📇 **Organize Contacts**: Keep all your contacts in one easily accessible place.
-- ⏰ **Create Tasks & Set Reminders**: Never miss a follow-up or deadline.
-- 📝 **Take Notes**: Capture important details and insights effortlessly.
-- ✉️ **Capture Emails**: CC Atomic CRM to automatically save communications as notes.
-- 📊 **Manage Deals**: Visualize and track your sales pipeline in a Kanban board.
-- 🔄 **Import & Export Data**: Easily transfer contacts in and out of the system.
-- 🔐 **Control Access**: Log in with Google, Azure, Keycloak, and Auth0.
-- 📜 **Track Activity History**: View all interactions in aggregated activity logs.
-- 🔗 **Integrate via API**: Connect seamlessly with other systems using our API.
-- 🛠️ **Customize Everything**: Add custom fields, change the theme, and replace any component to fit your needs.
-- 📦 **Stay Up To Date**: Pull the latest component updates into your fork via the Atomic CRM shadcn registry.
-
-## Installation
-
-To run this project locally, you will need the following tools installed on your computer:
-
-- Make
-- Node 22 LTS
-- Docker (required by Supabase)
-
-Fork the [`marmelab/atomic-crm`](https://github.com/marmelab/atomic-crm) repository to your user/organization, then clone it locally:
+Нужны Node 22, Make и Docker (для локального Supabase).
 
 ```sh
-git clone https://github.com/[username]/atomic-crm.git
+make install   # зависимости
+make start     # Supabase + фронт на http://localhost:5173
 ```
 
-Install dependencies:
+`npx supabase db reset` применяет миграции и загружает демо-данные ([`supabase/seed.sql`](supabase/seed.sql)). Пароль у всех демо-аккаунтов — `demo1234`:
+
+| Аккаунт | Клиника | Роль |
+|---|---|---|
+| owner@demo.kz | Демо-клиника «Жемчуг» | владелец |
+| head@demo.kz | Демо-клиника «Жемчуг» | руководитель |
+| admin@demo.kz | Демо-клиника «Жемчуг» | администратор |
+| owner@other.kz | Демо-клиника «Улыбка» | владелец |
+
+## Проверки
 
 ```sh
-cd atomic-crm
-make install
+make typecheck
+make lint
+make test        # unit-тесты фронта и edge functions
+make test-db     # миграции + тесты RLS на обычном Postgres (PGHOST, PGPORT, PGUSER)
 ```
 
-This will install the dependencies for the frontend and the backend, including a local Supabase instance.
+`make test-db` не требует Docker. Скрипт [`scripts/db-test.sh`](scripts/db-test.sh):
+1. поднимает чистую базу с заглушкой платформы Supabase;
+2. применяет миграции и сид;
+3. запускает SQL-тесты из [`supabase/tests/`](supabase/tests/);
+4. проверяет, что декларативная схема (`supabase/schemas/`) даёт ту же базу, что и миграции.
 
-Once your app is configured, start the app locally with the following command:
+## Структура базы
 
-```sh
-make start
-```
+Источник правды — декларативная схема в `supabase/schemas/`. Каждое изменение схемы сопровождается миграцией в `supabase/migrations/`. Их совпадение проверяет `make test-db`.
 
-This will start the Vite dev server for the frontend, the local Supabase instance for the API, and a Postgres database (thanks to Docker).
+## Лицензия
 
-You can then access the app via [http://localhost:5173/](http://localhost:5173/). You will be prompted to create the first user.
-
-If you need debug the backend, you can access the following services:
-
-- Supabase dashboard: [http://localhost:54323/](http://localhost:54323/)
-- REST API: [http://127.0.0.1:54321](http://127.0.0.1:54321)
-- Attachments storage: [http://localhost:54323/project/default/storage/buckets/attachments](http://localhost:54323/project/default/storage/buckets/attachments)
-- Inbucket email testing service: [http://localhost:54324/](http://localhost:54324/)
-
-## Documentation
-
-The user and developer documentation for this project is available [in the `doc/` directory](./doc/). You can also read it online at [https://marmelab.com/atomic-crm/doc/](https://marmelab.com/atomic-crm/doc/).
-
-## Testing Changes
-
-This project contains unit tests and e2e. 
-Run unit test with the following command:
-
-```sh
-make test
-```
-
-Run e2e test with:
-
-```sh
-make test-e2e
-```
-
-Note: the `make test-e2e` will run the the e2e test in ui mode against a vite server with hot reload for ease of development. On the CI the e2e test will be run against the built app. If you need to run the test against the built file instead. You can run:
-
-```sh
-make start-e2e-ci # To launch the CI e2e environment (serving the built app)
-# followed by
-npx playwright test --ui
-```
-
-You can add your own unit tests powered by Jest anywhere in the `src` directory. The test files should be named `*.test.tsx` or `*.test.ts`.
-And you can also add your own e2e test. The e2e test files should be placed inside the `./e2e` folder
-
-## Shadcn Registry
-
-Atomic CRM components are published as a [shadcn registry](https://marmelab.com/atomic-crm/r/atomic-crm.json). This registry can't be used to bootstrap a new CRM app (use [Installation](#installation) for that), but it's a convenient way to keep the components you forked in sync with upstream.
-
-### For Users: Getting Updates
-
-Once you've forked and customized Atomic CRM, periodically run the following command to pull in the latest component updates:
-
-```sh
-npx shadcn add https://marmelab.com/atomic-crm/r/atomic-crm.json -o -y
-```
-
-- `-o` overwrites the files that changed upstream
-- `-y` skips the confirmation prompt (prefer this over piping `yes |` into the command)
-
-Commit your work before running this command so you can review the diff and resolve any conflict with your own customizations. See the [Getting Updates](https://marmelab.com/atomic-crm/doc/developers/getting-updates/) chapter of the documentation for details.
-
-### For Contributors: How The Registry Is Built
-
-The registry file is kept up to date automatically:
-
-- The `registry.json` file is automatically generated by the `scripts/generate-registry.mjs` script as a pre-commit hook (`make registry-gen`).
-- The `https://marmelab.com/atomic-crm/r/atomic-crm.json` file is automatically built and published by the CI/CD pipeline (`make registry-build`, `make registry-deploy`).
-
-> [!WARNING]  
-> If the `registry.json` misses some changes you made, you MUST update the `scripts/generate-registry.mjs` to include those changes.
-
-## License
-
-This project is licensed under the MIT License, courtesy of [Marmelab](https://marmelab.com). See the [LICENSE.md](./LICENSE.md) file for details.
+MIT. Основано на Atomic CRM © Marmelab, см. [`LICENSE.md`](LICENSE.md).

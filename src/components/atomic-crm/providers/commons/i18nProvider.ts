@@ -1,25 +1,18 @@
 import { mergeTranslations } from "ra-core";
 import polyglotI18nProvider from "ra-i18n-polyglot";
 import englishMessages from "ra-language-english";
-import frenchMessages from "ra-language-french";
+import russianMessages from "ra-language-russian";
 import { raSupabaseEnglishMessages } from "ra-supabase-language-english";
-import { raSupabaseFrenchMessages } from "ra-supabase-language-french";
 import { englishCrmMessages } from "./englishCrmMessages";
-import { frenchCrmMessages } from "./frenchCrmMessages";
+import {
+  raSupabaseRussianMessages,
+  russianCrmMessages,
+} from "./russianCrmMessages";
 
 const raSupabaseEnglishMessagesOverride = {
   "ra-supabase": {
     auth: {
       password_reset: "Check your emails for a Reset Password message.",
-    },
-  },
-};
-
-const raSupabaseFrenchMessagesOverride = {
-  "ra-supabase": {
-    auth: {
-      password_reset:
-        "Consultez vos emails pour trouver le message de reinitialisation du mot de passe.",
     },
   },
 };
@@ -31,38 +24,39 @@ const englishCatalog = mergeTranslations(
   englishCrmMessages,
 );
 
-const frenchCatalog = mergeTranslations(
+// English stays underneath as a fallback for keys missing in Russian
+const russianCatalog = mergeTranslations(
   englishCatalog,
-  frenchMessages,
-  raSupabaseFrenchMessages,
-  raSupabaseFrenchMessagesOverride,
-  frenchCrmMessages,
+  russianMessages,
+  raSupabaseRussianMessages,
+  russianCrmMessages,
 );
 
-export const getInitialLocale = (): "en" | "fr" => {
+// The product targets clinics in Kazakhstan: Russian is the default language.
+export const getInitialLocale = (): "ru" | "en" => {
   if (typeof navigator === "undefined") {
-    return "en";
+    return "ru";
   }
 
   const browserLocale = navigator.languages?.[0] ?? navigator.language;
-  if (browserLocale?.toLowerCase().startsWith("fr")) {
-    return "fr";
+  if (browserLocale?.toLowerCase().startsWith("en")) {
+    return "en";
   }
 
-  return "en";
+  return "ru";
 };
 
 export const i18nProvider = polyglotI18nProvider(
   (locale) => {
-    if (locale === "fr") {
-      return frenchCatalog;
+    if (locale === "en") {
+      return englishCatalog;
     }
-    return englishCatalog;
+    return russianCatalog;
   },
   getInitialLocale(),
   [
+    { locale: "ru", name: "Русский" },
     { locale: "en", name: "English" },
-    { locale: "fr", name: "Français" },
   ],
   { allowMissing: true },
 );

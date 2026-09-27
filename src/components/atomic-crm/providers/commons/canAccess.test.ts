@@ -1,0 +1,44 @@
+import { describe, expect, it } from "vitest";
+import { canAccess } from "./canAccess";
+
+describe("canAccess", () => {
+  it("lets the owner do everything", () => {
+    expect(canAccess("owner", { resource: "sales", action: "create" })).toBe(
+      true,
+    );
+    expect(
+      canAccess("owner", { resource: "configuration", action: "edit" }),
+    ).toBe(true);
+  });
+
+  it("lets the head change settings and list the staff, not manage it", () => {
+    expect(
+      canAccess("head", { resource: "configuration", action: "edit" }),
+    ).toBe(true);
+    expect(canAccess("head", { resource: "sales", action: "list" })).toBe(true);
+    expect(canAccess("head", { resource: "sales", action: "create" })).toBe(
+      false,
+    );
+    expect(canAccess("head", { resource: "sales", action: "edit" })).toBe(
+      false,
+    );
+  });
+
+  it("keeps managers away from settings and staff", () => {
+    expect(
+      canAccess("manager", { resource: "configuration", action: "edit" }),
+    ).toBe(false);
+    expect(canAccess("manager", { resource: "sales", action: "list" })).toBe(
+      false,
+    );
+    expect(canAccess("manager", { resource: "deals", action: "edit" })).toBe(
+      true,
+    );
+  });
+
+  it("denies everything without a role", () => {
+    expect(canAccess(undefined, { resource: "deals", action: "list" })).toBe(
+      false,
+    );
+  });
+});

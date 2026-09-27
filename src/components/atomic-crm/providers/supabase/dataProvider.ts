@@ -17,7 +17,7 @@ import type {
 } from "../../types";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
-import { getIsInitialized } from "./authProvider";
+import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
 
 const getBaseDataProvider = () =>
@@ -87,12 +87,20 @@ const getDataProviderWithCustomMethods = () => {
       return baseDataProvider.getOne(resource, params);
     },
 
-    async signUp({ email, password, first_name, last_name }: SignUpData) {
+    async signUp({
+      organization_name,
+      email,
+      password,
+      first_name,
+      last_name,
+    }: SignUpData) {
+      // The handle_new_user trigger creates the clinic and makes the user its owner
       const response = await getSupabaseClient().auth.signUp({
         email,
         password,
         options: {
           data: {
+            organization_name,
             first_name,
             last_name,
           },
@@ -103,9 +111,6 @@ const getDataProviderWithCustomMethods = () => {
         console.error("signUp.error", response.error);
         throw new Error(response?.error?.message || "Failed to create account");
       }
-
-      // Update the is initialized cache
-      (getIsInitialized as any)._is_initialized_cache = true;
 
       return {
         id: response.data.user.id,
@@ -147,7 +152,7 @@ const getDataProviderWithCustomMethods = () => {
         secondary_emails,
         first_name,
         last_name,
-        administrator,
+        role,
         avatar,
         disabled,
       } = data;
@@ -163,7 +168,7 @@ const getDataProviderWithCustomMethods = () => {
             secondary_emails,
             first_name,
             last_name,
-            administrator,
+            role,
             disabled,
             avatar,
           },
@@ -248,19 +253,31 @@ const getDataProviderWithCustomMethods = () => {
 
       return data;
     },
+    // One configuration row per organization; RLS returns the current one
     async getConfiguration(): Promise<ConfigurationContextValue> {
-      const { data } = await baseDataProvider.getOne("configuration", {
-        id: 1,
+      const { data } = await baseDataProvider.getList("configuration", {
+        pagination: { page: 1, perPage: 1 },
+        sort: { field: "id", order: "ASC" },
+        filter: {},
       });
-      return (data?.config as ConfigurationContextValue) ?? {};
+      return (data[0]?.config as ConfigurationContextValue) ?? {};
     },
     async updateConfiguration(
       config: ConfigurationContextValue,
     ): Promise<ConfigurationContextValue> {
+      const { data: rows } = await baseDataProvider.getList("configuration", {
+        pagination: { page: 1, perPage: 1 },
+        sort: { field: "id", order: "ASC" },
+        filter: {},
+      });
+      const current = rows[0];
+      if (!current) {
+        throw new Error("No configuration for the current organization");
+      }
       const { data } = await baseDataProvider.update("configuration", {
-        id: 1,
+        id: current.id,
         data: { config },
-        previousData: { id: 1 },
+        previousData: current,
       });
       return data.config as ConfigurationContextValue;
     },
@@ -463,7 +480,8 @@ const uploadToBucket = async (fi: RAFile) => {
   const fileParts = file.name.split(".");
   const fileExt = fileParts.length > 1 ? `.${file.name.split(".").pop()}` : "";
   const fileName = `${Math.random()}${fileExt}`;
-  const filePath = `${fileName}`;
+  // Storage policies only allow files under the organization folder
+  const filePath = `${await getCurrentOrganizationId()}/${fileName}`;
   const { error: uploadError } = await getSupabaseClient()
     .storage.from(ATTACHMENTS_BUCKET)
     .upload(filePath, dataContent);

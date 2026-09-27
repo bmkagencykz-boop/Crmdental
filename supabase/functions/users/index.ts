@@ -17,13 +17,18 @@ async function updateSaleDisabled(user_id: string, disabled: boolean) {
     .eq("user_id", user_id);
 }
 
-async function updateSaleAdministrator(
-  user_id: string,
-  administrator: boolean,
-) {
+// Roles an owner can give to an employee. There is exactly one owner per
+// organization: the person who signed the clinic up.
+const ASSIGNABLE_ROLES = ["head", "manager"] as const;
+type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
+const isAssignableRole = (role: unknown): role is AssignableRole =>
+  ASSIGNABLE_ROLES.includes(role as AssignableRole);
+
+async function updateSaleRole(user_id: string, role: AssignableRole) {
   const { data: sales, error: salesError } = await supabaseAdmin
     .from("sales")
-    .update({ administrator })
+    .update({ role })
     .eq("user_id", user_id)
     .select("*");
 
@@ -37,12 +42,12 @@ async function updateSaleAdministrator(
 async function createSale(
   user_id: string,
   data: {
+    organization_id: number;
     email: string;
-    password: string;
     first_name: string;
     last_name: string;
     disabled: boolean;
-    administrator: boolean;
+    role: AssignableRole;
   },
 ) {
   const { data: sales, error: salesError } = await supabaseAdmin
@@ -127,11 +132,16 @@ async function updateSaleAvatar(user_id: string, avatar: string) {
 }
 
 async function inviteUser(req: Request, currentUserSale: any) {
-  const { email, password, first_name, last_name, disabled, administrator } =
+  const { email, password, first_name, last_name, disabled, role } =
     await req.json();
 
-  if (!currentUserSale.administrator) {
+  // Only the clinic owner manages the staff
+  if (currentUserSale.role !== "owner") {
     return createErrorResponse(401, "Not Authorized");
+  }
+
+  if (!isAssignableRole(role)) {
+    return createErrorResponse(400, "Invalid role", { code: "invalid_role" });
   }
 
   const takenEmail = await findEmailUsedByAnotherSale(
@@ -145,10 +155,16 @@ async function inviteUser(req: Request, currentUserSale: any) {
     );
   }
 
+  // The handle_new_user trigger reads app_metadata (writable by the service
+  // role only) to attach the new user to the owner's organization.
   const { data, error: userError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     user_metadata: { first_name, last_name },
+    app_metadata: {
+      organization_id: currentUserSale.organization_id,
+      role,
+    },
   });
 
   let user = data?.user;
@@ -186,12 +202,12 @@ async function inviteUser(req: Request, currentUserSale: any) {
       }
 
       const sale = await createSale(user.id, {
+        organization_id: currentUserSale.organization_id,
         email,
-        password,
         first_name,
         last_name,
-        disabled,
-        administrator,
+        disabled: disabled ?? false,
+        role,
       });
 
       return new Response(
@@ -233,7 +249,7 @@ async function inviteUser(req: Request, currentUserSale: any) {
 
   try {
     await updateSaleDisabled(user.id, disabled);
-    const sale = await updateSaleAdministrator(user.id, administrator);
+    const sale = await updateSaleRole(user.id, role);
 
     return new Response(
       JSON.stringify({
@@ -257,22 +273,33 @@ async function patchUser(req: Request, currentUserSale: any) {
     first_name,
     last_name,
     avatar,
-    administrator,
+    role,
     disabled,
   } = await req.json();
+  // Never reach an employee of another organization
   const { data: sale } = await supabaseAdmin
     .from("sales")
     .select("*")
     .eq("id", sales_id)
+    .eq("organization_id", currentUserSale.organization_id)
     .single();
 
   if (!sale) {
     return createErrorResponse(404, "Not Found");
   }
 
-  // Users can only update their own profile unless they are an administrator
-  if (!currentUserSale.administrator && currentUserSale.id !== sale.id) {
+  const isOwner = currentUserSale.role === "owner";
+
+  // Users can only update their own profile unless they own the clinic
+  if (!isOwner && currentUserSale.id !== sale.id) {
     return createErrorResponse(401, "Not Authorized");
+  }
+
+  // The owner's own role and status are not editable (the clinic would lose its owner)
+  const canChangeRoleAndStatus = isOwner && sale.role !== "owner";
+
+  if (canChangeRoleAndStatus && role !== undefined && !isAssignableRole(role)) {
+    return createErrorResponse(400, "Invalid role", { code: "invalid_role" });
   }
 
   if (email && email.trim().toLowerCase() !== sale.email.toLowerCase()) {
@@ -344,7 +371,9 @@ async function patchUser(req: Request, currentUserSale: any) {
   const { data, error: userError } =
     await supabaseAdmin.auth.admin.updateUserById(sale.user_id, {
       email,
-      ban_duration: disabled ? "87600h" : "none",
+      ...(canChangeRoleAndStatus && disabled !== undefined
+        ? { ban_duration: disabled ? "87600h" : "none" }
+        : {}),
       user_metadata: { first_name, last_name },
     });
 
@@ -366,8 +395,8 @@ async function patchUser(req: Request, currentUserSale: any) {
     return createErrorResponse(500, "Internal Server Error");
   }
 
-  // Only administrators can update the administrator and disabled status
-  if (!currentUserSale.administrator) {
+  // Only the owner can update the role and disabled status of employees
+  if (!canChangeRoleAndStatus) {
     const { data: new_sale } = await supabaseAdmin
       .from("sales")
       .select("*")
@@ -387,8 +416,19 @@ async function patchUser(req: Request, currentUserSale: any) {
   }
 
   try {
-    await updateSaleDisabled(data.user.id, disabled);
-    const sale = await updateSaleAdministrator(data.user.id, administrator);
+    if (disabled !== undefined) {
+      await updateSaleDisabled(data.user.id, disabled);
+    }
+    const sale =
+      role !== undefined
+        ? await updateSaleRole(data.user.id, role)
+        : (
+            await supabaseAdmin
+              .from("sales")
+              .select("*")
+              .eq("id", sales_id)
+              .single()
+          ).data;
     return new Response(
       JSON.stringify({
         data: sale,
@@ -411,7 +451,7 @@ Deno.serve(async (req: Request) =>
     AuthMiddleware(req, async (req) =>
       UserMiddleware(req, async (req, user) => {
         const currentUserSale = await getUserSale(user);
-        if (!currentUserSale) {
+        if (!currentUserSale || currentUserSale.disabled) {
           return createErrorResponse(401, "Unauthorized");
         }
 

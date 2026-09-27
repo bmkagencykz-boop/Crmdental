@@ -147,6 +147,16 @@ export const LoginPage = (props: { redirectTo?: string }) => {
                 })}
               </Link>
             )}
+            {disableEmailPasswordAuthentication ? null : (
+              <Link
+                to={"/sign-up"}
+                className="block text-sm text-center hover:underline"
+              >
+                {translate("crm.auth.register_clinic", {
+                  _: "Register a new clinic",
+                })}
+              </Link>
+            )}
           </div>
         </div>
       </div>

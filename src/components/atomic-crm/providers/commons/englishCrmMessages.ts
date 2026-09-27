@@ -284,6 +284,7 @@ export const englishCrmMessages = {
         secondary_emails: "Secondary emails",
         administrator: "Admin",
         disabled: "Disabled",
+        role: "Role",
       },
       create: {
         error: "An error occurred while creating the user.",
@@ -373,14 +374,17 @@ export const englishCrmMessages = {
         "If you're a registered user, you should receive a password recovery email shortly.",
       sign_in_failed: "Failed to log in.",
       sign_in_google_workspace: "Sign in with Google Workplace",
+      organization_name: "Clinic name",
+      register_clinic: "Register a new clinic",
       signup: {
+        already_registered: "Already have an account? Sign in",
+        clinic_created: "Your clinic has been created",
         create_account: "Create account",
-        create_first_user:
-          "Create the first user account to complete the setup.",
+        create_clinic:
+          "Register your clinic. You will be its owner and will be able to invite your team.",
         creating: "Creating...",
-        initial_user_created: "Initial user successfully created",
       },
-      welcome_title: "Welcome to Atomic CRM",
+      welcome_title: "Welcome to Dental CRM",
     },
     common: {
       account_manager: "Account manager",
@@ -402,6 +406,11 @@ export const englishCrmMessages = {
     },
     changelog: {
       title: "Changelog",
+    },
+    roles: {
+      owner: "Owner",
+      head: "Head",
+      manager: "Manager",
     },
     activity: {
       added_company: "%{name} added company",
@@ -426,7 +435,7 @@ export const englishCrmMessages = {
       latest_notes: "My Latest Notes",
       latest_notes_added_ago: "added %{timeAgo}",
       stepper: {
-        install: "Install Atomic CRM",
+        install: "Install Dental CRM",
         progress: "%{step}/3 done",
         whats_next: "What's next?",
       },
@@ -552,16 +561,6 @@ export const englishCrmMessages = {
         "You cannot add more than 10 secondary email addresses",
       secondary_emails_help:
         "Other addresses you send emails from. Leave one empty to remove it.",
-      inbound: {
-        description:
-          "You can start sending emails to your server's inbound email address, e.g. by adding it to the %{field} field. Atomic CRM will process the emails and add notes to the corresponding contacts.",
-        title: "Inbound email",
-      },
-      mcp: {
-        title: "MCP Server",
-        description:
-          "Use this URL to connect your AI assistant to your CRM data via the Model Context Protocol (MCP).",
-      },
       password: {
         change: "Change password",
       },

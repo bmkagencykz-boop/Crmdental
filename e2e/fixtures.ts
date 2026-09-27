@@ -16,10 +16,21 @@ const TABLES = [
   "contacts",
   "companies",
   "tags",
-  "favicons_excluded_domains",
   "configuration",
   "sales",
+  "organizations",
 ];
+
+// All users created by createSales work in the same test clinic: the first
+// one signs the clinic up, the next ones are invited into it.
+let testOrganizationId: number | null = null;
+
+const requireTestOrganization = () => {
+  if (testOrganizationId == null) {
+    throw new Error("Call createSales before creating CRM records");
+  }
+  return testOrganizationId;
+};
 
 async function resetDb() {
   for (const table of TABLES) {
@@ -32,6 +43,7 @@ async function resetDb() {
   await Promise.all(
     data.users.map((user) => adminSupabase.auth.admin.deleteUser(user.id)),
   );
+  testOrganizationId = null;
 }
 
 async function createUser({
@@ -59,19 +71,28 @@ async function createSales({
   last_name,
   email,
   password,
-  administrator = false,
+  role,
 }: {
   first_name: string;
   last_name: string;
   email: string;
   password: string;
-  administrator?: boolean;
+  role?: "owner" | "head" | "manager";
 }) {
+  // The handle_new_user trigger creates the clinic for the first user (its
+  // owner) and attaches the next ones to it (app_metadata is set by the
+  // service role).
+  const isFirstUser = testOrganizationId == null;
   const { data: userData, error: userError } =
     await adminSupabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      user_metadata: { organization_name: "Test clinic" },
+      app_metadata:
+        testOrganizationId == null
+          ? {}
+          : { organization_id: testOrganizationId },
     });
 
   if (userError) {
@@ -80,7 +101,11 @@ async function createSales({
 
   const { data, error } = await adminSupabase
     .from("sales")
-    .update({ first_name, last_name, administrator })
+    .update({
+      first_name,
+      last_name,
+      role: role ?? (isFirstUser ? "owner" : "manager"),
+    })
     .eq("user_id", userData.user?.id)
     .select()
     .single();
@@ -88,6 +113,8 @@ async function createSales({
   if (error) {
     throw new Error(`Failed to create sales: ${error.message}`);
   }
+
+  testOrganizationId ??= data.organization_id;
 
   return data;
 }
@@ -109,6 +136,7 @@ async function createNotes({
 
   const { error } = await adminSupabase.from("contact_notes").insert(
     notes.map(({ text, date, status = "cold" }) => ({
+      organization_id: requireTestOrganization(),
       contact_id: contactId,
       sales_id: salesId,
       text,
@@ -131,7 +159,11 @@ async function createCompany({
 }) {
   const { data, error } = await adminSupabase
     .from("companies")
-    .insert({ name, sales_id: salesId })
+    .insert({
+      organization_id: requireTestOrganization(),
+      name,
+      sales_id: salesId,
+    })
     .select("id")
     .single();
 
@@ -164,6 +196,7 @@ async function createContact({
   const { data, error } = await adminSupabase
     .from("contacts")
     .insert({
+      organization_id: requireTestOrganization(),
       first_name,
       last_name,
       title,

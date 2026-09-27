@@ -21,9 +21,8 @@ const getBaseAuthProvider = () =>
     },
   });
 
-// To speed up checks, we cache the initialization state
-// and the current sale in the local storage. They are cleared on logout.
-const IS_INITIALIZED_CACHE_KEY = "RaStore.auth.is_initialized";
+// To speed up checks, we cache the current sale in the local storage.
+// It is cleared on logout.
 const CURRENT_SALE_CACHE_KEY = "RaStore.auth.current_sale";
 
 function getLocalStorage(): Storage | null {
@@ -33,23 +32,24 @@ function getLocalStorage(): Storage | null {
   return null;
 }
 
+/**
+ * Every visitor can register a new clinic, so the app is always "initialized"
+ * (Atomic CRM used to redirect to the sign-up page until a first user existed).
+ */
 export async function getIsInitialized() {
-  const storage = getLocalStorage();
-  const cachedValue = storage?.getItem(IS_INITIALIZED_CACHE_KEY);
-  if (cachedValue != null) {
-    return cachedValue === "true";
+  return true;
+}
+
+/**
+ * Organization of the current user, used to store files under
+ * "<organization_id>/" (see storage policies).
+ */
+export async function getCurrentOrganizationId(): Promise<number> {
+  const sale = await getSale();
+  if (sale?.organization_id == null) {
+    throw new Error("No organization for the current user");
   }
-
-  const { data } = await getSupabaseClient()
-    .from("init_state")
-    .select("is_initialized");
-  const isInitialized = data?.at(0)?.is_initialized > 0;
-
-  if (isInitialized) {
-    storage?.setItem(IS_INITIALIZED_CACHE_KEY, "true");
-  }
-
-  return isInitialized;
+  return sale.organization_id;
 }
 
 const getSale = async () => {
@@ -69,7 +69,7 @@ const getSale = async () => {
 
   const { data: dataSale, error: errorSale } = await getSupabaseClient()
     .from("sales")
-    .select("id, first_name, last_name, avatar, administrator")
+    .select("id, organization_id, first_name, last_name, avatar, role")
     .match({ user_id: dataSession?.session?.user.id })
     .single();
 
@@ -84,7 +84,6 @@ const getSale = async () => {
 
 function clearCache() {
   const storage = getLocalStorage();
-  storage?.removeItem(IS_INITIALIZED_CACHE_KEY);
   storage?.removeItem(CURRENT_SALE_CACHE_KEY);
 }
 
@@ -131,29 +130,14 @@ export const getAuthProvider = (): AuthProvider => {
         return;
       }
 
-      const isInitialized = await getIsInitialized();
-
-      if (!isInitialized) {
-        await getSupabaseClient().auth.signOut();
-        throw {
-          redirectTo: "/sign-up",
-          message: false,
-        };
-      }
-
       return baseAuthProvider.checkAuth(params);
     },
     canAccess: async (params) => {
-      const isInitialized = await getIsInitialized();
-      if (!isInitialized) return false;
-
       // Get the current user
       const sale = await getSale();
       if (sale == null) return false;
 
-      // Compute access rights from the sale role
-      const role = sale.administrator ? "admin" : "user";
-      return canAccess(role, params);
+      return canAccess(sale.role, params);
     },
     getAuthorizationDetails(authorizationId: string) {
       return getSupabaseClient().auth.oauth.getAuthorizationDetails(

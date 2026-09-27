@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useDataProvider, useLogin, useNotify, useTranslate } from "ra-core";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { Navigate, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import type { CrmDataProvider } from "../providers/types";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { SignUpData } from "../types";
-import { LoginSkeleton } from "./LoginSkeleton";
 import { Notification } from "@/components/admin/notification";
 import { ConfirmationRequired } from "./ConfirmationRequired";
 import { SSOAuthButton } from "./SSOAuthButton";
@@ -22,13 +21,6 @@ export const SignupPage = () => {
   const { darkModeLogo: logo, title } = useConfigurationContext();
   const navigate = useNavigate();
   const translate = useTranslate();
-  const { data: isInitialized, isPending } = useQuery({
-    queryKey: ["init"],
-    queryFn: async () => {
-      return dataProvider.isInitialized();
-    },
-  });
-
   const { isPending: isSignUpPending, mutate } = useMutation({
     mutationKey: ["signup"],
     mutationFn: async (data: SignUpData) => {
@@ -38,12 +30,12 @@ export const SignupPage = () => {
       login({
         email: data.email,
         password: data.password,
-        redirectTo: "/contacts",
+        redirectTo: "/",
       })
         .then(() => {
-          notify("crm.auth.signup.initial_user_created", {
+          notify("crm.auth.signup.clinic_created", {
             messageArgs: {
-              _: "Initial user successfully created",
+              _: "Your clinic has been created",
             },
           });
           // FIXME: We should probably provide a hook for that in the ra-core package
@@ -82,15 +74,6 @@ export const SignupPage = () => {
     mode: "onChange",
   });
 
-  if (isPending) {
-    return <LoginSkeleton />;
-  }
-
-  // For the moment, we only allow one user to sign up. Other users must be created by the administrator.
-  if (isInitialized) {
-    return <Navigate to="/login" />;
-  }
-
   const onSubmit: SubmitHandler<SignUpData> = async (data) => {
     mutate(data);
   };
@@ -114,11 +97,24 @@ export const SignupPage = () => {
             })}
           </h1>
           <p className="text-base mb-4">
-            {translate("crm.auth.signup.create_first_user", {
-              _: "Create the first user account to complete the setup.",
+            {translate("crm.auth.signup.create_clinic", {
+              _: "Register your clinic. You will be its owner and will be able to invite your team.",
             })}
           </p>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="organization_name">
+                {translate("crm.auth.organization_name", {
+                  _: "Clinic name",
+                })}
+              </Label>
+              <Input
+                {...register("organization_name", { required: true })}
+                id="organization_name"
+                type="text"
+                required
+              />
+            </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="first_name">
                 {translate("crm.auth.first_name")}
@@ -188,6 +184,11 @@ export const SignupPage = () => {
                   })}
                 </SSOAuthButton>
               ) : null}
+              <Link to="/login" className="text-sm underline">
+                {translate("crm.auth.signup.already_registered", {
+                  _: "Already have an account? Sign in",
+                })}
+              </Link>
             </div>
           </form>
         </div>

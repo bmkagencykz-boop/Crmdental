@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 test.describe("admin filtering by account manager", () => {
   test.beforeEach(async ({ createSales, createCompany, createContact }) => {
     const admin = await createSales({
-      administrator: true,
+      role: "owner",
       email: "john@doe.com",
       first_name: "John",
       last_name: "Doe",

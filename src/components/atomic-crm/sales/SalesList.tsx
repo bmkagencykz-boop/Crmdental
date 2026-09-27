@@ -23,12 +23,16 @@ const OptionsField = (_props: { label?: string | boolean }) => {
   if (!record) return null;
   return (
     <div className="flex flex-row gap-1">
-      {record.administrator && (
+      {record.role && (
         <Badge
           variant="outline"
-          className="border-blue-300 dark:border-blue-700"
+          className={
+            record.role === "manager"
+              ? undefined
+              : "border-blue-300 dark:border-blue-700"
+          }
         >
-          {translate("resources.sales.fields.administrator")}
+          {translate(`crm.roles.${record.role}`)}
         </Badge>
       )}
       {record.disabled && (

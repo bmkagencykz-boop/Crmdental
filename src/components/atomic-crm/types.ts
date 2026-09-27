@@ -10,6 +10,7 @@ import type {
 } from "./consts";
 
 export type SignUpData = {
+  organization_name: string;
   email: string;
   password: string;
   first_name: string;
@@ -23,13 +24,24 @@ export type SalesFormData = {
   password?: string;
   first_name: string;
   last_name: string;
-  administrator: boolean;
+  role: AssignableSaleRole;
   disabled: boolean;
 };
 
+/**
+ * owner: the person who signed the clinic up (everything, billing, staff)
+ * head: reports, settings, all deals
+ * manager: day-to-day work (administrators and curators of the clinic)
+ */
+export type SaleRole = "owner" | "head" | "manager";
+export type AssignableSaleRole = Exclude<SaleRole, "owner">;
+
 export type Sale = {
+  organization_id: Identifier;
   first_name: string;
   last_name: string;
+  role: SaleRole;
+  /** Derived from the role (owner or head), read-only */
   administrator: boolean;
   avatar?: RAFile;
   disabled?: boolean;

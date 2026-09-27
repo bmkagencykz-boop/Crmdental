@@ -41,7 +41,9 @@ import type {
   TelegramBotStatus,
   CrmNotification,
   NotificationPreferences,
+  DealFile,
 } from "../../types";
+import { resolveMime, validateFile } from "../../files/fileTypes";
 import {
   leadNoteText,
   leadWebhookUrl,
@@ -386,12 +388,51 @@ export const createDataProvider = ({
     return dispatching;
   };
 
+  /** A file of the demo: kept in memory as a data: URL (no storage) */
+  const readDemoFile = async (file: File) => {
+    const problem = validateFile(file);
+    if (problem) throw new Error(`files.errors.${problem}`);
+    const mime = resolveMime(file.type, file.name);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = "";
+    for (let index = 0; index < bytes.length; index += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+    }
+    return {
+      path: `data:${mime};base64,${btoa(binary)}`,
+      name: file.name,
+      mime,
+      size: file.size,
+    };
+  };
+
+  /** Same as the deal_files row of messenger_send and of the tab «Файлы» */
+  const listDealFile = async (
+    deal: Deal,
+    file: { path: string; name: string; mime: string; size: number },
+    salesId: Identifier | null | undefined,
+    messageId: Identifier | null,
+  ) => {
+    const { data } = await baseDataProvider.create<DealFile>("deal_files", {
+      data: {
+        deal_id: deal.id,
+        patient_id: deal.patient_id,
+        ...file,
+        sales_id: salesId ?? null,
+        message_id: messageId,
+        created_at: new Date().toISOString(),
+      },
+    });
+    return data;
+  };
+
   /** An outgoing message of a deal (no Wazzup24 in the demo) */
   const storeOutgoing = async (
     deal: Deal,
     text: string,
     salesId: Identifier | null | undefined,
     automessageId: Identifier | null,
+    attachment?: { path: string; name: string; mime: string; size: number },
   ) => {
     const previous = (await all<Message>("messages"))
       .filter((message) => message.deal_id === deal.id)
@@ -410,13 +451,24 @@ export const createDataProvider = ({
           previous?.chat_id ?? (patient.phones?.[0] ?? "").replace(/\D/g, ""),
         direction: "out",
         sales_id: salesId ?? null,
-        text,
-        content_type: "text",
+        text: attachment ? text || null : text,
+        content_type: attachment
+          ? fileContentType(attachment.mime, attachment.name)
+          : "text",
         status: "sent",
         sent_at: new Date().toISOString(),
         automessage_id: automessageId,
+        ...(attachment
+          ? {
+              attachment_path: attachment.path,
+              attachment_name: attachment.name,
+              attachment_mime: attachment.mime,
+              attachment_size: attachment.size,
+            }
+          : {}),
       },
     });
+    if (attachment) await listDealFile(deal, attachment, salesId, data.id);
     // Same as private.handle_automessage_sent
     if (automessageId != null) {
       const row = (await all<Automessage>("automessages")).find(
@@ -704,7 +756,9 @@ export const createDataProvider = ({
       dealId: Identifier,
       text: string,
       automessageId?: Identifier | null,
+      file?: File | null,
     ): Promise<Message> => {
+      const attachment = file ? await readDemoFile(file) : undefined;
       const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
         id: dealId,
       });
@@ -721,6 +775,7 @@ export const createDataProvider = ({
         text,
         await currentSalesId(),
         automessageId ?? null,
+        attachment,
       );
       const [settings] = await all<OrganizationSettings>(
         "organization_settings",
@@ -745,6 +800,67 @@ export const createDataProvider = ({
         });
       }
       return data;
+    },
+    // Files of the deals (stage 22): data: URLs in memory
+    uploadDealFile: async (
+      dealId: Identifier,
+      file: File,
+    ): Promise<DealFile> => {
+      const content = await readDemoFile(file);
+      const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
+        id: dealId,
+      });
+      const row = await listDealFile(
+        deal,
+        content,
+        await currentSalesId(),
+        null,
+      );
+      await logAudit({
+        entity: "file",
+        entity_id: row.id,
+        action: "create",
+        changes: {
+          name: [null, row.name],
+          size: [null, row.size],
+          mime: [null, row.mime],
+        },
+        deal_id: deal.id,
+        patient_id: deal.patient_id,
+      });
+      return row;
+    },
+    getFileUrl: async (path: string, _downloadName?: string) => path,
+    /** Same rules as the delete policy of deal_files */
+    deleteDealFile: async (file: DealFile): Promise<void> => {
+      const me = await getIdentity();
+      const role = (await all<Sale>("sales")).find(
+        (sale) => sale.id === me?.id,
+      )?.role;
+      if (
+        file.message_id != null ||
+        (role !== "owner" &&
+          role !== "head" &&
+          String(file.sales_id) !== String(me?.id))
+      ) {
+        throw new Error("files.errors.delete");
+      }
+      await baseDataProvider.delete("deal_files", {
+        id: file.id,
+        previousData: file,
+      });
+      await logAudit({
+        entity: "file",
+        entity_id: file.id,
+        action: "delete",
+        changes: {
+          name: [file.name, null],
+          size: [file.size, null],
+          mime: [file.mime, null],
+        },
+        deal_id: file.deal_id,
+        patient_id: file.patient_id,
+      });
     },
     markDealMessagesRead: async (dealId: Identifier): Promise<number> => {
       const unread = (await all<Message>("messages")).filter(
@@ -1795,6 +1911,15 @@ const convertFileToBase64 = (file: { rawFile: Blob }): Promise<string> =>
     reader.onerror = reject;
     reader.readAsDataURL(file.rawFile);
   });
+
+/** messages.content_type of a file (the Wazzup24 names) */
+const fileContentType = (mime: string, name: string) => {
+  const type = resolveMime(mime, name);
+  if (type.startsWith("image/")) return "image";
+  if (type.startsWith("video/")) return "video";
+  if (type.startsWith("audio/")) return "audio";
+  return "document";
+};
 
 /** Same as the message columns of deals_summary */
 const messageSummary = (messages: Message[]) => {

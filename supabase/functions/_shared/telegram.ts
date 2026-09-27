@@ -25,6 +25,8 @@ export type TelegramUser = {
   username?: string;
 };
 
+export type TelegramFile = { file_id: string; file_size?: number };
+
 export type TelegramMessage = {
   message_id: number;
   date: number;
@@ -32,11 +34,11 @@ export type TelegramMessage = {
   from?: TelegramUser;
   text?: string;
   caption?: string;
-  photo?: { file_id: string }[];
-  document?: { file_id: string; file_name?: string };
-  voice?: { file_id: string };
-  audio?: { file_id: string };
-  video?: { file_id: string };
+  photo?: TelegramFile[];
+  document?: TelegramFile & { file_name?: string; mime_type?: string };
+  voice?: TelegramFile & { mime_type?: string };
+  audio?: TelegramFile & { file_name?: string; mime_type?: string };
+  video?: TelegramFile & { file_name?: string; mime_type?: string };
   sticker?: { emoji?: string };
   contact?: {
     phone_number: string;
@@ -75,7 +77,8 @@ const fullName = (user?: { first_name?: string; last_name?: string }) =>
 
 /**
  * What the patient sent: text, or a short description of an attachment.
- * Files are not downloaded: a Telegram file link would expose the bot token.
+ * The file itself is copied to our storage by telegram_webhook
+ * (telegramMedia): a Telegram file link would expose the bot token.
  */
 const content = (
   message: TelegramMessage,
@@ -163,6 +166,143 @@ export const sendMessageBody = (chatId: string, text: string) => ({
   chat_id: chatId,
   text,
 });
+
+/** getFile of the Bot API only serves files up to 20 MB */
+const TELEGRAM_DOWNLOAD_LIMIT = 20 * 1024 * 1024;
+
+/**
+ * The file of an incoming message, to copy to our storage (getFile, then
+ * download), or null: text, sticker, contact, too big.
+ */
+export const telegramMedia = (
+  message: TelegramMessage,
+): {
+  file_id: string;
+  name: string;
+  mime: string;
+  size: number | null;
+} | null => {
+  const pick = (file: TelegramFile | undefined, name: string, mime: string) =>
+    file &&
+    (file.file_size == null || file.file_size <= TELEGRAM_DOWNLOAD_LIMIT)
+      ? { file_id: file.file_id, name, mime, size: file.file_size ?? null }
+      : null;
+  if (message.photo?.length) {
+    // Sizes of the same photo, the largest last
+    return pick(message.photo.at(-1), "photo.jpg", "image/jpeg");
+  }
+  if (message.document) {
+    return pick(
+      message.document,
+      message.document.file_name ?? "file",
+      message.document.mime_type ?? "application/octet-stream",
+    );
+  }
+  if (message.voice) {
+    return pick(
+      message.voice,
+      "voice.ogg",
+      message.voice.mime_type ?? "audio/ogg",
+    );
+  }
+  if (message.audio) {
+    return pick(
+      message.audio,
+      message.audio.file_name ?? "audio.mp3",
+      message.audio.mime_type ?? "audio/mpeg",
+    );
+  }
+  if (message.video) {
+    return pick(
+      message.video,
+      message.video.file_name ?? "video.mp4",
+      message.video.mime_type ?? "video/mp4",
+    );
+  }
+  return null;
+};
+
+/** Download address of a file (getFile's file_path): keep it server side */
+export const telegramFileUrl = (botToken: string, filePath: string) =>
+  `${TELEGRAM_API}/file/bot${botToken}/${filePath}`;
+
+/** Telegram limits of a caption and of a photo sent by link / uploaded */
+export const TELEGRAM_CAPTION_LIMIT = 1024;
+const PHOTO_URL_LIMIT = 5 * 1024 * 1024;
+const PHOTO_UPLOAD_LIMIT = 10 * 1024 * 1024;
+
+export type TelegramFileRequest = {
+  method:
+    | "sendPhoto"
+    | "sendDocument"
+    | "sendVideo"
+    | "sendAudio"
+    | "sendVoice";
+  /** Field of the file in the request */
+  field: "photo" | "document" | "video" | "audio" | "voice";
+  /**
+   * Telegram downloads the link itself; else the function uploads the file
+   * (multipart). By link, sendDocument only takes PDF, GIF and ZIP.
+   */
+  byUrl: boolean;
+  params: { chat_id: string; caption?: string };
+};
+
+/**
+ * How to send a text and/or a file through the clinic's bot: the file
+ * request (with the caption), and a text message when there is no file or
+ * the caption is too long for Telegram.
+ */
+export const telegramSendPlan = (
+  chatId: string,
+  {
+    text,
+    file,
+  }: {
+    text?: string | null;
+    file?: { mime: string; size: number } | null;
+  },
+): {
+  file: TelegramFileRequest | null;
+  text: { chat_id: string; text: string } | null;
+} => {
+  if (!file) {
+    return { file: null, text: sendMessageBody(chatId, text ?? "") };
+  }
+  const caption = text?.trim() ? text.trim() : null;
+  const fits = caption != null && caption.length <= TELEGRAM_CAPTION_LIMIT;
+  const mime = file.mime.toLowerCase();
+  let request: Omit<TelegramFileRequest, "params">;
+  if (
+    ["image/jpeg", "image/png", "image/webp"].includes(mime) &&
+    file.size <= PHOTO_UPLOAD_LIMIT
+  ) {
+    request = {
+      method: "sendPhoto",
+      field: "photo",
+      byUrl: file.size <= PHOTO_URL_LIMIT,
+    };
+  } else if (mime === "video/mp4") {
+    request = { method: "sendVideo", field: "video", byUrl: true };
+  } else if (mime === "audio/mpeg" || mime === "audio/mp4") {
+    request = { method: "sendAudio", field: "audio", byUrl: true };
+  } else if (mime === "audio/ogg") {
+    request = { method: "sendVoice", field: "voice", byUrl: true };
+  } else {
+    request = {
+      method: "sendDocument",
+      field: "document",
+      byUrl: ["application/pdf", "image/gif", "application/zip"].includes(mime),
+    };
+  }
+  return {
+    file: {
+      ...request,
+      params: { chat_id: chatId, ...(fits ? { caption: caption! } : {}) },
+    },
+    text: caption && !fits ? sendMessageBody(chatId, caption) : null,
+  };
+};
 
 /** Result of sendMessage as the status of our outgoing message */
 export const toSendResult = (

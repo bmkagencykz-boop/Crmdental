@@ -23,6 +23,7 @@ import { accent } from "../misc/accent";
 import type { Deal, Patient } from "../types";
 import { PatientAside } from "./PatientAside";
 import { PatientCalls } from "./PatientCalls";
+import { PatientFiles } from "../files/PatientFiles";
 import { patientDisplayName } from "./parsePatientText";
 
 /**
@@ -59,6 +60,9 @@ const PatientShowContent = () => {
             }
           >
             <PatientDeals patientId={record.id} />
+          </Panel>
+          <Panel title={translate("files.patient_title")}>
+            <PatientFiles patientId={record.id} />
           </Panel>
           <Panel title={translate("crm.calls.title")}>
             <PatientCalls patientId={record.id} />

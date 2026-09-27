@@ -98,6 +98,8 @@ create table if not exists storage.buckets (
   name text not null,
   public boolean default false
 );
+alter table storage.buckets add column if not exists file_size_limit bigint;
+alter table storage.buckets add column if not exists allowed_mime_types text[];
 
 create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),

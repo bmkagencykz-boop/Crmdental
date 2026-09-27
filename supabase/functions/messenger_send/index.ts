@@ -6,17 +6,26 @@ import { createErrorResponse } from "../_shared/utils.ts";
 import { AuthMiddleware, UserMiddleware } from "../_shared/authentication.ts";
 import { getUserSale } from "../_shared/getUserSale.ts";
 import { sendDealMessage } from "../_shared/dealMessage.ts";
+import {
+  isDealFilePath,
+  resolveMime,
+  validateFile,
+} from "../_shared/attachments.ts";
 
 const ERRORS = {
   not_connected: [409, "Messengers are not connected"],
   no_route: [409, "No chat to write to"],
   send_failed: [502, "The messenger refused the message"],
   store_failed: [500, "Internal Server Error"],
+  file_not_found: [404, "The file was not uploaded"],
 } as const;
 
 /**
  * Sends a message from the deal card or the inbox. Body:
- * { deal_id, text, automessage_id? }. The deal is read with the caller's
+ * { deal_id, text, automessage_id?, file? }. file: { path, name, mime, size }
+ * of a file the employee uploaded to the deal folder of the "deal-files"
+ * bucket (storage policies: only to a deal they see); text is then an
+ * optional caption. The deal is read with the caller's
  * rights (RLS: a manager can only write in the deals they see), the message
  * goes through Wazzup24 or the clinic's Telegram bot and is stored as
  * outgoing. With automessage_id (the
@@ -34,11 +43,11 @@ Deno.serve(async (req: Request) =>
         if (!sale || sale.disabled)
           return createErrorResponse(403, "Forbidden");
 
-        const { deal_id, text, automessage_id } = await req
+        const { deal_id, text, automessage_id, file } = await req
           .json()
           .catch(() => ({}));
         const body = typeof text === "string" ? text.trim() : "";
-        if (!deal_id || !body) {
+        if (!deal_id || (!body && !file)) {
           return createErrorResponse(400, "deal_id and text are required");
         }
 
@@ -57,6 +66,26 @@ Deno.serve(async (req: Request) =>
           .eq("id", deal_id)
           .maybeSingle();
         if (!deal) return createErrorResponse(404, "Deal not found");
+
+        let attachment = null;
+        if (file) {
+          const name = typeof file.name === "string" ? file.name.trim() : "";
+          const size = Number(file.size);
+          const mime = resolveMime(
+            typeof file.mime === "string" ? file.mime : null,
+            name,
+          );
+          if (
+            automessage_id != null ||
+            !isDealFilePath(file.path, deal.organization_id, deal.id) ||
+            validateFile({ name, size, mime }) != null
+          ) {
+            return createErrorResponse(400, "Invalid file", {
+              code: "invalid_file",
+            });
+          }
+          attachment = { path: file.path as string, name, mime, size };
+        }
 
         if (automessage_id != null) {
           const { data: automessage } = await supabaseAdmin
@@ -81,6 +110,7 @@ Deno.serve(async (req: Request) =>
           dealId: deal.id,
           patientId: deal.patient_id,
           text: body,
+          file: attachment,
           salesId: sale.id,
           automessageId: automessage_id ?? null,
         });

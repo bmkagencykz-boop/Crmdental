@@ -110,6 +110,39 @@ export const toChannels = (channels: WazzupChannel[]) =>
 export type Route = { channelId: string; chatType: Transport; chatId: string };
 
 /**
+ * Bodies of POST /v3/message for a text and/or a file. Wazzup24 takes either
+ * a text or a contentUri in one message: a file with a caption is two
+ * messages, the file first. The caption gets its own crmMessageId.
+ */
+export const wazzupMessageBodies = (
+  route: Route,
+  { text, contentUri }: { text?: string | null; contentUri?: string | null },
+  {
+    crmMessageId,
+    crmUserId,
+  }: { crmMessageId: string; crmUserId?: string | null },
+): Record<string, string>[] => {
+  const author: Record<string, string> = crmUserId != null ? { crmUserId } : {};
+  if (!contentUri) {
+    return [{ ...route, text: text ?? "", ...author, crmMessageId }];
+  }
+  const caption = text?.trim() ? text.trim() : null;
+  return [
+    { ...route, contentUri, ...author, crmMessageId },
+    ...(caption
+      ? [
+          {
+            ...route,
+            text: caption,
+            ...author,
+            crmMessageId: `${crmMessageId}:text`,
+          },
+        ]
+      : []),
+  ];
+};
+
+/**
  * Where to answer a deal: the chat the patient last wrote from, else a chat
  * known for the patient, else WhatsApp on the patient's phone.
  */

@@ -1,13 +1,26 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { toIngestMessage, type WazzupMessage } from "../_shared/messenger.ts";
+import {
+  copyIncomingFile,
+  downloadUrl,
+  type IngestResult,
+  runInBackground,
+} from "../_shared/incomingMedia.ts";
+import {
+  defaultFileName,
+  fileNameFromUrl,
+  resolveMime,
+} from "../_shared/attachments.ts";
 
 /**
  * Webhook given to Wazzup24 by messenger_connect:
  *   POST /functions/v1/wazzup_webhook?token=<messenger_integrations.webhook_token>
  * Receives messages and delivery statuses. The token identifies the clinic;
  * everything else happens in public.ingest_message (see its comment).
- * Wazzup24 expects a quick 200, and retries otherwise.
+ * Wazzup24 expects a quick 200, and retries otherwise. A received file
+ * (contentUri) is copied to our storage after the answer (copyIncomingFile):
+ * Wazzup24 links do not last.
  */
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -36,16 +49,31 @@ Deno.serve(async (req) => {
   for (const raw of body.messages ?? []) {
     const message = toIngestMessage(raw);
     if (!message) continue;
-    const { error } = await supabaseAdmin.rpc("ingest_message", {
-      webhook_token: token,
-      message,
-    });
+    const { data: ingested, error } = await supabaseAdmin.rpc(
+      "ingest_message",
+      { webhook_token: token, message },
+    );
     if (error?.code === "28000") {
       return new Response("Unknown token", { status: 401 });
     }
     if (error) {
       console.error("ingest_message failed", error);
       return new Response("Error", { status: 500 });
+    }
+    const contentUri = message.content_uri;
+    if (contentUri) {
+      await runInBackground(
+        copyIncomingFile(ingested as IngestResult, async () => {
+          const file = await downloadUrl(contentUri);
+          if (!file) return null;
+          const mime = resolveMime(file.mime, fileNameFromUrl(contentUri, ""));
+          return {
+            blob: file.blob,
+            mime,
+            name: fileNameFromUrl(contentUri, defaultFileName(mime)),
+          };
+        }),
+      );
     }
   }
 

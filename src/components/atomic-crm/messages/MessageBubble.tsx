@@ -2,6 +2,9 @@ import { Check, CheckCheck, CircleAlert } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 
+import { captionOf } from "../files/fileTypes";
+import { FilePreview } from "../files/FilePreview";
+import { messageFile } from "../files/messageFile";
 import { useGetSalesName } from "../sales/useGetSalesName";
 import { transportLabelKey } from "./transportLabel";
 import type { Message } from "../types";
@@ -21,6 +24,9 @@ export const MessageBubble = ({ message }: { message: Message }) => {
     enabled: message.sales_id != null,
   });
   const outgoing = message.direction === "out";
+  const file = messageFile(message);
+  // A received file keeps its placeholder text («[Фото]») for the lists
+  const text = file ? captionOf(message.text) : message.text;
   return (
     <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
       <div
@@ -31,10 +37,16 @@ export const MessageBubble = ({ message }: { message: Message }) => {
             : "rounded-bl-md bg-card",
         )}
       >
-        {message.text ? (
-          <p className="whitespace-pre-line break-words">{message.text}</p>
+        {file ? (
+          <FilePreview
+            file={file}
+            className={cn("mb-1", outgoing && "text-foreground")}
+          />
         ) : null}
-        {message.content_uri ? (
+        {text ? (
+          <p className="whitespace-pre-line break-words">{text}</p>
+        ) : null}
+        {!file && message.content_uri ? (
           <a
             href={message.content_uri}
             target="_blank"

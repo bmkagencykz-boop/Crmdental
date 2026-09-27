@@ -1,5 +1,6 @@
 import {
   CheckCircle2,
+  Paperclip,
   PhoneIncoming,
   PhoneOutgoing,
   StickyNote,
@@ -7,11 +8,20 @@ import {
 import { useGetList, useTranslate } from "ra-core";
 import { Fragment, useEffect, useRef } from "react";
 
+import { FilePreview } from "../../files/FilePreview";
+import { useDealFiles } from "../../files/useFiles";
 import { MessageBubble } from "../../messages/MessageBubble";
 import { useDealMessages } from "../../messages/useMessages";
 import { CallSummary } from "../../patients/PatientCalls";
 import { useGetSalesName } from "../../sales/useGetSalesName";
-import type { Call, Deal, DealEvent, DealNote, Task } from "../../types";
+import type {
+  Call,
+  Deal,
+  DealEvent,
+  DealFile,
+  DealNote,
+  Task,
+} from "../../types";
 import { DealEventContent } from "../DealEvents";
 import { buildTimeline, type TimelineItem } from "../timeline";
 
@@ -75,12 +85,14 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
     pagination: { page: 1, perPage: 500 },
   });
   const { data: messages = [] } = useDealMessages(deal.id);
+  const { data: files = [] } = useDealFiles(deal.id);
   const items = buildTimeline({
     notes,
     tasks,
     calls,
     events,
     messages,
+    files,
   }).reverse();
 
   const bottom = useRef<HTMLDivElement>(null);
@@ -134,6 +146,8 @@ const FeedItem = ({ item }: { item: TimelineItem }) => {
       return <CallItem call={item.call} />;
     case "task":
       return <DoneTaskItem task={item.task} />;
+    case "file":
+      return <FileItem file={item.file} />;
   }
 };
 
@@ -205,6 +219,22 @@ const DoneTaskItem = ({ task }: { task: Task }) => {
         {translate(`crm.tasks.types.${task.type}`)}
       </span>{" "}
       {task.text}
+    </Card>
+  );
+};
+
+/** A file uploaded on the «Файлы» tab */
+const FileItem = ({ file }: { file: DealFile }) => {
+  const translate = useTranslate();
+  const author = useGetSalesName(file.sales_id ?? undefined, {
+    enabled: file.sales_id != null,
+  });
+  return (
+    <Card
+      icon={<Paperclip className="size-4" />}
+      meta={`${time(file.created_at)} · ${translate("files.feed_uploaded")}${author ? ` · ${author}` : ""}`}
+    >
+      <FilePreview file={file} className="mt-1" />
     </Card>
   );
 };

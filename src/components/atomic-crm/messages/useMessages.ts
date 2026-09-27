@@ -50,10 +50,21 @@ export const useSendMessage = (
   const queryClient = useQueryClient();
   const notify = useNotify();
   return useMutation({
-    mutationFn: (text: string) =>
-      dataProvider.sendMessage(dealId, text, automessageId),
-    onSuccess: () => {
+    /** A text, or a file with an optional caption */
+    mutationFn: (message: string | { text: string; file?: File | null }) =>
+      typeof message === "string"
+        ? dataProvider.sendMessage(dealId, message, automessageId)
+        : dataProvider.sendMessage(
+            dealId,
+            message.text,
+            automessageId,
+            message.file ?? null,
+          ),
+    onSuccess: (_data, message) => {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
+      if (typeof message !== "string" && message.file) {
+        queryClient.invalidateQueries({ queryKey: ["deal_files"] });
+      }
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       if (automessageId != null) {
         queryClient.invalidateQueries({ queryKey: ["automessages"] });

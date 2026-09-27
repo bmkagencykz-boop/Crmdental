@@ -282,6 +282,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/kz.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/index.ts",
           "type": "registry:component"
         },
@@ -522,7 +526,15 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/layout/navigation.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/layout/TopToolbar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/layout/Sidebar.tsx",
           "type": "registry:component"
         },
         {
@@ -554,10 +566,6 @@
           "type": "registry:component"
         },
         {
-          "path": "src/components/atomic-crm/layout/Header.tsx",
-          "type": "registry:component"
-        },
-        {
           "path": "src/components/atomic-crm/layout/FormToolbar.tsx",
           "type": "registry:component"
         },
@@ -567,6 +575,10 @@
         },
         {
           "path": "src/components/atomic-crm/deals/stages.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/deals/kanbanFormat.ts",
           "type": "registry:component"
         },
         {

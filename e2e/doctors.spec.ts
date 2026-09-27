@@ -65,7 +65,10 @@ test.describe("doctors", () => {
     await main.getByRole("button", { name: "Add payment" }).click();
     await expect(page.getByText("Payment added")).toBeVisible();
     await expect(
-      main.getByRole("listitem").filter({ hasText: "20 000" }),
+      main
+        .getByRole("listitem")
+        .filter({ hasText: "20 000" })
+        .filter({ hasText: "Prepayment" }),
     ).toContainText("Prepayment");
 
     // Reports: the doctor has a row in the conversion and in the money

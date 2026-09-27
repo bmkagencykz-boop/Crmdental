@@ -74,12 +74,13 @@ test.describe("reports", () => {
     // Conversion: 3 leads, 2 reached the appointment, 1 the plan and paid
     const leadToAppointment = page
       .getByText("Lead → appointment")
+      .first()
       .locator("..");
     await expect(leadToAppointment).toContainText("67 %");
     await expect(leadToAppointment).toContainText("2 / 3");
-    await expect(page.getByText("Plan → payment").locator("..")).toContainText(
-      "100 %",
-    );
+    await expect(
+      page.getByText("Plan → payment").first().locator(".."),
+    ).toContainText("100 %");
     const funnel = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Funnel by stage" }) });
@@ -95,9 +96,9 @@ test.describe("reports", () => {
 
     // Money: the agreed plan and the payment
     await page.getByRole("tab", { name: "Money" }).click();
-    await expect(page.getByText("Plans agreed").locator("..")).toContainText(
-      "300",
-    );
+    await expect(
+      page.getByText("Plans agreed").first().locator(".."),
+    ).toContainText("300");
     await expect(
       page.getByText("Paid", { exact: true }).first().locator(".."),
     ).toContainText("100");

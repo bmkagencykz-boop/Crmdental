@@ -28,7 +28,14 @@ test("a refused deal needs a reason and can't go back to work", async ({
   await login("owner@smile.kz");
   await page.goto(`/#/deals/${deal.id}`);
 
-  await page.getByRole("combobox", { name: "Stage" }).click();
+  // The form may render again while its dictionaries load, closing the
+  // list: open it until the option shows
+  await expect(async () => {
+    await page.getByRole("combobox", { name: "Stage" }).click();
+    await expect(page.getByRole("option", { name: "Отказ" })).toBeVisible({
+      timeout: 1000,
+    });
+  }).toPass();
   await page.getByRole("option", { name: "Отказ" }).click();
 
   // The reason is required as soon as a lost stage is picked: the form

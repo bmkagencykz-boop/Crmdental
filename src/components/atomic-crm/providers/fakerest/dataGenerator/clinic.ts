@@ -325,6 +325,14 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       });
     });
 
+  // Same as the database trigger: the first answer of each deal
+  for (const deal of deals) {
+    const first = db.messages
+      .filter((m) => m.deal_id === deal.id && m.direction === "out")
+      .sort((a, b) => a.sent_at.localeCompare(b.sent_at))[0];
+    if (first) deal.first_response_at = first.sent_at;
+  }
+
   db.deal_events = deals
     .flatMap((deal) => {
       const events: DealEvent[] = [

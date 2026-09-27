@@ -344,7 +344,7 @@ create or replace trigger audit_deal_payment
 
 create or replace trigger audit_task
     after insert or update or delete on public.tasks
-    for each row execute function private.audit_row('task', 'type,text,due_date,done_date,sales_id');
+    for each row execute function private.audit_row('task', 'type,text,due_date,duration_minutes,done_date,result,sales_id');
 
 create or replace trigger audit_employee
     after insert or update on public.sales

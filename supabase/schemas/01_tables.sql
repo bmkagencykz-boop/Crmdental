@@ -312,7 +312,7 @@ create table public.tasks (
     done_date timestamp with time zone,
     sales_id bigint,
     created_at timestamp with time zone not null default now(),
-    constraint tasks_type_check check (type in ('call', 'message', 'reminder', 'other'))
+    constraint tasks_type_check check (type in ('call', 'message', 'meeting', 'reminder', 'other'))
 );
 
 -- Calls: logged by hand in the MVP, the structure is ready for telephony
@@ -425,7 +425,7 @@ create table public.task_rules (
     created_at timestamp with time zone not null default now(),
     constraint task_rules_event_check check (event in ('deal_created', 'stage_entered')),
     constraint task_rules_stage_check check ((event = 'stage_entered') = (stage_id is not null)),
-    constraint task_rules_type_check check (type in ('call', 'message', 'reminder', 'other')),
+    constraint task_rules_type_check check (type in ('call', 'message', 'meeting', 'reminder', 'other')),
     constraint task_rules_text_not_blank check (btrim(text) <> ''),
     constraint task_rules_due_positive check (due_in_minutes >= 0)
 );

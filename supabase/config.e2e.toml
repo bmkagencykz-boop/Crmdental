@@ -170,3 +170,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.automessages_dispatch]
 verify_jwt = false
+[functions.webhooks_dispatch]
+verify_jwt = false
+[functions.api]
+verify_jwt = false

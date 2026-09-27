@@ -213,7 +213,8 @@ CREATE OR REPLACE FUNCTION "public"."set_sales_id_default"() RETURNS "trigger"
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  IF NEW.sales_id IS NULL THEN
+  -- Imported rows without a responsible stay unassigned
+  IF NEW.sales_id IS NULL AND current_setting('crm.importing', true) IS DISTINCT FROM 'on' THEN
     SELECT id INTO NEW.sales_id FROM sales WHERE user_id = auth.uid();
   END IF;
   RETURN NEW;
@@ -499,7 +500,8 @@ begin
     new.paid_amount := 0;
     new.stage_changed_at := now();
     -- A lead coming from outside (no user) is distributed by the clinic rules
-    if new.sales_id is null and auth.uid() is null then
+    if new.sales_id is null and auth.uid() is null
+      and current_setting('crm.importing', true) is distinct from 'on' then
       new.sales_id := private.next_responsible(new.organization_id);
     end if;
   else
@@ -536,8 +538,10 @@ begin
       raise exception 'Сделка в отказе не возвращается в работу. Для повторного обращения создайте новую сделку.'
         using errcode = 'check_violation', hint = 'deal_lost_locked';
     end if;
-    -- The checklist of the stage blocks moving forward (refusing is always possible)
+    -- The checklist of the stage blocks moving forward (refusing is always
+    -- possible; an import moves deals to the stage of the file)
     if new.pipeline_id = old.pipeline_id and new_kind is distinct from 'lost'
+      and current_setting('crm.importing', true) is distinct from 'on'
       and (select s.position from public.stages s where s.id = new.stage_id)
         > (select s.position from public.stages s where s.id = old.stage_id)
       and exists (
@@ -953,6 +957,10 @@ CREATE OR REPLACE FUNCTION "private"."create_rule_tasks"("deal" "public"."deals"
 declare
   created integer;
 begin
+  -- Imported deals (public.import_batch) keep their history: no new tasks
+  if current_setting('crm.importing', true) = 'on' then
+    return 0;
+  end if;
   insert into public.tasks (organization_id, deal_id, type, text, due_date, sales_id)
   select deal.organization_id, deal.id, r.type, r.text,
     now() + make_interval(mins => r.due_in_minutes), deal.sales_id

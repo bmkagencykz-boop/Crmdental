@@ -48,6 +48,7 @@ import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
 import { getMailingMethods } from "./mailingMethods";
 import { getFileMethods, uploadToDealFolder } from "./fileMethods";
+import { getUnsortedMethods } from "./unsortedMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -97,6 +98,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getMailingMethods(),
     // Files of the deals (stage 22)
     ...getFileMethods(),
+    // «Неразобранное» and duplicate patients (stage 18)
+    ...getUnsortedMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

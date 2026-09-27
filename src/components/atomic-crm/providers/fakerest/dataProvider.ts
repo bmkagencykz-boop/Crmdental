@@ -107,6 +107,8 @@ import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 import { telephonyWebhookUrl } from "../../telephony/telephony";
 import { createMailingDemo } from "./mailings";
+import { createUnsortedDemo } from "./unsorted";
+import { unsortedIntake } from "../../unsorted/unsorted";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -231,6 +233,15 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     getDataProvider: () => dataProvider,
   });
+  // «Неразобранное» and duplicate patients (stage 18)
+  const unsortedDemo = createUnsortedDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+  });
+  const clinicSettings = async () =>
+    (await all<OrganizationSettings>("organization_settings"))[0];
 
   // Same as private.create_rule_tasks
   const createRuleTasks = async (
@@ -651,6 +662,7 @@ export const createDataProvider = ({
     audit_log: auditLogSummary,
     deals_waiting: dealsWaitingView,
     ...mailingDemo.views,
+    ...unsortedDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -660,6 +672,7 @@ export const createDataProvider = ({
   const custom = {
     ...baseDataProvider,
     ...mailingDemo.methods,
+    ...unsortedDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -957,6 +970,7 @@ export const createDataProvider = ({
             patient_id: patient.id,
             source_id: source?.id ?? null,
             sales_id: null,
+            unsorted_at: unsortedIntake(await clinicSettings(), source?.id),
           },
         }));
       }
@@ -1077,6 +1091,7 @@ export const createDataProvider = ({
             patient_id: patient.id,
             source_id: source?.id ?? null,
             sales_id: null,
+            unsorted_at: unsortedIntake(await clinicSettings(), source?.id),
           } as Partial<Deal>,
         }));
       }
@@ -1769,9 +1784,12 @@ export const createDataProvider = ({
               });
             }
           }
-          await createRuleTasks(deal, "deal_created");
-          await createRuleTasks(deal, "stage_entered", deal.stage_id);
-          await scheduleDealAutomessages(deal);
+          // An unsorted lead gets its automations when it is accepted
+          if (!deal.unsorted_at) {
+            await createRuleTasks(deal, "deal_created");
+            await createRuleTasks(deal, "stage_entered", deal.stage_id);
+            await scheduleDealAutomessages(deal);
+          }
           return result;
         },
         beforeUpdate: async (params) => {
@@ -1788,12 +1806,26 @@ export const createDataProvider = ({
           const [settings] = await all<OrganizationSettings>(
             "organization_settings",
           );
-          const next = applyPipelineMove({
-            previous,
-            next: { ...previous, ...data } as Deal,
-            stages,
-            mode: settings?.pipeline_move_mode,
-          });
+          // Same as handle_deal_before_write: a deal never goes back to
+          // «Неразобранное», moving an unsorted lead to a stage accepts it
+          const unsorted = !!previous.unsorted_at;
+          if (
+            !unsorted ||
+            (data.stage_id != null &&
+              String(data.stage_id) !== String(previous.stage_id)) ||
+            (data.pipeline_id != null &&
+              String(data.pipeline_id) !== String(previous.pipeline_id))
+          ) {
+            if ("unsorted_at" in data || unsorted) data.unsorted_at = null;
+          }
+          const next = unsorted
+            ? ({ ...previous, ...data } as Deal)
+            : applyPipelineMove({
+                previous,
+                next: { ...previous, ...data } as Deal,
+                stages,
+                mode: settings?.pipeline_move_mode,
+              });
           if (next.stage_id !== previous.stage_id) {
             data.stage_id = next.stage_id;
           }
@@ -1802,13 +1834,15 @@ export const createDataProvider = ({
             next,
             stages,
           });
-          checkStageChecklist({
-            previous,
-            next,
-            stages,
-            items: await all<StageChecklistItem>("stage_checklist_items"),
-            checks: await all<DealChecklistCheck>("deal_checklist_checks"),
-          });
+          if (!unsorted) {
+            checkStageChecklist({
+              previous,
+              next,
+              stages,
+              items: await all<StageChecklistItem>("stage_checklist_items"),
+              checks: await all<DealChecklistCheck>("deal_checklist_checks"),
+            });
+          }
           const stageChanged =
             next.stage_id !== previous.stage_id ||
             next.pipeline_id !== previous.pipeline_id;
@@ -1879,9 +1913,25 @@ export const createDataProvider = ({
               to_stage_id: deal.stage_id,
               changes,
             });
-            await createRuleTasks(deal, "stage_entered", deal.stage_id);
           } else if (Object.keys(changes).length) {
             await logDealEvent({ deal_id: deal.id, type: "updated", changes });
+          }
+          // An unsorted lead gets no automation; accepted into an open
+          // stage, the automations of a new deal (handle_deal_after_write,
+          // handle_deal_automessages)
+          if (previous.unsorted_at) {
+            const kind = (await all<Stage>("stages")).find(
+              (stage) => stage.id === deal.stage_id,
+            )?.kind;
+            if (!deal.unsorted_at && kind === "open") {
+              await createRuleTasks(deal, "deal_created");
+              await createRuleTasks(deal, "stage_entered", deal.stage_id);
+              await scheduleDealAutomessages(deal);
+            }
+            return result;
+          }
+          if (previous.stage_id !== deal.stage_id) {
+            await createRuleTasks(deal, "stage_entered", deal.stage_id);
           }
           // Same as private.handle_deal_automessages
           if (previous.stage_id !== deal.stage_id) {

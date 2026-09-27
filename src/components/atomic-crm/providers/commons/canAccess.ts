@@ -52,5 +52,10 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Merging duplicate patients (stage 18): owner and head, like the database
+  if (params.resource === "duplicates") {
+    return role === "head";
+  }
+
   return role === "head" || role === "manager";
 };

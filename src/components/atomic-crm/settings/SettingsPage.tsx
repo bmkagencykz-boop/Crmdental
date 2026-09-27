@@ -33,6 +33,8 @@ import { PipelinesEditor } from "./PipelinesEditor";
 import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
 import { ResponseControlSettings } from "../notifications/ResponseControlSettings";
 import { RecallRulesSettings } from "../mailings/RecallRulesSettings";
+import { UnsortedSettings } from "../unsorted/UnsortedSettings";
+import { DuplicatesSettings } from "../duplicates/DuplicatesSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -45,6 +47,7 @@ const SECTIONS = [
   "leads",
   "telephony",
   "distribution",
+  "unsorted",
   "response",
   "automations",
   "automessages",
@@ -52,6 +55,7 @@ const SECTIONS = [
   "recalls",
   "access",
   "clinic",
+  "duplicates",
   "import",
   "mis",
 ] as const;
@@ -70,7 +74,9 @@ const sectionLabel = (section: Section, kind: "title" | "hint") =>
       ? `quick_replies.${kind}`
       : section === "automessages" ||
           section === "recalls" ||
-          section === "doctors"
+          section === "doctors" ||
+          section === "unsorted" ||
+          section === "duplicates"
         ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
         : section === "leads"
           ? `leads.${kind === "title" ? "section" : "hint"}`
@@ -161,6 +167,8 @@ export const SettingsPage = () => {
         {section === "leads" ? <LeadSettings /> : null}
         {section === "telephony" ? <TelephonySettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
+        {section === "unsorted" ? <UnsortedSettings /> : null}
+        {section === "duplicates" ? <DuplicatesSettings /> : null}
         {section === "response" ? <ResponseControlSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "automessages" ? <AutomessagesSettings /> : null}

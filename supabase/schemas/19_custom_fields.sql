@@ -557,6 +557,7 @@ select
         from public.deal_payments pay
         where pay.organization_id = d.organization_id and pay.deal_id = d.id and pay.kind = 'prepayment'
     ) as prepayment_amount,
+    d.unsorted_at,
     d.custom_values
 from public.deals d
     join public.stages s on s.id = d.stage_id

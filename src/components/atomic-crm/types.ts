@@ -140,7 +140,10 @@ export type DictionaryItem = {
 } & Pick<RaRecord, "id">;
 
 export type Service = DictionaryItem;
-export type LostReason = DictionaryItem;
+export type LostReason = DictionaryItem & {
+  /** System value: 'spam' is «Спам / не целевое» (stage 18) */
+  code?: string | null;
+};
 export type LeadSource = DictionaryItem & {
   /** whatsapp, instagram, telegram, call, website, 2gis, referral, other */
   code?: string | null;
@@ -222,6 +225,8 @@ export type Deal = {
   consultation_amount?: number | null;
   /** Custom fields (stage 19): { "<field id>": value } */
   custom_values?: CustomValues;
+  /** Waiting in «Неразобранное» since (stage 18); null: in work */
+  unsorted_at?: string | null;
   // deals_summary
   stage_kind?: StageKind;
   patient_first_name?: string | null;
@@ -418,6 +423,10 @@ export type OrganizationSettings = {
   response_alert_responsible: boolean;
   response_alert_managers: boolean;
   response_alert_sales_ids: Identifier[];
+  /** New leads of the system channels go to «Неразобранное» (stage 18) */
+  unsorted_enabled?: boolean;
+  /** Only the leads of these sources (empty: every source) */
+  unsorted_source_ids?: Identifier[];
 };
 
 /** A task created on its own when a deal is created or enters a stage */
@@ -501,6 +510,8 @@ export type DealChecklistCheck = {
 
 export type DealNote = {
   deal_id: Identifier;
+  /** 'lead': the form of a website request (ingest_lead) */
+  type?: string | null;
   text: string;
   date: string;
   sales_id: Identifier;

@@ -254,8 +254,19 @@ begin
   if current_setting('crm.importing', true) = 'on' then
     return null;
   end if;
+  -- Unsorted leads (18_unsorted_duplicates.sql) get no auto-messages until
+  -- they are accepted into an open stage
   if tg_op = 'INSERT' then
-    perform private.schedule_automessages(new);
+    if new.unsorted_at is null then
+      perform private.schedule_automessages(new);
+    end if;
+    return null;
+  end if;
+  if old.unsorted_at is not null then
+    if new.unsorted_at is null
+      and (select s.kind from public.stages s where s.id = new.stage_id) = 'open' then
+      perform private.schedule_automessages(new);
+    end if;
     return null;
   end if;
   if new.stage_id is distinct from old.stage_id then

@@ -46,6 +46,7 @@ import type { ConfigurationContextValue } from "../../root/ConfigurationContext"
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
 import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
+import { getMailingMethods } from "./mailingMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -91,6 +92,8 @@ const getDataProviderWithCustomMethods = () => {
 
   return {
     ...baseDataProvider,
+    // Repeat sales and mailings (stage 17)
+    ...getMailingMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

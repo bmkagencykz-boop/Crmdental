@@ -186,3 +186,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.telephony_webhook]
 verify_jwt = false
+[functions.mailings_dispatch]
+verify_jwt = false

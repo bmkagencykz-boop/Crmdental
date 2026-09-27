@@ -30,6 +30,7 @@ import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
 import { ResponseControlSettings } from "../notifications/ResponseControlSettings";
+import { RecallRulesSettings } from "../mailings/RecallRulesSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -44,6 +45,7 @@ const SECTIONS = [
   "automations",
   "automessages",
   "quick_replies",
+  "recalls",
   "access",
   "clinic",
   "import",
@@ -60,8 +62,8 @@ const isSection = (value: string | null): value is Section =>
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
   section === "quick_replies"
     ? `quick_replies.${kind}`
-    : section === "automessages"
-      ? `automessages.settings.${kind === "title" ? "section" : "hint"}`
+    : section === "automessages" || section === "recalls"
+      ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
       : section === "leads"
         ? `leads.${kind === "title" ? "section" : "hint"}`
         : section === "import" || section === "mis"
@@ -153,6 +155,7 @@ export const SettingsPage = () => {
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "automessages" ? <AutomessagesSettings /> : null}
         {section === "quick_replies" ? <QuickRepliesEditor /> : null}
+        {section === "recalls" ? <RecallRulesSettings /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
         {section === "import" ? <ImportWizard /> : null}

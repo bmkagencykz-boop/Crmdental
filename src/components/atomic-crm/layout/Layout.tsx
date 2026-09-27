@@ -92,6 +92,7 @@ const PageTitle = () => {
     { match: "/profile", label: translate("crm.profile.title") },
     { match: "/reports", label: translate("reports.title") },
     { match: "/audit", label: translate("audit.title") },
+    { match: "/mailings", label: translate("mailings.title") },
   ];
   // The deal page has its own header
   if (matchPath("/deals/:id/show", location.pathname)) return null;

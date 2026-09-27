@@ -60,6 +60,18 @@ describe("canAccess", () => {
     ).toBe(false);
   });
 
+  it("shows the mailings to the owner and the head only", () => {
+    expect(canAccess("owner", { resource: "mailings", action: "list" })).toBe(
+      true,
+    );
+    expect(canAccess("head", { resource: "mailings", action: "list" })).toBe(
+      true,
+    );
+    expect(canAccess("manager", { resource: "mailings", action: "list" })).toBe(
+      false,
+    );
+  });
+
   it("denies everything without a role", () => {
     expect(canAccess(undefined, { resource: "deals", action: "list" })).toBe(
       false,

@@ -92,6 +92,7 @@ import { importBatchInMemory } from "./importBatch";
 import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 import { telephonyWebhookUrl } from "../../telephony/telephony";
+import { createMailingDemo } from "./mailings";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -207,6 +208,13 @@ export const createDataProvider = ({
     authProvider?.getIdentity?.() ?? defaultAuthProvider.getIdentity?.();
   const all = async <T>(resource: string) =>
     (await baseDataProvider.getList(resource, everything)).data as T[];
+  // Repeat sales and mailings (stage 17)
+  const mailingDemo = createMailingDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+  });
 
   // Same as private.create_rule_tasks
   const createRuleTasks = async (
@@ -558,6 +566,7 @@ export const createDataProvider = ({
     deals: dealsSummary,
     audit_log: auditLogSummary,
     deals_waiting: dealsWaitingView,
+    ...mailingDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -566,6 +575,7 @@ export const createDataProvider = ({
 
   const custom = {
     ...baseDataProvider,
+    ...mailingDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1308,6 +1318,7 @@ export const createDataProvider = ({
   const dataProvider = withLifecycleCallbacks(
     withSupabaseFilterAdapter(custom as DataProvider),
     [
+      ...mailingDemo.callbacks,
       {
         resource: "configuration",
         beforeUpdate: async (params) => {

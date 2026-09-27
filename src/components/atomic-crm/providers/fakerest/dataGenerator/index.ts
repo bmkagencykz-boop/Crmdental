@@ -3,6 +3,7 @@ import { generateAuditLog } from "./audit";
 import { generateClinic } from "./clinic";
 import { generateDictionaries } from "./dictionaries";
 import { generateNotifications } from "./notifications";
+import { generateMailings } from "./mailings";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import type { Db } from "./types";
@@ -18,6 +19,7 @@ export default (): Db => {
   db.external_refs = [];
   db.integrations = [];
   generateNotifications(db);
+  generateMailings(db);
   db.configuration = [
     {
       id: 1,

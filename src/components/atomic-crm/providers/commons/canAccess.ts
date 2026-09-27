@@ -47,5 +47,10 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Segment mailings (stage 17): owner and head, like the database
+  if (params.resource === "mailings") {
+    return role === "head";
+  }
+
   return role === "head" || role === "manager";
 };

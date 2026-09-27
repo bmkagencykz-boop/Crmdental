@@ -94,6 +94,9 @@ export type Patient = {
   status?: string | null;
   first_seen: string;
   last_seen: string;
+  /** No mailings nor recall messages (stage 17) */
+  messaging_opt_out?: boolean;
+  messaging_opt_out_at?: string | null;
   // patients_summary
   nb_deals?: number;
   nb_open_deals?: number;

@@ -30,6 +30,13 @@ import type {
   CrmNotification,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
+import type {
+  Mailing,
+  MailingMessage,
+  MailingSettings,
+  Recall,
+  RecallRule,
+} from "../../../mailings/types";
 
 export interface Db {
   sales: Sale[];
@@ -62,4 +69,10 @@ export interface Db {
   integrations: Array<IntegrationStatus & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
   audit_log: AuditLogEntry[];
+  // Repeat sales and mailings (stage 17)
+  recall_rules: RecallRule[];
+  recalls: Recall[];
+  mailings: Mailing[];
+  mailing_messages: MailingMessage[];
+  mailing_settings: Array<MailingSettings & { id: number }>;
 }

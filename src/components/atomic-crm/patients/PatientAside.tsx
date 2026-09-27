@@ -8,6 +8,7 @@ import { findById, useLeadSources } from "../dictionaries/useDictionaries";
 import { useGetSalesName } from "../sales/useGetSalesName";
 import type { Patient } from "../types";
 import { TagsListEdit } from "./TagsListEdit";
+import { PatientOptOutToggle } from "../mailings/PatientOptOutToggle";
 
 /** Contact card of a patient: phones, messengers, clinic info, tags */
 export const PatientAside = () => {
@@ -73,6 +74,10 @@ export const PatientAside = () => {
 
       <Section title={translate("resources.tags.name", { smart_count: 2 })}>
         <TagsListEdit />
+      </Section>
+
+      <Section title={translate("mailings.opt_out.section")}>
+        <PatientOptOutToggle patientId={record.id} />
       </Section>
 
       <div className="border-t border-border pt-4">

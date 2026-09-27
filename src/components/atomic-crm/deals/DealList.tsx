@@ -7,7 +7,8 @@ import {
   useTranslate,
   type Identifier,
 } from "ra-core";
-import { matchPath, useLocation } from "react-router";
+import { Link, matchPath, useLocation } from "react-router";
+import { Plus } from "lucide-react";
 import { CreateButton } from "@/components/admin/create-button";
 import { ExportButton } from "@/components/admin/export-button";
 import { List } from "@/components/admin/list";
@@ -161,6 +162,7 @@ const PipelineTabs = () => {
 };
 
 const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => {
+  const translate = useTranslate();
   const location = useLocation();
   const matchCreate = matchPath("/deals/create", location.pathname);
   const matchEdit = matchPath("/deals/:id", location.pathname);
@@ -169,6 +171,13 @@ const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => {
     <div className="w-full">
       <DealListContent pipelineId={pipelineId} />
       <DealArchivedList />
+      <Link
+        to="/deals/create"
+        className="fixed right-8 bottom-8 z-20 flex size-16 items-center justify-center rounded-full bg-white text-black shadow-[0_12px_40px_-10px_rgba(255,255,255,0.35)] transition-transform hover:scale-105"
+        aria-label={translate("resources.deals.action.new")}
+      >
+        <Plus className="size-7" strokeWidth={2.2} />
+      </Link>
       <DealCreate open={!!matchCreate} pipelineId={pipelineId} />
       <DealEdit open={!!matchEdit && !matchCreate} id={matchEdit?.params.id} />
     </div>

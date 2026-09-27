@@ -42,7 +42,7 @@ export const StageChecklist = ({ deal }: { deal: Deal }) => {
         <span
           className={
             done === items.length
-              ? "text-xs font-semibold text-[#3fb96b]"
+              ? "text-xs font-semibold text-brand-lime"
               : "text-xs font-semibold text-muted-foreground"
           }
         >

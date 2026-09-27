@@ -56,7 +56,7 @@ export const MessengerSettings = () => {
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2 text-sm font-semibold">
         {connected ? (
-          <CircleCheck className="size-5 text-[#3fb96b]" />
+          <CircleCheck className="size-5 text-brand-lime" />
         ) : (
           <CircleAlert className="size-5 text-muted-foreground" />
         )}

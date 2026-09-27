@@ -28,7 +28,7 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
   return (
     <div className="flex flex-col gap-3 border-t border-border px-6 py-5">
       <div className="flex items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-yellow/60 text-sm font-bold">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-yellow text-sm font-bold text-black">
           {initials(name)}
         </span>
         <div className="min-w-0">
@@ -100,7 +100,7 @@ const Badge = ({
   icon: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <span className="inline-flex items-center gap-1 rounded-full bg-[#3fb96b]/15 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
+  <span className="inline-flex items-center gap-1 rounded-full bg-brand-lime px-2 py-0.5 text-[11px] font-semibold text-black">
     {icon}
     {children}
   </span>

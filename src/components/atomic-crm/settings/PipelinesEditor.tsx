@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+import { accent, ACCENTS } from "../misc/accent";
+
 import {
   findById,
   getDefaultPipeline,
@@ -39,18 +41,8 @@ import {
   useDictionaryMutations,
 } from "./useDictionaryMutations";
 
-/** Colors offered for stages, from the brand palette */
-export const STAGE_COLORS = [
-  "#83A2DB",
-  "#9DB5E4",
-  "#A9C7E8",
-  "#C9B3D0",
-  "#FFCE87",
-  "#F7B98C",
-  "#FD8E8C",
-  "#8CC9A7",
-  "#262E3F",
-];
+/** Colors offered for stages: the accents of the design */
+export const STAGE_COLORS = ACCENTS;
 
 const KINDS: StageKind[] = ["open", "won", "lost"];
 
@@ -262,7 +254,7 @@ const StageRow = ({
           <button
             type="button"
             className="size-8 shrink-0 rounded-full border-2 border-card shadow-soft"
-            style={{ backgroundColor: stage.color }}
+            style={{ backgroundColor: accent(stage.color) }}
             aria-label={translate("crm.settings.pipelines.color")}
           />
         </PopoverTrigger>
@@ -273,7 +265,8 @@ const StageRow = ({
               type="button"
               className={cn(
                 "size-7 rounded-full",
-                color === stage.color && "ring-2 ring-ring ring-offset-2",
+                color === accent(stage.color) &&
+                  "ring-2 ring-white ring-offset-2 ring-offset-background",
               )}
               style={{ backgroundColor: color }}
               onClick={() => update(stage, { color })}

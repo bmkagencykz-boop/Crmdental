@@ -1,7 +1,6 @@
-import { FileText, Moon, Settings, Sun, User, Users } from "lucide-react";
+import { FileText, Settings, User, Users } from "lucide-react";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
-import { useTheme } from "@/components/admin/use-theme";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +55,6 @@ export const Sidebar = () => {
         <CanAccess resource="configuration" action="edit">
           <SidebarLink item={settings} active={isActive(settings)} />
         </CanAccess>
-        <ThemeSwitch />
       </div>
     </aside>
   );
@@ -93,7 +91,7 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
         <Icon className="size-[1.1rem]" strokeWidth={1.8} />
         {item.badge ? (
           <span
-            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#3fb96b] px-1 text-[10px] font-bold text-white ring-2 ring-background"
+            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-lime px-1 text-[10px] font-bold text-black ring-2 ring-background"
             data-testid="nav-badge"
             aria-hidden
           >
@@ -112,53 +110,6 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
         {item.label}
       </span>
     </Link>
-  );
-};
-
-/** Light / dark pair, like the moon and sun circles of the reference. */
-const ThemeSwitch = () => {
-  const translate = useTranslate();
-  const { theme, setTheme } = useTheme();
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" &&
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-  const options = [
-    {
-      value: "dark",
-      icon: Moon,
-      active: isDark,
-      label: translate("crm.theme.dark"),
-    },
-    {
-      value: "light",
-      icon: Sun,
-      active: !isDark,
-      label: translate("crm.theme.light"),
-    },
-  ] as const;
-  return (
-    <div className="mt-3 flex flex-col items-center gap-2">
-      {options.map(({ value, icon: Icon, active, label }) => (
-        <button
-          key={value}
-          type="button"
-          onClick={() => setTheme(value)}
-          aria-pressed={active}
-          aria-label={label}
-          title={label}
-          className={cn(
-            "flex size-11 items-center justify-center rounded-full outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring",
-            active
-              ? "bg-primary text-primary-foreground shadow-soft"
-              : "soft text-foreground/70 hover:text-foreground",
-          )}
-        >
-          <Icon className="size-[1.05rem]" strokeWidth={1.8} />
-        </button>
-      ))}
-    </div>
   );
 };
 

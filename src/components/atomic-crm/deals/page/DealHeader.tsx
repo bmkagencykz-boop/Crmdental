@@ -26,6 +26,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { accent, onAccent } from "../../misc/accent";
+
 import {
   findById,
   getPipelineStages,
@@ -196,7 +198,13 @@ const StageBar = ({ deal }: { deal: Deal }) => {
       <p className="text-xs text-muted-foreground">
         {findById(pipelines, deal.pipeline_id)?.name}
       </p>
-      <label className="relative flex items-center gap-2">
+      <label
+        className="relative flex items-center gap-2 rounded-full px-4 py-1.5"
+        style={{
+          backgroundColor: accent(stage?.color),
+          color: onAccent(stage?.color),
+        }}
+      >
         <span className="sr-only">
           {translate("resources.deals.fields.stage_id")}
         </span>
@@ -204,7 +212,7 @@ const StageBar = ({ deal }: { deal: Deal }) => {
           value={String(deal.stage_id)}
           onChange={(event) => change(event.target.value)}
           aria-label={translate("resources.deals.fields.stage_id")}
-          className="w-full cursor-pointer appearance-none rounded-xl bg-transparent py-1 pr-6 text-[15px] font-bold outline-none hover:bg-card focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full cursor-pointer appearance-none bg-transparent py-1 pr-6 text-[15px] font-bold outline-none [&>option]:bg-card [&>option]:text-foreground"
         >
           {stages.map((s) => (
             <option key={s.id} value={String(s.id)}>
@@ -212,7 +220,7 @@ const StageBar = ({ deal }: { deal: Deal }) => {
             </option>
           ))}
         </select>
-        <span className="pointer-events-none absolute right-1 text-xs text-muted-foreground">
+        <span className="pointer-events-none absolute right-4 text-xs opacity-70">
           ▾
         </span>
       </label>
@@ -226,9 +234,9 @@ const StageBar = ({ deal }: { deal: Deal }) => {
                 className={cn("flex-1 rounded-full bg-muted")}
                 style={
                   stage?.kind === "lost"
-                    ? { backgroundColor: "var(--color-brand-red, #fd8e8c)" }
+                    ? { backgroundColor: "var(--color-brand-red)" }
                     : position <= index
-                      ? { backgroundColor: stage?.color ?? s.color }
+                      ? { backgroundColor: accent(stage?.color ?? s.color) }
                       : undefined
                 }
               />

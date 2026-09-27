@@ -22,8 +22,8 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             to="/"
             className="text-[1.35rem] tracking-[-0.02em] text-foreground no-underline"
           >
-            <span className="font-bold">dental</span>
-            <span className="font-light text-foreground/70">crm</span>
+            <span className="font-bold tracking-[-0.03em]">dental</span>
+            <span className="font-bold text-brand-yellow">crm</span>
           </Link>
           <UserMenu>
             <ProfileMenu />
@@ -69,7 +69,7 @@ const PageTitle = () => {
   );
   if (!current) return null;
   return (
-    <h1 className="mb-7 text-[2.25rem] font-bold leading-none tracking-[-0.035em] text-foreground">
+    <h1 className="mb-8 text-[2.75rem] font-medium leading-[1.05] tracking-[-0.04em] text-foreground">
       {current.label}
     </h1>
   );

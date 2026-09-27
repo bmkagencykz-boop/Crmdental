@@ -19,6 +19,7 @@ import { formatMoney } from "../deals/kanbanFormat";
 import { NoteCreate } from "../notes/NoteCreate";
 import { NotesIterator } from "../notes/NotesIterator";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { accent } from "../misc/accent";
 import type { Deal, Patient } from "../types";
 import { PatientAside } from "./PatientAside";
 import { PatientCalls } from "./PatientCalls";
@@ -113,7 +114,7 @@ const PatientDeals = ({ patientId }: { patientId: Patient["id"] }) => {
             >
               <span
                 className="size-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: stage?.color }}
+                style={{ backgroundColor: accent(stage?.color) }}
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold text-foreground">

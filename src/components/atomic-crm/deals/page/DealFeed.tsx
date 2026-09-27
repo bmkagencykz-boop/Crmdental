@@ -161,7 +161,7 @@ const NoteItem = ({ note }: { note: DealNote }) => {
     <Card
       icon={<StickyNote className="size-4" />}
       meta={`${time(note.date)} · ${translate("crm.deals.page.note")}${author ? ` · ${author}` : ""}`}
-      tone="bg-brand-yellow/25"
+      tone="bg-card border-l-4 border-brand-yellow"
     >
       {note.text}
     </Card>
@@ -192,7 +192,7 @@ const DoneTaskItem = ({ task }: { task: Task }) => {
   });
   return (
     <Card
-      icon={<CheckCircle2 className="size-4 text-[#3fb96b]" />}
+      icon={<CheckCircle2 className="size-4 text-brand-lime" />}
       meta={`${time(task.done_date!)} · ${translate("crm.deals.timeline.task_done")}${author ? ` · ${author}` : ""}`}
     >
       <span className="font-medium">

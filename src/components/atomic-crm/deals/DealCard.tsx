@@ -1,9 +1,14 @@
 import { Draggable } from "@hello-pangea/dnd";
-import { MessageCircle } from "lucide-react";
+import { ArrowUpRight, MessageCircle } from "lucide-react";
 import { useRedirect, useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 
-import { findById, useServices } from "../dictionaries/useDictionaries";
+import {
+  findById,
+  useServices,
+  useStages,
+} from "../dictionaries/useDictionaries";
+import { accent, onAccent } from "../misc/accent";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { useGetSalesName } from "../sales/useGetSalesName";
 import { useTags } from "../tags/useTags";
@@ -38,6 +43,7 @@ export const DealCardContent = ({
 }) => {
   const { currency } = useConfigurationContext();
   const { data: services } = useServices();
+  const { data: stages } = useStages();
   const { data: allTags } = useTags();
   const tags = (deal.tags ?? [])
     .map((id) => allTags?.find((tag) => tag.id === id))
@@ -60,6 +66,14 @@ export const DealCardContent = ({
     deal.patient_phone ||
     "—";
   const taskState = getDealTaskState(deal);
+  const color = accent(findById(stages, deal.stage_id)?.color);
+  // Avatar: the state of the deal first (overdue, no task), else its stage
+  const avatarColor =
+    taskState === "overdue"
+      ? "#FF453A"
+      : taskState === "no_task"
+        ? "#FFE500"
+        : color;
   const date = formatCardDate(deal.created_at, {
     today: translate("crm.common.today"),
     yesterday: translate("crm.common.yesterday"),
@@ -76,74 +90,90 @@ export const DealCardContent = ({
     >
       <article
         className={cn(
-          "rounded-[10px] bg-card px-3.5 py-3 text-[13px] leading-snug shadow-card transition-all duration-200",
+          "relative overflow-hidden rounded-[1.75rem] bg-pill py-2.5 pr-4 pl-2.5 text-[13px] leading-snug transition-all duration-200",
           snapshot?.isDragging
-            ? "rotate-[1.5deg] shadow-[var(--shadow-soft)] ring-2 ring-brand-blue/50"
-            : "hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]",
+            ? "rotate-[1.5deg] ring-2 ring-white/40"
+            : "hover:bg-[#242427]",
         )}
       >
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate font-semibold">{patientName}</p>
-          <span className="flex shrink-0 items-center gap-1.5">
-            {deal.nb_unread_messages ? (
-              <span
-                className="flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full bg-[#3fb96b] px-1.5 text-[11px] font-bold text-white"
-                title={translate("crm.messages.unread", {
-                  smart_count: deal.nb_unread_messages,
-                })}
-                aria-label={translate("crm.messages.unread", {
-                  smart_count: deal.nb_unread_messages,
-                })}
-              >
-                <MessageCircle className="size-3" />
-                {deal.nb_unread_messages}
-              </span>
-            ) : null}
-            <time className="text-[11px] text-muted-foreground tabular-nums">
-              {date}
-            </time>
+        {/* Paid part of the treatment plan, like the progress lines of the reference */}
+        {deal.plan_amount > 0 ? (
+          <span
+            className="absolute top-0 left-6 h-[3px] rounded-b-full"
+            style={{
+              width: `calc(${Math.min(100, Math.round((deal.paid_amount / deal.plan_amount) * 100))}% - 3rem)`,
+              backgroundColor: color,
+            }}
+            aria-hidden
+          />
+        ) : null}
+        <div className="flex items-center gap-3">
+          <span
+            className="flex size-11 shrink-0 items-center justify-center rounded-full text-[13px] font-bold"
+            style={{
+              backgroundColor: avatarColor,
+              color: onAccent(avatarColor),
+            }}
+            aria-hidden
+          >
+            {initials(patientName)}
           </span>
-        </div>
-        <p className="mt-1 line-clamp-2 font-medium text-brand-link">
-          {deal.name || service?.name || translate("crm.deals.untitled")}
-        </p>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            {service ? (
-              <span className="truncate rounded-full bg-brand-blue/15 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
-                {service.name}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-[14px] font-semibold">
+                {patientName}
+              </p>
+              <span className="flex shrink-0 items-center gap-1.5">
+                {deal.nb_unread_messages ? (
+                  <span
+                    className="flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full bg-brand-lime px-1.5 text-[11px] font-bold text-black"
+                    title={translate("crm.messages.unread", {
+                      smart_count: deal.nb_unread_messages,
+                    })}
+                    aria-label={translate("crm.messages.unread", {
+                      smart_count: deal.nb_unread_messages,
+                    })}
+                  >
+                    <MessageCircle className="size-3" />
+                    {deal.nb_unread_messages}
+                  </span>
+                ) : null}
+                <ArrowUpRight
+                  className="size-4 text-foreground/80"
+                  aria-hidden
+                />
               </span>
-            ) : null}
-            {tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag.id}
-                className="truncate rounded-full px-2 py-0.5 text-[11px] font-medium text-black/80"
-                style={{ backgroundColor: tag.color }}
-              >
-                {tag.name}
+            </div>
+            <p className="truncate text-[12px] text-muted-foreground">
+              {deal.name || service?.name || translate("crm.deals.untitled")}
+              {" · "}
+              <span className="tabular-nums text-foreground/80">
+                {formatMoney(deal.plan_amount, currency)}
               </span>
-            ))}
-          </div>
-          <span className="shrink-0 text-[13px] font-semibold tabular-nums">
-            {formatMoney(deal.plan_amount, currency)}
-          </span>
-        </div>
-        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border pt-2.5 text-xs text-muted-foreground">
-          <span className="flex min-w-0 items-center gap-1.5">
-            {salesName ? (
-              <>
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-yellow/60 text-[9px] font-bold text-foreground">
-                  {initials(salesName)}
+            </p>
+            <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <span className="flex min-w-0 items-center gap-1.5 truncate">
+                <span className="truncate">
+                  {salesName || translate("crm.deals.unassigned")}
                 </span>
-                <span className="truncate">{salesName}</span>
-              </>
-            ) : (
-              <span className="truncate">
-                {translate("crm.deals.unassigned")}
+                {tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-black"
+                    style={{ backgroundColor: accent(tag.color) }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
               </span>
-            )}
-          </span>
-          <TaskBadge state={taskState} />
+              <span className="flex shrink-0 items-center gap-1.5">
+                <TaskBadge state={taskState} />
+                {taskState === "ok" || taskState === "closed" ? (
+                  <time className="tabular-nums">{date}</time>
+                ) : null}
+              </span>
+            </div>
+          </div>
         </div>
       </article>
     </div>
@@ -158,15 +188,14 @@ const TaskBadge = ({
   const translate = useTranslate();
   if (state === "no_task") {
     return (
-      <span className="flex shrink-0 items-center gap-1 font-medium text-destructive">
-        <span className="size-1.5 rounded-full bg-brand-red" />
+      <span className="rounded-full bg-brand-yellow px-1.5 font-semibold text-black">
         {translate("crm.deals.no_task")}
       </span>
     );
   }
   if (state === "overdue") {
     return (
-      <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-red px-2 py-0.5 font-semibold text-white">
+      <span className="rounded-full bg-brand-red px-1.5 font-semibold text-white">
         {translate("crm.deals.overdue_task")}
       </span>
     );

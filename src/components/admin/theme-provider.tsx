@@ -22,22 +22,12 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useStore<Theme>(storageKey, defaultTheme);
 
+  // Dental CRM has a single dark design (Katana reference): whatever the
+  // stored preference, the page is dark
   useEffect(() => {
     const root = window.document.documentElement;
-
-    root.classList.remove("light", "dark");
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
+    root.classList.remove("light");
+    root.classList.add("dark");
   }, [theme]);
 
   const value = {

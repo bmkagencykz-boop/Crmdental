@@ -1,16 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/onest";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
   --color-brand-blue: var(--brand-blue);
   --color-brand-link: var(--brand-link);
   --color-brand-red: var(--brand-red);
   --color-brand-yellow: var(--brand-yellow);
   --color-brand-green: var(--brand-green);
+  --color-brand-lime: var(--brand-lime);
+  --color-surface: var(--surface);
+  --color-pill: var(--pill);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -49,142 +52,79 @@
 }
 
 /*
- * Palette (Stratus reference): ink #262E3F, blue #83A2DB, coral #FD8E8C,
- * sand #FFCE87. Soft cool background with a blue glow, glass surfaces with
- * large radii and diffuse shadows, pills for controls.
+ * Palette (Katana reference): pure black canvas, near-black panels, dark
+ * pill-shaped cards, white primary controls and three loud accents for
+ * states and stages: yellow, electric blue, lime. One dark design.
  */
-:root {
-  --radius: 0.875rem;
-  --background: #e9edf3;
-  --foreground: #1f2635;
-  --card: #ffffff;
-  --card-foreground: #1f2635;
-  --popover: #ffffff;
-  --popover-foreground: #1f2635;
-  --primary: #1f2635;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f3f7;
-  --secondary-foreground: #1f2635;
-  --muted: #f1f3f7;
-  --muted-foreground: #8a92a3;
-  --accent: #f1f3f7;
-  --accent-foreground: #1f2635;
-  --destructive: #e0605d;
-  --border: rgba(31, 38, 53, 0.08);
-  --input: rgba(31, 38, 53, 0.1);
-  --ring: #83a2db;
-  --brand-blue: #83a2db;
-  --brand-link: #4c6db0;
-  --brand-red: #fd8e8c;
-  --brand-yellow: #ffce87;
-  --brand-green: #8cc9a7;
-  --surface: rgba(255, 255, 255, 0.62);
-  --surface-strong: rgba(255, 255, 255, 0.9);
-  --surface-border: rgba(255, 255, 255, 0.75);
-  --shadow-soft:
-    0 1px 2px rgba(31, 38, 53, 0.04), 0 10px 30px -12px rgba(31, 38, 53, 0.14);
-  --shadow-card:
-    0 1px 2px rgba(31, 38, 53, 0.05), 0 6px 16px -10px rgba(31, 38, 53, 0.22);
-  --app-glow-1: rgba(131, 162, 219, 0.32);
-  --app-glow-2: rgba(253, 142, 140, 0.12);
-  --app-glow-3: rgba(255, 255, 255, 0.9);
-  --chart-1: #83a2db;
-  --chart-2: #fd8e8c;
-  --chart-3: #ffce87;
-  --chart-4: #1f2635;
-  --chart-5: #8cc9a7;
-  --sidebar: transparent;
-  --sidebar-foreground: #1f2635;
-  --sidebar-primary: #1f2635;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ffffff;
-  --sidebar-accent-foreground: #1f2635;
-  --sidebar-border: transparent;
-  --sidebar-ring: #83a2db;
-  --avatar-0: #dbe4f5;
-  --avatar-1: #fde0df;
-  --avatar-2: #ffeccf;
-  --avatar-3: #dcefe4;
-  --avatar-4: #e4e1f3;
-  --avatar-5: #d7e9f0;
-  --avatar-6: #f3e2d6;
-  --avatar-7: #e8ecf2;
-  --avatar-8: #f6dfe8;
-  --avatar-9: #e1ecd9;
-}
-
+:root,
 .dark {
-  --background: #141925;
-  --foreground: #e8ecf4;
-  --card: #222a3b;
-  --card-foreground: #e8ecf4;
-  --popover: #222a3b;
-  --popover-foreground: #e8ecf4;
-  --primary: #e8ecf4;
-  --primary-foreground: #141925;
-  --secondary: #283144;
-  --secondary-foreground: #e8ecf4;
-  --muted: #283144;
-  --muted-foreground: #8c95a8;
-  --accent: #283144;
-  --accent-foreground: #e8ecf4;
-  --destructive: #fd8e8c;
-  --border: rgba(232, 236, 244, 0.08);
-  --input: rgba(232, 236, 244, 0.12);
-  --ring: #83a2db;
-  --brand-blue: #83a2db;
-  --brand-link: #9fb8e8;
-  --brand-red: #fd8e8c;
-  --brand-yellow: #ffce87;
-  --brand-green: #8cc9a7;
-  --surface: rgba(34, 42, 59, 0.55);
-  --surface-strong: rgba(38, 47, 66, 0.9);
+  color-scheme: dark;
+  --radius: 1rem;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1c1c1e;
+  --card-foreground: #ffffff;
+  --popover: #1c1c1e;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #26262a;
+  --secondary-foreground: #ffffff;
+  --muted: #232326;
+  --muted-foreground: #8e8e93;
+  --accent: #2a2a2e;
+  --accent-foreground: #ffffff;
+  --destructive: #ff453a;
+  --border: rgba(255, 255, 255, 0.07);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #2f6bff;
+  --brand-blue: #2f6bff;
+  --brand-link: #7ea4ff;
+  --brand-red: #ff453a;
+  --brand-yellow: #ffe500;
+  --brand-green: #c6f432;
+  --brand-lime: #c6f432;
+  /* Panels (columns, cards of pages) and pills (rows, controls) */
+  --surface: #0e0e10;
+  --surface-strong: #1c1c1e;
   --surface-border: rgba(255, 255, 255, 0.05);
-  --shadow-soft:
-    0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -14px rgba(0, 0, 0, 0.5);
-  --shadow-card:
-    0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -12px rgba(0, 0, 0, 0.6);
-  --app-glow-1: rgba(131, 162, 219, 0.18);
-  --app-glow-2: rgba(253, 142, 140, 0.06);
-  --app-glow-3: rgba(255, 255, 255, 0.03);
-  --chart-1: #83a2db;
-  --chart-2: #fd8e8c;
-  --chart-3: #ffce87;
-  --chart-4: #e8ecf4;
-  --chart-5: #8cc9a7;
+  --pill: #1c1c1e;
+  --shadow-soft: 0 10px 30px -16px rgba(0, 0, 0, 0.9);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --chart-1: #2f6bff;
+  --chart-2: #ffe500;
+  --chart-3: #c6f432;
+  --chart-4: #ffffff;
+  --chart-5: #ff453a;
   --sidebar: transparent;
-  --sidebar-foreground: #e8ecf4;
-  --sidebar-primary: #e8ecf4;
-  --sidebar-primary-foreground: #141925;
-  --sidebar-accent: #283144;
-  --sidebar-accent-foreground: #e8ecf4;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1c1c1e;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: transparent;
-  --sidebar-ring: #83a2db;
-  --avatar-0: #34466b;
-  --avatar-1: #5a3a44;
-  --avatar-2: #5a4a33;
-  --avatar-3: #2f4f42;
-  --avatar-4: #433c63;
-  --avatar-5: #2e4a57;
-  --avatar-6: #574236;
-  --avatar-7: #3a4356;
-  --avatar-8: #563a4c;
-  --avatar-9: #3d4f37;
+  --sidebar-ring: #2f6bff;
+  --avatar-0: #2f6bff;
+  --avatar-1: #ffe500;
+  --avatar-2: #c6f432;
+  --avatar-3: #ffffff;
+  --avatar-4: #ff8a3d;
+  --avatar-5: #9b7bff;
+  --avatar-6: #3dd6d0;
+  --avatar-7: #ff5ca8;
+  --avatar-8: #8e8e93;
+  --avatar-9: #ffb800;
 }
 
-/* Frosted panel: the main surface of the app */
+/* Panel: the main surface of the app (board columns, page blocks) */
 @utility glass {
   background: var(--surface);
   border: 1px solid var(--surface-border);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
 }
 
-/* Solid floating control (round buttons, pills) */
+/* Solid control (round buttons, pills) */
 @utility soft {
   background: var(--surface-strong);
-  box-shadow: var(--shadow-soft);
 }
 
 @utility shadow-card {
@@ -227,7 +167,7 @@ input[type="time"] {
   position: relative;
 }
 
-.dark ::-webkit-calendar-picker-indicator {
+::-webkit-calendar-picker-indicator {
   filter: invert(1);
   position: absolute;
   right: 0.75rem;
@@ -243,22 +183,9 @@ input[type="time"] {
 }
 
 body {
-  font-family: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(
-      60rem 36rem at 92% 108%,
-      var(--app-glow-1),
-      transparent 65%
-    ),
-    radial-gradient(
-      40rem 28rem at 55% 115%,
-      var(--app-glow-2),
-      transparent 70%
-    ),
-    radial-gradient(50rem 30rem at 0% -10%, var(--app-glow-3), transparent 70%),
-    var(--background);
-  background-attachment: fixed;
+  background: var(--background);
 }
 
 /* The mobile pull-to-refresh (see layout/PullToRefresh.tsx) owns the overscroll

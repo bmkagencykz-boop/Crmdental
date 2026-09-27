@@ -79,7 +79,7 @@ export const DashboardSummary = () => {
           tone={overdue > 0 ? "alert" : undefined}
         />
       </div>
-      <div className="flex flex-col justify-between gap-4 rounded-[1.75rem] bg-[linear-gradient(115deg,#9fb7e4_0%,#c9b3d0_38%,#fbb3a8_68%,#ffdcaa_100%)] p-6 text-[#1f2635] shadow-soft">
+      <div className="flex flex-col justify-between gap-4 rounded-[1.75rem] bg-brand-lime p-6 text-black">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[13px] font-medium opacity-70">

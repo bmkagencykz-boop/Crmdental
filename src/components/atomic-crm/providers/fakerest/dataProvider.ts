@@ -26,6 +26,7 @@ import type {
   DealChecklistCheck,
   StageChecklistItem,
   TaskRule,
+  QuickReply,
 } from "../../types";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
@@ -237,6 +238,18 @@ export const createDataProvider = ({
       }
       if (views[resource]) {
         return (await viewProvider(resource)).getList(resource, params);
+      }
+      if (resource === "quick_replies") {
+        // Same as the RLS policy: clinic-wide replies and my own
+        const me = await currentSalesId();
+        const visible = (await all<QuickReply>("quick_replies")).filter(
+          (reply) => reply.sales_id == null || reply.sales_id === me,
+        );
+        return fakeRestDataProvider(
+          { quick_replies: visible },
+          false,
+          0,
+        ).getList(resource, params);
       }
       return baseDataProvider.getList(resource, params);
     },

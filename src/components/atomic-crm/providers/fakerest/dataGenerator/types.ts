@@ -20,6 +20,7 @@ import type {
   Tag,
   Task,
   TaskRule,
+  QuickReply,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 
@@ -44,6 +45,7 @@ export interface Db {
   task_rules: TaskRule[];
   stage_checklist_items: StageChecklistItem[];
   deal_checklist_checks: DealChecklistCheck[];
+  quick_replies: QuickReply[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
 }

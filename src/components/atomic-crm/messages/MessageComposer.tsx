@@ -2,11 +2,14 @@ import { SendHorizontal } from "lucide-react";
 import { useTranslate, type Identifier } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 
+import { QuickReplyTextarea } from "../quick-replies/QuickReplyTextarea";
 import { useSendMessage } from "./useMessages";
 
-/** Answer the patient in the messenger they wrote from (Enter sends) */
+/**
+ * Answer the patient in the messenger they wrote from (Enter sends, "/"
+ * inserts a quick reply)
+ */
 export const MessageComposer = ({ dealId }: { dealId: Identifier }) => {
   const translate = useTranslate();
   const [text, setText] = useState("");
@@ -18,19 +21,12 @@ export const MessageComposer = ({ dealId }: { dealId: Identifier }) => {
   };
   return (
     <div className="flex items-end gap-2">
-      <Textarea
+      <QuickReplyTextarea
+        dealId={dealId}
         value={text}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            send();
-          }
-        }}
-        rows={2}
+        onChange={setText}
+        onSubmit={send}
         placeholder={translate("crm.messages.placeholder")}
-        aria-label={translate("crm.messages.placeholder")}
-        className="min-h-12 resize-none"
       />
       <Button
         onClick={send}

@@ -1,5 +1,6 @@
-import { useTranslate } from "ra-core";
-import { useState, type ReactNode } from "react";
+import { useCanAccess, useTranslate } from "ra-core";
+import { useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
+import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
 
 const SECTIONS = [
   "pipelines",
@@ -30,21 +32,47 @@ const SECTIONS = [
   "messengers",
   "distribution",
   "automations",
+  "quick_replies",
   "access",
   "clinic",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+// Every employee manages their own quick replies; the rest is for the owner
+// and the head (the database enforces the same rules)
+const EVERYONE_SECTIONS: Section[] = ["quick_replies"];
+const isSection = (value: string | null): value is Section =>
+  SECTIONS.includes(value as Section);
+
+const sectionLabel = (section: Section, kind: "title" | "hint") =>
+  section === "quick_replies"
+    ? `quick_replies.${kind}`
+    : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
  * rules and branding. Everything is stored in tables, not in code.
+ * Managers only see their quick replies. ?section=<id> opens a section.
  */
 export const SettingsPage = () => {
   const translate = useTranslate();
-  const [section, setSection] = useState<Section>("pipelines");
+  const [searchParams] = useSearchParams();
+  const requested = searchParams.get("section");
+  const { canAccess: isAdmin, isPending } = useCanAccess({
+    resource: "configuration",
+    action: "edit",
+  });
+  const sections = isAdmin ? SECTIONS : EVERYONE_SECTIONS;
+  const [chosen, setSection] = useState<Section>(
+    isSection(requested) ? requested : "pipelines",
+  );
+  useEffect(() => {
+    if (isSection(requested)) setSection(requested);
+  }, [requested]);
+  const section = sections.includes(chosen) ? chosen : sections[0];
   const { data: services } = useServices();
   const { data: sources } = useLeadSources();
   const { data: lostReasons } = useLostReasons();
+  if (isPending) return null;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_1fr]">
@@ -52,7 +80,7 @@ export const SettingsPage = () => {
         className="flex flex-row flex-wrap gap-1 lg:flex-col"
         aria-label={translate("crm.settings.title")}
       >
-        {SECTIONS.map((id) => (
+        {sections.map((id) => (
           <button
             key={id}
             type="button"
@@ -65,13 +93,13 @@ export const SettingsPage = () => {
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
-            {translate(`crm.settings.sections.${id}`)}
+            {translate(sectionLabel(id, "title"))}
           </button>
         ))}
       </nav>
       <Panel
-        title={translate(`crm.settings.sections.${section}`)}
-        hint={translate(`crm.settings.hints.${section}`)}
+        title={translate(sectionLabel(section, "title"))}
+        hint={translate(sectionLabel(section, "hint"))}
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
         {section === "services" ? (
@@ -86,6 +114,7 @@ export const SettingsPage = () => {
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
+        {section === "quick_replies" ? <QuickRepliesEditor /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
       </Panel>

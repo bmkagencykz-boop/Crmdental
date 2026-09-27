@@ -224,6 +224,7 @@ const DesktopAdmin = (
       <Resource name="messages" />
       <Resource name="messenger_channels" />
       <Resource name="task_rules" />
+      <Resource name="quick_replies" />
       <Resource name="stage_checklist_items" />
       <Resource name="deal_checklist_checks" />
       <Resource name="pipelines" />

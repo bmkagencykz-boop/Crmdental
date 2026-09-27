@@ -102,12 +102,12 @@ export const UnsortedActions = ({
   );
   return (
     <div
-      className={cn("flex flex-wrap gap-1.5", compact && "gap-1")}
+      className={cn("flex flex-wrap gap-1.5", compact && "flex-nowrap gap-1")}
       onClick={(event) => event.stopPropagation()}
     >
       <Button
         size="sm"
-        className={cn(compact && "h-7 px-2 text-xs")}
+        className={cn(compact && "h-7 gap-1 px-2 text-xs has-[>svg]:px-2")}
         onClick={() => setDialog("accept")}
       >
         <Check className="size-3.5" />
@@ -116,7 +116,7 @@ export const UnsortedActions = ({
       <Button
         size="sm"
         variant="outline"
-        className={cn(compact && "h-7 px-2 text-xs")}
+        className={cn(compact && "h-7 gap-1 px-2 text-xs has-[>svg]:px-2")}
         onClick={() => setDialog("reject")}
       >
         <X className="size-3.5" />
@@ -125,7 +125,7 @@ export const UnsortedActions = ({
       <Button
         size="sm"
         variant="outline"
-        className={cn(compact && "h-7 px-2 text-xs")}
+        className={cn(compact && "h-7 gap-1 px-2 text-xs has-[>svg]:px-2")}
         onClick={() => setDialog("merge")}
         title={translate("unsorted.actions.merge")}
       >
@@ -345,11 +345,13 @@ const MergeDialog = ({
   }, [found, own, stages, lead, query]);
   const { mutate, isPending } = useMutation({
     mutationFn: () => dataProvider.mergeUnsorted(lead.id, targetId!),
-    onSuccess: async (result) => {
-      await refresh();
+    onSuccess: (result) => {
       notify("unsorted.notify.merged", { type: "info" });
       onClose();
+      // Leave the page of the deleted lead before refreshing, so that it is
+      // not fetched again
       onMerged?.(result.deal_id);
+      setTimeout(() => void refresh(), 0);
     },
     onError: (error) => notify(unsortedError(error), { type: "error" }),
   });

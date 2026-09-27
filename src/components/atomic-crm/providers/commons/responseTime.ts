@@ -132,7 +132,13 @@ export const dealsWaiting = ({
     byDeal.set(key, [...(byDeal.get(key) ?? []), message]);
   }
   return deals.flatMap((deal) => {
-    if (deal.archived_at || !open.has(String(deal.stage_id))) return [];
+    // An unsorted lead (stage 18) gets no response alert
+    if (
+      deal.archived_at ||
+      deal.unsorted_at ||
+      !open.has(String(deal.stage_id))
+    )
+      return [];
     const since = waitingSince(byDeal.get(String(deal.id)) ?? []);
     if (!since) return [];
     const patient = patients.find(

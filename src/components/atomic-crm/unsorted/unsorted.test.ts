@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { dealsWaiting } from "../providers/commons/responseTime";
 import type { Deal, Stage } from "../types";
 import {
   acceptStageChoices,
@@ -266,5 +267,36 @@ describe("unsortedAge", () => {
       value: 3,
     });
     expect(unsortedAge("2026-09-27T13:00:00Z", now).value).toBe(0);
+  });
+});
+
+describe("response alerts", () => {
+  it("leave the unsorted leads alone (deals_waiting)", () => {
+    const sent_at = "2026-03-12T05:00:00Z";
+    const message = (deal_id: number) => ({
+      id: deal_id,
+      deal_id,
+      direction: "in",
+      sent_at,
+      transport: "whatsapp",
+    });
+    const rows = dealsWaiting({
+      deals: [
+        { id: 1, stage_id: 1, patient_id: 1, pipeline_id: 1 },
+        {
+          id: 2,
+          stage_id: 1,
+          patient_id: 1,
+          pipeline_id: 1,
+          unsorted_at: sent_at,
+        },
+      ] as Deal[],
+      stages: [{ id: 1, kind: "open" }],
+      patients: [],
+      messages: [message(1), message(2)] as any,
+      settings: { response_hours_start: 0, response_hours_end: 24 },
+      now: new Date("2026-03-12T06:00:00Z"),
+    });
+    expect(rows.map((row) => row.id)).toEqual([1]);
   });
 });

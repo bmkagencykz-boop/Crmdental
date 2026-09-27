@@ -169,7 +169,7 @@ export const generateUnsorted = (db: Db) => {
     "instagram",
     "ig-demo-lead",
     [
-      `Добрый день, это ${known.first_name}, я у вас лечилась. Хочу записаться на чистку`,
+      `Добрый день, это ${known.first_name}. Я уже лечусь у вас, хочу записаться на чистку`,
     ],
     50,
   );

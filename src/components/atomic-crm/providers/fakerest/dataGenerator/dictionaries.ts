@@ -1,3 +1,4 @@
+import { DEFAULT_RESPONSE_SETTINGS } from "../../commons/responseTime";
 import type { Db } from "./types";
 
 /**
@@ -85,6 +86,10 @@ export const generateDictionaries = (db: Db) => {
       pipeline_move_mode: "first_stage",
       lead_distribution: "first_response",
       lead_distribution_sales_ids: [],
+      ...DEFAULT_RESPONSE_SETTINGS,
+      // Round the clock, so that the demo always shows deals waiting
+      response_hours_start: 0,
+      response_hours_end: 24,
     },
   ];
   // Same defaults as private.seed_organization, plus a checklist example

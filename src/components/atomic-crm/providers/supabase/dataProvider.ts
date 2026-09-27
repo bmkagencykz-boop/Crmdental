@@ -18,8 +18,10 @@ import type {
   SignUpData,
   Message,
   MessengerStatus,
+  NotificationPreferences,
 } from "../../types";
 import { applySearch } from "../commons/search";
+import { applyWaitingFilter, WAITING_FILTER } from "../commons/responseTime";
 import type {
   ReportFilters,
   ReportName,
@@ -37,6 +39,16 @@ const getBaseDataProvider = () =>
     supabaseClient: getSupabaseClient(),
     sortOrder: "asc,desc.nullslast" as any,
   });
+
+// Deals whose patient waits for an answer longer than the clinic's limit
+const getOverdueDealIds = async (): Promise<Identifier[]> => {
+  const { data, error } = await getSupabaseClient()
+    .from("deals_waiting")
+    .select("id")
+    .eq("overdue", true);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.id as Identifier);
+};
 
 // One row per organization, RLS returns the current one
 const getOrganizationSettings = async (): Promise<OrganizationSettings> => {
@@ -59,7 +71,14 @@ const getDataProviderWithCustomMethods = () => {
         return baseDataProvider.getList("patients_summary", params);
       }
       if (resource === "deals") {
-        return baseDataProvider.getList("deals_summary", params);
+        // Quick filter «Ждут ответа»: the overdue deals of deals_waiting
+        const waiting = params.filter?.[WAITING_FILTER]
+          ? await getOverdueDealIds()
+          : [];
+        return baseDataProvider.getList(
+          "deals_summary",
+          applyWaitingFilter(params, waiting),
+        );
       }
       if (resource === "activity_log") {
         const { data, total } = await baseDataProvider.getList(
@@ -352,6 +371,50 @@ const getDataProviderWithCustomMethods = () => {
       });
       if (error) throw error;
       return data as ReportResult[Name];
+    },
+    // --- notifications (stage 16) ---
+    async getNotificationPreferences(): Promise<NotificationPreferences> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "get_notification_preferences",
+      );
+      if (error) throw error;
+      return data as NotificationPreferences;
+    },
+    async saveNotificationPreferences(
+      preferences: Pick<
+        NotificationPreferences,
+        "kinds" | "browser_enabled" | "telegram_enabled"
+      >,
+    ): Promise<NotificationPreferences> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "save_notification_preferences",
+        {
+          kinds: preferences.kinds,
+          browser_enabled: preferences.browser_enabled,
+          telegram_enabled: preferences.telegram_enabled,
+        },
+      );
+      if (error) throw error;
+      return data as NotificationPreferences;
+    },
+    /** «Подключить Telegram»: a one-time code for t.me/<bot>?start=<code> */
+    async createTelegramLinkCode(): Promise<string> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "create_telegram_link_code",
+      );
+      if (error) throw error;
+      return data as string;
+    },
+    async unlinkTelegram(): Promise<void> {
+      const { error } = await getSupabaseClient().rpc("unlink_telegram");
+      if (error) throw error;
+    },
+    async markAllNotificationsRead(): Promise<number> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "mark_all_notifications_read",
+      );
+      if (error) throw error;
+      return data as number;
     },
     // One configuration row per organization; RLS returns the current one
     async getConfiguration(): Promise<ConfigurationContextValue> {

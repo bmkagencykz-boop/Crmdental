@@ -884,6 +884,84 @@ export const englishCrmMessages = {
       closed: "This message is already sent or cancelled",
     },
   },
+  notifications: {
+    bell: {
+      label: "Notifications",
+      unread:
+        "%{smart_count} unread notification |||| %{smart_count} unread notifications",
+      empty: "No notifications yet",
+      mark_all_read: "Mark all as read",
+      list: "Notifications list",
+    },
+    kinds: {
+      lead_assigned: "Deal assigned to you",
+      patient_message: "New message |||| %{smart_count} new messages",
+      task_overdue: "Task overdue",
+      response_overdue: "Patient is waiting for an answer",
+    },
+    kind_options: {
+      lead_assigned: "Deals assigned to me",
+      patient_message: "Patient messages",
+      task_overdue: "Overdue tasks",
+      response_overdue: "Patients waiting for an answer",
+    },
+    browser: {
+      enable: "Enable browser notifications",
+      enabled: "Browser notifications are on",
+      disable: "Turn off",
+      denied: "Notifications are blocked for this site in the browser settings",
+      unsupported: "This browser does not show notifications",
+      hint: "Shown while a CRM tab is open.",
+    },
+    preferences: {
+      title: "Notifications",
+      hint: "The bell always shows everything. Choose what also comes to the browser and to Telegram.",
+      kinds: "What to send",
+      channels: "Where",
+      in_app: "In the CRM (always on)",
+      browser: "Browser",
+      telegram: "Telegram",
+    },
+    telegram: {
+      connect: "Connect Telegram",
+      connected: "Telegram is connected",
+      connected_as: "Telegram is connected: @%{username}",
+      disconnect: "Disconnect",
+      open_bot: "Open the bot",
+      code_hint:
+        "Open the bot and press Start. Or send it the command: /start %{code}",
+      no_bot: "Send the platform notification bot the command: /start %{code}",
+      expires: "The code is valid for 30 minutes.",
+      check: "I pressed Start",
+      not_linked: "Telegram is not connected yet",
+    },
+    waiting: {
+      badge: "Waiting %{time}",
+      title: "Waiting for an answer",
+      empty: "Every patient got an answer",
+      filter: "Waiting for an answer",
+      minutes: "%{minutes} min",
+      hours: "%{hours} h %{minutes} min",
+    },
+    settings: {
+      section: "Response control",
+      hint: "How fast the clinic must answer a patient's message, and who is alerted when it does not.",
+      enabled: "Control the response time",
+      limit: "Answer within, minutes",
+      hours: "Working hours",
+      hours_hint:
+        "Minutes outside the working hours do not count (time zone of the clinic).",
+      from: "from",
+      to: "to",
+      alert: "Whom to alert when the limit is reached",
+      alert_responsible:
+        "The responsible employee (for an unassigned deal: whoever gets its messages)",
+      alert_managers: "The owner and the heads",
+      alert_employees: "Also alert",
+      escalation:
+        "At three times the limit, the owner and the heads are alerted once more.",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

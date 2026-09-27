@@ -250,6 +250,15 @@ export type OrganizationSettings = {
   lead_distribution: "off" | "round_robin" | "first_response";
   lead_distribution_sales_ids: Identifier[];
   last_distributed_sales_id?: Identifier | null;
+  /** Response-time control (stage 16) */
+  response_control_enabled: boolean;
+  response_limit_minutes: number;
+  /** Working hours of the clinic: from hours_start:00 to hours_end:00 */
+  response_hours_start: number;
+  response_hours_end: number;
+  response_alert_responsible: boolean;
+  response_alert_managers: boolean;
+  response_alert_sales_ids: Identifier[];
 };
 
 /** A task created on its own when a deal is created or enters a stage */
@@ -410,3 +419,57 @@ export interface PatientGender {
   label: string;
   icon: ComponentType<{ className?: string }>;
 }
+
+/** Employee notifications (stage 16) */
+export type NotificationKind =
+  | "lead_assigned"
+  | "patient_message"
+  | "task_overdue"
+  | "response_overdue";
+
+export type CrmNotification = {
+  organization_id?: Identifier;
+  /** The recipient */
+  sales_id: Identifier;
+  kind: NotificationKind;
+  title: string;
+  body?: string | null;
+  deal_id?: Identifier | null;
+  patient_id?: Identifier | null;
+  task_id?: Identifier | null;
+  /** patient_message: messages coalesced in this notification */
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+  read_at?: string | null;
+} & Pick<RaRecord, "id">;
+
+/** What an employee receives in the browser and in Telegram */
+export type NotificationPreferences = {
+  kinds: NotificationKind[];
+  browser_enabled: boolean;
+  telegram_enabled: boolean;
+  telegram_linked: boolean;
+  telegram_username?: string | null;
+  /** Active link code, for t.me/<bot>?start=<code> */
+  telegram_link_code?: string | null;
+  telegram_link_expires_at?: string | null;
+};
+
+/** An open deal whose patient waits for an answer (view deals_waiting) */
+export type DealWaiting = {
+  organization_id?: Identifier;
+  patient_id: Identifier;
+  pipeline_id: Identifier;
+  stage_id: Identifier;
+  sales_id?: Identifier | null;
+  name?: string | null;
+  patient_first_name?: string | null;
+  patient_last_name?: string | null;
+  patient_phone?: string | null;
+  waiting_since: string;
+  /** Working minutes waited */
+  waiting_minutes: number;
+  limit_minutes: number;
+  overdue: boolean;
+} & Pick<RaRecord, "id">;

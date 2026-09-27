@@ -22,6 +22,7 @@ import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
+import { ResponseControlSettings } from "../notifications/ResponseControlSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -30,6 +31,7 @@ const SECTIONS = [
   "lost_reasons",
   "messengers",
   "distribution",
+  "response",
   "automations",
   "automessages",
   "access",
@@ -37,11 +39,13 @@ const SECTIONS = [
 ] as const;
 type Section = (typeof SECTIONS)[number];
 
-/** Stage 6 keeps its texts in the automessages namespace */
+/** Stages 6 and 16 keep their texts in their own namespaces */
 const sectionKey = (id: Section, kind: "sections" | "hints") =>
   id === "automessages"
     ? `automessages.settings.${kind === "sections" ? "section" : "hint"}`
-    : `crm.settings.${kind}.${id}`;
+    : id === "response"
+      ? `notifications.settings.${kind === "sections" ? "section" : "hint"}`
+      : `crm.settings.${kind}.${id}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -93,6 +97,7 @@ export const SettingsPage = () => {
         ) : null}
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
+        {section === "response" ? <ResponseControlSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "automessages" ? <AutomessagesSettings /> : null}
         {section === "access" ? <AccessSettings /> : null}

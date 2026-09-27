@@ -174,3 +174,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.automessages_dispatch]
 verify_jwt = false
+[functions.notifications_dispatch]
+verify_jwt = false
+[functions.notify_telegram_webhook]
+verify_jwt = false

@@ -2,6 +2,7 @@ import { DashboardActivityLog } from "./DashboardActivityLog";
 import { DashboardSummary } from "./DashboardSummary";
 import { HotPatients } from "./HotPatients";
 import { TasksList } from "./TasksList";
+import { WaitingDeals } from "../notifications/WaitingDeals";
 
 export const Dashboard = () => (
   <>
@@ -13,7 +14,8 @@ export const Dashboard = () => (
       <div className="md:col-span-5">
         <DashboardActivityLog />
       </div>
-      <div className="md:col-span-3">
+      <div className="flex flex-col gap-8 md:col-span-3">
+        <WaitingDeals />
         <HotPatients />
       </div>
     </div>

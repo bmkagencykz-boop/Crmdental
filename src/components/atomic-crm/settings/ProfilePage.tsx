@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 
 import ImageEditorField from "../misc/ImageEditorField";
+import { NotificationPreferencesCard } from "../notifications/NotificationPreferencesCard";
 import type { CrmDataProvider } from "../providers/types";
 import { getSalesErrorNotification } from "../sales/salesErrorNotification";
 import type { Sale, SalesFormData } from "../types";
@@ -87,6 +88,9 @@ export const ProfilePage = () => {
       <Form onSubmit={handleOnSubmit} record={data}>
         <ProfileForm isEditMode={isEditMode} setEditMode={setEditMode} />
       </Form>
+      <div className="mt-4">
+        <NotificationPreferencesCard />
+      </div>
     </div>
   );
 };

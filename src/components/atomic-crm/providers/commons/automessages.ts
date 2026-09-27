@@ -58,7 +58,7 @@ const MONTHS = [
 ];
 
 /** Wall clock of a moment in a time zone */
-const wallClock = (date: Date, timeZone: string) => {
+export const wallClock = (date: Date, timeZone: string) => {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone,
@@ -97,7 +97,7 @@ export const formatVisitDate = (
 };
 
 /** The moment a wall clock time of a time zone happens */
-const fromWallClock = (
+export const fromWallClock = (
   year: number,
   month: number,
   day: number,

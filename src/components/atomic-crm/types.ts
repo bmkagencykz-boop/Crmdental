@@ -174,7 +174,12 @@ export type Deal = {
   last_message_text?: string | null;
 } & Pick<RaRecord, "id">;
 
-export type MessengerTransport = "whatsapp" | "instagram" | "telegram";
+/** telegram_bot: the clinic's own Telegram bot, next to Wazzup24's Telegram */
+export type MessengerTransport =
+  | "whatsapp"
+  | "instagram"
+  | "telegram"
+  | "telegram_bot";
 
 /** A message of a deal, received or sent through Wazzup24 */
 export type Message = {
@@ -207,6 +212,21 @@ export type MessengerStatus = {
   connected: boolean;
   connected_at: string | null;
   last_error: string | null;
+};
+
+/** The clinic's own Telegram bot (public.telegram_bot_status) */
+export type TelegramBotStatus = {
+  connected: boolean;
+  username: string | null;
+  name: string | null;
+  connected_at: string | null;
+  last_error: string | null;
+};
+
+/** Address of the clinic's lead webhook (website, Tilda, 2GIS) */
+export type LeadWebhook = {
+  token: string;
+  url: string;
 };
 
 export type DealPayment = {

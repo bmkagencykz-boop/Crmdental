@@ -680,6 +680,66 @@ export const englishCrmMessages = {
       webhook_failed: "The key is saved, but Wazzup24 refused the webhook",
     },
   },
+  leads: {
+    section: "Website requests",
+    hint: "Forms of your website, Tilda and 2GIS create the patient and the request on the board on their own, with a note holding the form.",
+    url: "Address for requests",
+    url_help:
+      "Keep it for your website only: anyone who knows the address can send requests. If it leaked, create a new one.",
+    copy: "Copy",
+    copy_code: "Copy code",
+    copied: "Copied",
+    regenerate: "New address",
+    regenerate_title: "Create a new address?",
+    regenerate_confirm:
+      "Forms using the current address will stop sending requests until you paste the new one.",
+    regenerated: "New address created: update it on the website",
+    load_error: "Only the owner and the head can see the address for requests",
+    test: "Send a test request",
+    test_sent: "Test request received: see the board",
+    test_error: "The test request did not go through",
+    fields_title: "Fields",
+    fields_help:
+      "POST with a JSON or form body: phone (required), name, source (website, 2gis or the name of a source), service (the name of a service), comment, utm_source, utm_medium, utm_campaign… Other fields are added to the comment. The same form sent twice within 5 minutes is stored once.",
+    snippet_title: "Form for your website",
+    snippet_help:
+      "Paste this code where the form should be. It sends the name, the phone, the comment and the UTM tags of the page.",
+    snippet: {
+      name: "Your name",
+      phone: "Phone",
+      comment: "Comment",
+      submit: "Book a visit",
+      thanks: "Thank you! We will call you back shortly.",
+      error: "The request was not sent. Please call us.",
+    },
+    tilda_title: "Tilda",
+    tilda_steps:
+      "Site settings → Forms → Webhook: paste the address for requests and save.\nIn the form block: Content → Services for receiving data → tick Webhook.\nName the fields Name, Phone and Comment (Tilda does so by default).\nTilda checks the address with a test request: it is accepted without creating a deal.",
+    twogis_title: "2GIS",
+    twogis_steps:
+      'In the 2GIS business account, add your website to the clinic card with ?utm_source=2gis at the end of the link: requests from that page get the tag.\nFor 2GIS forms and booking services that can call a webhook, give them the address for requests and the field source = "2gis": the request comes with the 2GIS source.\nCalls from 2GIS are logged by hand with the 2GIS source.',
+  },
+  telegram: {
+    transport: "Telegram bot",
+    title: "Telegram bot",
+    hint: "Your own bot from @BotFather: patients write to it, the CRM creates the request and you answer from the deal card. It works next to the Telegram of Wazzup24.",
+    token: "Bot token",
+    token_placeholder: "123456789:AA…",
+    token_replace: "Paste a new token to replace the bot",
+    token_help:
+      "In Telegram, open @BotFather → /newbot (or /mybots → API Token) and copy the token. It is stored on the server and not shown again.",
+    connect: "Connect bot",
+    connected: "Telegram bot connected",
+    connect_error: "The bot could not be connected",
+    status_connected: "Bot connected: %{name}",
+    status_disconnected: "Bot not connected",
+    disconnect: "Disconnect bot",
+    errors: {
+      invalid_bot_token: "Telegram did not accept this bot token",
+      telegram_webhook_failed:
+        "The bot is saved, but Telegram refused the webhook address",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

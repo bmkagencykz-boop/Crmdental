@@ -19,6 +19,7 @@ import { AccessSettings } from "./AccessSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
+import { LeadSettings } from "../leads/LeadSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 
@@ -28,12 +29,19 @@ const SECTIONS = [
   "sources",
   "lost_reasons",
   "messengers",
+  "leads",
   "distribution",
   "automations",
   "access",
   "clinic",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+
+// Website requests (stage 8) keep their texts in the "leads" namespace
+const sectionKey = (id: Section) =>
+  id === "leads" ? "leads.section" : `crm.settings.sections.${id}`;
+const hintKey = (id: Section) =>
+  id === "leads" ? "leads.hint" : `crm.settings.hints.${id}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -65,13 +73,13 @@ export const SettingsPage = () => {
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
-            {translate(`crm.settings.sections.${id}`)}
+            {translate(sectionKey(id))}
           </button>
         ))}
       </nav>
       <Panel
-        title={translate(`crm.settings.sections.${section}`)}
-        hint={translate(`crm.settings.hints.${section}`)}
+        title={translate(sectionKey(section))}
+        hint={translate(hintKey(section))}
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
         {section === "services" ? (
@@ -84,6 +92,7 @@ export const SettingsPage = () => {
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
         {section === "messengers" ? <MessengerSettings /> : null}
+        {section === "leads" ? <LeadSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "access" ? <AccessSettings /> : null}

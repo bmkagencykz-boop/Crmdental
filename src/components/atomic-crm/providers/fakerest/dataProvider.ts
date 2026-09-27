@@ -26,7 +26,15 @@ import type {
   DealChecklistCheck,
   StageChecklistItem,
   TaskRule,
+  LeadSource,
+  LeadWebhook,
+  TelegramBotStatus,
 } from "../../types";
+import {
+  leadNoteText,
+  leadWebhookUrl,
+  TEST_LEAD,
+} from "../../leads/leadWebhook";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
 import {
@@ -74,6 +82,10 @@ const DEAL_VIEW_COLUMNS = [
   "last_message_text",
 ];
 
+// Demo lead webhook and Telegram bot (nothing is really reachable)
+const DEMO_FUNCTIONS_URL = "https://demo.dentalcrm.kz/functions/v1";
+const DEMO_BOT = { username: "zhemchug_dental_bot", name: "Жемчуг Дентал" };
+
 const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>
   Object.fromEntries(
     Object.entries(data).filter(([key]) => !keys.includes(key)),
@@ -118,6 +130,8 @@ export const createDataProvider = ({
 }: CreateFakeRestDataProviderOptions = {}): CrmDataProvider => {
   const baseDataProvider = fakeRestDataProvider(db, !silent, latency);
   let messengerConnected = true;
+  let telegramBotConnected = true;
+  let leadToken = "demo-token";
   const getIdentity = async () =>
     authProvider?.getIdentity?.() ?? defaultAuthProvider.getIdentity?.();
   const all = async <T>(resource: string) =>
@@ -390,6 +404,90 @@ export const createDataProvider = ({
     },
     disconnectMessenger: async (): Promise<void> => {
       messengerConnected = false;
+    },
+    // Demo: a made-up address; the test request runs public.ingest_lead's rules
+    getLeadWebhook: async (): Promise<LeadWebhook> => ({
+      token: leadToken,
+      url: leadWebhookUrl(DEMO_FUNCTIONS_URL, leadToken),
+    }),
+    regenerateLeadWebhook: async (): Promise<LeadWebhook> => {
+      leadToken = `demo-${Math.random().toString(36).slice(2, 12)}`;
+      return {
+        token: leadToken,
+        url: leadWebhookUrl(DEMO_FUNCTIONS_URL, leadToken),
+      };
+    },
+    sendTestLead: async (_url: string): Promise<void> => {
+      const phone = normalizePhone(TEST_LEAD.phone)!;
+      const [patients, deals, stages, sources] = await Promise.all([
+        all<Patient>("patients"),
+        all<Deal>("deals"),
+        all<Stage>("stages"),
+        all<LeadSource>("lead_sources"),
+      ]);
+      const source = sources.find((s) => s.code === TEST_LEAD.source);
+      let patient = patients.find((p) => p.phones?.includes(phone));
+      if (!patient) {
+        ({ data: patient } = await dataProvider.create<Patient>("patients", {
+          data: {
+            first_name: TEST_LEAD.name,
+            phone_jsonb: [{ number: phone, type: "mobile" }],
+            source_id: source?.id ?? null,
+          },
+        }));
+      }
+      const open = new Set(
+        stages.filter((s) => s.kind === "open").map((s) => s.id),
+      );
+      let deal = deals
+        .filter(
+          (d) =>
+            d.patient_id === patient!.id &&
+            open.has(d.stage_id) &&
+            !d.archived_at,
+        )
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+      const repeat = !!deal;
+      if (!deal) {
+        ({ data: deal } = await dataProvider.create<Deal>("deals", {
+          data: {
+            patient_id: patient.id,
+            source_id: source?.id ?? null,
+            sales_id: null,
+          },
+        }));
+      }
+      await baseDataProvider.create("deal_notes", {
+        data: {
+          deal_id: deal.id,
+          type: "lead",
+          text: leadNoteText({
+            repeat,
+            sourceName: source?.name ?? "Сайт",
+            name: TEST_LEAD.name,
+            phone,
+            comment: TEST_LEAD.comment,
+          }),
+          date: new Date().toISOString(),
+          sales_id: null,
+        },
+      });
+    },
+    getTelegramBotStatus: async (): Promise<TelegramBotStatus | null> =>
+      telegramBotConnected
+        ? {
+            connected: true,
+            username: DEMO_BOT.username,
+            name: DEMO_BOT.name,
+            connected_at: new Date().toISOString(),
+            last_error: null,
+          }
+        : null,
+    connectTelegramBot: async (_botToken: string): Promise<void> => {
+      telegramBotConnected = true;
+    },
+    disconnectTelegramBot: async (): Promise<void> => {
+      telegramBotConnected = false;
     },
     getOrganizationSettings: async (): Promise<OrganizationSettings> => {
       const [settings] = await all<OrganizationSettings & { id: number }>(

@@ -18,7 +18,14 @@ import type {
   SignUpData,
   Message,
   MessengerStatus,
+  LeadWebhook,
+  TelegramBotStatus,
 } from "../../types";
+import {
+  functionsBaseUrl,
+  leadWebhookUrl,
+  TEST_LEAD,
+} from "../../leads/leadWebhook";
 import { applySearch } from "../commons/search";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
@@ -32,6 +39,18 @@ const getBaseDataProvider = () =>
     supabaseClient: getSupabaseClient(),
     sortOrder: "asc,desc.nullslast" as any,
   });
+
+// The public address of the edge functions, given to websites and Tilda
+const toLeadWebhook = (token: string): LeadWebhook => ({
+  token,
+  url: leadWebhookUrl(
+    functionsBaseUrl(
+      import.meta.env.VITE_SUPABASE_URL ?? "",
+      import.meta.env.VITE_WEBHOOK_BASE_URL,
+    ),
+    token,
+  ),
+});
 
 // One row per organization, RLS returns the current one
 const getOrganizationSettings = async (): Promise<OrganizationSettings> => {
@@ -305,6 +324,60 @@ const getDataProviderWithCustomMethods = () => {
       );
       if (error) throw error;
     },
+    /** Address of the lead webhook (owner and head) */
+    async getLeadWebhook(): Promise<LeadWebhook> {
+      const { data, error } =
+        await getSupabaseClient().rpc("lead_webhook_token");
+      if (error) throw error;
+      return toLeadWebhook(data as string);
+    },
+    /** A new token: forms using the old address are refused */
+    async regenerateLeadWebhook(): Promise<LeadWebhook> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "regenerate_lead_webhook_token",
+      );
+      if (error) throw error;
+      return toLeadWebhook(data as string);
+    },
+    /** Posts a test request to the webhook, like a website form */
+    async sendTestLead(url: string): Promise<void> {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(TEST_LEAD),
+      }).catch(() => null);
+      if (!response?.ok) throw new Error("leads.test_error");
+    },
+    async getTelegramBotStatus(): Promise<TelegramBotStatus | null> {
+      const { data, error } = await getSupabaseClient().rpc(
+        "telegram_bot_status",
+      );
+      if (error) throw error;
+      return ((data as TelegramBotStatus[]) ?? [])[0] ?? null;
+    },
+    /** Checks the BotFather token and registers the bot's webhook */
+    async connectTelegramBot(botToken: string): Promise<void> {
+      const { error } = await getSupabaseClient().functions.invoke(
+        "telegram_connect",
+        { method: "POST", body: { bot_token: botToken } },
+      );
+      if (error) {
+        throw new Error(
+          await functionErrorMessage(
+            error,
+            "telegram.connect_error",
+            "telegram.errors",
+          ),
+        );
+      }
+    },
+    async disconnectTelegramBot(): Promise<void> {
+      const { error } = await getSupabaseClient().functions.invoke(
+        "telegram_connect",
+        { method: "POST", body: { disconnect: true } },
+      );
+      if (error) throw error;
+    },
     async updateOrganizationSettings(
       settings: Partial<Omit<OrganizationSettings, "organization_id">>,
     ): Promise<OrganizationSettings> {
@@ -540,10 +613,14 @@ const uploadToBucket = async (fi: RAFile) => {
 };
 
 /** Error code of an edge function turned into a translatable message */
-const functionErrorMessage = async (error: any, fallback: string) => {
+const functionErrorMessage = async (
+  error: any,
+  fallback: string,
+  namespace = "crm.errors",
+) => {
   try {
     const body = await error?.context?.json();
-    if (body?.code) return `crm.errors.${body.code}`;
+    if (body?.code) return `${namespace}.${body.code}`;
   } catch {
     // not a JSON body
   }

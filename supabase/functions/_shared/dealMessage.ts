@@ -1,5 +1,12 @@
 import { supabaseAdmin } from "./supabaseAdmin.ts";
 import { chooseRoute, WAZZUP_API } from "./messenger.ts";
+import {
+  sendMessageBody,
+  TELEGRAM_BOT,
+  telegramMethodUrl,
+  toSendResult,
+  usableChannels,
+} from "./telegram.ts";
 
 export type DealMessageResult =
   | { ok: true; message: Record<string, unknown> }
@@ -10,8 +17,8 @@ export type DealMessageResult =
     };
 
 /**
- * Sends a text to the patient of a deal through Wazzup24 and stores it as an
- * outgoing message. The chat is the one the patient last wrote from, else a
+ * Sends a text to the patient of a deal through Wazzup24 or the clinic's
+ * Telegram bot, and stores it as an outgoing message. The chat is the one the patient last wrote from, else a
  * known chat, else WhatsApp on the patient's phone (chooseRoute). Used by
  * messenger_send (an employee) and automessages_dispatch (the system).
  * The caller has checked that the deal may be written to.
@@ -31,11 +38,16 @@ export const sendDealMessage = async ({
   salesId?: number | null;
   automessageId?: number | null;
 }): Promise<DealMessageResult> => {
-  const [integration, lastMessage, patientChats, patient, channels] =
+  const [integration, telegramBot, lastMessage, patientChats, patient, all] =
     await Promise.all([
       supabaseAdmin
         .from("messenger_integrations")
         .select("api_key")
+        .eq("organization_id", organizationId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("telegram_bots")
+        .select("bot_token")
         .eq("organization_id", organizationId)
         .maybeSingle(),
       supabaseAdmin
@@ -64,7 +76,15 @@ export const sendDealMessage = async ({
     ]);
 
   const apiKey = integration.data?.api_key;
-  if (!apiKey) return { ok: false, code: "not_connected" };
+  const botToken = telegramBot.data?.bot_token;
+  if (!apiKey && !botToken) return { ok: false, code: "not_connected" };
+  // Only the channels of the connected providers can be written to
+  const channels = {
+    data: usableChannels(all.data ?? [], {
+      wazzup: !!apiKey,
+      telegramBot: !!botToken,
+    }),
+  };
   const route = chooseRoute({
     lastMessage: lastMessage.data
       ? {
@@ -84,25 +104,56 @@ export const sendDealMessage = async ({
   if (!route) return { ok: false, code: "no_route" };
 
   const crmMessageId = crypto.randomUUID();
-  const sent = await fetch(`${WAZZUP_API}/message`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      ...route,
-      text,
-      ...(salesId != null ? { crmUserId: String(salesId) } : {}),
-      crmMessageId,
-    }),
-  });
-  if (!sent.ok) {
-    const detail = await sent.text();
-    console.error("Wazzup24 refused the message", sent.status, detail);
-    return { ok: false, code: "send_failed", detail };
+  let delivery: {
+    status: "sent" | "error";
+    external_id: string | null;
+    error: string | null;
+  };
+  if (route.chatType === TELEGRAM_BOT) {
+    // The clinic's own bot: Bot API sendMessage
+    const sent = await fetch(telegramMethodUrl(botToken!, "sendMessage"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sendMessageBody(route.chatId, text)),
+    }).catch(() => null);
+    delivery = toSendResult(
+      !!sent?.ok,
+      sent ? await sent.json().catch(() => null) : null,
+    );
+    if (delivery.status === "error") {
+      console.error("Telegram refused the message", delivery.error);
+      // An automatic message is retried/failed by its dispatcher instead of
+      // being stored as an undelivered message
+      if (automessageId != null) {
+        return {
+          ok: false,
+          code: "send_failed",
+          detail: delivery.error ?? undefined,
+        };
+      }
+    }
+  } else {
+    const sent = await fetch(`${WAZZUP_API}/message`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...route,
+        text,
+        ...(salesId != null ? { crmUserId: String(salesId) } : {}),
+        crmMessageId,
+      }),
+    });
+    if (!sent.ok) {
+      const detail = await sent.text();
+      console.error("Wazzup24 refused the message", sent.status, detail);
+      return { ok: false, code: "send_failed", detail };
+    }
+    const { messageId } = await sent.json();
+    delivery = { status: "sent", external_id: messageId, error: null };
   }
-  const { messageId } = await sent.json();
 
   const channel = (channels.data ?? []).find(
     (c) => c.external_id === route.channelId,
@@ -120,8 +171,9 @@ export const sendDealMessage = async ({
       direction: "out",
       sales_id: salesId,
       text,
-      status: "sent",
-      external_id: messageId ?? crmMessageId,
+      status: delivery.status,
+      error: delivery.error,
+      external_id: delivery.external_id ?? crmMessageId,
       automessage_id: automessageId,
     })
     .select()

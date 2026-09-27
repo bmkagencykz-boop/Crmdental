@@ -3,6 +3,7 @@ import { useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 
 import { useGetSalesName } from "../sales/useGetSalesName";
+import { transportLabelKey } from "./transportLabel";
 import type { Message } from "../types";
 
 export const formatMessageTime = (value: string) =>
@@ -46,9 +47,7 @@ export const MessageBubble = ({ message }: { message: Message }) => {
           </a>
         ) : null}
         <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
-          <span>
-            {translate(`crm.messages.transport.${message.transport}`)}
-          </span>
+          <span>{translate(transportLabelKey(message.transport))}</span>
           {outgoing ? (
             <span>
               ·{" "}

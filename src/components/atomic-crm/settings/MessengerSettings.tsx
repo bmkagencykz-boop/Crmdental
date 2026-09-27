@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 
 import type { CrmDataProvider } from "../providers/types";
 import type { MessengerChannel } from "../types";
+import { transportLabelKey } from "../messages/transportLabel";
+import { TelegramBotSettings } from "./TelegramBotSettings";
 
 /**
  * Wazzup24 connection (spec §8): the owner pastes the API key from the
@@ -113,7 +115,7 @@ export const MessengerSettings = () => {
                 className="flex items-center gap-3 rounded-lg bg-card px-4 py-2.5 text-sm"
               >
                 <span className="font-medium">
-                  {translate(`crm.messages.transport.${channel.transport}`)}
+                  {translate(transportLabelKey(channel.transport))}
                 </span>
                 <span className="text-muted-foreground">
                   {channel.name ?? channel.external_id}
@@ -135,6 +137,8 @@ export const MessengerSettings = () => {
           </Button>
         </div>
       ) : null}
+
+      <TelegramBotSettings onChange={() => refetch()} />
     </div>
   );
 };

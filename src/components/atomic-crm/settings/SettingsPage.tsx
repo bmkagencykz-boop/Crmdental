@@ -21,6 +21,7 @@ import { AutomessagesSettings } from "./AutomessagesSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
+import { LeadSettings } from "../leads/LeadSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
@@ -31,6 +32,7 @@ const SECTIONS = [
   "sources",
   "lost_reasons",
   "messengers",
+  "leads",
   "distribution",
   "automations",
   "automessages",
@@ -45,13 +47,15 @@ const EVERYONE_SECTIONS: Section[] = ["quick_replies"];
 const isSection = (value: string | null): value is Section =>
   SECTIONS.includes(value as Section);
 
-/** Quick replies and stage 6 keep their texts in their own namespaces */
+/** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
   section === "quick_replies"
     ? `quick_replies.${kind}`
     : section === "automessages"
       ? `automessages.settings.${kind === "title" ? "section" : "hint"}`
-      : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+      : section === "leads"
+        ? `leads.${kind === "title" ? "section" : "hint"}`
+        : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -117,6 +121,7 @@ export const SettingsPage = () => {
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
         {section === "messengers" ? <MessengerSettings /> : null}
+        {section === "leads" ? <LeadSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "automessages" ? <AutomessagesSettings /> : null}

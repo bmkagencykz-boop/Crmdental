@@ -10,7 +10,7 @@ import { sendDealMessage } from "../_shared/dealMessage.ts";
 const ERRORS = {
   not_connected: [409, "Messengers are not connected"],
   no_route: [409, "No chat to write to"],
-  send_failed: [502, "Wazzup24 refused the message"],
+  send_failed: [502, "The messenger refused the message"],
   store_failed: [500, "Internal Server Error"],
 } as const;
 
@@ -18,7 +18,8 @@ const ERRORS = {
  * Sends a message from the deal card or the inbox. Body:
  * { deal_id, text, automessage_id? }. The deal is read with the caller's
  * rights (RLS: a manager can only write in the deals they see), the message
- * goes through Wazzup24 and is stored as outgoing. With automessage_id (the
+ * goes through Wazzup24 or the clinic's Telegram bot and is stored as
+ * outgoing. With automessage_id (the
  * «Отправить» button of a "show to the employee first" task) the text may
  * have been edited; the automessage is marked sent and its task done.
  */

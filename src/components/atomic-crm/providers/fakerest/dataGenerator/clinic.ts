@@ -334,7 +334,7 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       sales_id: patient.sales_id,
     }));
 
-  // Conversations: open deals of the last weeks talk in WhatsApp or Instagram,
+  // Conversations: open deals of the last weeks talk in WhatsApp, Instagram or the bot,
   // the most recent ones still unread
   db.messenger_channels = [
     {
@@ -349,6 +349,14 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       external_id: "demo-ig",
       transport: "instagram",
       name: "zhemchug.dental",
+      state: "active",
+    },
+    // The clinic's own Telegram bot (stage 8)
+    {
+      id: 3,
+      external_id: "tgbot:demo",
+      transport: "telegram_bot",
+      name: "@zhemchug_dental_bot",
       state: "active",
     },
   ];
@@ -387,6 +395,7 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
     .flatMap((deal, index) => {
       const patient = db.patients.find((p) => p.id === deal.patient_id)!;
       const instagram = index % 4 === 3;
+      const bot = index % 8 === 5;
       const lines = dialogs[index % dialogs.length];
       const start = Math.max(
         new Date(deal.created_at).getTime(),
@@ -405,11 +414,17 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
           id: messageId++,
           patient_id: patient.id,
           deal_id: deal.id,
-          channel_id: instagram ? 2 : 1,
-          transport: instagram ? ("instagram" as const) : ("whatsapp" as const),
+          channel_id: instagram ? 2 : bot ? 3 : 1,
+          transport: instagram
+            ? ("instagram" as const)
+            : bot
+              ? ("telegram_bot" as const)
+              : ("whatsapp" as const),
           chat_id: instagram
             ? `ig-${patient.id}`
-            : (patient.phones?.[0] ?? "").replace(/\D/g, ""),
+            : bot
+              ? String(700000 + Number(patient.id))
+              : (patient.phones?.[0] ?? "").replace(/\D/g, ""),
           direction: incoming ? ("in" as const) : ("out" as const),
           sales_id: incoming ? null : deal.sales_id,
           text,

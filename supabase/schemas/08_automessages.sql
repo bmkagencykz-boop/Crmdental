@@ -380,6 +380,9 @@ begin
     if not exists (
       select 1 from public.messenger_integrations i
       where i.organization_id = job.organization_id and i.api_key is not null
+    ) and not exists (
+      select 1 from public.telegram_bots b
+      where b.organization_id = job.organization_id and b.bot_token is not null
     ) then
       update public.automessages a
       set status = 'failed', text = rendered, processed_at = now(),

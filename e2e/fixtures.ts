@@ -267,6 +267,46 @@ async function receiveMessage(token: string, message: Record<string, unknown>) {
   return data as { patient_id: number; deal_id: number };
 }
 
+/** The clinic's lead webhook token (what lead_webhook_token() creates) */
+async function connectLeads() {
+  const token = `lead-token-${requireTestOrganization()}`;
+  const { error } = await adminSupabase.from("lead_integrations").upsert({
+    organization_id: requireTestOrganization(),
+    token,
+  });
+  if (error) throw new Error(`Failed to connect leads: ${error.message}`);
+  return token;
+}
+
+/** What leads_webhook does with a website / Tilda / 2GIS form */
+async function receiveLead(token: string, lead: Record<string, unknown>) {
+  const { data, error } = await adminSupabase.rpc("ingest_lead", {
+    token,
+    lead,
+  });
+  if (error) throw new Error(`Failed to ingest lead: ${error.message}`);
+  return data as { patient_id: number; deal_id: number; note_id: number };
+}
+
+/** What telegram_connect stores for the clinic's own Telegram bot */
+async function connectTelegramBot(username = "smile_clinic_bot") {
+  const organizationId = requireTestOrganization();
+  const { data, error } = await adminSupabase
+    .from("telegram_bots")
+    .upsert({
+      organization_id: organizationId,
+      bot_token: "123456789:test-token",
+      bot_id: 123456789,
+      username,
+      name: "Smile",
+      connected_at: new Date().toISOString(),
+    })
+    .select("webhook_token, secret_token")
+    .single();
+  if (error) throw new Error(`Failed to connect the bot: ${error.message}`);
+  return data as { webhook_token: string; secret_token: string };
+}
+
 const getMenuMethod = ({ page }: { page: Page; isMobile: boolean }) => ({
   goToDashboard: async () => {
     await page.getByRole("link", { name: "Dashboard", exact: true }).click();
@@ -322,6 +362,9 @@ export const test = base.extend<{
   connectMessenger: typeof connectMessenger;
   disableTaskRules: typeof disableTaskRules;
   receiveMessage: typeof receiveMessage;
+  connectLeads: typeof connectLeads;
+  receiveLead: typeof receiveLead;
+  connectTelegramBot: typeof connectTelegramBot;
   createNotes: typeof createNotes;
   menu: ReturnType<typeof getMenuMethod>;
   login: (email: string, password?: string) => Promise<void>;
@@ -361,6 +404,18 @@ export const test = base.extend<{
   // eslint-disable-next-line no-empty-pattern
   receiveMessage: async ({}, cb) => {
     await cb(receiveMessage);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  connectLeads: async ({}, cb) => {
+    await cb(connectLeads);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  receiveLead: async ({}, cb) => {
+    await cb(receiveLead);
+  },
+  // eslint-disable-next-line no-empty-pattern
+  connectTelegramBot: async ({}, cb) => {
+    await cb(connectTelegramBot);
   },
   // eslint-disable-next-line no-empty-pattern
   createDeal: async ({}, cb) => {

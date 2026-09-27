@@ -119,6 +119,8 @@ export type Stage = {
   position: number;
   color: string;
   kind: StageKind;
+  /** What the employee says at this stage (shown on the deal page) */
+  script?: string | null;
 } & Pick<RaRecord, "id">;
 
 /** A clinic dictionary entry: services, lost reasons */
@@ -194,6 +196,8 @@ export type Message = {
   external_id?: string | null;
   sent_at: string;
   read_at?: string | null;
+  /** Sent by an automatic message rule */
+  automessage_id?: Identifier | null;
 } & Pick<RaRecord, "id">;
 
 export type MessengerChannel = {
@@ -259,6 +263,47 @@ export type TaskRule = {
   position: number;
 } & Pick<RaRecord, "id">;
 
+/** Text of the clinic with {имя}, {услуга}, {дата_визита}, {клиника} */
+export type MessageTemplate = {
+  name: string;
+  body: string;
+  position: number;
+} & Pick<RaRecord, "id">;
+
+/** Stage X -> template Y, after entering the stage or before the visit */
+export type AutomessageRule = {
+  stage_id: Identifier;
+  template_id: Identifier;
+  timing: "after_stage" | "before_visit";
+  offset_minutes: number;
+  /** auto: sent on its own; confirm: a task shows it to the employee first */
+  mode: "auto" | "confirm";
+  is_active: boolean;
+  position: number;
+} & Pick<RaRecord, "id">;
+
+export type AutomessageStatus =
+  | "pending"
+  | "sending"
+  | "awaiting"
+  | "sent"
+  | "cancelled"
+  | "failed";
+
+/** A queued automatic message of a deal */
+export type Automessage = {
+  deal_id: Identifier;
+  rule_id?: Identifier | null;
+  stage_id: Identifier;
+  timing: AutomessageRule["timing"];
+  send_at: string;
+  status: AutomessageStatus;
+  text?: string | null;
+  error?: string | null;
+  processed_at?: string | null;
+  created_at: string;
+} & Pick<RaRecord, "id">;
+
 export type StageChecklistItem = {
   stage_id: Identifier;
   text: string;
@@ -299,6 +344,8 @@ export type Task = {
   done_date?: string | null;
   sales_id?: Identifier;
   created_at?: string;
+  /** "Show to the employee first" automatic message: the task sends it */
+  automessage_id?: Identifier | null;
 } & Pick<RaRecord, "id">;
 
 export type ActivityPatientCreated = {

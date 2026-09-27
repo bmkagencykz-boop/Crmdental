@@ -26,9 +26,20 @@ import type {
   DealChecklistCheck,
   StageChecklistItem,
   TaskRule,
+  Automessage,
+  AutomessageRule,
+  MessageTemplate,
+  Service,
 } from "../../types";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
+import {
+  automessageValues,
+  isAutomessageOpen,
+  renderTemplate,
+  scheduleAutomessages,
+} from "../commons/automessages";
+import { DEMO_CLINIC_NAME } from "./dataGenerator/automessages";
 import {
   applyPipelineMove,
   checkDealStageChange,
@@ -146,6 +157,216 @@ export const createDataProvider = ({
     }
   };
 
+  // --- automatic messages (same as supabase/schemas/08_automessages.sql) --
+
+  // Same as private.schedule_automessages
+  const scheduleDealAutomessages = async (
+    deal: Deal,
+    onlyTiming?: AutomessageRule["timing"],
+  ) => {
+    const jobs = scheduleAutomessages({
+      deal,
+      rules: await all<AutomessageRule>("automessage_rules"),
+      onlyTiming,
+    });
+    for (const job of jobs) {
+      await baseDataProvider.create("automessages", { data: job });
+    }
+  };
+
+  // Same as private.cancel_automessages (and the task of a waiting message)
+  const cancelDealAutomessages = async (
+    dealId: Identifier,
+    statuses: Automessage["status"][],
+    reason: string,
+    onlyTiming?: AutomessageRule["timing"],
+  ) => {
+    const rows = (await all<Automessage>("automessages")).filter(
+      (row) =>
+        row.deal_id === dealId &&
+        statuses.includes(row.status) &&
+        (!onlyTiming || row.timing === onlyTiming),
+    );
+    for (const row of rows) {
+      await baseDataProvider.update("automessages", {
+        id: row.id,
+        data: {
+          status: "cancelled",
+          error: reason,
+          processed_at: new Date().toISOString(),
+        },
+        previousData: row,
+      });
+      if (row.status === "awaiting") await dropAutomessageTasks(row.id);
+    }
+  };
+
+  const dropAutomessageTasks = async (automessageId: Identifier) => {
+    const tasks = (await all<Task>("tasks")).filter(
+      (task) => task.automessage_id === automessageId && !task.done_date,
+    );
+    for (const task of tasks) {
+      await baseDataProvider.delete("tasks", {
+        id: task.id,
+        previousData: task,
+      });
+    }
+  };
+
+  const renderAutomessage = async (deal: Deal, template: MessageTemplate) => {
+    const [patient, services, configuration] = await Promise.all([
+      baseDataProvider
+        .getOne<Patient>("patients", { id: deal.patient_id })
+        .then((r) => r.data)
+        .catch(() => undefined),
+      all<Service>("services"),
+      baseDataProvider
+        .getOne("configuration", { id: 1 })
+        .then((r) => r.data)
+        .catch(() => undefined),
+    ]);
+    return renderTemplate(
+      template.body,
+      automessageValues({
+        deal,
+        patientFirstName: patient?.first_name,
+        serviceName: services.find((s) => s.id === deal.service_id)?.name,
+        clinicName: configuration?.config?.title || DEMO_CLINIC_NAME,
+      }),
+    );
+  };
+
+  /**
+   * The dispatcher of the demo (public.claim_automessages + the edge
+   * function): due messages are "sent" (stored) or become a task, when a list
+   * showing them is read.
+   */
+  let dispatching: Promise<void> | null = null;
+  const dispatchDueAutomessages = () => {
+    dispatching ??= (async () => {
+      const now = new Date().toISOString();
+      const due = (await all<Automessage>("automessages")).filter(
+        (row) => row.status === "pending" && row.send_at <= now,
+      );
+      if (!due.length) return;
+      const [deals, rules, templates] = await Promise.all([
+        all<Deal>("deals"),
+        all<AutomessageRule>("automessage_rules"),
+        all<MessageTemplate>("message_templates"),
+      ]);
+      for (const row of due) {
+        const deal = deals.find((d) => d.id === row.deal_id);
+        const rule = rules.find((r) => r.id === row.rule_id);
+        const template = templates.find((t) => t.id === rule?.template_id);
+        const close = (data: Partial<Automessage>) =>
+          baseDataProvider.update("automessages", {
+            id: row.id,
+            data: { processed_at: new Date().toISOString(), ...data },
+            previousData: row,
+          });
+        if (!deal || deal.stage_id !== row.stage_id || deal.archived_at) {
+          await close({ status: "cancelled", error: "Сделка ушла с этапа" });
+          continue;
+        }
+        if (!rule?.is_active || !template) {
+          await close({
+            status: "cancelled",
+            error: "Правило выключено или удалено",
+          });
+          continue;
+        }
+        const text = await renderAutomessage(deal, template);
+        if (rule.mode === "confirm") {
+          await baseDataProvider.create("tasks", {
+            data: {
+              deal_id: deal.id,
+              type: "message",
+              text,
+              due_date: new Date().toISOString(),
+              done_date: null,
+              sales_id: deal.sales_id ?? undefined,
+              automessage_id: row.id,
+            },
+          });
+          await close({ status: "awaiting", text });
+        } else if (!messengerConnected) {
+          await close({
+            status: "failed",
+            text,
+            error: "Мессенджеры не подключены (Настройки → Мессенджеры)",
+          });
+        } else {
+          await storeOutgoing(deal, text, null, row.id);
+        }
+      }
+    })().finally(() => {
+      dispatching = null;
+    });
+    return dispatching;
+  };
+
+  /** An outgoing message of a deal (no Wazzup24 in the demo) */
+  const storeOutgoing = async (
+    deal: Deal,
+    text: string,
+    salesId: Identifier | null | undefined,
+    automessageId: Identifier | null,
+  ) => {
+    const previous = (await all<Message>("messages"))
+      .filter((message) => message.deal_id === deal.id)
+      .sort((a, b) => b.sent_at.localeCompare(a.sent_at))[0];
+    const { data: patient } = await baseDataProvider.getOne<Patient>(
+      "patients",
+      { id: deal.patient_id },
+    );
+    const { data } = await baseDataProvider.create<Message>("messages", {
+      data: {
+        patient_id: deal.patient_id,
+        deal_id: deal.id,
+        channel_id: previous?.channel_id ?? 1,
+        transport: previous?.transport ?? "whatsapp",
+        chat_id:
+          previous?.chat_id ?? (patient.phones?.[0] ?? "").replace(/\D/g, ""),
+        direction: "out",
+        sales_id: salesId ?? null,
+        text,
+        content_type: "text",
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        automessage_id: automessageId,
+      },
+    });
+    // Same as private.handle_automessage_sent
+    if (automessageId != null) {
+      const row = (await all<Automessage>("automessages")).find(
+        (a) => a.id === automessageId,
+      );
+      if (row) {
+        await baseDataProvider.update("automessages", {
+          id: row.id,
+          data: {
+            status: "sent",
+            error: null,
+            text,
+            processed_at: new Date().toISOString(),
+          },
+          previousData: row,
+        });
+      }
+      const tasks = (await all<Task>("tasks")).filter(
+        (task) => task.automessage_id === automessageId && !task.done_date,
+      );
+      for (const task of tasks) {
+        await baseDataProvider.update("tasks", {
+          id: task.id,
+          data: { done_date: new Date().toISOString() },
+          previousData: task,
+        });
+      }
+    }
+    return data;
+  };
+
   // --- views ------------------------------------------------------------
 
   const patientsSummary = async () => {
@@ -224,6 +445,9 @@ export const createDataProvider = ({
   const custom = {
     ...baseDataProvider,
     async getList(resource: string, params: GetListParams) {
+      if (["automessages", "tasks", "messages"].includes(resource)) {
+        await dispatchDueAutomessages();
+      }
       if (resource === "activity_log") {
         const activities = await getActivityLog(
           withSupabaseFilterAdapter(baseDataProvider),
@@ -314,33 +538,28 @@ export const createDataProvider = ({
       return pipeline.id;
     },
     // Demo: messages are "sent" without Wazzup24
-    sendMessage: async (dealId: Identifier, text: string): Promise<Message> => {
+    sendMessage: async (
+      dealId: Identifier,
+      text: string,
+      automessageId?: Identifier | null,
+    ): Promise<Message> => {
       const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
         id: dealId,
       });
-      const previous = (await all<Message>("messages"))
-        .filter((message) => message.deal_id === deal.id)
-        .sort((a, b) => b.sent_at.localeCompare(a.sent_at))[0];
-      const { data: patient } = await baseDataProvider.getOne<Patient>(
-        "patients",
-        { id: deal.patient_id },
+      if (automessageId != null) {
+        const row = (await all<Automessage>("automessages")).find(
+          (a) => a.id === automessageId && a.deal_id === deal.id,
+        );
+        if (!row || !["pending", "awaiting", "failed"].includes(row.status)) {
+          throw new Error("automessages.errors.closed");
+        }
+      }
+      const data = await storeOutgoing(
+        deal,
+        text,
+        await currentSalesId(),
+        automessageId ?? null,
       );
-      const { data } = await baseDataProvider.create<Message>("messages", {
-        data: {
-          patient_id: deal.patient_id,
-          deal_id: deal.id,
-          channel_id: previous?.channel_id ?? 1,
-          transport: previous?.transport ?? "whatsapp",
-          chat_id:
-            previous?.chat_id ?? (patient.phones?.[0] ?? "").replace(/\D/g, ""),
-          direction: "out",
-          sales_id: await currentSalesId(),
-          text,
-          content_type: "text",
-          status: "sent",
-          sent_at: new Date().toISOString(),
-        },
-      });
       const [settings] = await all<OrganizationSettings>(
         "organization_settings",
       );
@@ -670,6 +889,7 @@ export const createDataProvider = ({
           }
           await createRuleTasks(deal, "deal_created");
           await createRuleTasks(deal, "stage_entered", deal.stage_id);
+          await scheduleDealAutomessages(deal);
           return result;
         },
         beforeUpdate: async (params) => {
@@ -759,6 +979,31 @@ export const createDataProvider = ({
             await createRuleTasks(deal, "stage_entered", deal.stage_id);
           } else if (Object.keys(changes).length) {
             await logDealEvent({ deal_id: deal.id, type: "updated", changes });
+          }
+          // Same as private.handle_deal_automessages
+          if (previous.stage_id !== deal.stage_id) {
+            await cancelDealAutomessages(
+              deal.id,
+              ["pending", "awaiting"],
+              "Сделка ушла с этапа",
+            );
+            await scheduleDealAutomessages(deal);
+          } else if (deal.archived_at && !previous.archived_at) {
+            await cancelDealAutomessages(
+              deal.id,
+              ["pending", "awaiting"],
+              "Сделка в архиве",
+            );
+          } else if (
+            (deal.appointment_at ?? null) !== (previous.appointment_at ?? null)
+          ) {
+            await cancelDealAutomessages(
+              deal.id,
+              ["pending"],
+              "Дата визита изменилась",
+              "before_visit",
+            );
+            await scheduleDealAutomessages(deal, "before_visit");
           }
           return result;
         },
@@ -878,6 +1123,36 @@ export const createDataProvider = ({
           },
         }),
       } satisfies ResourceCallbacks<Task>,
+      {
+        // Same as private.handle_automessage_update: employees only cancel
+        resource: "automessages",
+        beforeUpdate: async (params) => {
+          const { data: previous } = await baseDataProvider.getOne<Automessage>(
+            "automessages",
+            { id: params.id },
+          );
+          if (
+            params.data.status !== "cancelled" ||
+            !isAutomessageOpen(previous)
+          ) {
+            throw new Error(
+              "Можно только отменить сообщение, которое ещё не отправлено",
+            );
+          }
+          return {
+            ...params,
+            data: {
+              status: "cancelled",
+              error: "Отменено сотрудником",
+              processed_at: new Date().toISOString(),
+            },
+          };
+        },
+        afterUpdate: async (result) => {
+          await dropAutomessageTasks(result.data.id);
+          return result;
+        },
+      } satisfies ResourceCallbacks<Automessage>,
       {
         resource: "calls",
         beforeCreate: async (params) => ({

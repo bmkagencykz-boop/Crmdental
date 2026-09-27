@@ -382,6 +382,9 @@ begin
   from public.stages s
     join public.pipelines p on p.id = s.pipeline_id
   where p.organization_id = org_id and p.is_default and s.name = 'Пришёл на консультацию';
+
+  -- Default automatic messages (Settings → Auto messages)
+  perform private.seed_automessages(org_id);
 end;
 $$;
 
@@ -883,7 +886,8 @@ CREATE OR REPLACE FUNCTION "private"."handle_message_created"() RETURNS "trigger
     SET "search_path" TO ''
     AS $$
 begin
-  if new.direction = 'out' then
+  -- An automatic message (no author) is not an answer of the clinic
+  if new.direction = 'out' and (new.automessage_id is null or new.sales_id is not null) then
     update public.deals d
     set first_response_at = new.sent_at
     where d.organization_id = new.organization_id and d.id = new.deal_id

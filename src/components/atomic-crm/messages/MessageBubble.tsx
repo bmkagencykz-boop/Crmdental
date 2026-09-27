@@ -50,7 +50,18 @@ export const MessageBubble = ({ message }: { message: Message }) => {
             {translate(`crm.messages.transport.${message.transport}`)}
           </span>
           {outgoing ? (
-            <span>· {author || translate("crm.messages.from_phone")}</span>
+            <span>
+              ·{" "}
+              {author ||
+                translate(
+                  message.automessage_id != null
+                    ? "automessages.message.auto"
+                    : "crm.messages.from_phone",
+                )}
+            </span>
+          ) : null}
+          {outgoing && author && message.automessage_id != null ? (
+            <span>· {translate("automessages.message.auto_short")}</span>
           ) : null}
           <span>· {formatMessageTime(message.sent_at)}</span>
           {outgoing ? <StatusIcon message={message} /> : null}

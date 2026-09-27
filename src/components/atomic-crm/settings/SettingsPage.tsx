@@ -16,6 +16,7 @@ import {
 import { useDataProvider, useNotify } from "ra-core";
 import type { CrmDataProvider } from "../providers/types";
 import { AccessSettings } from "./AccessSettings";
+import { AutomessagesSettings } from "./AutomessagesSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
@@ -30,10 +31,17 @@ const SECTIONS = [
   "messengers",
   "distribution",
   "automations",
+  "automessages",
   "access",
   "clinic",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+
+/** Stage 6 keeps its texts in the automessages namespace */
+const sectionKey = (id: Section, kind: "sections" | "hints") =>
+  id === "automessages"
+    ? `automessages.settings.${kind === "sections" ? "section" : "hint"}`
+    : `crm.settings.${kind}.${id}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -65,13 +73,13 @@ export const SettingsPage = () => {
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
-            {translate(`crm.settings.sections.${id}`)}
+            {translate(sectionKey(id, "sections"))}
           </button>
         ))}
       </nav>
       <Panel
-        title={translate(`crm.settings.sections.${section}`)}
-        hint={translate(`crm.settings.hints.${section}`)}
+        title={translate(sectionKey(section, "sections"))}
+        hint={translate(sectionKey(section, "hints"))}
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
         {section === "services" ? (
@@ -86,6 +94,7 @@ export const SettingsPage = () => {
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
+        {section === "automessages" ? <AutomessagesSettings /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
       </Panel>

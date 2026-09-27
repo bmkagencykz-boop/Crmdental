@@ -29,6 +29,7 @@ import type {
   ExternalRef,
   IntegrationStatus,
   CrmNotification,
+  DealFile,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 import type {
@@ -77,4 +78,6 @@ export interface Db {
   mailings: Mailing[];
   mailing_messages: MailingMessage[];
   mailing_settings: Array<MailingSettings & { id: number }>;
+  // Files of the deals (stage 22)
+  deal_files: DealFile[];
 }

@@ -7,6 +7,7 @@ import { TagsListEdit } from "../../patients/TagsListEdit";
 import type { Deal } from "../../types";
 import { DealAutomessages } from "../DealAutomessages";
 import { DealPayments } from "../DealPayments";
+import { DealFiles } from "../../files/DealFiles";
 import { StageChecklist } from "../StageChecklist";
 import { StageScript } from "../StageScript";
 import { DealComposer, type ComposerMode } from "./DealComposer";
@@ -26,7 +27,7 @@ export const DealPage = () => (
   </ShowBase>
 );
 
-type Tab = "main" | "payments";
+type Tab = "main" | "payments" | "files";
 
 const DealPageContent = () => {
   const translate = useTranslate();
@@ -47,7 +48,7 @@ const DealPageContent = () => {
           className="flex gap-5 border-b border-border px-6 text-sm font-semibold"
           role="tablist"
         >
-          {(["main", "payments"] as const).map((value) => (
+          {(["main", "payments", "files"] as const).map((value) => (
             <button
               key={value}
               type="button"
@@ -61,7 +62,11 @@ const DealPageContent = () => {
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              {translate(`crm.deals.page.tabs.${value}`)}
+              {translate(
+                value === "files"
+                  ? "files.tab"
+                  : `crm.deals.page.tabs.${value}`,
+              )}
             </button>
           ))}
         </nav>
@@ -76,9 +81,13 @@ const DealPageContent = () => {
               </div>
               <PatientBlock deal={deal} />
             </>
-          ) : (
+          ) : tab === "payments" ? (
             <div className="px-6 py-5">
               <DealPayments deal={deal} />
+            </div>
+          ) : (
+            <div className="px-6 py-5">
+              <DealFiles deal={deal} />
             </div>
           )}
         </div>

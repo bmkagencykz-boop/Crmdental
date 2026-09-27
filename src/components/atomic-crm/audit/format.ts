@@ -79,7 +79,7 @@ const LIST_REFERENCES: Record<string, keyof Omit<AuditLookups, "currency">> = {
 
 /** Entity types of the filter, and the logged entities they cover */
 export const AUDIT_ENTITY_GROUPS = {
-  deal: ["deal"],
+  deal: ["deal", "file"],
   patient: ["patient"],
   payment: ["payment"],
   task: ["task"],
@@ -255,13 +255,21 @@ export const auditEntityLabel = (
     case "checklist_item":
       name = changedName(entry, "text") ?? ref;
       break;
+    case "file":
+      name = changedName(entry) ?? ref;
+      break;
     default:
       name = undefined;
   }
   if (!name) return kind;
-  const quoted = ["deal", "payment", "task", "stage", "pipeline"].includes(
-    entry.entity,
-  )
+  const quoted = [
+    "deal",
+    "payment",
+    "task",
+    "stage",
+    "pipeline",
+    "file",
+  ].includes(entry.entity)
     ? `«${name}»`
     : name;
   return `${kind} ${quoted}`;

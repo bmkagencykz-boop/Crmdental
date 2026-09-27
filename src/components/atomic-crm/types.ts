@@ -227,6 +227,29 @@ export type Message = {
   read_at?: string | null;
   /** Sent by an automatic message rule */
   automessage_id?: Identifier | null;
+  /** The file of the message in our storage (stage 22) */
+  attachment_path?: string | null;
+  attachment_name?: string | null;
+  attachment_mime?: string | null;
+  attachment_size?: number | null;
+} & Pick<RaRecord, "id">;
+
+/**
+ * A file of a deal (stage 22): uploaded on the «Файлы» tab, or sent /
+ * received in the chat (message_id). path: object of the private
+ * "deal-files" bucket (in the demo, a data: URL).
+ */
+export type DealFile = {
+  organization_id?: Identifier;
+  deal_id: Identifier;
+  patient_id: Identifier;
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+  sales_id?: Identifier | null;
+  message_id?: Identifier | null;
+  created_at: string;
 } & Pick<RaRecord, "id">;
 
 export type MessengerChannel = {

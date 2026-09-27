@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Call, DealEvent, DealNote, Message, Task } from "../types";
+import type {
+  Call,
+  DealEvent,
+  DealFile,
+  DealNote,
+  Message,
+  Task,
+} from "../types";
 import { buildTimeline } from "./timeline";
 
 describe("buildTimeline", () => {
@@ -21,5 +28,24 @@ describe("buildTimeline", () => {
       "note-1",
       "event-1",
     ]);
+  });
+
+  it("shows the files uploaded on the tab, not the files of the chat", () => {
+    const items = buildTimeline({
+      messages: [{ id: 1, sent_at: "2026-09-05T10:00:00Z" } as Message],
+      files: [
+        {
+          id: 1,
+          created_at: "2026-09-06T10:00:00Z",
+          message_id: null,
+        } as DealFile,
+        {
+          id: 2,
+          created_at: "2026-09-05T10:00:00Z",
+          message_id: 1,
+        } as DealFile,
+      ],
+    });
+    expect(items.map((item) => item.key)).toEqual(["file-1", "message-1"]);
   });
 });

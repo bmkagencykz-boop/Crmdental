@@ -47,6 +47,7 @@ import { ATTACHMENTS_BUCKET } from "../commons/attachments";
 import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
 import { getMailingMethods } from "./mailingMethods";
+import { getFileMethods, uploadToDealFolder } from "./fileMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -94,6 +95,8 @@ const getDataProviderWithCustomMethods = () => {
     ...baseDataProvider,
     // Repeat sales and mailings (stage 17)
     ...getMailingMethods(),
+    // Files of the deals (stage 22)
+    ...getFileMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {
@@ -317,13 +320,16 @@ const getDataProviderWithCustomMethods = () => {
     /**
      * Sends a message of a deal through Wazzup24 (edge function
      * messenger_send). With automessageId: the «Отправить» button of a "show
-     * to the employee first" automatic message.
+     * to the employee first" automatic message. With a file: uploaded to the
+     * deal folder first, then sent as a link with the text as its caption.
      */
     async sendMessage(
       dealId: Identifier,
       text: string,
       automessageId?: Identifier | null,
+      file?: File | null,
     ): Promise<Message> {
+      const uploaded = file ? await uploadToDealFolder(dealId, file) : null;
       const { data, error } = await getSupabaseClient().functions.invoke<{
         data: Message;
       }>("messenger_send", {
@@ -332,6 +338,7 @@ const getDataProviderWithCustomMethods = () => {
           deal_id: dealId,
           text,
           ...(automessageId != null ? { automessage_id: automessageId } : {}),
+          ...(uploaded ? { file: uploaded } : {}),
         },
       });
       if (!data || error) {
@@ -829,6 +836,8 @@ const functionErrorMessage = async (
     const body = await error?.context?.json();
     if (body?.code === "automessage_closed")
       return "automessages.errors.closed";
+    if (body?.code === "invalid_file" || body?.code === "file_not_found")
+      return `files.errors.${body.code}`;
     if (body?.code) return `${namespace}.${body.code}`;
   } catch {
     // not a JSON body

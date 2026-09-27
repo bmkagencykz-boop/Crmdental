@@ -1,15 +1,25 @@
-import type { Call, DealEvent, DealNote, Message, Task } from "../types";
+import type {
+  Call,
+  DealEvent,
+  DealFile,
+  DealNote,
+  Message,
+  Task,
+} from "../types";
 
 export type TimelineItem =
   | { kind: "note"; date: string; key: string; note: DealNote }
   | { kind: "task"; date: string; key: string; task: Task }
   | { kind: "call"; date: string; key: string; call: Call }
   | { kind: "event"; date: string; key: string; event: DealEvent }
-  | { kind: "message"; date: string; key: string; message: Message };
+  | { kind: "message"; date: string; key: string; message: Message }
+  | { kind: "file"; date: string; key: string; file: DealFile };
 
 /**
  * One feed for the deal card (spec §4.2): messages, notes, completed tasks,
- * calls and the deal log, newest first. Open tasks are shown apart, above the feed.
+ * calls, the deal log and the files uploaded on the «Файлы» tab (files of
+ * the chat are in their message), newest first. Open tasks are shown apart,
+ * above the feed.
  */
 export const buildTimeline = ({
   notes = [],
@@ -17,12 +27,14 @@ export const buildTimeline = ({
   calls = [],
   events = [],
   messages = [],
+  files = [],
 }: {
   notes?: DealNote[];
   tasks?: Task[];
   calls?: Call[];
   events?: DealEvent[];
   messages?: Message[];
+  files?: DealFile[];
 }): TimelineItem[] =>
   [
     ...messages.map(
@@ -67,4 +79,14 @@ export const buildTimeline = ({
         event,
       }),
     ),
+    ...files
+      .filter((file) => file.message_id == null)
+      .map(
+        (file): TimelineItem => ({
+          kind: "file",
+          date: file.created_at,
+          key: `file-${file.id}`,
+          file,
+        }),
+      ),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

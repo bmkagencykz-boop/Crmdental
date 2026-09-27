@@ -66,12 +66,6 @@ select tests.throws('insert into public.organizations (name) values (''new'')', 
 select tests.throws('delete from public.organizations', '42501', 'users cannot delete organizations');
 select tests.logout();
 
--- Global reference data is read-only
-select tests.login_as(current_setting('t.owner')::uuid);
-select tests.assert(tests.count('select * from public.favicons_excluded_domains') > 0, 'excluded favicon domains are readable');
-select tests.throws('insert into public.favicons_excluded_domains (domain) values (''x.kz'')', '42501', 'excluded favicon domains are read-only');
-select tests.logout();
-
 -- Storage: files live under "<organization_id>/..."
 select tests.login_as(current_setting('t.owner')::uuid);
 select tests.assert(tests.affected(format('insert into storage.objects (bucket_id, name) values (''attachments'', ''%s/photo.jpg'')', current_setting('t.org_a'))) = 1, 'upload into own folder');

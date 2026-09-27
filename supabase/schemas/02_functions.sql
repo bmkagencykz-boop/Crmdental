@@ -53,55 +53,6 @@ CREATE OR REPLACE FUNCTION "public"."cleanup_note_attachments"() RETURNS "trigge
     END;
     $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_avatar_for_email"("email" "text") RETURNS "text"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-declare email_hash text;
-declare gravatar_url text;
-declare gravatar_status int8;
-declare email_domain text;
-declare favicon_url text;
-declare domain_status int8;
-
-begin
-    -- Try to fetch a gravatar image
-    email_hash = encode(extensions.digest(email, 'sha256'), 'hex');
-    gravatar_url = concat('https://www.gravatar.com/avatar/', email_hash, '?d=404');
-
-    select status from extensions.http_get(gravatar_url) into gravatar_status;
-
-    if gravatar_status = 200 then
-        return gravatar_url;
-    end if;
-
-    -- Fallback to email's domain favicon if not excluded
-    email_domain = split_part(email, '@', 2);
-    return get_domain_favicon(email_domain);
-exception
-    when others then
-        return 'ERROR';
-end;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."get_domain_favicon"("domain_name" "text") RETURNS "text"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-declare domain_status int8;
-
-begin
-    if exists (select from favicons_excluded_domains as fav where fav.domain = domain_name) then
-        return null;
-    end if;
-
-    return concat(
-        'https://favicon.show/',
-        (regexp_matches(domain_name, '^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)', 'i'))[1]
-    );
-end;
-$$;
-
 CREATE OR REPLACE FUNCTION "public"."get_note_attachments_function_url"() RETURNS "text"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -159,71 +110,6 @@ BEGIN
 END;
 $_$;
 
-CREATE OR REPLACE FUNCTION "public"."handle_company_saved"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-declare company_logo text;
-
-begin
-    if new.logo is not null then
-        return new;
-    end if;
-
-    company_logo = get_domain_favicon(new.website);
-    if company_logo is null then
-        return new;
-    end if;
-
-    new.logo = concat('{"src":"', company_logo, '","title":"Company favicon"}');
-    return new;
-end;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."handle_contact_note_created_or_updated"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  update public.contacts set last_seen = new.date where contacts.id = new.contact_id and contacts.last_seen < new.date;
-  return new;
-end;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."handle_contact_saved"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$declare contact_avatar text;
-declare emails_length int8;
-declare item jsonb;
-
-begin
-    if new.avatar is not null then
-        return new;
-    end if;
-
-    select coalesce(jsonb_array_length(new.email_jsonb), 0) into emails_length;
-
-    if emails_length = 0 then
-        return new;
-    end if;
-
-    for item in select jsonb_array_elements(new.email_jsonb)
-    loop
-        select public.get_avatar_for_email(item->>'email') into contact_avatar;
-        if (contact_avatar is not null) then
-            exit;
-        end if;
-    end loop;
-
-    if contact_avatar is null then
-        return new;
-    end if;
-
-    new.avatar = concat('{"src":"', contact_avatar, '"}');
-    return new;
-end;$$;
-
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -253,8 +139,7 @@ begin
       'Моя клиника'
     );
     insert into public.organizations (name) values (org_name) returning id into org_id;
-    insert into public.configuration (organization_id, config)
-    values (org_id, jsonb_build_object('title', org_name));
+    perform private.seed_organization(org_id);
     user_role := 'owner';
   end if;
 
@@ -296,175 +181,6 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."merge_contacts"("loser_id" bigint, "winner_id" bigint) RETURNS bigint
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  winner_contact contacts%ROWTYPE;
-  loser_contact contacts%ROWTYPE;
-  deal_record RECORD;
-  merged_emails jsonb;
-  merged_phones jsonb;
-  merged_tags bigint[];
-  winner_emails jsonb;
-  loser_emails jsonb;
-  winner_phones jsonb;
-  loser_phones jsonb;
-  email_map jsonb;
-  phone_map jsonb;
-BEGIN
-  -- Fetch both contacts
-  SELECT * INTO winner_contact FROM contacts WHERE id = winner_id;
-  SELECT * INTO loser_contact FROM contacts WHERE id = loser_id;
-
-  IF winner_contact IS NULL OR loser_contact IS NULL THEN
-    RAISE EXCEPTION 'Contact not found';
-  END IF;
-
-  -- 1. Reassign tasks from loser to winner
-  UPDATE tasks SET contact_id = winner_id WHERE contact_id = loser_id;
-
-  -- 2. Reassign contact notes from loser to winner
-  UPDATE contact_notes SET contact_id = winner_id WHERE contact_id = loser_id;
-
-  -- 3. Update deals - replace loser with winner in contact_ids array
-  FOR deal_record IN
-    SELECT id, contact_ids
-    FROM deals
-    WHERE contact_ids @> ARRAY[loser_id]
-  LOOP
-    UPDATE deals
-    SET contact_ids = (
-      SELECT ARRAY(
-        SELECT DISTINCT unnest(
-          array_remove(deal_record.contact_ids, loser_id) || ARRAY[winner_id]
-        )
-      )
-    )
-    WHERE id = deal_record.id;
-  END LOOP;
-
-  -- 4. Merge contact data
-
-  -- Get email arrays
-  winner_emails := COALESCE(winner_contact.email_jsonb, '[]'::jsonb);
-  loser_emails := COALESCE(loser_contact.email_jsonb, '[]'::jsonb);
-
-  -- Merge emails with deduplication by email address
-  -- Build a map of email -> email object, then convert back to array
-  email_map := '{}'::jsonb;
-
-  -- Add winner emails to map
-  IF jsonb_array_length(winner_emails) > 0 THEN
-    FOR i IN 0..jsonb_array_length(winner_emails)-1 LOOP
-      email_map := email_map || jsonb_build_object(
-        winner_emails->i->>'email',
-        winner_emails->i
-      );
-    END LOOP;
-  END IF;
-
-  -- Add loser emails to map (won't overwrite existing keys)
-  IF jsonb_array_length(loser_emails) > 0 THEN
-    FOR i IN 0..jsonb_array_length(loser_emails)-1 LOOP
-      IF NOT email_map ? (loser_emails->i->>'email') THEN
-        email_map := email_map || jsonb_build_object(
-          loser_emails->i->>'email',
-          loser_emails->i
-        );
-      END IF;
-    END LOOP;
-  END IF;
-
-  -- Convert map back to array
-  merged_emails := (SELECT jsonb_agg(value) FROM jsonb_each(email_map));
-  merged_emails := COALESCE(merged_emails, '[]'::jsonb);
-
-  -- Get phone arrays
-  winner_phones := COALESCE(winner_contact.phone_jsonb, '[]'::jsonb);
-  loser_phones := COALESCE(loser_contact.phone_jsonb, '[]'::jsonb);
-
-  -- Merge phones with deduplication by number
-  phone_map := '{}'::jsonb;
-
-  -- Add winner phones to map
-  IF jsonb_array_length(winner_phones) > 0 THEN
-    FOR i IN 0..jsonb_array_length(winner_phones)-1 LOOP
-      phone_map := phone_map || jsonb_build_object(
-        winner_phones->i->>'number',
-        winner_phones->i
-      );
-    END LOOP;
-  END IF;
-
-  -- Add loser phones to map (won't overwrite existing keys)
-  IF jsonb_array_length(loser_phones) > 0 THEN
-    FOR i IN 0..jsonb_array_length(loser_phones)-1 LOOP
-      IF NOT phone_map ? (loser_phones->i->>'number') THEN
-        phone_map := phone_map || jsonb_build_object(
-          loser_phones->i->>'number',
-          loser_phones->i
-        );
-      END IF;
-    END LOOP;
-  END IF;
-
-  -- Convert map back to array
-  merged_phones := (SELECT jsonb_agg(value) FROM jsonb_each(phone_map));
-  merged_phones := COALESCE(merged_phones, '[]'::jsonb);
-
-  -- Merge tags (remove duplicates)
-  merged_tags := ARRAY(
-    SELECT DISTINCT unnest(
-      COALESCE(winner_contact.tags, ARRAY[]::bigint[]) ||
-      COALESCE(loser_contact.tags, ARRAY[]::bigint[])
-    )
-  );
-
-  -- 5. Update winner with merged data
-  UPDATE contacts SET
-    avatar = COALESCE(winner_contact.avatar, loser_contact.avatar),
-    gender = COALESCE(winner_contact.gender, loser_contact.gender),
-    first_name = COALESCE(winner_contact.first_name, loser_contact.first_name),
-    last_name = COALESCE(winner_contact.last_name, loser_contact.last_name),
-    title = COALESCE(winner_contact.title, loser_contact.title),
-    company_id = COALESCE(winner_contact.company_id, loser_contact.company_id),
-    email_jsonb = merged_emails,
-    phone_jsonb = merged_phones,
-    linkedin_url = COALESCE(winner_contact.linkedin_url, loser_contact.linkedin_url),
-    background = COALESCE(winner_contact.background, loser_contact.background),
-    has_newsletter = COALESCE(winner_contact.has_newsletter, loser_contact.has_newsletter),
-    first_seen = LEAST(COALESCE(winner_contact.first_seen, loser_contact.first_seen), COALESCE(loser_contact.first_seen, winner_contact.first_seen)),
-    last_seen = GREATEST(COALESCE(winner_contact.last_seen, loser_contact.last_seen), COALESCE(loser_contact.last_seen, winner_contact.last_seen)),
-    sales_id = COALESCE(winner_contact.sales_id, loser_contact.sales_id),
-    tags = merged_tags
-  WHERE id = winner_id;
-
-  -- 6. Delete loser contact
-  DELETE FROM contacts WHERE id = loser_id;
-
-  RETURN winner_id;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."lowercase_email_jsonb"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  IF NEW.email_jsonb IS NOT NULL THEN
-    NEW.email_jsonb = COALESCE((
-      SELECT jsonb_agg(
-        jsonb_set(elem, '{email}', to_jsonb(LOWER(elem->>'email')))
-      )
-      FROM jsonb_array_elements(NEW.email_jsonb) AS elem
-    ), '[]'::jsonb);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
 CREATE OR REPLACE FUNCTION "public"."set_sales_id_default"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -475,4 +191,379 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
+$$;
+
+--
+-- Phones
+--
+
+-- Kazakhstan numbers to +7XXXXXXXXXX ("8 701 123 45 67", "+7 (701) 123-45-67",
+-- "7011234567"); other numbers keep their digits with a leading +.
+CREATE OR REPLACE FUNCTION "private"."normalize_phone"("raw" "text") RETURNS "text"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+declare
+  digits text;
+begin
+  if raw is null then
+    return null;
+  end if;
+  digits := regexp_replace(raw, '\D', '', 'g');
+  if digits = '' then
+    return null;
+  end if;
+  if length(digits) = 11 and left(digits, 1) in ('7', '8') then
+    return '+7' || substr(digits, 2);
+  end if;
+  if length(digits) = 10 then
+    return '+7' || digits;
+  end if;
+  return '+' || digits;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."handle_patient_saved"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  new.phone_jsonb := coalesce((
+    select jsonb_agg(jsonb_set(e, '{number}', to_jsonb(private.normalize_phone(e ->> 'number'))))
+    from jsonb_array_elements(new.phone_jsonb) as e
+    where private.normalize_phone(e ->> 'number') is not null
+  ), '[]'::jsonb);
+  new.whatsapp := private.normalize_phone(new.whatsapp);
+  new.instagram := nullif(lower(ltrim(btrim(coalesce(new.instagram, '')), '@')), '');
+  new.telegram := nullif(ltrim(btrim(coalesce(new.telegram, '')), '@'), '');
+  new.phones := array(
+    select distinct n
+    from (
+      select private.normalize_phone(e ->> 'number') as n
+      from jsonb_array_elements(new.phone_jsonb) as e
+      union
+      select new.whatsapp
+    ) as numbers
+    where n is not null
+    order by n
+  );
+  return new;
+end;
+$$;
+
+-- Patients whose phone numbers include the given number (any format)
+CREATE OR REPLACE FUNCTION "public"."find_patients_by_phone"("phone" "text") RETURNS SETOF "public"."patients"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select p.*
+  from public.patients p
+  where private.normalize_phone(phone) is not null
+    and p.phones @> array[private.normalize_phone(phone)];
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."handle_patient_note_created"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  update public.patients
+  set last_seen = new.date
+  where organization_id = new.organization_id
+    and id = new.patient_id
+    and last_seen < new.date;
+  return new;
+end;
+$$;
+
+--
+-- Organization template
+--
+
+-- Default pipeline, dictionaries and settings of a new clinic
+CREATE OR REPLACE FUNCTION "private"."seed_organization"("org_id" bigint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  pipeline_id bigint;
+  org_name text;
+begin
+  select name into org_name from public.organizations where id = org_id;
+
+  insert into public.organization_settings (organization_id) values (org_id)
+  on conflict (organization_id) do nothing;
+
+  insert into public.configuration (organization_id, config)
+  values (org_id, jsonb_build_object('title', org_name))
+  on conflict (organization_id) do nothing;
+
+  insert into public.pipelines (organization_id, name, position, is_default)
+  values (org_id, 'Основная', 0, true)
+  returning id into pipeline_id;
+
+  insert into public.stages (organization_id, pipeline_id, name, position, kind, color)
+  values
+    (org_id, pipeline_id, 'Новый лид', 0, 'open', '#83A2DB'),
+    (org_id, pipeline_id, 'В работе', 1, 'open', '#9DB5E4'),
+    (org_id, pipeline_id, 'Записан', 2, 'open', '#FFCE87'),
+    (org_id, pipeline_id, 'Пришёл на консультацию', 3, 'open', '#F7B98C'),
+    (org_id, pipeline_id, 'План согласован', 4, 'open', '#C9B3D0'),
+    (org_id, pipeline_id, 'В лечении', 5, 'open', '#A9C7E8'),
+    (org_id, pipeline_id, 'Лечение завершено', 6, 'won', '#8CC9A7'),
+    (org_id, pipeline_id, 'Отказ', 7, 'lost', '#FD8E8C');
+
+  insert into public.services (organization_id, name, position)
+  values
+    (org_id, 'Имплантация', 0),
+    (org_id, 'Ортодонтия', 1),
+    (org_id, 'Терапия', 2),
+    (org_id, 'Гигиена', 3),
+    (org_id, 'Протезирование', 4),
+    (org_id, 'Хирургия', 5),
+    (org_id, 'Детская стоматология', 6),
+    (org_id, 'Другое', 7);
+
+  insert into public.lead_sources (organization_id, name, code, is_system, position)
+  values
+    (org_id, 'WhatsApp', 'whatsapp', true, 0),
+    (org_id, 'Instagram', 'instagram', true, 1),
+    (org_id, 'Telegram', 'telegram', true, 2),
+    (org_id, 'Звонок', 'call', true, 3),
+    (org_id, 'Сайт', 'website', true, 4),
+    (org_id, '2GIS', '2gis', true, 5),
+    (org_id, 'Рекомендация', 'referral', true, 6),
+    (org_id, 'Другое', 'other', true, 7);
+
+  insert into public.lost_reasons (organization_id, name, position)
+  values
+    (org_id, 'Дорого', 0),
+    (org_id, 'Выбрал другую клинику', 1),
+    (org_id, 'Не дозвонились', 2),
+    (org_id, 'Передумал', 3),
+    (org_id, 'Далеко или неудобно', 4),
+    (org_id, 'Страх лечения', 5),
+    (org_id, 'Нет времени', 6),
+    (org_id, 'Другое', 7);
+end;
+$$;
+
+--
+-- Pipelines
+--
+
+-- Deferred check: every pipeline keeps at least one won and one lost stage
+CREATE OR REPLACE FUNCTION "private"."check_pipeline_stages"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  checked_pipeline_id bigint;
+  pipeline_ids bigint[];
+begin
+  if tg_table_name = 'pipelines' then
+    pipeline_ids := array[new.id];
+  elsif tg_op = 'INSERT' then
+    pipeline_ids := array[new.pipeline_id];
+  elsif tg_op = 'DELETE' then
+    pipeline_ids := array[old.pipeline_id];
+  else
+    pipeline_ids := array[old.pipeline_id, new.pipeline_id];
+  end if;
+
+  for checked_pipeline_id in
+    select distinct p from unnest(pipeline_ids) as p
+  loop
+    if exists (select 1 from public.pipelines where id = checked_pipeline_id)
+      and (
+        not exists (select 1 from public.stages where pipeline_id = checked_pipeline_id and kind = 'won')
+        or not exists (select 1 from public.stages where pipeline_id = checked_pipeline_id and kind = 'lost')
+      )
+    then
+      raise exception 'В воронке должна быть хотя бы одна стадия «Успешно» и одна «Отказ»'
+        using errcode = 'check_violation', hint = 'pipeline_needs_won_and_lost';
+    end if;
+  end loop;
+  return null;
+end;
+$$;
+
+-- Creates a pipeline with its minimal set of stages in one transaction
+CREATE OR REPLACE FUNCTION "public"."create_pipeline"("pipeline_name" "text") RETURNS bigint
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  new_pipeline_id bigint;
+begin
+  insert into public.pipelines (name, position)
+  values (
+    pipeline_name,
+    coalesce((select max(position) + 1 from public.pipelines where organization_id = private.current_organization_id()), 0)
+  )
+  returning id into new_pipeline_id;
+
+  insert into public.stages (pipeline_id, name, position, kind, color)
+  values
+    (new_pipeline_id, 'Новый лид', 0, 'open', '#83A2DB'),
+    (new_pipeline_id, 'Успешно', 1, 'won', '#8CC9A7'),
+    (new_pipeline_id, 'Отказ', 2, 'lost', '#FD8E8C');
+
+  return new_pipeline_id;
+end;
+$$;
+
+--
+-- Deals
+--
+
+-- Which deals the current user may see (managers depend on the clinic setting)
+CREATE OR REPLACE FUNCTION "private"."manager_deal_visibility"() RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if private.current_user_role() in ('owner', 'head') then
+    return 'all';
+  end if;
+  return coalesce((
+    select s.manager_deal_visibility
+    from public.organization_settings s
+    where s.organization_id = private.current_organization_id()
+  ), 'all');
+end;
+$$;
+
+-- Defaults, stage rules and maintained columns
+CREATE OR REPLACE FUNCTION "public"."handle_deal_before_write"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  new_kind text;
+  old_kind text;
+  stage_changed boolean;
+begin
+  if tg_op = 'INSERT' then
+    if new.pipeline_id is null then
+      select p.id into new.pipeline_id
+      from public.pipelines p
+      where p.organization_id = new.organization_id
+      order by p.is_default desc, p.position, p.id
+      limit 1;
+    end if;
+    if new.stage_id is null then
+      select s.id into new.stage_id
+      from public.stages s
+      where s.pipeline_id = new.pipeline_id
+      order by s.position, s.id
+      limit 1;
+    end if;
+    new.paid_amount := 0;
+    new.stage_changed_at := now();
+  else
+    new.created_at := old.created_at;
+    -- paid_amount is the total of the payments, only their trigger writes it
+    if current_setting('crm.sync_paid_amount', true) is distinct from 'on' then
+      new.paid_amount := old.paid_amount;
+    end if;
+    if (to_jsonb(new) - 'index' - 'updated_at') is distinct from (to_jsonb(old) - 'index' - 'updated_at') then
+      new.updated_at := now();
+    end if;
+  end if;
+
+  select s.kind into new_kind from public.stages s where s.id = new.stage_id;
+  stage_changed := tg_op = 'INSERT'
+    or new.stage_id is distinct from old.stage_id
+    or new.pipeline_id is distinct from old.pipeline_id;
+
+  if tg_op = 'UPDATE' and stage_changed then
+    select s.kind into old_kind from public.stages s where s.id = old.stage_id;
+    if old_kind = 'lost' then
+      raise exception 'Сделка в отказе не возвращается в работу. Для повторного обращения создайте новую сделку.'
+        using errcode = 'check_violation', hint = 'deal_lost_locked';
+    end if;
+  end if;
+
+  if new_kind = 'lost' and new.lost_reason_id is null then
+    raise exception 'Укажите причину отказа'
+      using errcode = 'check_violation', hint = 'lost_reason_required';
+  end if;
+
+  if stage_changed then
+    new.stage_changed_at := now();
+    new.closed_at := case when new_kind in ('won', 'lost') then now() else null end;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Deal log and first source of the patient
+CREATE OR REPLACE FUNCTION "public"."handle_deal_after_write"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  tracked text[] := array[
+    'name', 'patient_id', 'pipeline_id', 'sales_id', 'source_id', 'service_id',
+    'plan_amount', 'paid_amount', 'lost_reason_id', 'lost_comment',
+    'appointment_at', 'visit_at', 'tags', 'archived_at'
+  ];
+  field text;
+  old_json jsonb;
+  new_json jsonb;
+  changes jsonb := '{}'::jsonb;
+begin
+  if tg_op = 'INSERT' then
+    insert into public.deal_events (organization_id, deal_id, type, to_stage_id, sales_id)
+    values (new.organization_id, new.id, 'created', new.stage_id, private.current_sales_id());
+
+    if new.source_id is not null then
+      update public.patients
+      set source_id = new.source_id
+      where organization_id = new.organization_id
+        and id = new.patient_id
+        and source_id is null;
+    end if;
+    return null;
+  end if;
+
+  old_json := to_jsonb(old);
+  new_json := to_jsonb(new);
+  foreach field in array tracked loop
+    if old_json -> field is distinct from new_json -> field then
+      changes := changes || jsonb_build_object(field, jsonb_build_array(old_json -> field, new_json -> field));
+    end if;
+  end loop;
+
+  if new.stage_id is distinct from old.stage_id then
+    insert into public.deal_events (organization_id, deal_id, type, from_stage_id, to_stage_id, changes, sales_id)
+    values (new.organization_id, new.id, 'stage_changed', old.stage_id, new.stage_id, changes, private.current_sales_id());
+  elsif changes <> '{}'::jsonb then
+    insert into public.deal_events (organization_id, deal_id, type, changes, sales_id)
+    values (new.organization_id, new.id, 'updated', changes, private.current_sales_id());
+  end if;
+  return null;
+end;
+$$;
+
+-- deals.paid_amount = sum of the deal's payments
+CREATE OR REPLACE FUNCTION "public"."handle_deal_payment_changed"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform set_config('crm.sync_paid_amount', 'on', true);
+  update public.deals d
+  set paid_amount = coalesce((
+    select sum(p.amount)
+    from public.deal_payments p
+    where p.organization_id = d.organization_id and p.deal_id = d.id
+  ), 0)
+  where d.organization_id = coalesce(new.organization_id, old.organization_id)
+    and d.id in (new.deal_id, old.deal_id);
+  perform set_config('crm.sync_paid_amount', 'off', true);
+  return null;
+end;
 $$;

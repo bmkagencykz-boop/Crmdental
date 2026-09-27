@@ -156,8 +156,6 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-[functions.merge_contacts]
-verify_jwt = false
 [functions.delete_note_attachments]
 verify_jwt = false
 [functions.update_password]

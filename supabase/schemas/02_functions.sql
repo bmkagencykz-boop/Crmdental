@@ -502,8 +502,9 @@ begin
     end if;
     new.paid_amount := 0;
     new.stage_changed_at := now();
-    -- A lead coming from outside (no user) is distributed by the clinic rules
-    if new.sales_id is null and auth.uid() is null
+    -- A lead coming from outside (no user) is distributed by the clinic
+    -- rules; an unsorted one (18_unsorted_duplicates.sql) waits to be accepted
+    if new.sales_id is null and auth.uid() is null and new.unsorted_at is null
       and current_setting('crm.importing', true) is distinct from 'on' then
       new.sales_id := private.next_responsible(new.organization_id);
     end if;
@@ -513,12 +514,20 @@ begin
     if current_setting('crm.sync_paid_amount', true) is distinct from 'on' then
       new.paid_amount := old.paid_amount;
     end if;
+    -- A deal never goes back to «Неразобранное»; moving an unsorted lead to
+    -- a stage accepts it (see public.accept_unsorted)
+    if old.unsorted_at is null
+      or new.stage_id is distinct from old.stage_id
+      or new.pipeline_id is distinct from old.pipeline_id then
+      new.unsorted_at := null;
+    end if;
     if (to_jsonb(new) - 'index' - 'updated_at') is distinct from (to_jsonb(old) - 'index' - 'updated_at') then
       new.updated_at := now();
     end if;
     -- Moved to another pipeline: to its first stage, unless the clinic lets
     -- employees choose the stage (organization_settings.pipeline_move_mode)
-    if new.pipeline_id is distinct from old.pipeline_id and coalesce((
+    -- or an unsorted lead is accepted into a chosen stage
+    if new.pipeline_id is distinct from old.pipeline_id and old.unsorted_at is null and coalesce((
       select os.pipeline_move_mode from public.organization_settings os
       where os.organization_id = new.organization_id
     ), 'first_stage') = 'first_stage' then
@@ -545,6 +554,7 @@ begin
     -- possible; an import moves deals to the stage of the file)
     if new.pipeline_id = old.pipeline_id and new_kind is distinct from 'lost'
       and current_setting('crm.importing', true) is distinct from 'on'
+      and old.unsorted_at is null
       and (select s.position from public.stages s where s.id = new.stage_id)
         > (select s.position from public.stages s where s.id = old.stage_id)
       and exists (
@@ -585,7 +595,7 @@ declare
     'name', 'patient_id', 'pipeline_id', 'sales_id', 'source_id', 'service_id',
     'plan_amount', 'paid_amount', 'lost_reason_id', 'lost_comment',
     'appointment_at', 'visit_at', 'tags', 'archived_at',
-    'doctor_id', 'consultation_amount'
+    'doctor_id', 'consultation_amount', 'unsorted_at'
   ];
   field text;
   old_json jsonb;
@@ -610,8 +620,11 @@ begin
         and id = new.patient_id
         and sales_id is null;
     end if;
-    perform private.create_rule_tasks(new, 'deal_created', null);
-    perform private.create_rule_tasks(new, 'stage_entered', new.stage_id);
+    -- An unsorted lead gets its automatic tasks when it is accepted
+    if new.unsorted_at is null then
+      perform private.create_rule_tasks(new, 'deal_created', null);
+      perform private.create_rule_tasks(new, 'stage_entered', new.stage_id);
+    end if;
     return null;
   end if;
 
@@ -628,7 +641,15 @@ begin
       and id = new.patient_id
       and sales_id is null;
   end if;
-  if new.stage_id is distinct from old.stage_id then
+  if old.unsorted_at is not null then
+    -- An unsorted lead accepted into an open stage starts like a new deal;
+    -- a rejected one (lost stage) gets nothing
+    if new.unsorted_at is null
+      and (select s.kind from public.stages s where s.id = new.stage_id) = 'open' then
+      perform private.create_rule_tasks(new, 'deal_created', null);
+      perform private.create_rule_tasks(new, 'stage_entered', new.stage_id);
+    end if;
+  elsif new.stage_id is distinct from old.stage_id then
     perform private.create_rule_tasks(new, 'stage_entered', new.stage_id);
   end if;
 
@@ -809,8 +830,10 @@ begin
   order by d.updated_at desc, d.id desc
   limit 1;
   if found_deal_id is null then
-    insert into public.deals (organization_id, patient_id, source_id)
-    values (org_id, found_patient_id, source_id)
+    -- A patient's message may open an unsorted lead (clinic setting)
+    insert into public.deals (organization_id, patient_id, source_id, unsorted_at)
+    values (org_id, found_patient_id, source_id,
+      case when msg_direction = 'in' then private.unsorted_intake(org_id, source_id) end)
     returning id into found_deal_id;
     created_deal := true;
   end if;

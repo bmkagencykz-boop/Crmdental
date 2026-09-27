@@ -191,8 +191,10 @@ begin
   order by d.updated_at desc, d.id desc
   limit 1;
   if found_deal_id is null then
-    insert into public.deals (organization_id, patient_id, source_id, sales_id)
-    values (org_id, found_patient_id, call_source_id, case when call_direction = 'out' then employee_id end)
+    -- An incoming call may open an unsorted lead (clinic setting)
+    insert into public.deals (organization_id, patient_id, source_id, sales_id, unsorted_at)
+    values (org_id, found_patient_id, call_source_id, case when call_direction = 'out' then employee_id end,
+      case when call_direction = 'in' then private.unsorted_intake(org_id, call_source_id) end)
     returning id into found_deal_id;
     created_deal := true;
   end if;

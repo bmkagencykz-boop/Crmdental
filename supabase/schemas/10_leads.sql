@@ -187,8 +187,9 @@ begin
   order by d.updated_at desc, d.id desc
   limit 1;
   if found_deal_id is null then
-    insert into public.deals (organization_id, patient_id, source_id, service_id)
-    values (org_id, found_patient_id, found_source.id, found_service_id)
+    insert into public.deals (organization_id, patient_id, source_id, service_id, unsorted_at)
+    values (org_id, found_patient_id, found_source.id, found_service_id,
+      private.unsorted_intake(org_id, found_source.id))
     returning id into found_deal_id;
     created_deal := true;
   elsif found_service_id is not null then

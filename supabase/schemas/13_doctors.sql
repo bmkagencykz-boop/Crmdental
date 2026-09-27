@@ -34,6 +34,11 @@ alter table public.deals add column doctor_id bigint;
 alter table public.deals add column consultation_amount bigint;
 alter table public.deals add constraint deals_consultation_amount_positive check (consultation_amount >= 0);
 
+-- Stage 18 (18_unsorted_duplicates.sql): a new lead of a system channel
+-- waiting in «Неразобранное» since this time. Declared here because
+-- deals_summary below shows it.
+alter table public.deals add column unsorted_at timestamp with time zone;
+
 -- A payment is a prepayment or a regular payment
 alter table public.deal_payments add column kind text not null default 'payment';
 alter table public.deal_payments add constraint deal_payments_kind_check check (kind in ('prepayment', 'payment'));
@@ -119,7 +124,8 @@ select
         select coalesce(sum(pay.amount), 0)::bigint
         from public.deal_payments pay
         where pay.organization_id = d.organization_id and pay.deal_id = d.id and pay.kind = 'prepayment'
-    ) as prepayment_amount
+    ) as prepayment_amount,
+    d.unsorted_at
 from public.deals d
     join public.stages s on s.id = d.stage_id
     join public.patients p on p.organization_id = d.organization_id and p.id = d.patient_id

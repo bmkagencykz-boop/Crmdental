@@ -207,7 +207,7 @@ from public.deals d
             private.working_minutes(ws.since, now(), o.timezone, os.response_hours_start, os.response_hours_end) as waiting_minutes
         from (select private.deal_waiting_since(d.organization_id, d.id) as since) ws
     ) w
-where d.archived_at is null and w.waiting_since is not null;
+where d.archived_at is null and d.unsorted_at is null and w.waiting_since is not null;
 
 --
 -- Notification helpers
@@ -468,6 +468,7 @@ begin
       join public.organization_settings os on os.organization_id = d.organization_id and os.response_control_enabled
       cross join lateral (select private.deal_waiting_since(d.organization_id, d.id) as waiting_since) w
     where d.archived_at is null
+      and d.unsorted_at is null
       and w.waiting_since is not null
       and w.waiting_since < now() - make_interval(mins => os.response_limit_minutes)
       and not exists (

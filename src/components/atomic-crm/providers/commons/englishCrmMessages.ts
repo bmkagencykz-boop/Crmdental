@@ -1348,6 +1348,7 @@ export const englishCrmMessages = {
       filter: "Waiting for an answer",
       minutes: "%{minutes} min",
       hours: "%{hours} h %{minutes} min",
+      days: "%{days} d %{hours} h",
     },
     settings: {
       section: "Response control",

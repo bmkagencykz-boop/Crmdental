@@ -29,6 +29,13 @@ export const useFormatWaiting = () => {
   const translate = useTranslate();
   return (total: number) => {
     const { hours, minutes } = splitMinutes(Math.max(0, total));
+    // Past a day, days and hours read better than "118 ч 40 мин"
+    if (hours >= 24) {
+      return translate("notifications.waiting.days", {
+        days: Math.floor(hours / 24),
+        hours: hours % 24,
+      });
+    }
     return hours
       ? translate("notifications.waiting.hours", { hours, minutes })
       : translate("notifications.waiting.minutes", { minutes });

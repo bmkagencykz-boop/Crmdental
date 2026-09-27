@@ -1355,6 +1355,7 @@ export const russianCrmMessages: CrmMessages = {
       filter: "Ждут ответа",
       minutes: "%{minutes} мин",
       hours: "%{hours} ч %{minutes} мин",
+      days: "%{days} д %{hours} ч",
     },
     settings: {
       section: "Контроль ответа",

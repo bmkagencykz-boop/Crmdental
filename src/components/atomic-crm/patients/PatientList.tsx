@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import type { InputProps } from "ra-core";
-import { useGetIdentity, useTranslate } from "ra-core";
+import { useCanAccess, useGetIdentity, useTranslate } from "ra-core";
+import { Upload } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
 import { BulkDeleteButton } from "@/components/admin/bulk-delete-button";
 import { BulkExportButton } from "@/components/admin/bulk-export-button";
 import { CreateButton } from "@/components/admin/create-button";
@@ -156,9 +159,28 @@ const PatientListActions = () => (
   <TopToolbar className="items-center">
     <FilterButton iconOnly />
     <ExportButton iconOnly />
+    <ImportButton />
     <CreateButton label="resources.patients.action.new" />
   </TopToolbar>
 );
+
+/** Import wizard (owner and head: same rights as the settings) */
+const ImportButton = () => {
+  const translate = useTranslate();
+  const { canAccess } = useCanAccess({
+    resource: "configuration",
+    action: "edit",
+  });
+  if (!canAccess) return null;
+  return (
+    <Button variant="outline" asChild>
+      <Link to="/import">
+        <Upload className="size-4" />
+        {translate("import.open")}
+      </Link>
+    </Button>
+  );
+};
 
 const WrapperField = ({ children }: InputProps & { children: ReactNode }) =>
   children;

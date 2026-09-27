@@ -18,7 +18,11 @@ import type {
   SignUpData,
   Message,
   MessengerStatus,
+  ImportBatchResult,
+  IntegrationKind,
+  IntegrationStatus,
 } from "../../types";
+import type { BatchRow, ImportMode } from "../../import/importMapping";
 import { applySearch } from "../commons/search";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
@@ -317,6 +321,31 @@ const getDataProviderWithCustomMethods = () => {
         .single();
       if (error) throw error;
       return data as OrganizationSettings;
+    },
+    /** Imports a batch of rows of the import wizard (public.import_batch) */
+    async importBatch(
+      kind: ImportMode,
+      rows: BatchRow[],
+    ): Promise<ImportBatchResult> {
+      const { data, error } = await getSupabaseClient().rpc("import_batch", {
+        kind,
+        rows,
+      });
+      if (error) throw error;
+      return data as ImportBatchResult;
+    },
+    async getIntegrationStatus(): Promise<IntegrationStatus[]> {
+      const { data, error } =
+        await getSupabaseClient().rpc("integration_status");
+      if (error) throw error;
+      return (data ?? []) as IntegrationStatus[];
+    },
+    /** The clinic asks for a MIS connector */
+    async requestIntegration(kind: IntegrationKind): Promise<void> {
+      const { error } = await getSupabaseClient().rpc("request_integration", {
+        integration_kind: kind,
+      });
+      if (error) throw error;
     },
     // One configuration row per organization; RLS returns the current one
     async getConfiguration(): Promise<ConfigurationContextValue> {

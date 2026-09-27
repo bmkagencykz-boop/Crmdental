@@ -26,7 +26,11 @@ import type {
   DealChecklistCheck,
   StageChecklistItem,
   TaskRule,
+  ImportBatchResult,
+  IntegrationKind,
+  IntegrationStatus,
 } from "../../types";
+import type { BatchRow, ImportMode } from "../../import/importMapping";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
 import {
@@ -45,6 +49,7 @@ import {
   USER_STORAGE_KEY,
 } from "./authProvider";
 import generateData from "./dataGenerator";
+import { importBatchInMemory } from "./importBatch";
 import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 
@@ -408,6 +413,41 @@ export const createDataProvider = ({
         { id: settings.id, data, previousData: settings },
       );
       return updated as OrganizationSettings;
+    },
+    // Same as public.import_batch (import wizard)
+    importBatch: async (
+      kind: ImportMode,
+      rows: BatchRow[],
+    ): Promise<ImportBatchResult> => {
+      const salesId = await currentSalesId();
+      const sale = (await all<Sale>("sales")).find(
+        (s) => String(s.id) === String(salesId),
+      );
+      return importBatchInMemory({
+        base: baseDataProvider,
+        kind,
+        rows,
+        // The demo user is the owner of the clinic
+        role: sale?.role ?? "owner",
+      });
+    },
+    getIntegrationStatus: async (): Promise<IntegrationStatus[]> =>
+      all<IntegrationStatus>("integrations").catch(() => []),
+    requestIntegration: async (kind: IntegrationKind): Promise<void> => {
+      const existing = (
+        await all<IntegrationStatus & { id: Identifier }>("integrations").catch(
+          () => [],
+        )
+      ).find((integration) => integration.kind === kind);
+      if (existing) return;
+      await baseDataProvider.create("integrations", {
+        data: {
+          kind,
+          status: "requested",
+          last_sync_at: null,
+          last_error: null,
+        },
+      });
     },
     signUp: async ({
       email,

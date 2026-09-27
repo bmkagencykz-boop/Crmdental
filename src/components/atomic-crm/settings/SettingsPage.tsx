@@ -15,10 +15,12 @@ import {
 } from "../root/ConfigurationContext";
 import { useDataProvider, useNotify } from "ra-core";
 import type { CrmDataProvider } from "../providers/types";
+import { ImportWizard } from "../import/ImportWizard";
 import { AccessSettings } from "./AccessSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
+import { MisSettings } from "./MisSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 
@@ -32,8 +34,20 @@ const SECTIONS = [
   "automations",
   "access",
   "clinic",
+  "import",
+  "mis",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+
+// Import and MIS keep their texts in their own namespaces (import.*, mis.*)
+const sectionTitle = (section: Section) =>
+  section === "import" || section === "mis"
+    ? `${section}.title`
+    : `crm.settings.sections.${section}`;
+const sectionHint = (section: Section) =>
+  section === "import" || section === "mis"
+    ? `${section}.hint`
+    : `crm.settings.hints.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -65,13 +79,13 @@ export const SettingsPage = () => {
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
-            {translate(`crm.settings.sections.${id}`)}
+            {translate(sectionTitle(id))}
           </button>
         ))}
       </nav>
       <Panel
-        title={translate(`crm.settings.sections.${section}`)}
-        hint={translate(`crm.settings.hints.${section}`)}
+        title={translate(sectionTitle(section))}
+        hint={translate(sectionHint(section))}
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
         {section === "services" ? (
@@ -88,6 +102,8 @@ export const SettingsPage = () => {
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
+        {section === "import" ? <ImportWizard /> : null}
+        {section === "mis" ? <MisSettings /> : null}
       </Panel>
     </div>
   );

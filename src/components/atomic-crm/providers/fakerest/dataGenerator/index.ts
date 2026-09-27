@@ -10,6 +10,8 @@ export default (): Db => {
   db.tags = generateTags(db);
   generateDictionaries(db);
   generateClinic(db);
+  db.external_refs = [];
+  db.integrations = [];
   db.configuration = [
     {
       id: 1,

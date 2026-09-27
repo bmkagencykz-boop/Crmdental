@@ -47,6 +47,20 @@ export const applyTaskStateFilter = <
   return { ...params, filter };
 };
 
+/** A row of public.saved_filters */
+export type SavedFilter = {
+  id: Identifier;
+  organization_id?: Identifier;
+  /** null: the whole clinic; else the personal filter of this employee */
+  sales_id: Identifier | null;
+  name: string;
+  resource: "deals";
+  /** Serialized filter values (serializeFilter) */
+  filter: Record<string, unknown>;
+  position: number;
+  created_at?: string;
+};
+
 // --- relative values of the saved filters ------------------------------------
 
 /** The current employee */

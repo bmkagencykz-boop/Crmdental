@@ -47,6 +47,8 @@ import { ATTACHMENTS_BUCKET } from "../commons/attachments";
 import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
 import { getMailingMethods } from "./mailingMethods";
+import { getListPlanMethods } from "./listPlanMethods";
+import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -94,6 +96,8 @@ const getDataProviderWithCustomMethods = () => {
     ...baseDataProvider,
     // Repeat sales and mailings (stage 17)
     ...getMailingMethods(),
+    // Deal list and sales plan (stage 21)
+    ...getListPlanMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {
@@ -106,7 +110,7 @@ const getDataProviderWithCustomMethods = () => {
           : [];
         return baseDataProvider.getList(
           "deals_summary",
-          applyWaitingFilter(params, waiting),
+          applyWaitingFilter(applyTaskStateFilter(params), waiting),
         );
       }
       // Audit log with the deal and patient names (owner and head only, RLS)
@@ -735,6 +739,8 @@ const DEAL_VIEW_COLUMNS = [
   "last_message_text",
   "doctor_name",
   "prepayment_amount",
+  "last_activity_at",
+  "next_task_text",
 ];
 
 const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>

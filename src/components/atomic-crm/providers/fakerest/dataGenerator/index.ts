@@ -4,6 +4,7 @@ import { generateClinic } from "./clinic";
 import { generateDictionaries } from "./dictionaries";
 import { generateNotifications } from "./notifications";
 import { generateMailings } from "./mailings";
+import { generateListsPlans } from "./plans";
 import { generateDoctors } from "./doctors";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
@@ -22,6 +23,7 @@ export default (): Db => {
   db.integrations = [];
   generateNotifications(db);
   generateMailings(db);
+  generateListsPlans(db);
   db.configuration = [
     {
       id: 1,

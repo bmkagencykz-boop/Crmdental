@@ -39,7 +39,8 @@ const STAGES: Stage[] = [
   kind: kind as Stage["kind"],
   color: "#000",
 }));
-const stage = (name: string) => STAGES.find((s) => s.name === name)!.id;
+const stage = (name: string) =>
+  Number(STAGES.find((s) => s.name === name)!.id);
 
 const sale = (id: number, last_name: string): Sale => ({
   id,

@@ -240,9 +240,13 @@ export const createMailingDemo = ({
           }
         } else {
           deal =
+            (row.deal_id != null
+              ? own.find((d) => String(d.id) === String(row.deal_id))
+              : undefined) ??
             own.find(
               (d) => kind.get(String(d.stage_id)) === "open" && !d.archived_at,
-            ) ?? own[0];
+            ) ??
+            own[0];
         }
         const text = renderTemplate(
           row.body,
@@ -698,17 +702,33 @@ export const createMailingDemo = ({
       // Same as private.handle_mailing_created: the segment is queued
       afterCreate: async (result) => {
         const mailing = result.data as Mailing;
-        const rows = classifySegment(
-          await segmentData(),
-          mailing.segment,
-        ).filter((row) => row.status === "ok");
+        const segment = await segmentData();
+        const rows = classifySegment(segment, mailing.segment).filter(
+          (row) => row.status === "ok",
+        );
+        // A mailing to chosen deals: the patient's latest updated one of them
+        const chosen = mailing.segment.deal_ids?.map(String);
+        const dealOf = (patientId: Identifier) =>
+          chosen
+            ? (segment.deals
+                .filter(
+                  (d) =>
+                    String(d.patient_id) === String(patientId) &&
+                    chosen.includes(String(d.id)),
+                )
+                .sort(
+                  (a, b) =>
+                    (b.updated_at ?? "").localeCompare(a.updated_at ?? "") ||
+                    Number(b.id) - Number(a.id),
+                )[0]?.id ?? null)
+            : null;
         for (const row of rows) {
           await baseDataProvider.create("mailing_messages", {
             data: {
               mailing_id: mailing.id,
               recall_id: null,
               patient_id: row.patient_id,
-              deal_id: null,
+              deal_id: dealOf(row.patient_id),
               body: mailing.body,
               send_at: mailing.scheduled_at,
               status: "pending",

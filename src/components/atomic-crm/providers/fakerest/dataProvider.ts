@@ -94,6 +94,8 @@ import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 import { telephonyWebhookUrl } from "../../telephony/telephony";
 import { createMailingDemo } from "./mailings";
+import { createListPlanDemo } from "./listsPlans";
+import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -121,6 +123,8 @@ const DEAL_VIEW_COLUMNS = [
   "last_message_text",
   "doctor_name",
   "prepayment_amount",
+  "last_activity_at",
+  "next_task_text",
 ];
 
 // Demo lead webhook and Telegram bot (nothing is really reachable)
@@ -213,6 +217,13 @@ export const createDataProvider = ({
     (await baseDataProvider.getList(resource, everything)).data as T[];
   // Repeat sales and mailings (stage 17)
   const mailingDemo = createMailingDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+  });
+  // Deal list and sales plan (stage 21)
+  const listPlanDemo = createListPlanDemo({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
@@ -490,8 +501,14 @@ export const createDataProvider = ({
     const doctorsById = new Map(doctors.map((d) => [d.id, d]));
     return deals.map((deal) => {
       const patient = patientsById.get(deal.patient_id);
-      const open = tasks.filter(
-        (task) => task.deal_id === deal.id && !task.done_date,
+      const open = tasks
+        .filter((task) => task.deal_id === deal.id && !task.done_date)
+        .sort(
+          (a, b) =>
+            a.due_date.localeCompare(b.due_date) || Number(a.id) - Number(b.id),
+        );
+      const messageSummaryOfDeal = messageSummary(
+        messages.filter((message) => message.deal_id === deal.id),
       );
       return {
         ...deal,
@@ -510,10 +527,8 @@ export const createDataProvider = ({
           .join(" ")
           .toLowerCase(),
         nb_open_tasks: open.length,
-        next_task_due_at: open.map((task) => task.due_date).sort()[0] ?? null,
-        ...messageSummary(
-          messages.filter((message) => message.deal_id === deal.id),
-        ),
+        next_task_due_at: open[0]?.due_date ?? null,
+        ...messageSummaryOfDeal,
         doctor_id: deal.doctor_id ?? null,
         doctor_name:
           deal.doctor_id != null
@@ -523,6 +538,13 @@ export const createDataProvider = ({
         prepayment_amount: payments
           .filter((p) => p.deal_id === deal.id && p.kind === "prepayment")
           .reduce((sum, p) => sum + Number(p.amount), 0),
+        // Deal list (stage 21)
+        last_activity_at:
+          [deal.updated_at, messageSummaryOfDeal.last_message_at]
+            .filter((value): value is string => !!value)
+            .sort()
+            .at(-1) ?? deal.updated_at,
+        next_task_text: open[0]?.text ?? null,
       };
     });
   };
@@ -594,6 +616,7 @@ export const createDataProvider = ({
   const custom = {
     ...baseDataProvider,
     ...mailingDemo.methods,
+    ...listPlanDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -611,6 +634,9 @@ export const createDataProvider = ({
       }
       if (views[resource]) {
         return (await viewProvider(resource)).getList(resource, params);
+      }
+      if (resource === "saved_filters") {
+        return listPlanDemo.listSavedFilters(params);
       }
       if (resource === "quick_replies") {
         // Same as the RLS policy: clinic-wide replies and my own
@@ -1338,6 +1364,7 @@ export const createDataProvider = ({
     withSupabaseFilterAdapter(custom as DataProvider),
     [
       ...mailingDemo.callbacks,
+      ...listPlanDemo.callbacks,
       {
         resource: "configuration",
         beforeUpdate: async (params) => {
@@ -1391,15 +1418,17 @@ export const createDataProvider = ({
       {
         resource: "deals",
         // Quick filter «Ждут ответа»: the overdue deals of deals_waiting
-        beforeGetList: async (params) =>
-          params.filter?.[WAITING_FILTER]
+        beforeGetList: async (params) => {
+          const filtered = applyTaskStateFilter(params);
+          return filtered.filter?.[WAITING_FILTER]
             ? applyWaitingFilter(
-                params,
+                filtered,
                 (await dealsWaitingView())
                   .filter((row) => row.overdue)
                   .map((row) => row.id),
               )
-            : params,
+            : filtered;
+        },
         beforeCreate: async (params) => {
           const [pipelines, stages] = await Promise.all([
             all<Pipeline>("pipelines"),

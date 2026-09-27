@@ -31,6 +31,8 @@ import type {
   CrmNotification,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
+import type { SavedFilter } from "../../../deals/list/dealFilters";
+import type { SalesPlan } from "../../../reports/salesPlan";
 import type {
   Mailing,
   MailingMessage,
@@ -77,4 +79,7 @@ export interface Db {
   mailings: Mailing[];
   mailing_messages: MailingMessage[];
   mailing_settings: Array<MailingSettings & { id: number }>;
+  // Deal list and sales plan (stage 21)
+  saved_filters: SavedFilter[];
+  sales_plans: SalesPlan[];
 }

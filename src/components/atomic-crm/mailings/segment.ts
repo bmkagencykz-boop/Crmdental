@@ -128,6 +128,16 @@ export const classifySegment = (
     ) {
       return false;
     }
+    // Mailing to chosen deals (bulk action of the deal list): an empty
+    // list matches nobody
+    if (
+      segment.deal_ids !== undefined &&
+      !deals.some((deal) =>
+        (segment.deal_ids ?? []).some((id) => same(deal.id, id)),
+      )
+    ) {
+      return false;
+    }
     if (segment.has_open_deal != null) {
       const hasOpen = deals.some(
         (deal) =>

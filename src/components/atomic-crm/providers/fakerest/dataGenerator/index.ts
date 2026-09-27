@@ -5,6 +5,7 @@ import { generateDictionaries } from "./dictionaries";
 import { generateNotifications } from "./notifications";
 import { generateMailings } from "./mailings";
 import { generateDoctors } from "./doctors";
+import { generateDigitalPipeline } from "./digitalPipeline";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import type { Db } from "./types";
@@ -22,6 +23,7 @@ export default (): Db => {
   db.integrations = [];
   generateNotifications(db);
   generateMailings(db);
+  generateDigitalPipeline(db);
   db.configuration = [
     {
       id: 1,

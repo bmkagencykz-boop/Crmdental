@@ -94,6 +94,7 @@ import type { Db } from "./dataGenerator/types";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 import { telephonyWebhookUrl } from "../../telephony/telephony";
 import { createMailingDemo } from "./mailings";
+import { createDigitalPipelineDemo } from "./digitalPipeline";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -218,6 +219,19 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     getDataProvider: () => dataProvider,
   });
+  // Digital pipeline, webhooks and API keys (stage 20)
+  const pipelineDemo = createDigitalPipelineDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+    renderTemplate: async (deal, templateId) => {
+      const template = (await all<MessageTemplate>("message_templates")).find(
+        (t) => String(t.id) === String(templateId),
+      );
+      return template ? renderAutomessage(deal, template) : "";
+    },
+  });
 
   // Same as private.create_rule_tasks
   const createRuleTasks = async (
@@ -338,7 +352,10 @@ export const createDataProvider = ({
       for (const row of due) {
         const deal = deals.find((d) => d.id === row.deal_id);
         const rule = rules.find((r) => r.id === row.rule_id);
-        const template = templates.find((t) => t.id === rule?.template_id);
+        // A row queued by a stage trigger has its template, no rule
+        const template = templates.find(
+          (t) => t.id === (row.template_id ?? rule?.template_id),
+        );
         const close = (data: Partial<Automessage>) =>
           baseDataProvider.update("automessages", {
             id: row.id,
@@ -349,7 +366,7 @@ export const createDataProvider = ({
           await close({ status: "cancelled", error: "Сделка ушла с этапа" });
           continue;
         }
-        if (!rule?.is_active || !template) {
+        if ((!row.template_id && !rule?.is_active) || !template) {
           await close({
             status: "cancelled",
             error: "Правило выключено или удалено",
@@ -357,7 +374,7 @@ export const createDataProvider = ({
           continue;
         }
         const text = await renderAutomessage(deal, template);
-        if (rule.mode === "confirm") {
+        if (rule?.mode === "confirm") {
           await baseDataProvider.create("tasks", {
             data: {
               deal_id: deal.id,
@@ -417,6 +434,8 @@ export const createDataProvider = ({
         automessage_id: automessageId,
       },
     });
+    // Same as the message trigger of the digital pipeline
+    await pipelineDemo.onMessage(data);
     // Same as private.handle_automessage_sent
     if (automessageId != null) {
       const row = (await all<Automessage>("automessages")).find(
@@ -594,6 +613,7 @@ export const createDataProvider = ({
   const custom = {
     ...baseDataProvider,
     ...mailingDemo.methods,
+    ...pipelineDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -951,7 +971,7 @@ export const createDataProvider = ({
         }));
       }
       const now = new Date().toISOString();
-      await baseDataProvider.create<Call>("calls", {
+      const { data: call } = await baseDataProvider.create<Call>("calls", {
         data: {
           patient_id: patient.id,
           deal_id: deal.id,
@@ -975,6 +995,7 @@ export const createDataProvider = ({
           sales_id: deal.sales_id ?? undefined,
         },
       });
+      await pipelineDemo.onCall(call);
       telephony = { ...telephony, last_event_at: now };
       return { deal_id: deal.id };
     },
@@ -1213,7 +1234,9 @@ export const createDataProvider = ({
   const logAudit = async (
     row: Omit<AuditLogEntry, "id" | "at" | "sales_id" | "source">,
   ) => {
-    const salesId = (await currentSalesId()) ?? null;
+    // Changes of the digital pipeline have no author (source automation)
+    const automatic = pipelineDemo.isAutomating();
+    const salesId = automatic ? null : ((await currentSalesId()) ?? null);
     return baseDataProvider.create("audit_log", {
       data: {
         deal_id: null,
@@ -1221,7 +1244,7 @@ export const createDataProvider = ({
         ...row,
         at: new Date().toISOString(),
         sales_id: salesId,
-        source: salesId == null ? "system" : "user",
+        source: automatic ? "automation" : salesId == null ? "system" : "user",
       },
     });
   };
@@ -1230,7 +1253,10 @@ export const createDataProvider = ({
     const result = await baseDataProvider.create("deal_events", {
       data: {
         ...event,
-        sales_id: event.sales_id ?? (await currentSalesId()) ?? null,
+        sales_id:
+          event.sales_id ??
+          (pipelineDemo.isAutomating() ? null : await currentSalesId()) ??
+          null,
         created_at: new Date().toISOString(),
       },
     });
@@ -1774,6 +1800,8 @@ export const createDataProvider = ({
         resource: "deal_notes",
         beforeSave: async (params) => preserveAttachmentMimeType(params),
       } satisfies ResourceCallbacks<DealNote>,
+      // After the rules above: the digital pipeline sees the saved deal
+      ...pipelineDemo.callbacks,
     ],
   ) as CrmDataProvider;
 

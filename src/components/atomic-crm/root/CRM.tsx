@@ -32,6 +32,7 @@ import sales from "../sales";
 import { ProfilePage } from "../settings/ProfilePage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { ImportPage } from "../import/ImportPage";
+import { ApiDocsPage } from "../pipeline-automation/ApiDocsPage";
 import {
   CONFIGURATION_STORE_KEY,
   type ConfigurationContextValue,
@@ -218,6 +219,7 @@ const DesktopAdmin = (
         <Route path={AuditPage.path} element={<AuditPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />
+        <Route path={ApiDocsPage.path} element={<ApiDocsPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />
@@ -246,6 +248,10 @@ const DesktopAdmin = (
       <Resource name="recall_rules" />
       <Resource name="mailings" />
       <Resource name="mailings_summary" />
+      <Resource name="stage_triggers" />
+      <Resource name="stage_trigger_runs" />
+      <Resource name="webhooks" />
+      <Resource name="webhook_deliveries" />
     </Admin>
   );
 };

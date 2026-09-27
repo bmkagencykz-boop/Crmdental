@@ -395,6 +395,8 @@ export type AutomessageStatus =
 export type Automessage = {
   deal_id: Identifier;
   rule_id?: Identifier | null;
+  /** Queued by a stage trigger (stage 20): its template, no rule */
+  template_id?: Identifier | null;
   stage_id: Identifier;
   timing: AutomessageRule["timing"];
   send_at: string;

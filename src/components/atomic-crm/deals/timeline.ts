@@ -1,3 +1,4 @@
+import type { StageTriggerRun } from "../pipeline-automation/types";
 import type { Call, DealEvent, DealNote, Message, Task } from "../types";
 
 export type TimelineItem =
@@ -5,11 +6,13 @@ export type TimelineItem =
   | { kind: "task"; date: string; key: string; task: Task }
   | { kind: "call"; date: string; key: string; call: Call }
   | { kind: "event"; date: string; key: string; event: DealEvent }
-  | { kind: "message"; date: string; key: string; message: Message };
+  | { kind: "message"; date: string; key: string; message: Message }
+  | { kind: "automation"; date: string; key: string; run: StageTriggerRun };
 
 /**
  * One feed for the deal card (spec §4.2): messages, notes, completed tasks,
- * calls and the deal log, newest first. Open tasks are shown apart, above the feed.
+ * calls, the deal log and what the digital pipeline did to the deal, newest
+ * first. Open tasks are shown apart, above the feed.
  */
 export const buildTimeline = ({
   notes = [],
@@ -17,12 +20,14 @@ export const buildTimeline = ({
   calls = [],
   events = [],
   messages = [],
+  automations = [],
 }: {
   notes?: DealNote[];
   tasks?: Task[];
   calls?: Call[];
   events?: DealEvent[];
   messages?: Message[];
+  automations?: StageTriggerRun[];
 }): TimelineItem[] =>
   [
     ...messages.map(
@@ -65,6 +70,14 @@ export const buildTimeline = ({
         date: event.created_at,
         key: `event-${event.id}`,
         event,
+      }),
+    ),
+    ...automations.map(
+      (run): TimelineItem => ({
+        kind: "automation",
+        date: run.created_at,
+        key: `automation-${run.id}`,
+        run,
       }),
     ),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

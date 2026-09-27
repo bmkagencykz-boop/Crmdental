@@ -52,17 +52,20 @@ export function UserMenu({ children }: UserMenuProps) {
     <UserMenuContext.Provider value={{ onClose: handleClose }}>
       <DropdownMenu open={open} onOpenChange={handleToggleOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="relative h-8 w-8 ml-2 rounded-full"
-          >
-            <Avatar className="h-8 w-8">
+          <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+            <Avatar className="h-9 w-9">
               <AvatarImage src={identity?.avatar} role="presentation" />
               <AvatarFallback>{identity?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent
+          className="w-56"
+          side="right"
+          align="end"
+          sideOffset={12}
+          forceMount
+        >
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">

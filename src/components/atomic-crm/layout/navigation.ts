@@ -1,0 +1,45 @@
+import type { LucideIcon } from "lucide-react";
+import { Building2, Columns3, LayoutGrid, UsersRound } from "lucide-react";
+import { useTranslate } from "ra-core";
+
+export const SIDEBAR_WIDTH = "5.25rem";
+
+export type NavItem = {
+  to: string;
+  match: string;
+  icon: LucideIcon;
+  label: string;
+};
+
+/**
+ * Main navigation items, shared with the page title shown in the layout.
+ */
+export const useNavItems = (): NavItem[] => {
+  const translate = useTranslate();
+  return [
+    {
+      to: "/",
+      match: "/",
+      icon: LayoutGrid,
+      label: translate("crm.navigation.dashboard", { _: "Рабочий стол" }),
+    },
+    {
+      to: "/deals",
+      match: "/deals/*",
+      icon: Columns3,
+      label: translate("resources.deals.name", { smart_count: 2 }),
+    },
+    {
+      to: "/contacts",
+      match: "/contacts/*",
+      icon: UsersRound,
+      label: translate("resources.contacts.name", { smart_count: 2 }),
+    },
+    {
+      to: "/companies",
+      match: "/companies/*",
+      icon: Building2,
+      label: translate("resources.companies.name", { smart_count: 2 }),
+    },
+  ];
+};

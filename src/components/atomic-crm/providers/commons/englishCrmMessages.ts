@@ -398,6 +398,8 @@ export const englishCrmMessages = {
       read_more: "Read more",
       retry: "Retry",
       show_less: "Show less",
+      today: "Today",
+      yesterday: "Yesterday",
       copied: "Copied!",
       copy: "Copy",
       loading: "Loading...",
@@ -406,6 +408,10 @@ export const englishCrmMessages = {
     },
     changelog: {
       title: "Changelog",
+    },
+    deals: {
+      count: "%{smart_count} deal |||| %{smart_count} deals",
+      quick_add: "Quick add",
     },
     roles: {
       owner: "Owner",
@@ -549,6 +555,7 @@ export const englishCrmMessages = {
     language: "Language",
     navigation: {
       label: "CRM navigation",
+      dashboard: "Dashboard",
     },
     profile: {
       add_secondary_email: "Add an email",

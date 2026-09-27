@@ -404,6 +404,8 @@ export const russianCrmMessages: CrmMessages = {
       read_more: "Читать далее",
       retry: "Повторить",
       show_less: "Свернуть",
+      today: "Сегодня",
+      yesterday: "Вчера",
       copied: "Скопировано!",
       copy: "Копировать",
       loading: "Загрузка...",
@@ -413,6 +415,11 @@ export const russianCrmMessages: CrmMessages = {
     },
     changelog: {
       title: "Изменения",
+    },
+    deals: {
+      count:
+        "%{smart_count} сделка |||| %{smart_count} сделки |||| %{smart_count} сделок",
+      quick_add: "Быстрое добавление",
     },
     roles: {
       owner: "Владелец",
@@ -553,6 +560,7 @@ export const russianCrmMessages: CrmMessages = {
     language: "Язык",
     navigation: {
       label: "Навигация",
+      dashboard: "Рабочий стол",
     },
     profile: {
       add_secondary_email: "Добавить email",

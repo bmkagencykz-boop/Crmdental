@@ -6,9 +6,9 @@ import { dataProvider } from "./dataProvider";
 
 export const DEFAULT_USER = {
   id: 0,
-  first_name: "Jane",
-  last_name: "Doe",
-  email: "janedoe@atomic.dev",
+  first_name: "Айгерим",
+  last_name: "Садыкова",
+  email: "owner@demo.kz",
   password: "demo",
   administrator: true,
   role: "owner",

@@ -1,8 +1,9 @@
-import { datatype, lorem, random } from "faker/locale/en_US";
+import { random } from "faker/locale/en_US";
 
 import { defaultNoteStatuses } from "../../../root/defaultConfiguration";
 import type { ContactNote } from "../../../types";
 import type { Db } from "./types";
+import { noteTexts } from "./kz";
 import { randomDate } from "./utils";
 
 export const generateContactNotes = (db: Db): ContactNote[] => {
@@ -16,7 +17,7 @@ export const generateContactNotes = (db: Db): ContactNote[] => {
     return {
       id,
       contact_id: contact.id,
-      text: lorem.paragraphs(datatype.number({ min: 1, max: 4 })),
+      text: random.arrayElement(noteTexts),
       date: date.toISOString(),
       sales_id: contact.sales_id!,
       status: random.arrayElement(defaultNoteStatuses).value,

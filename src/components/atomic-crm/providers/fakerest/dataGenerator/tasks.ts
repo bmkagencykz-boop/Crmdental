@@ -1,8 +1,9 @@
-import { datatype, lorem, random } from "faker/locale/en_US";
+import { datatype, random } from "faker/locale/en_US";
 
 import { defaultTaskTypes } from "../../../root/defaultConfiguration";
 import type { Task } from "../../../types";
 import type { Db } from "./types";
+import { taskTexts } from "./kz";
 import { randomDate } from "./utils";
 
 export const type: string[] = [
@@ -41,7 +42,7 @@ export const generateTasks = (db: Db) => {
       id,
       contact_id: contact.id,
       type: random.arrayElement(defaultTaskTypes).value,
-      text: lorem.sentence(),
+      text: random.arrayElement(taskTexts),
       due_date: randomDate(
         datatype.boolean() ? new Date() : new Date(contact.first_seen),
         new Date(Date.now() + 100 * 24 * 60 * 60 * 1000),

@@ -1,13 +1,11 @@
-import { internet, name } from "faker/locale/en_US";
-
 import type { RAFile, Sale } from "../../../types";
 import type { Db } from "./types";
+import { kzEmail, kzPerson } from "./kz";
 
 export const generateSales = (_: Db): Sale[] => {
   const randomSales = Array.from(Array(5).keys()).map((id) => {
-    const first_name = name.firstName();
-    const last_name = name.lastName();
-    const email = internet.email(first_name, last_name);
+    const { first_name, last_name } = kzPerson();
+    const email = kzEmail(first_name, last_name);
 
     return {
       id: id + 1,
@@ -27,9 +25,9 @@ export const generateSales = (_: Db): Sale[] => {
     {
       id: 0,
       user_id: "0",
-      first_name: "Jane",
-      last_name: "Doe",
-      email: "janedoe@atomic.dev",
+      first_name: "Айгерим",
+      last_name: "Садыкова",
+      email: "owner@demo.kz",
       secondary_emails: [],
       password: "demo",
       organization_id: 1,

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { differenceInDays, formatRelative } from "date-fns";
-import { enUS, fr } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import { useLocaleState } from "ra-core";
 
 /**
@@ -23,16 +23,16 @@ import { useLocaleState } from "ra-core";
  */
 
 const getDateFnsLocale = (locale: string) =>
-  locale.startsWith("fr") ? fr : enUS;
+  locale.startsWith("en") ? enUS : ru;
 
-export const formatLocalizedDate = (date: string, locale = "en") =>
+export const formatLocalizedDate = (date: string, locale = "ru") =>
   new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",
     day: "numeric",
   }).format(new Date(date));
 
-export const formatRelativeDate = (date: string, locale = "en") => {
+export const formatRelativeDate = (date: string, locale = "ru") => {
   const dateObj = new Date(date);
   const now = new Date();
   const dateFnsLocale = getDateFnsLocale(locale);
@@ -45,7 +45,7 @@ export const formatRelativeDate = (date: string, locale = "en") => {
 };
 
 export const useRelativeDate = (date: string) => {
-  const [locale = "en"] = useLocaleState();
+  const [locale = "ru"] = useLocaleState();
 
   return formatRelativeDate(date, locale);
 };

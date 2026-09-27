@@ -1,11 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/manrope";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-link: var(--brand-link);
+  --color-brand-red: var(--brand-red);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-green: var(--brand-green);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -43,93 +48,107 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/*
+ * Palette (from the Stratus reference): ink #262E3F, blue #83A2DB,
+ * coral #FD8E8C, sand #FFCE87 on cool, slightly blue neutrals.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  --avatar-0: oklch(0.85 0.08 240);
-  --avatar-1: oklch(0.88 0.1 340);
-  --avatar-2: oklch(0.85 0.07 180);
-  --avatar-3: oklch(0.9 0.09 40);
-  --avatar-4: oklch(0.87 0.08 300);
-  --avatar-5: oklch(0.85 0.08 150);
-  --avatar-6: oklch(0.87 0.08 200);
-  --avatar-7: oklch(0.88 0.09 10);
-  --avatar-8: oklch(0.92 0.08 80);
-  --avatar-9: oklch(0.86 0.09 270);
+  --radius: 0.5rem;
+  --background: #f3f5f9;
+  --foreground: #262e3f;
+  --card: #ffffff;
+  --card-foreground: #262e3f;
+  --popover: #ffffff;
+  --popover-foreground: #262e3f;
+  --primary: #262e3f;
+  --primary-foreground: #ffffff;
+  --secondary: #eaeef4;
+  --secondary-foreground: #262e3f;
+  --muted: #eef1f6;
+  --muted-foreground: #737c8f;
+  --accent: #eaeef4;
+  --accent-foreground: #262e3f;
+  --destructive: #e0605d;
+  --border: #e3e7ee;
+  --input: #dde2ea;
+  --ring: #83a2db;
+  --brand-blue: #83a2db;
+  --brand-link: #4c6db0;
+  --brand-red: #fd8e8c;
+  --brand-yellow: #ffce87;
+  --brand-green: #8cc9a7;
+  --chart-1: #83a2db;
+  --chart-2: #fd8e8c;
+  --chart-3: #ffce87;
+  --chart-4: #262e3f;
+  --chart-5: #8cc9a7;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #262e3f;
+  --sidebar-primary: #262e3f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef1f6;
+  --sidebar-accent-foreground: #262e3f;
+  --sidebar-border: #e3e7ee;
+  --sidebar-ring: #83a2db;
+  --avatar-0: #dbe4f5;
+  --avatar-1: #fde0df;
+  --avatar-2: #ffeccf;
+  --avatar-3: #dcefe4;
+  --avatar-4: #e4e1f3;
+  --avatar-5: #d7e9f0;
+  --avatar-6: #f3e2d6;
+  --avatar-7: #e8ecf2;
+  --avatar-8: #f6dfe8;
+  --avatar-9: #e1ecd9;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 15%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --avatar-0: oklch(0.35 0.12 240);
-  --avatar-1: oklch(0.38 0.14 340);
-  --avatar-2: oklch(0.35 0.11 180);
-  --avatar-3: oklch(0.38 0.13 40);
-  --avatar-4: oklch(0.36 0.12 300);
-  --avatar-5: oklch(0.35 0.11 150);
-  --avatar-6: oklch(0.37 0.12 200);
-  --avatar-7: oklch(0.38 0.14 10);
-  --avatar-8: oklch(0.4 0.11 80);
-  --avatar-9: oklch(0.36 0.13 270);
+  --background: #1a2030;
+  --foreground: #e6eaf2;
+  --card: #222a3b;
+  --card-foreground: #e6eaf2;
+  --popover: #222a3b;
+  --popover-foreground: #e6eaf2;
+  --primary: #e6eaf2;
+  --primary-foreground: #1a2030;
+  --secondary: #2b3447;
+  --secondary-foreground: #e6eaf2;
+  --muted: #283043;
+  --muted-foreground: #8e97aa;
+  --accent: #2b3447;
+  --accent-foreground: #e6eaf2;
+  --destructive: #fd8e8c;
+  --border: #303a4e;
+  --input: #364055;
+  --ring: #83a2db;
+  --brand-blue: #83a2db;
+  --brand-link: #9bb5e6;
+  --brand-red: #fd8e8c;
+  --brand-yellow: #ffce87;
+  --brand-green: #8cc9a7;
+  --chart-1: #83a2db;
+  --chart-2: #fd8e8c;
+  --chart-3: #ffce87;
+  --chart-4: #e6eaf2;
+  --chart-5: #8cc9a7;
+  --sidebar: #1e2536;
+  --sidebar-foreground: #e6eaf2;
+  --sidebar-primary: #e6eaf2;
+  --sidebar-primary-foreground: #1a2030;
+  --sidebar-accent: #2b3447;
+  --sidebar-accent-foreground: #e6eaf2;
+  --sidebar-border: #2c3548;
+  --sidebar-ring: #83a2db;
+  --avatar-0: #34466b;
+  --avatar-1: #5a3a44;
+  --avatar-2: #5a4a33;
+  --avatar-3: #2f4f42;
+  --avatar-4: #433c63;
+  --avatar-5: #2e4a57;
+  --avatar-6: #574236;
+  --avatar-7: #3a4356;
+  --avatar-8: #563a4c;
+  --avatar-9: #3d4f37;
 }
 
 a,
@@ -184,7 +203,8 @@ input[type="time"] {
 }
 
 body {
-  font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* The mobile pull-to-refresh (see layout/PullToRefresh.tsx) owns the overscroll

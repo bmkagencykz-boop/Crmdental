@@ -11,9 +11,9 @@ export const TasksList = () => {
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
         <div className="mr-3 flex">
-          <CheckSquare className="text-muted-foreground w-6 h-6" />
+          <CheckSquare className="text-muted-foreground size-4" />
         </div>
-        <h2 className="text-xl font-semibold text-muted-foreground flex-1">
+        <h2 className="text-[15px] font-semibold text-foreground flex-1">
           {translate("crm.dashboard.upcoming_tasks", {
             _: "Upcoming Tasks",
           })}

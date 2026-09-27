@@ -42,5 +42,10 @@ export const canAccess = <
     return role === "head";
   }
 
+  // The audit log (stage 15) too; RLS gives nobody else a row
+  if (params.resource === "audit_log") {
+    return role === "head";
+  }
+
   return role === "head" || role === "manager";
 };

@@ -8,6 +8,7 @@ import {
 import fakeRestDataProvider from "ra-data-fakerest";
 
 import type {
+  AuditLogEntry,
   Deal,
   DealEvent,
   DealNote,
@@ -448,9 +449,44 @@ export const createDataProvider = ({
     });
   };
 
+  // Same as the audit_log_summary view: deal and patient names, search text
+  const auditLogSummary = async () => {
+    const [rows, deals, patients] = await Promise.all([
+      all<AuditLogEntry>("audit_log"),
+      all<Deal>("deals"),
+      all<Patient>("patients"),
+    ]);
+    const dealsById = new Map(deals.map((deal) => [deal.id, deal]));
+    const patientsById = new Map(patients.map((p) => [p.id, p]));
+    return rows.map((row) => {
+      const deal = row.deal_id != null ? dealsById.get(row.deal_id) : null;
+      const patient =
+        row.patient_id != null ? patientsById.get(row.patient_id) : null;
+      const patient_name =
+        [patient?.last_name, patient?.first_name].filter(Boolean).join(" ") ||
+        null;
+      return {
+        ...row,
+        deal_name: deal?.name ?? null,
+        patient_name,
+        search_text: [
+          deal?.name,
+          patient?.last_name,
+          patient?.first_name,
+          patient?.middle_name,
+          ...(patient?.phones ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      };
+    });
+  };
+
   const views: Record<string, () => Promise<any[]>> = {
     patients: patientsSummary,
     deals: dealsSummary,
+    audit_log: auditLogSummary,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -843,14 +879,78 @@ export const createDataProvider = ({
 
   const currentSalesId = async () => (await getIdentity())?.id;
 
-  const logDealEvent = async (event: Omit<DealEvent, "id" | "created_at">) =>
-    baseDataProvider.create("deal_events", {
+  // Same as the audit triggers (supabase/schemas/15_audit.sql)
+  const logAudit = async (
+    row: Omit<AuditLogEntry, "id" | "at" | "sales_id" | "source">,
+  ) => {
+    const salesId = (await currentSalesId()) ?? null;
+    return baseDataProvider.create("audit_log", {
+      data: {
+        deal_id: null,
+        patient_id: null,
+        ...row,
+        at: new Date().toISOString(),
+        sales_id: salesId,
+        source: salesId == null ? "system" : "user",
+      },
+    });
+  };
+
+  const logDealEvent = async (event: Omit<DealEvent, "id" | "created_at">) => {
+    const result = await baseDataProvider.create("deal_events", {
       data: {
         ...event,
         sales_id: event.sales_id ?? (await currentSalesId()) ?? null,
         created_at: new Date().toISOString(),
       },
     });
+    // The audit log copies every deal event
+    const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
+      id: event.deal_id,
+    });
+    const changes = event.changes ?? {};
+    await logAudit({
+      entity: "deal",
+      entity_id: event.deal_id,
+      deal_id: event.deal_id,
+      patient_id: deal?.patient_id ?? null,
+      ...(event.type === "created"
+        ? {
+            action: "create",
+            changes: {
+              name: [null, deal?.name ?? null],
+              stage_id: [null, deal?.stage_id ?? null],
+              ...(deal?.sales_id != null
+                ? { sales_id: [null, deal.sales_id] }
+                : {}),
+              ...(deal?.plan_amount
+                ? { plan_amount: [null, deal.plan_amount] }
+                : {}),
+            },
+          }
+        : event.type === "stage_changed"
+          ? {
+              action: "stage_change",
+              changes: {
+                stage_id: [
+                  event.from_stage_id ?? null,
+                  event.to_stage_id ?? null,
+                ],
+                ...changes,
+              },
+            }
+          : {
+              action:
+                "archived_at" in changes
+                  ? changes.archived_at[1]
+                    ? "archive"
+                    : "unarchive"
+                  : "update",
+              changes,
+            }),
+    });
+    return result;
+  };
 
   // Same as handle_deal_payment_changed: deals.paid_amount = sum of payments
   const syncPaidAmount = async (dealId: Identifier) => {
@@ -871,6 +971,33 @@ export const createDataProvider = ({
       deal_id: dealId,
       type: "updated",
       changes: { paid_amount: [deal.paid_amount, paid_amount] },
+    });
+  };
+
+  const logPayment = async (
+    action: "create" | "delete",
+    payment: DealPayment,
+  ) => {
+    const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
+      id: payment.deal_id,
+    });
+    const values = {
+      amount: payment.amount,
+      paid_at: payment.paid_at,
+      comment: payment.comment ?? null,
+    };
+    await logAudit({
+      entity: "payment",
+      entity_id: payment.id,
+      action,
+      changes: Object.fromEntries(
+        Object.entries(values).map(([field, value]) => [
+          field,
+          action === "create" ? [null, value] : [value, null],
+        ]),
+      ) as AuditLogEntry["changes"],
+      deal_id: payment.deal_id,
+      patient_id: deal?.patient_id ?? null,
     });
   };
 
@@ -1139,6 +1266,7 @@ export const createDataProvider = ({
         },
         afterCreate: async (result) => {
           await syncPaidAmount(result.data.deal_id);
+          await logPayment("create", result.data);
           return result;
         },
         afterUpdate: async (result) => {
@@ -1147,6 +1275,7 @@ export const createDataProvider = ({
         },
         afterDelete: async (result) => {
           await syncPaidAmount(result.data.deal_id);
+          await logPayment("delete", result.data);
           return result;
         },
       } satisfies ResourceCallbacks<DealPayment>,

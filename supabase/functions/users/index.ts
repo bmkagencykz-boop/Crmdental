@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { supabaseAdminAs } from "../_shared/auditActor.ts";
 import { corsHeaders, OptionsMiddleware } from "../_shared/cors.ts";
 import { createErrorResponse } from "../_shared/utils.ts";
 import { AuthMiddleware, UserMiddleware } from "../_shared/authentication.ts";
@@ -10,8 +11,13 @@ import {
   normalizeSecondaryEmails,
 } from "./secondaryEmails.ts";
 
-async function updateSaleDisabled(user_id: string, disabled: boolean) {
-  return await supabaseAdmin
+// `client`: supabaseAdminAs(employee) so that the audit log names the author
+async function updateSaleDisabled(
+  user_id: string,
+  disabled: boolean,
+  client = supabaseAdmin,
+) {
+  return await client
     .from("sales")
     .update({ disabled: disabled ?? false })
     .eq("user_id", user_id);
@@ -25,8 +31,12 @@ type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
 const isAssignableRole = (role: unknown): role is AssignableRole =>
   ASSIGNABLE_ROLES.includes(role as AssignableRole);
 
-async function updateSaleRole(user_id: string, role: AssignableRole) {
-  const { data: sales, error: salesError } = await supabaseAdmin
+async function updateSaleRole(
+  user_id: string,
+  role: AssignableRole,
+  client = supabaseAdmin,
+) {
+  const { data: sales, error: salesError } = await client
     .from("sales")
     .update({ role })
     .eq("user_id", user_id)
@@ -49,8 +59,9 @@ async function createSale(
     disabled: boolean;
     role: AssignableRole;
   },
+  client = supabaseAdmin,
 ) {
-  const { data: sales, error: salesError } = await supabaseAdmin
+  const { data: sales, error: salesError } = await client
     .from("sales")
     .insert({ ...data, user_id })
     .select("*");
@@ -164,6 +175,8 @@ async function inviteUser(req: Request, currentUserSale: any) {
     app_metadata: {
       organization_id: currentUserSale.organization_id,
       role,
+      // The audit log names who invited the employee
+      invited_by: currentUserSale.id,
     },
   });
 
@@ -201,14 +214,18 @@ async function inviteUser(req: Request, currentUserSale: any) {
         );
       }
 
-      const sale = await createSale(user.id, {
-        organization_id: currentUserSale.organization_id,
-        email,
-        first_name,
-        last_name,
-        disabled: disabled ?? false,
-        role,
-      });
+      const sale = await createSale(
+        user.id,
+        {
+          organization_id: currentUserSale.organization_id,
+          email,
+          first_name,
+          last_name,
+          disabled: disabled ?? false,
+          role,
+        },
+        supabaseAdminAs(currentUserSale.id),
+      );
 
       return new Response(
         JSON.stringify({
@@ -248,8 +265,9 @@ async function inviteUser(req: Request, currentUserSale: any) {
   }
 
   try {
-    await updateSaleDisabled(user.id, disabled);
-    const sale = await updateSaleRole(user.id, role);
+    const asOwner = supabaseAdminAs(currentUserSale.id);
+    await updateSaleDisabled(user.id, disabled, asOwner);
+    const sale = await updateSaleRole(user.id, role, asOwner);
 
     return new Response(
       JSON.stringify({
@@ -416,12 +434,13 @@ async function patchUser(req: Request, currentUserSale: any) {
   }
 
   try {
+    const asOwner = supabaseAdminAs(currentUserSale.id);
     if (disabled !== undefined) {
-      await updateSaleDisabled(data.user.id, disabled);
+      await updateSaleDisabled(data.user.id, disabled, asOwner);
     }
     const sale =
       role !== undefined
-        ? await updateSaleRole(data.user.id, role)
+        ? await updateSaleRole(data.user.id, role, asOwner)
         : (
             await supabaseAdmin
               .from("sales")

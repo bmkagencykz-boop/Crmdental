@@ -1,4 +1,5 @@
 import type {
+  AuditLogEntry,
   Call,
   Deal,
   DealEvent,
@@ -54,4 +55,5 @@ export interface Db {
   quick_replies: QuickReply[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
+  audit_log: AuditLogEntry[];
 }

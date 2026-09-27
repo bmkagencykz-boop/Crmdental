@@ -1,4 +1,5 @@
 import { generateAutomessages } from "./automessages";
+import { generateAuditLog } from "./audit";
 import { generateClinic } from "./clinic";
 import { generateDictionaries } from "./dictionaries";
 import { generateSales } from "./sales";
@@ -12,6 +13,7 @@ export default (): Db => {
   generateDictionaries(db);
   generateClinic(db);
   generateAutomessages(db);
+  generateAuditLog(db);
   db.configuration = [
     {
       id: 1,

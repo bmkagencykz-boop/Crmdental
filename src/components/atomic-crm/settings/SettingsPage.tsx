@@ -22,6 +22,7 @@ import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
+import { RecallRulesSettings } from "../mailings/RecallRulesSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -32,6 +33,7 @@ const SECTIONS = [
   "distribution",
   "automations",
   "automessages",
+  "recalls",
   "access",
   "clinic",
 ] as const;
@@ -39,8 +41,8 @@ type Section = (typeof SECTIONS)[number];
 
 /** Stage 6 keeps its texts in the automessages namespace */
 const sectionKey = (id: Section, kind: "sections" | "hints") =>
-  id === "automessages"
-    ? `automessages.settings.${kind === "sections" ? "section" : "hint"}`
+  id === "automessages" || id === "recalls"
+    ? `${id}.settings.${kind === "sections" ? "section" : "hint"}`
     : `crm.settings.${kind}.${id}`;
 
 /**
@@ -95,6 +97,7 @@ export const SettingsPage = () => {
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "automessages" ? <AutomessagesSettings /> : null}
+        {section === "recalls" ? <RecallRulesSettings /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
       </Panel>

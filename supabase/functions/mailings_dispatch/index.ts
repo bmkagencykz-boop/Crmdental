@@ -102,7 +102,11 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ claimed: rows.length, sent: rows.length - failed, failed }),
+    JSON.stringify({
+      claimed: rows.length,
+      sent: rows.length - failed,
+      failed,
+    }),
     { headers: { "Content-Type": "application/json" } },
   );
 });

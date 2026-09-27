@@ -25,6 +25,13 @@ import type {
   Automessage,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
+import type {
+  Mailing,
+  MailingMessage,
+  MailingSettings,
+  Recall,
+  RecallRule,
+} from "../../../mailings/types";
 
 export interface Db {
   sales: Sale[];
@@ -52,4 +59,10 @@ export interface Db {
   automessages: Automessage[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
+  // Repeat sales and mailings (stage 17)
+  recall_rules: RecallRule[];
+  recalls: Recall[];
+  mailings: Mailing[];
+  mailing_messages: MailingMessage[];
+  mailing_settings: Array<MailingSettings & { id: number }>;
 }

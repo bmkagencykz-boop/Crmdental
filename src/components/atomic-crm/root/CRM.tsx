@@ -1,6 +1,7 @@
 import { InboxPage } from "../messages/InboxPage";
 import { TasksPage } from "../tasks/TasksPage";
 import { ReportsPage } from "../reports/ReportsPage";
+import { MailingsPage } from "../mailings/MailingsPage";
 import type {
   CoreAdminProps,
   AuthProvider,
@@ -212,6 +213,7 @@ const DesktopAdmin = (
         <Route path={TasksPage.path} element={<TasksPage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
         <Route path={ReportsPage.path} element={<ReportsPage />} />
+        <Route path={MailingsPage.path} element={<MailingsPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />
@@ -236,6 +238,9 @@ const DesktopAdmin = (
       <Resource name="lost_reasons" />
       <Resource name="sales" {...sales} />
       <Resource name="tags" />
+      <Resource name="recall_rules" />
+      <Resource name="mailings" />
+      <Resource name="mailings_summary" />
     </Admin>
   );
 };

@@ -1,6 +1,7 @@
 import { generateAutomessages } from "./automessages";
 import { generateClinic } from "./clinic";
 import { generateDictionaries } from "./dictionaries";
+import { generateMailings } from "./mailings";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import type { Db } from "./types";
@@ -12,6 +13,7 @@ export default (): Db => {
   generateDictionaries(db);
   generateClinic(db);
   generateAutomessages(db);
+  generateMailings(db);
   db.configuration = [
     {
       id: 1,

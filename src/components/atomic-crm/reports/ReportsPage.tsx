@@ -23,8 +23,15 @@ import {
   MoneyTab,
   SpeedTab,
 } from "./ReportTabs";
+import { RecallsTab } from "../mailings/RecallsTab";
 
-const TABS = ["conversion", "speed", "lost_reasons", "money"] as const;
+const TABS = [
+  "conversion",
+  "speed",
+  "lost_reasons",
+  "money",
+  "recalls",
+] as const;
 const ALL = "all";
 
 /**
@@ -64,7 +71,9 @@ export const ReportsPage = () => {
         <TabsList className="rounded-md">
           {TABS.map((value) => (
             <TabsTrigger key={value} value={value} className="rounded-md">
-              {translate(`reports.tabs.${value}`)}
+              {translate(
+                value === "recalls" ? "recalls.title" : `reports.tabs.${value}`,
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -79,6 +88,9 @@ export const ReportsPage = () => {
         </TabsContent>
         <TabsContent value="money" className="mt-4">
           <MoneyTab filters={filters} />
+        </TabsContent>
+        <TabsContent value="recalls" className="mt-4">
+          <RecallsTab filters={filters} />
         </TabsContent>
       </Tabs>
     </div>

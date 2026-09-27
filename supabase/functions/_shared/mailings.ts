@@ -13,9 +13,7 @@ export type ClaimedMailingMessage = {
   message_text: string;
 };
 
-export type MailingSendResult =
-  | { ok: true }
-  | { ok: false; error: string };
+export type MailingSendResult = { ok: true } | { ok: false; error: string };
 
 /** Anti-ban: a random pause between two messages of a clinic */
 export const MIN_PAUSE_MS = 5_000;

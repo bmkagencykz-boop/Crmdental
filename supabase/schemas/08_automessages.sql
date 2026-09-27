@@ -242,6 +242,10 @@ CREATE OR REPLACE FUNCTION "private"."handle_deal_automessages"() RETURNS "trigg
     SET "search_path" TO ''
     AS $$
 begin
+  -- Imported deals (crm.importing, see import_batch) get no auto-messages
+  if current_setting('crm.importing', true) = 'on' then
+    return null;
+  end if;
   if tg_op = 'INSERT' then
     perform private.schedule_automessages(new);
     return null;

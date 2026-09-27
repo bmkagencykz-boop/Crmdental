@@ -14,6 +14,8 @@ export default (): Db => {
   generateClinic(db);
   generateAutomessages(db);
   generateAuditLog(db);
+  db.external_refs = [];
+  db.integrations = [];
   db.configuration = [
     {
       id: 1,

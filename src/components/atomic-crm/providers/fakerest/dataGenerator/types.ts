@@ -25,6 +25,8 @@ import type {
   AutomessageRule,
   Automessage,
   QuickReply,
+  ExternalRef,
+  IntegrationStatus,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 
@@ -54,6 +56,8 @@ export interface Db {
   automessages: Automessage[];
   quick_replies: QuickReply[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
+  external_refs: Array<ExternalRef & { id: number }>;
+  integrations: Array<IntegrationStatus & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
   audit_log: AuditLogEntry[];
 }

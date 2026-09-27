@@ -463,3 +463,40 @@ export interface PatientGender {
   label: string;
   icon: ComponentType<{ className?: string }>;
 }
+
+/** What public.import_batch did with a batch of rows */
+export type ImportBatchResult = {
+  created: number;
+  updated: number;
+  skipped: number;
+  patients_created: number;
+  patients_updated: number;
+  deals_created: number;
+  deals_updated: number;
+  /** index: line of the file */
+  errors: Array<{ index: number; message: string }>;
+};
+
+/** MIS connectors (public.integrations; their settings are not exposed) */
+export type IntegrationKind =
+  | "ident"
+  | "dentalpro"
+  | "medelement"
+  | "1c_medicine"
+  | "other";
+
+export type IntegrationStatus = {
+  kind: IntegrationKind;
+  status: "requested" | "connected" | "error" | "disabled";
+  last_sync_at: string | null;
+  last_error: string | null;
+};
+
+/** One entry of public.external_refs */
+export type ExternalRef = {
+  entity: "patient" | "deal" | "sales" | "service";
+  entity_id: Identifier;
+  system: string;
+  external_id: string;
+  created_at?: string;
+};

@@ -17,12 +17,14 @@ import {
 } from "../root/ConfigurationContext";
 import { useDataProvider, useNotify } from "ra-core";
 import type { CrmDataProvider } from "../providers/types";
+import { ImportWizard } from "../import/ImportWizard";
 import { AccessSettings } from "./AccessSettings";
 import { AutomessagesSettings } from "./AutomessagesSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
 import { LeadSettings } from "../leads/LeadSettings";
+import { MisSettings } from "./MisSettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 import { QuickRepliesEditor } from "../quick-replies/QuickRepliesEditor";
@@ -40,6 +42,8 @@ const SECTIONS = [
   "quick_replies",
   "access",
   "clinic",
+  "import",
+  "mis",
 ] as const;
 type Section = (typeof SECTIONS)[number];
 // Every employee manages their own quick replies; the rest is for the owner
@@ -56,8 +60,11 @@ const sectionLabel = (section: Section, kind: "title" | "hint") =>
       ? `automessages.settings.${kind === "title" ? "section" : "hint"}`
       : section === "leads"
         ? `leads.${kind === "title" ? "section" : "hint"}`
-        : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+        : section === "import" || section === "mis"
+          ? `${section}.${kind}`
+          : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
+// Import and MIS keep their texts in their own namespaces (import.*, mis.*)
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
  * rules and branding. Everything is stored in tables, not in code.
@@ -139,6 +146,8 @@ export const SettingsPage = () => {
         {section === "quick_replies" ? <QuickRepliesEditor /> : null}
         {section === "access" ? <AccessSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
+        {section === "import" ? <ImportWizard /> : null}
+        {section === "mis" ? <MisSettings /> : null}
       </Panel>
     </div>
   );

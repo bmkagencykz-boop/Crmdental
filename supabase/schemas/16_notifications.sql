@@ -12,6 +12,8 @@
 --   response_overdue  a patient waits for an answer longer than the clinic's
 --                     limit (working minutes), once per waiting episode, and
 --                     once more to the owner and heads at 3x the limit
+-- Bulk writes (imports, migrations) can switch the triggers off for their
+-- transaction: set local crm.notifications = 'off'.
 -- pg_cron runs private.notifications_tick() every minute (overdue tasks and
 -- answers); it starts the edge function notifications_dispatch, which sends
 -- the new notifications to the employees who linked their Telegram (one
@@ -316,7 +318,8 @@ declare
   actor_id bigint := private.current_sales_id();
   actor_name text;
 begin
-  if new.sales_id is null or (tg_op = 'UPDATE' and new.sales_id is not distinct from old.sales_id) then
+  if new.sales_id is null or (tg_op = 'UPDATE' and new.sales_id is not distinct from old.sales_id)
+    or current_setting('crm.notifications', true) = 'off' then
     return null;
   end if;
   if new.sales_id = actor_id then
@@ -353,6 +356,9 @@ declare
   patient_name text;
   excerpt text;
 begin
+  if current_setting('crm.notifications', true) = 'off' then
+    return null;
+  end if;
   select d.* into deal from public.deals d
   where d.organization_id = new.organization_id and d.id = new.deal_id;
   if deal.id is null then

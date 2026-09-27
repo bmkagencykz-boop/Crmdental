@@ -173,6 +173,19 @@ select tests.assert(
   'the first answer gives m2 the deal, without notifying m2');
 select tests.age();
 
+-- A bulk import switches the notifications off for its transaction
+select set_config('crm.notifications', 'off', true);
+update public.deals set sales_id = current_setting('t.owner_id')::bigint where id = current_setting('t.deal1')::bigint;
+select tests.inbound('tok-notify', '77010000001', 'Импорт');
+select set_config('crm.notifications', '', true);
+select tests.assert(
+  tests.notes(current_setting('t.owner_id')::bigint, 'lead_assigned', current_setting('t.deal1')::bigint) = 0
+  and tests.notes(current_setting('t.m1_id')::bigint, 'patient_message', current_setting('t.rr')::bigint) = 0,
+  'crm.notifications = off: no notification');
+update public.deals set sales_id = current_setting('t.m2_id')::bigint where id = current_setting('t.deal1')::bigint;
+delete from public.notifications where deal_id = current_setting('t.deal1')::bigint and sales_id = current_setting('t.m2_id')::bigint and created_at = now();
+delete from public.messages where text = 'Импорт';
+
 --
 -- patient_message and coalescing
 --

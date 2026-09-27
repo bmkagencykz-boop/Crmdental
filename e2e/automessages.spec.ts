@@ -51,8 +51,12 @@ test.describe("automatic messages", () => {
     await expect(page.getByTestId("template-preview").first()).toContainText(
       "Асель",
     );
+    const rules = page.getByTestId("automessage-rule");
+    const before = await rules.count();
     await page.getByRole("button", { name: "Add a rule" }).click();
-    const rule = page.getByTestId("automessage-rule").last();
+    // The new rule is saved first, then shown: wait for it
+    await expect(rules).toHaveCount(before + 1);
+    const rule = rules.last();
     await rule.getByRole("combobox", { name: "Stage" }).click();
     await page.getByRole("option", { name: "At «В работе»" }).click();
     await expect(rule.getByRole("combobox", { name: "Stage" })).toContainText(

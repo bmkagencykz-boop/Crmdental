@@ -22,6 +22,7 @@ import { Link } from "react-router";
 import { patientDisplayName } from "../patients/parsePatientText";
 import type { Deal, Task as TData } from "../types";
 import { useGetSalesName } from "../sales/useGetSalesName";
+import { AutomessageSendButton } from "./AutomessageSendButton";
 import { TaskEdit } from "./TaskEdit";
 import { isOverdue } from "./tasksPredicate";
 
@@ -114,8 +115,9 @@ export const Task = ({
                   &nbsp;
                 </>
               )}
-              {task.text}
+              <span className="whitespace-pre-line">{task.text}</span>
             </div>
+            <AutomessageSendButton task={task} />
             <div className="text-sm text-muted-foreground">
               <span className={overdue ? "font-medium text-brand-red" : ""}>
                 {translate("resources.tasks.fields.due_short")}

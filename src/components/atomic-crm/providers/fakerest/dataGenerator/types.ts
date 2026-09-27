@@ -20,6 +20,9 @@ import type {
   Tag,
   Task,
   TaskRule,
+  MessageTemplate,
+  AutomessageRule,
+  Automessage,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
 
@@ -44,6 +47,9 @@ export interface Db {
   task_rules: TaskRule[];
   stage_checklist_items: StageChecklistItem[];
   deal_checklist_checks: DealChecklistCheck[];
+  message_templates: MessageTemplate[];
+  automessage_rules: AutomessageRule[];
+  automessages: Automessage[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
 }

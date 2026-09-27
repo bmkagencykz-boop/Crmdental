@@ -677,6 +677,82 @@ export const englishCrmMessages = {
       webhook_failed: "The key is saved, but Wazzup24 refused the webhook",
     },
   },
+  automessages: {
+    settings: {
+      section: "Auto messages",
+      hint: "Messages to patients by templates: after a deal enters a stage or before the visit. Nothing is sent between 21:00 and 9:00 of the clinic.",
+      rules: "Rules",
+      rules_hint:
+        "Stage → template. «Show to the employee first» creates a task with the text and a Send button for the deal's responsible.",
+      add_rule: "Add a rule",
+      no_templates: "Add a template first",
+      stage: "Stage",
+      on_stage: "At «%{stage}»",
+      template: "Template",
+      offset: "Delay",
+      unit: "Unit",
+      units: {
+        minutes: "minutes",
+        hours: "hours",
+        days: "days",
+      },
+      timing_label: "When",
+      timing: {
+        after_stage: "after entering the stage",
+        before_visit: "before the visit",
+      },
+      mode_label: "Mode",
+      mode: {
+        auto: "Send automatically",
+        confirm: "Show to the employee first",
+      },
+      templates: "Templates",
+      templates_hint:
+        "Click a variable to insert it. The preview uses sample data.",
+      add_template: "Add a template",
+      new_template_name: "New template",
+      new_template_body: "Hello, {имя}!",
+      template_name: "Template name",
+      template_body: "Template text",
+      template_in_use: "Used by rules: delete them first",
+      preview: "Preview",
+    },
+    status: {
+      pending: "Scheduled",
+      sending: "Sending",
+      awaiting: "Waiting for the employee",
+      sent: "Sent",
+      cancelled: "Cancelled",
+      failed: "Not sent",
+    },
+    deal: {
+      title: "Auto messages",
+      planned: "Will be sent on %{date}",
+      cancel: "Cancel",
+      cancelled: "The message is cancelled",
+      rule_deleted: "Rule deleted",
+    },
+    task: {
+      send: "Send",
+      title: "Send the message",
+      hint: "Check the text: you can edit it before sending.",
+      text: "Message text",
+      sent: "The message is sent",
+    },
+    message: {
+      auto: "auto message",
+      auto_short: "auto",
+    },
+    script: {
+      title: "Stage script",
+      edit: "Script: %{stage}",
+      hint: "What to tell the patient at this stage. Shown on the deal page.",
+      placeholder: "Greet the patient, ask what bothers them…",
+    },
+    errors: {
+      closed: "This message is already sent or cancelled",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

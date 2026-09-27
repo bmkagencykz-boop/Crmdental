@@ -5,8 +5,10 @@ import { cn } from "@/lib/utils";
 import { useMarkDealRead } from "../../messages/useMessages";
 import { TagsListEdit } from "../../patients/TagsListEdit";
 import type { Deal } from "../../types";
+import { DealAutomessages } from "../DealAutomessages";
 import { DealPayments } from "../DealPayments";
 import { StageChecklist } from "../StageChecklist";
+import { StageScript } from "../StageScript";
 import { DealComposer, type ComposerMode } from "./DealComposer";
 import { DealFeed } from "./DealFeed";
 import { DealFields } from "./DealFields";
@@ -67,7 +69,9 @@ const DealPageContent = () => {
           {tab === "main" ? (
             <>
               <div className="flex flex-col gap-4 px-4 py-4">
+                <StageScript deal={deal} />
                 <StageChecklist deal={deal} />
+                <DealAutomessages deal={deal} />
                 <DealFields deal={deal} />
               </div>
               <PatientBlock deal={deal} />

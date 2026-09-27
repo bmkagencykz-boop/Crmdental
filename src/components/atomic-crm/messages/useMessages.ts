@@ -42,15 +42,23 @@ export const useMarkDealRead = (deal: Deal | undefined) => {
   }, [deal?.id, unread]); // eslint-disable-line react-hooks/exhaustive-deps
 };
 
-export const useSendMessage = (dealId: Identifier) => {
+export const useSendMessage = (
+  dealId: Identifier,
+  automessageId?: Identifier | null,
+) => {
   const dataProvider = useDataProvider<CrmDataProvider>();
   const queryClient = useQueryClient();
   const notify = useNotify();
   return useMutation({
-    mutationFn: (text: string) => dataProvider.sendMessage(dealId, text),
+    mutationFn: (text: string) =>
+      dataProvider.sendMessage(dealId, text, automessageId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
       queryClient.invalidateQueries({ queryKey: ["deals"] });
+      if (automessageId != null) {
+        queryClient.invalidateQueries({ queryKey: ["automessages"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      }
     },
     onError: (error: Error) =>
       notify(error.message || "crm.messages.send_error", { type: "error" }),

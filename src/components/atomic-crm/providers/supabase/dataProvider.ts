@@ -257,11 +257,26 @@ const getDataProviderWithCustomMethods = () => {
       return data as Identifier;
     },
     getOrganizationSettings,
-    /** Sends a message of a deal through Wazzup24 (edge function messenger_send) */
-    async sendMessage(dealId: Identifier, text: string): Promise<Message> {
+    /**
+     * Sends a message of a deal through Wazzup24 (edge function
+     * messenger_send). With automessageId: the «Отправить» button of a "show
+     * to the employee first" automatic message.
+     */
+    async sendMessage(
+      dealId: Identifier,
+      text: string,
+      automessageId?: Identifier | null,
+    ): Promise<Message> {
       const { data, error } = await getSupabaseClient().functions.invoke<{
         data: Message;
-      }>("messenger_send", { method: "POST", body: { deal_id: dealId, text } });
+      }>("messenger_send", {
+        method: "POST",
+        body: {
+          deal_id: dealId,
+          text,
+          ...(automessageId != null ? { automessage_id: automessageId } : {}),
+        },
+      });
       if (!data || error) {
         throw new Error(
           await functionErrorMessage(error, "crm.messages.send_error"),
@@ -543,6 +558,8 @@ const uploadToBucket = async (fi: RAFile) => {
 const functionErrorMessage = async (error: any, fallback: string) => {
   try {
     const body = await error?.context?.json();
+    if (body?.code === "automessage_closed")
+      return "automessages.errors.closed";
     if (body?.code) return `crm.errors.${body.code}`;
   } catch {
     // not a JSON body

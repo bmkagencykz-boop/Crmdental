@@ -692,6 +692,8 @@ $$;
 -- Finds the patient (WhatsApp by phone, Instagram and Telegram by chat id) or
 -- creates one, attaches the message to the patient's most recently updated
 -- open deal or opens a new deal, and ignores a message already received.
+-- telegram_bot messages (the clinic's own bot, public.ingest_telegram_message)
+-- carry the bot's webhook token instead of the Wazzup24 one.
 CREATE OR REPLACE FUNCTION "public"."ingest_message"("webhook_token" "text", "message" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -714,13 +716,19 @@ declare
   created_patient boolean := false;
   created_deal boolean := false;
 begin
-  select i.organization_id into org_id
-  from public.messenger_integrations i
-  where i.webhook_token = ingest_message.webhook_token;
+  if msg_transport = 'telegram_bot' then
+    select b.organization_id into org_id
+    from public.telegram_bots b
+    where b.webhook_token = ingest_message.webhook_token;
+  else
+    select i.organization_id into org_id
+    from public.messenger_integrations i
+    where i.webhook_token = ingest_message.webhook_token;
+  end if;
   if org_id is null then
     raise exception 'Unknown webhook token' using errcode = '28000';
   end if;
-  if msg_transport is null or msg_transport not in ('whatsapp', 'instagram', 'telegram')
+  if msg_transport is null or msg_transport not in ('whatsapp', 'instagram', 'telegram', 'telegram_bot')
     or msg_chat_id is null or msg_direction not in ('in', 'out') then
     raise exception 'Unsupported message' using errcode = '22023';
   end if;
@@ -743,7 +751,8 @@ begin
   end if;
 
   select s.id into source_id from public.lead_sources s
-  where s.organization_id = org_id and s.code = msg_transport;
+  where s.organization_id = org_id
+    and s.code = case when msg_transport = 'telegram_bot' then 'telegram' else msg_transport end;
 
   -- The patient: known chat, else (WhatsApp) the phone number, else a new one
   select c.patient_id into found_patient_id from public.patient_chats c
@@ -773,7 +782,7 @@ begin
         else '[]'::jsonb end,
       contact_phone,
       case when msg_transport = 'instagram' then coalesce(nullif(btrim(contact ->> 'username'), ''), msg_chat_id) end,
-      case when msg_transport = 'telegram' then nullif(btrim(contact ->> 'username'), '') end,
+      case when msg_transport in ('telegram', 'telegram_bot') then nullif(btrim(contact ->> 'username'), '') end,
       source_id
     )
     returning id into found_patient_id;

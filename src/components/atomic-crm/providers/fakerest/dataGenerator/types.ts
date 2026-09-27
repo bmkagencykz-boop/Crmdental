@@ -34,6 +34,8 @@ import type {
   DealFile,
 } from "../../../types";
 import type { ConfigurationContextValue } from "../../../root/ConfigurationContext";
+import type { SavedFilter } from "../../../deals/list/dealFilters";
+import type { SalesPlan } from "../../../reports/salesPlan";
 import type {
   Mailing,
   MailingMessage,
@@ -85,4 +87,7 @@ export interface Db {
   mailing_settings: Array<MailingSettings & { id: number }>;
   // Files of the deals (stage 22)
   deal_files: DealFile[];
+  // Deal list and sales plan (stage 21)
+  saved_filters: SavedFilter[];
+  sales_plans: SalesPlan[];
 }

@@ -294,7 +294,7 @@ describe("toAuditListFilter", () => {
       "at@lt": new Date(2026, 9, 1).toISOString(),
       sales_id: 2,
       "entity@in":
-        "(pipeline,stage,settings,task_rule,checklist_item,messenger,custom_field)",
+        "(pipeline,stage,settings,task_rule,checklist_item,messenger,custom_field,sales_plan,mailing)",
       q: "ахметов",
     });
   });

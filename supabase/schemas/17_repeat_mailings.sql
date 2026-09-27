@@ -464,7 +464,9 @@ $$;
 --   service_ids: a deal of one of these services;
 --   inactive_months: the last visit or won deal is older than N months;
 --   source_ids, sales_ids (responsible): of the patient;
---   has_open_deal: true / false.
+--   has_open_deal: true / false;
+--   deal_ids: the patients of these deals (bulk action on the deal list;
+--     an empty list matches nobody).
 CREATE OR REPLACE FUNCTION "private"."mailing_segment"("org_id" bigint, "segment" "jsonb", "moment" timestamp with time zone DEFAULT "now"()) RETURNS TABLE("patient_id" bigint, "status" "text")
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -477,7 +479,9 @@ CREATE OR REPLACE FUNCTION "private"."mailing_segment"("org_id" bigint, "segment
       array(select jsonb_array_elements_text(case when jsonb_typeof(segment -> 'source_ids') = 'array' then segment -> 'source_ids' else '[]'::jsonb end)::bigint) as source_ids,
       array(select jsonb_array_elements_text(case when jsonb_typeof(segment -> 'sales_ids') = 'array' then segment -> 'sales_ids' else '[]'::jsonb end)::bigint) as sales_ids,
       nullif(segment ->> 'inactive_months', '')::integer as inactive_months,
-      nullif(segment ->> 'has_open_deal', '')::boolean as has_open_deal
+      nullif(segment ->> 'has_open_deal', '')::boolean as has_open_deal,
+      segment ? 'deal_ids' as by_deals,
+      array(select jsonb_array_elements_text(case when jsonb_typeof(segment -> 'deal_ids') = 'array' then segment -> 'deal_ids' else '[]'::jsonb end)::bigint) as deal_ids
   ),
   matched as (
     select p.id, p.phones, p.messaging_opt_out, p.last_seen
@@ -491,6 +495,9 @@ CREATE OR REPLACE FUNCTION "private"."mailing_segment"("org_id" bigint, "segment
         where d.organization_id = p.organization_id and d.patient_id = p.id and d.service_id = any(f.service_ids)))
       and (cardinality(f.source_ids) = 0 or p.source_id = any(f.source_ids))
       and (cardinality(f.sales_ids) = 0 or p.sales_id = any(f.sales_ids))
+      and (not f.by_deals or exists (
+        select 1 from public.deals d
+        where d.organization_id = p.organization_id and d.patient_id = p.id and d.id = any(f.deal_ids)))
       and (f.has_open_deal is null or f.has_open_deal = exists (
         select 1 from public.deals d join public.stages s on s.id = d.stage_id
         where d.organization_id = p.organization_id and d.patient_id = p.id
@@ -555,7 +562,9 @@ begin
 end;
 $$;
 
--- A new mailing queues the patients of its segment
+-- A new mailing queues the patients of its segment. A mailing to chosen
+-- deals (segment deal_ids) attaches each message to the patient's deal among
+-- them (the latest updated one when a patient has several).
 CREATE OR REPLACE FUNCTION "private"."handle_mailing_created"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -563,8 +572,16 @@ CREATE OR REPLACE FUNCTION "private"."handle_mailing_created"() RETURNS "trigger
 declare
   queued integer;
 begin
-  insert into public.mailing_messages (organization_id, mailing_id, patient_id, body, send_at)
-  select new.organization_id, new.id, s.patient_id, new.body, new.scheduled_at
+  insert into public.mailing_messages (organization_id, mailing_id, patient_id, deal_id, body, send_at)
+  select new.organization_id, new.id, s.patient_id,
+    case when new.segment ? 'deal_ids' then (
+      select d.id from public.deals d
+      where d.organization_id = new.organization_id and d.patient_id = s.patient_id
+        and d.id in (select jsonb_array_elements_text(new.segment -> 'deal_ids')::bigint)
+      order by d.updated_at desc, d.id desc
+      limit 1
+    ) end,
+    new.body, new.scheduled_at
   from private.mailing_segment(new.organization_id, new.segment) s
   where s.status = 'ok'
   order by s.patient_id;
@@ -756,7 +773,8 @@ $$;
 -- the limits allow (private.mailing_allowance); rows of paused or cancelled
 -- mailings wait. Opted-out patients and patients without a phone or a chat
 -- are skipped; a recall message whose deal is closed is cancelled. The text
--- is rendered now; a mailing message is attached to the latest open deal,
+-- is rendered now; a mailing message is attached to its deal when it was
+-- queued for one (mailing to chosen deals), else to the latest open deal,
 -- else the latest deal, else none (the patient's chat only). Mailings with
 -- nothing left are marked done.
 CREATE OR REPLACE FUNCTION "public"."claim_mailing_messages"("per_run" integer DEFAULT 4) RETURNS TABLE("id" bigint, "organization_id" bigint, "patient_id" bigint, "deal_id" bigint, "message_text" "text")
@@ -838,12 +856,19 @@ begin
           continue;
         end if;
       else
-        select d.* into target_deal from public.deals d
-          join public.stages s on s.id = d.stage_id
-        where d.organization_id = clinic and d.patient_id = job.patient_id
-          and s.kind = 'open' and d.archived_at is null
-        order by d.updated_at desc, d.id desc
-        limit 1;
+        target_deal := null;
+        if job.deal_id is not null then
+          select d.* into target_deal from public.deals d
+          where d.organization_id = clinic and d.id = job.deal_id;
+        end if;
+        if target_deal.id is null then
+          select d.* into target_deal from public.deals d
+            join public.stages s on s.id = d.stage_id
+          where d.organization_id = clinic and d.patient_id = job.patient_id
+            and s.kind = 'open' and d.archived_at is null
+          order by d.updated_at desc, d.id desc
+          limit 1;
+        end if;
         if target_deal.id is null then
           select d.* into target_deal from public.deals d
           where d.organization_id = clinic and d.patient_id = job.patient_id

@@ -55,6 +55,8 @@ export type MailingSegment = {
   source_ids?: Identifier[];
   has_open_deal?: boolean | null;
   sales_ids?: Identifier[];
+  /** The patients of these deals (bulk action of the deal list, stage 21) */
+  deal_ids?: Identifier[];
 };
 
 export type MailingStatus = "scheduled" | "paused" | "cancelled" | "done";

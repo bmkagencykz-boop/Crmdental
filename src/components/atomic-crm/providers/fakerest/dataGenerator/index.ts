@@ -4,6 +4,7 @@ import { generateClinic } from "./clinic";
 import { generateDictionaries } from "./dictionaries";
 import { generateNotifications } from "./notifications";
 import { generateMailings } from "./mailings";
+import { generateListsPlans } from "./plans";
 import { generateDoctors } from "./doctors";
 import { generateDealFiles } from "./files";
 import { generateCustomFields } from "./customFields";
@@ -28,6 +29,7 @@ export default (): Db => {
   generateNotifications(db);
   generateMailings(db);
   generateUnsorted(db);
+  generateListsPlans(db);
   db.configuration = [
     {
       id: 1,

@@ -558,7 +558,20 @@ select
         where pay.organization_id = d.organization_id and pay.deal_id = d.id and pay.kind = 'prepayment'
     ) as prepayment_amount,
     d.unsorted_at,
-    d.custom_values
+    d.custom_values,
+    -- Deal list (stage 21): the latest change or message, the nearest open task
+    greatest(d.updated_at, (
+        select max(m.sent_at)
+        from public.messages m
+        where m.organization_id = d.organization_id and m.deal_id = d.id
+    )) as last_activity_at,
+    (
+        select t.text
+        from public.tasks t
+        where t.organization_id = d.organization_id and t.deal_id = d.id and t.done_date is null
+        order by t.due_date, t.id
+        limit 1
+    ) as next_task_text
 from public.deals d
     join public.stages s on s.id = d.stage_id
     join public.patients p on p.organization_id = d.organization_id and p.id = d.patient_id

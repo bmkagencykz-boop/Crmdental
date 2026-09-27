@@ -51,8 +51,9 @@ const DATE_TIME_FIELDS = new Set([
   "visit_at",
   "archived_at",
   "unsorted_at",
+  "scheduled_at",
 ]);
-const DATE_FIELDS = new Set(["paid_at"]);
+const DATE_FIELDS = new Set(["paid_at", "month"]);
 const BOOLEAN_FIELDS = new Set([
   "disabled",
   "is_active",
@@ -107,6 +108,8 @@ export const AUDIT_ENTITY_GROUPS = {
     "checklist_item",
     "messenger",
     "custom_field",
+    "sales_plan",
+    "mailing",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;

@@ -240,6 +240,10 @@ export type Deal = {
   doctor_name?: string | null;
   /** Sum of the prepayment-kind payments */
   prepayment_amount?: number;
+  /** The latest change or message (deal list, stage 21) */
+  last_activity_at?: string | null;
+  /** Text of the nearest open task */
+  next_task_text?: string | null;
 } & Pick<RaRecord, "id">;
 
 /** telegram_bot: the clinic's own Telegram bot, next to Wazzup24's Telegram */

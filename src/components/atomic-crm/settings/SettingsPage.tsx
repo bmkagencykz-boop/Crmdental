@@ -19,6 +19,7 @@ import { AccessSettings } from "./AccessSettings";
 import { DictionaryEditor } from "./DictionaryEditor";
 import { DistributionSettings } from "./DistributionSettings";
 import { MessengerSettings } from "./MessengerSettings";
+import { TelephonySettings } from "../telephony/TelephonySettings";
 import { TaskRulesEditor } from "./TaskRulesEditor";
 import { PipelinesEditor } from "./PipelinesEditor";
 
@@ -28,12 +29,19 @@ const SECTIONS = [
   "sources",
   "lost_reasons",
   "messengers",
+  "telephony",
   "distribution",
   "automations",
   "access",
   "clinic",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+
+// Telephony keeps its texts in its own namespace
+const sectionTitle = (id: Section) =>
+  id === "telephony" ? "telephony.section" : `crm.settings.sections.${id}`;
+const sectionHint = (id: Section) =>
+  id === "telephony" ? "telephony.hint" : `crm.settings.hints.${id}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -65,13 +73,13 @@ export const SettingsPage = () => {
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
-            {translate(`crm.settings.sections.${id}`)}
+            {translate(sectionTitle(id))}
           </button>
         ))}
       </nav>
       <Panel
-        title={translate(`crm.settings.sections.${section}`)}
-        hint={translate(`crm.settings.hints.${section}`)}
+        title={translate(sectionTitle(section))}
+        hint={translate(sectionHint(section))}
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
         {section === "services" ? (
@@ -84,6 +92,7 @@ export const SettingsPage = () => {
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
         {section === "messengers" ? <MessengerSettings /> : null}
+        {section === "telephony" ? <TelephonySettings /> : null}
         {section === "distribution" ? <DistributionSettings /> : null}
         {section === "automations" ? <TaskRulesEditor /> : null}
         {section === "access" ? <AccessSettings /> : null}

@@ -45,7 +45,19 @@ export function SalesEdit() {
           }),
         );
       }
-      return dataProvider.salesUpdate(record.id, data);
+      const { phone_extension, ...fields } = data;
+      const sale = await dataProvider.salesUpdate(record.id, fields);
+      // The internal number of the PBX has its own function (owner and head)
+      if (
+        phone_extension !== undefined &&
+        (phone_extension || null) !== (record.phone_extension || null)
+      ) {
+        await dataProvider.setSalesPhoneExtension(
+          record.id,
+          phone_extension || null,
+        );
+      }
+      return sale;
     },
     onSuccess: () => {
       redirect("/sales");

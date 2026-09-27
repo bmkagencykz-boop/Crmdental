@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 import { useGetSalesName } from "../sales/useGetSalesName";
+import { callStatusKey } from "../telephony/telephony";
 import type { Call } from "../types";
 
 /** "3:04" from seconds */
@@ -30,7 +31,7 @@ export const parseDuration = (value: string): number | null => {
 };
 
 /**
- * Calls logged by hand (MVP); telephony will fill the same table later.
+ * Calls of the patient: logged by hand or received from the PBX (telephony).
  */
 export const PatientCalls = ({ patientId }: { patientId: Identifier }) => {
   const { data: calls = [], refetch } = useGetList<Call>("calls", {
@@ -146,6 +147,44 @@ export const CallForm = ({
   );
 };
 
+/**
+ * Status of a call from the PBX (missed in red), its duration, the comment
+ * and the recording player when the PBX sent one.
+ */
+export const CallSummary = ({ call }: { call: Call }) => {
+  const translate = useTranslate();
+  const statusKey = callStatusKey(call);
+  const missed = call.status === "missed";
+  const showDuration = !missed || call.duration_seconds > 0;
+  return (
+    <>
+      <span>
+        {statusKey ? (
+          <span className={cn("font-medium", missed && "text-destructive")}>
+            {translate(statusKey)}
+          </span>
+        ) : null}
+        {statusKey && showDuration ? " · " : null}
+        {showDuration ? (
+          <span className="tabular-nums">
+            {formatDuration(call.duration_seconds)}
+          </span>
+        ) : null}
+        {call.comment ? ` — ${call.comment}` : ""}
+      </span>
+      {call.recording_url ? (
+        <audio
+          controls
+          preload="none"
+          src={call.recording_url}
+          aria-label={translate("telephony.call.recording")}
+          className="mt-2 block h-9 w-full max-w-sm"
+        />
+      ) : null}
+    </>
+  );
+};
+
 export const CallRow = ({ call }: { call: Call }) => {
   const translate = useTranslate();
   const author = useGetSalesName(call.sales_id ?? undefined, {
@@ -154,14 +193,16 @@ export const CallRow = ({ call }: { call: Call }) => {
   const Icon = call.direction === "out" ? PhoneOutgoing : PhoneIncoming;
   return (
     <div className="flex items-start gap-3 text-sm">
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <Icon
+        className={cn(
+          "mt-0.5 size-4 shrink-0 text-muted-foreground",
+          call.status === "missed" && call.provider && "text-destructive",
+        )}
+      />
       <div className="min-w-0 flex-1">
         <p>
           {translate(`crm.calls.direction.${call.direction}`)} ·{" "}
-          <span className="tabular-nums">
-            {formatDuration(call.duration_seconds)}
-          </span>
-          {call.comment ? ` — ${call.comment}` : ""}
+          <CallSummary call={call} />
         </p>
         <p className="text-xs text-muted-foreground">
           {new Date(call.called_at).toLocaleString("ru-RU", {

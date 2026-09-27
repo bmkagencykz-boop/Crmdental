@@ -16,6 +16,10 @@ import { randomDate } from "./utils";
 
 const DAY = 24 * 60 * 60 * 1000;
 
+// Any public audio file stands for a call recording in the demo
+const DEMO_RECORDING_URL =
+  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+
 // Keys of the deal titles and amounts by service name
 const serviceKeys: Record<string, string> = {
   Имплантация: "implantation",
@@ -234,6 +238,51 @@ export const generateClinic = (db: Db, nbPatients = 90) => {
       called_at: randomDate(new Date(patient.first_seen)).toISOString(),
       sales_id: patient.sales_id,
     }));
+
+  // Telephony (Zadarma): calls of the latest open deals, some missed (with
+  // their call-back task), the most recent one recorded
+  deals
+    .filter(
+      (deal) => db.stages.find((s) => s.id === deal.stage_id)?.kind === "open",
+    )
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 10)
+    .forEach((deal, index) => {
+      const patient = db.patients.find((p) => p.id === deal.patient_id)!;
+      const direction = index % 3 === 2 ? ("out" as const) : ("in" as const);
+      const missed = index % 4 === 1;
+      const employee = staff.find((sale) => sale.id === deal.sales_id);
+      const called_at = new Date(
+        now - (index * 7 + 1) * 60 * 60 * 1000,
+      ).toISOString();
+      db.calls.push({
+        id: db.calls.length,
+        patient_id: patient.id,
+        deal_id: deal.id,
+        direction,
+        duration_seconds: missed ? 0 : random.number({ min: 30, max: 420 }),
+        comment: null,
+        called_at,
+        sales_id: missed ? null : (employee?.id ?? null),
+        provider: "zadarma",
+        status: missed ? "missed" : "answered",
+        external_id: `demo-${index}`,
+        phone: patient.phones?.[0] ?? null,
+        extension: missed ? null : (employee?.phone_extension ?? null),
+        recording_url: index === 0 ? DEMO_RECORDING_URL : null,
+      });
+      if (missed && direction === "in") {
+        db.tasks.push({
+          id: db.tasks.length,
+          deal_id: deal.id,
+          type: "call",
+          text: "Перезвонить",
+          due_date: called_at,
+          done_date: null,
+          sales_id: deal.sales_id ?? undefined,
+        });
+      }
+    });
 
   // Conversations: open deals of the last weeks talk in WhatsApp or Instagram,
   // the most recent ones still unread

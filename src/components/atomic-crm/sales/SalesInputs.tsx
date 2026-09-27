@@ -40,6 +40,14 @@ export function SalesInputs() {
           helperText={false}
         />
       )}
+      {record ? (
+        // Internal number in the PBX (telephony); also in Settings → Телефония
+        <TextInput
+          source="phone_extension"
+          label="telephony.extension"
+          helperText={false}
+        />
+      ) : null}
       <BooleanInput
         source="disabled"
         readOnly={isOwnerRecord || record?.id === identity?.id}

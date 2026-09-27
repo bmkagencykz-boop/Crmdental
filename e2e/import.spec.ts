@@ -112,8 +112,8 @@ test.describe("import", () => {
     login,
   }) => {
     await login("owner@smile.kz");
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
-    await page.getByRole("button", { name: "MIS integration" }).click();
+    // The section link of the settings (?section=) opens it directly
+    await page.goto("/#/settings?section=mis");
     await expect(page.getByText("IDENT")).toBeVisible();
     await page.getByRole("button", { name: "Leave a request: IDENT" }).click();
     await expect(page.getByText("Request sent").first()).toBeVisible();

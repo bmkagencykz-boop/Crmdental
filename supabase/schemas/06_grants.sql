@@ -201,9 +201,7 @@ grant all on table public.patients_summary to anon;
 grant all on table public.patients_summary to authenticated;
 grant all on table public.patients_summary to service_role;
 
-grant all on table public.deals_summary to anon;
-grant all on table public.deals_summary to authenticated;
-grant all on table public.deals_summary to service_role;
+-- public.deals_summary: see 13_doctors.sql
 
 -- Sequence grants
 grant all on sequence public.organizations_id_seq to service_role;

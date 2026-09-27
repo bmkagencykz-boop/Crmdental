@@ -229,6 +229,25 @@ export type DealEvent = {
   created_at: string;
 } & Pick<RaRecord, "id">;
 
+/** A row of the audit log (public.audit_log_summary), stage 15 */
+export type AuditLogEntry = {
+  at: string;
+  /** null: done by the system (see source) */
+  sales_id?: Identifier | null;
+  /** user, automation, webhook, system, import... */
+  source: string;
+  entity: string;
+  entity_id?: Identifier | null;
+  action: string;
+  /** { field: [before, after] }, changed fields only */
+  changes: Record<string, [unknown, unknown]>;
+  deal_id?: Identifier | null;
+  patient_id?: Identifier | null;
+  deal_name?: string | null;
+  patient_name?: string | null;
+  search_text?: string | null;
+} & Pick<RaRecord, "id">;
+
 export type Call = {
   patient_id: Identifier;
   deal_id?: Identifier | null;

@@ -61,6 +61,10 @@ const getDataProviderWithCustomMethods = () => {
       if (resource === "deals") {
         return baseDataProvider.getList("deals_summary", params);
       }
+      // Audit log with the deal and patient names (owner and head only, RLS)
+      if (resource === "audit_log") {
+        return baseDataProvider.getList("audit_log_summary", params);
+      }
       if (resource === "activity_log") {
         const { data, total } = await baseDataProvider.getList(
           "activity_log",
@@ -439,6 +443,11 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
       ...params,
       data: withoutKeys(params.data, PATIENT_VIEW_COLUMNS),
     }),
+  },
+  {
+    resource: "audit_log",
+    beforeGetList: async (params) =>
+      applySearch(["search_text"], "search_text")(params),
   },
   {
     resource: "deals",

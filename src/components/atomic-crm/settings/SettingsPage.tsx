@@ -1,4 +1,6 @@
-import { useTranslate } from "ra-core";
+import { History } from "lucide-react";
+import { CanAccess, useTranslate } from "ra-core";
+import { Link } from "react-router";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +70,16 @@ export const SettingsPage = () => {
             {translate(`crm.settings.sections.${id}`)}
           </button>
         ))}
+        <CanAccess resource="audit_log" action="list">
+          <Link
+            to="/audit"
+            title={translate("audit.open_hint")}
+            className="flex items-center gap-2 rounded-md px-4 py-2 text-left text-sm font-semibold text-muted-foreground no-underline transition-all hover:bg-[var(--surface-strong)] hover:text-foreground lg:mt-2 lg:border-t lg:pt-3"
+          >
+            <History className="size-4" />
+            {translate("audit.open")}
+          </Link>
+        </CanAccess>
       </nav>
       <Panel
         title={translate(`crm.settings.sections.${section}`)}

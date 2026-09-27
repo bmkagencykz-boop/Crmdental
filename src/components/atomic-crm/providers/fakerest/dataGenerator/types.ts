@@ -1,4 +1,5 @@
 import type {
+  AuditLogEntry,
   Call,
   Deal,
   DealEvent,
@@ -46,4 +47,5 @@ export interface Db {
   deal_checklist_checks: DealChecklistCheck[];
   organization_settings: Array<OrganizationSettings & { id: number }>;
   configuration: Array<{ id: number; config: ConfigurationContextValue }>;
+  audit_log: AuditLogEntry[];
 }

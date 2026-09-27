@@ -158,6 +158,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/settings/MessengerSettings.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/settings/DictionaryEditor.tsx",
           "type": "registry:component"
         },
@@ -459,6 +463,22 @@
         },
         {
           "path": "src/components/atomic-crm/misc/ChangelogPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/messages/useMessages.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/messages/MessageComposer.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/messages/MessageBubble.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/messages/InboxPage.tsx",
           "type": "registry:component"
         },
         {

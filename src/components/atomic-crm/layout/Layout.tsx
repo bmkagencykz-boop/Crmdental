@@ -62,6 +62,8 @@ const PageTitle = () => {
     { match: "/settings", label: translate("crm.settings.title") },
     { match: "/profile", label: translate("crm.profile.title") },
   ];
+  // The deal page has its own header
+  if (matchPath("/deals/:id/show", location.pathname)) return null;
   const current = [...items, ...extra].find(
     (item) => matchPath(item.match, location.pathname) != null,
   );

@@ -31,7 +31,6 @@ import { DealArchivedList } from "./DealArchivedList";
 import { DealCreate } from "./DealCreate";
 import { DealEdit } from "./DealEdit";
 import { DealListContent } from "./DealListContent";
-import { DealShow } from "./DealShow";
 import { OnlyMineInput } from "./OnlyMineInput";
 import { periodChoices } from "./periods";
 
@@ -164,7 +163,6 @@ const PipelineTabs = () => {
 const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => {
   const location = useLocation();
   const matchCreate = matchPath("/deals/create", location.pathname);
-  const matchShow = matchPath("/deals/:id/show", location.pathname);
   const matchEdit = matchPath("/deals/:id", location.pathname);
 
   return (
@@ -173,7 +171,6 @@ const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => {
       <DealArchivedList />
       <DealCreate open={!!matchCreate} pipelineId={pipelineId} />
       <DealEdit open={!!matchEdit && !matchCreate} id={matchEdit?.params.id} />
-      <DealShow open={!!matchShow} id={matchShow?.params.id} />
     </div>
   );
 };

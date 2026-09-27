@@ -3,7 +3,6 @@ import { test, expect } from "./fixtures";
 test("a clinic signs up and records its first request", async ({
   page,
   menu,
-  closeDialog,
   dismissToast,
 }) => {
   await page.goto("/");
@@ -48,13 +47,12 @@ test("a clinic signs up and records its first request", async ({
   await page.getByLabel("Title").fill("Implants");
   await page.getByRole("button", { name: "Save" }).click();
 
-  await expect(page.getByRole("dialog")).toContainText("Akhmetov Daulet");
-  await expect(page.getByRole("dialog")).toContainText("Новый лид");
-  await expect(page.getByRole("dialog")).toContainText(
+  await expect(page.getByRole("main")).toContainText("Akhmetov Daulet");
+  await expect(page.getByRole("main")).toContainText("Новый лид");
+  await expect(page.getByRole("main")).toContainText(
     "Deal created at stage «Новый лид»",
   );
 
-  await closeDialog();
   await menu.goToDashboard();
   await expect(
     page.getByText(/You\s+added patient\s+Akhmetov Daulet/),

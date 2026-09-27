@@ -41,33 +41,36 @@ test.describe("deal card and tasks screen", () => {
   }) => {
     await login("owner@smile.kz");
     await page.goto(`/#/deals/${dealId}/show`);
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toContainText("Deal created at stage «Новый лид»");
+    const deal = page.getByRole("main");
+    await expect(deal).toContainText("Deal created at stage «Новый лид»");
+    await expect(deal).toContainText("No task planned");
 
-    // Note (the composer opens on messages)
-    await dialog.getByRole("tab", { name: "Note" }).click();
-    await dialog.getByPlaceholder("Add a note").fill("Wants a quote by Friday");
-    await dialog.getByRole("button", { name: "Add this note" }).click();
-    const feed = dialog.getByRole("list", { name: "Deal feed" });
+    // Note (the composer opens on the chat)
+    await deal.getByRole("tab", { name: "Note" }).click();
+    await deal.getByLabel("Write a note…").fill("Wants a quote by Friday");
+    await deal.getByRole("button", { name: "Add note" }).click();
+    const feed = deal.getByRole("list", { name: "Deal feed" });
     await expect(feed).toContainText("Wants a quote by Friday");
 
     // Call
-    await dialog.getByRole("tab", { name: "Call" }).click();
-    const composer = dialog
-      .locator("section")
-      .filter({ has: page.getByRole("tab", { name: "Call" }) });
+    await deal.getByRole("tab", { name: "Call" }).click();
+    const composer = deal;
     await composer.getByRole("radio", { name: "Incoming" }).click();
     await composer.getByLabel("Duration, m:ss").fill("2:30");
-    await composer.getByLabel("Comment").fill("Asked about prices");
+    await composer
+      .getByRole("textbox", { name: "Comment" })
+      .fill("Asked about prices");
     await composer.getByRole("button", { name: "Log call" }).click();
-    await expect(feed).toContainText("Incoming · 2:30 — Asked about prices");
+    await expect(feed).toContainText("Incoming");
+    await expect(feed).toContainText("2:30 — Asked about prices");
 
     // Task: open on top, then in the feed once done
-    await dialog.getByRole("button", { name: "Create task" }).click();
-    await page.getByLabel("Description *").fill("Send the treatment plan");
-    await page.getByRole("button", { name: "Save" }).click();
-    await expect(dialog.getByText("Send the treatment plan")).toBeVisible();
-    await dialog
+    await deal.getByRole("tab", { name: "Task" }).click();
+    await deal.getByLabel("What to do").fill("Send the treatment plan");
+    await deal.getByRole("button", { name: "Set task" }).click();
+    const nextSteps = deal.getByLabel("Next steps");
+    await expect(nextSteps).toContainText("Send the treatment plan");
+    await nextSteps
       .getByText("Send the treatment plan")
       .locator("xpath=ancestor::div[contains(@class,'items-start')][1]")
       .getByRole("checkbox")
@@ -83,11 +86,8 @@ test.describe("deal card and tasks screen", () => {
   }) => {
     await login("owner@smile.kz");
     await page.goto(`/#/deals/${dealId}/show`);
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Create task" })
-      .click();
-    await page.getByLabel("Description *").fill("Call back yesterday");
+    await page.getByRole("tab", { name: "Task" }).click();
+    await page.getByLabel("What to do").fill("Call back yesterday");
     const yesterday = new Date(Date.now() - 24 * 3600 * 1000);
     const pad = (n: number) => String(n).padStart(2, "0");
     await page
@@ -95,12 +95,8 @@ test.describe("deal card and tasks screen", () => {
       .fill(
         `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}T10:00`,
       );
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Set task" }).click();
     await expect(page.getByText("Task added")).toBeVisible();
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Close" })
-      .click();
 
     await menu.goToTasks();
     await page.getByRole("tab", { name: /Overdue/ }).click();
@@ -117,13 +113,12 @@ test.describe("deal card and tasks screen", () => {
   }) => {
     await login("owner@smile.kz");
     await page.goto(`/#/deals/${dealId}/show`);
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "Add tag" }).click();
+    const deal = page.getByRole("main");
+    await deal.getByRole("button", { name: "Add tag" }).click();
     await page.getByRole("menuitem", { name: "Create new tag" }).click();
     await page.getByLabel("Tag name").fill("VIP");
     await page.getByRole("button", { name: "Save" }).click();
-    await expect(dialog).toContainText("VIP");
-    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(deal).toContainText("VIP");
 
     await menu.goToDeals();
     await expect(page.locator(`[data-deal-id="${dealId}"]`)).toContainText(

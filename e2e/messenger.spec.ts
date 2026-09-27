@@ -55,7 +55,7 @@ test.describe("messengers", () => {
     // The deal card shows the conversation in its feed
     await page.getByRole("link", { name: "Open deal" }).click();
     const feed = page
-      .getByRole("dialog")
+      .getByRole("main")
       .getByRole("list", { name: "Deal feed" });
     await expect(feed).toContainText("Сколько стоит имплант?");
     await expect(feed).toContainText("WhatsApp");
@@ -90,7 +90,7 @@ test.describe("messengers", () => {
     await login("owner@smile.kz");
     await page.goto(`/#/deals/${deal.id}/show`);
     await expect(
-      page.getByRole("dialog").getByRole("list", { name: "Deal feed" }),
+      page.getByRole("main").getByRole("list", { name: "Deal feed" }),
     ).toContainText("Здравствуйте, это Мадина");
   });
 

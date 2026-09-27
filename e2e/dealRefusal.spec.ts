@@ -45,8 +45,8 @@ test("a refused deal needs a reason and can't go back to work", async ({
   await page.getByRole("button", { name: "Save" }).click();
 
   await expect(page.getByText("Deal updated")).toBeVisible();
-  await expect(page.getByRole("dialog")).toContainText("Отказ");
-  await expect(page.getByRole("dialog")).toContainText("Дорого");
+  await expect(page.getByRole("main")).toContainText("Отказ");
+  await expect(page.getByRole("main")).toContainText("Дорого");
 
   // The database refuses to reopen it: a new request is a new deal
   await page.goto(`/#/deals/${deal.id}`);

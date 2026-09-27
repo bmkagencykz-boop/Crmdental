@@ -122,6 +122,7 @@ export const russianCrmMessages: CrmMessages = {
         created_at: "Создана",
         tags: "Теги",
         archived_at: "Архив",
+        stage: "Этап",
       },
     },
     notes: {
@@ -365,6 +366,35 @@ export const russianCrmMessages: CrmMessages = {
         title: "Чек-лист этапа",
         progress: "%{done} из %{total}",
         hint: "Сделка перейдёт дальше, когда все пункты выполнены.",
+      },
+      page: {
+        number: "Сделка №%{id}",
+        back: "К воронке",
+        actions: "Действия со сделкой",
+        edit_all: "Редактировать все поля",
+        days_in_stage:
+          "%{smart_count} день на этапе |||| %{smart_count} дня на этапе |||| %{smart_count} дней на этапе",
+        tabs: {
+          main: "Основное",
+          payments: "Оплаты",
+        },
+        first_response: "Первый ответ",
+        empty_value: "Пусто",
+        patient_card: "Карточка пациента и все обращения",
+        note: "Примечание",
+        no_task: "Нет запланированных задач, рекомендуем",
+        add_task: "добавить",
+        modes: {
+          chat: "Чат",
+          note: "Примечание",
+          task: "Задача",
+          call: "Звонок",
+        },
+        chat_with: "для %{name}",
+        note_placeholder: "Написать примечание…",
+        save_note: "Добавить",
+        task_placeholder: "Что сделать",
+        save_task: "Поставить",
       },
     },
     roles: {

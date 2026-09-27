@@ -39,7 +39,7 @@ test.describe("automations", () => {
     await page.getByLabel("Title").fill("Implants");
     await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByRole("dialog")).toContainText(
+    await expect(page.getByRole("main")).toContainText(
       "Связаться с пациентом по новому обращению",
     );
   });
@@ -87,7 +87,7 @@ test.describe("automations", () => {
     // Checked in the deal card, then it moves
     await page.goto(`/#/deals/${deal.id}/show`);
     await page.getByRole("checkbox", { name: "Уточнить жалобу" }).click();
-    await expect(page.getByRole("dialog")).toContainText("1 of 1");
+    await expect(page.getByRole("main")).toContainText("1 of 1");
     await page.goto(`/#/deals/${deal.id}`);
     await page.getByRole("combobox", { name: "Stage" }).click();
     await page.getByRole("option", { name: "В работе" }).click();

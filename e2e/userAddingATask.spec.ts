@@ -36,7 +36,6 @@ test.describe("tasks on a deal", () => {
     page,
     login,
     menu,
-    closeDialog,
   }) => {
     await login("owner@smile.kz");
     await expect(page).toHaveTitle(/Dental CRM/);
@@ -47,20 +46,22 @@ test.describe("tasks on a deal", () => {
     await expect(card).toContainText("Akhmetov Daulet");
     await expect(card).toContainText("No task");
 
+    // The deal page warns too, and sets the task in place
     await card.click();
-    await expect(page.getByRole("dialog")).toContainText("Implants");
-
-    await page.getByRole("button", { name: "Create task" }).click();
-    await page.getByLabel("Description *").fill("Call back about the plan");
-    await page.getByLabel("Due date").fill("2030-04-11T10:00");
-    await page.getByRole("button", { name: "Save" }).click();
+    const deal = page.getByRole("main");
+    await expect(deal).toContainText("Implants");
+    await expect(deal).toContainText("No task planned");
+    await deal.getByRole("button", { name: "add", exact: true }).click();
+    await deal.getByLabel("What to do").fill("Call back about the plan");
+    await deal.getByLabel("Due date").fill("2030-04-11T10:00");
+    await deal.getByRole("button", { name: "Set task" }).click();
 
     await expect(page.getByText("Task added")).toBeVisible();
-    await expect(page.getByRole("dialog")).toContainText(
+    await expect(deal.getByLabel("Next steps")).toContainText(
       "Call back about the plan",
     );
 
-    await closeDialog();
+    await menu.goToDeals();
     await expect(card).not.toContainText("No task");
 
     await menu.goToDashboard();

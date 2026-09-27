@@ -118,6 +118,7 @@ export const englishCrmMessages = {
         created_at: "Created",
         tags: "Tags",
         archived_at: "Archive",
+        stage: "Stage",
       },
     },
     notes: {
@@ -360,6 +361,35 @@ export const englishCrmMessages = {
         title: "Stage checklist",
         progress: "%{done} of %{total}",
         hint: "The deal moves further once every item is done.",
+      },
+      page: {
+        number: "Deal #%{id}",
+        back: "Back to the board",
+        actions: "Deal actions",
+        edit_all: "Edit all fields",
+        days_in_stage:
+          "%{smart_count} day in the stage |||| %{smart_count} days in the stage",
+        tabs: {
+          main: "Main",
+          payments: "Payments",
+        },
+        first_response: "First response",
+        empty_value: "Empty",
+        patient_card: "Patient card and all requests",
+        note: "Note",
+        no_task: "No task planned, add one",
+        add_task: "add",
+        modes: {
+          chat: "Chat",
+          note: "Note",
+          task: "Task",
+          call: "Call",
+        },
+        chat_with: "with %{name}",
+        note_placeholder: "Write a note…",
+        save_note: "Add note",
+        task_placeholder: "What to do",
+        save_task: "Set task",
       },
     },
     roles: {

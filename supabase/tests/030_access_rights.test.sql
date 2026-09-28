@@ -164,6 +164,13 @@ select tests.assert(tests.affected('update public.deals set name = ''d1'' where 
 select tests.assert(tests.affected('update public.patients set city = ''Алматы'' where id = ' || current_setting('t.p2')) = 0, 'own: no edit of a colleague''s patient');
 select tests.assert(tests.affected('update public.patients set city = ''Алматы'' where first_name = ''p1''') = 1, 'own: edit of an own patient');
 select tests.assert(tests.affected('delete from public.patients where first_name = ''p1''') = 0, 'own: patients delete «none»');
+select tests.assert(tests.affected('update public.tasks set text = ''task d1'' where text = ''task d1''') = 1, 'own: edit of an own task');
+-- Export is done in the browser: the interface reads the scopes
+select tests.assert(
+  (select public.my_access_rights() -> 'rights' -> 'deals' ->> 'export') = 'none'
+    and (select public.my_access_rights() -> 'rights' -> 'patients' ->> 'export') = 'own'
+    and (select public.my_access_rights() -> 'rights' -> 'tasks' ->> 'export') = 'all',
+  'own: the export scopes reach the interface');
 select tests.throws(
   format('insert into public.tasks (deal_id, text, due_date) values (%s, ''x'', now())', current_setting('t.d2')),
   '42501', 'own: no task on an invisible deal');

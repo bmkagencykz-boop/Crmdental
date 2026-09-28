@@ -20,7 +20,8 @@ create table public.external_refs (
     system text not null,
     external_id text not null,
     created_at timestamp with time zone not null default now(),
-    constraint external_refs_entity_check check (entity in ('patient', 'deal', 'sales', 'service')),
+    -- appointment: a MIS appointment on its deal; payment, doctor: stage 27
+    constraint external_refs_entity_check check (entity in ('patient', 'deal', 'sales', 'service', 'appointment', 'payment', 'doctor')),
     constraint external_refs_system_not_blank check (btrim(system) <> ''),
     constraint external_refs_external_id_not_blank check (btrim(external_id) <> ''),
     constraint external_refs_external_id_key unique (organization_id, system, entity, external_id)
@@ -37,7 +38,8 @@ create table public.integrations (
     last_sync_at timestamp with time zone,
     last_error text,
     created_at timestamp with time zone not null default now(),
-    constraint integrations_kind_check check (kind in ('ident', 'dentalpro', 'medelement', '1c_medicine', 'other')),
+    -- dentist_plus, macdent: the connectors of stage 27 (27_mis_connectors.sql)
+    constraint integrations_kind_check check (kind in ('ident', 'dentalpro', 'medelement', '1c_medicine', 'other', 'dentist_plus', 'macdent')),
     constraint integrations_status_check check (status in ('requested', 'connected', 'error', 'disabled')),
     constraint integrations_settings_is_object check (jsonb_typeof(settings) = 'object'),
     constraint integrations_organization_id_kind_key unique (organization_id, kind)

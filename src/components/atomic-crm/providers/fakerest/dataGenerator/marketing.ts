@@ -34,7 +34,7 @@ const PLANS: Record<string, Plan> = {
       { name: "whitening", page: "/whitening" },
       { name: "braces_kids", page: "/orthodontics" },
     ],
-    cpl: 4500,
+    cpl: 25000,
   },
   Google: {
     utm_source: "google",
@@ -44,14 +44,14 @@ const PLANS: Record<string, Plan> = {
       { name: "implant_search", page: "/implant" },
       { name: "brand", page: "/" },
     ],
-    cpl: 9000,
+    cpl: 45000,
   },
 };
 
 /** Monthly fixed spend of the sources without campaigns */
 const MONTHLY: Record<string, { amount: number; comment: string }> = {
-  "2GIS": { amount: 45000, comment: "Приоритетное размещение 2GIS" },
-  Сайт: { amount: 80000, comment: "SEO и поддержка сайта" },
+  "2GIS": { amount: 250000, comment: "Приоритетное размещение 2GIS" },
+  Сайт: { amount: 300000, comment: "SEO и поддержка сайта" },
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");

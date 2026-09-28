@@ -48,9 +48,12 @@ test.describe("treatment plans", () => {
     const main = page.getByRole("main");
     await main.getByRole("tab", { name: "Treatment plan" }).click();
     await expect(main.getByText(/No treatment plans yet/)).toBeVisible();
-    await main.getByRole("button", { name: "New plan" }).click();
-    const editor = page.getByRole("dialog");
-    await expect(editor.getByTestId("treatment-plan-editor")).toBeVisible();
+    await main.getByRole("link", { name: "New plan" }).click();
+    // The plan page (stage 34): created, then edited
+    await page.getByRole("button", { name: "Create the plan" }).click();
+    await expect(page.getByText("The plan is created")).toBeVisible();
+    const editor = page.getByTestId("plan-page");
+    await expect(editor.getByTestId("dental-chart")).toBeVisible();
 
     // Added from the price list with the search
     await editor
@@ -64,17 +67,18 @@ test.describe("treatment plans", () => {
     const quantity = editor.getByLabel("Qty: Имплант Osstem");
     await quantity.fill("2");
     await quantity.press("Enter");
-    await expect(editor.getByLabel("Total")).toContainText(/360\s000/);
+    await expect(editor.getByTestId("plan-total")).toContainText(/360\s000/);
     await expect(editor.getByLabel("Tooth: Имплант Osstem")).toHaveValue(
       "36, 46",
     );
 
     // Agreed: the deal amount is the plan total
-    await editor.getByRole("button", { name: "Agreed", exact: true }).click();
+    await editor.getByLabel("Plan status").selectOption({ label: "Agreed" });
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByText(/Plan agreed\. Deal amount/)).toBeVisible();
     await expect(editor.getByText("Main", { exact: true })).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toBeHidden();
+    await page.goto(`/#/deals/${deal.id}/show`);
+    await main.getByRole("tab", { name: "Treatment plan" }).click();
     const plans = main.getByTestId("deal-treatment-plans");
     await expect(plans).toContainText("Agreed");
     await expect(plans).toContainText(/Deal amount\s*360\s000/);
@@ -114,8 +118,10 @@ test.describe("treatment plans", () => {
     await page.goto(`/#/deals/${deal.id}/show`);
     const main = page.getByRole("main");
     await main.getByRole("tab", { name: "Treatment plan" }).click();
-    await main.getByRole("button", { name: "New plan" }).click();
-    const editor = page.getByRole("dialog");
+    await main.getByRole("link", { name: "New plan" }).click();
+    await page.getByRole("button", { name: "Create the plan" }).click();
+    const editor = page.getByTestId("plan-page");
+    await expect(editor.getByTestId("dental-chart")).toBeVisible();
 
     // A custom item (not in the price list) with a price
     await editor
@@ -127,7 +133,7 @@ test.describe("treatment plans", () => {
     const price = editor.getByLabel("Price: Коронка циркониевая");
     await price.fill("120000");
     await price.press("Enter");
-    await expect(editor.getByLabel("Total")).toContainText(/120\s000/);
+    await expect(editor.getByTestId("plan-total")).toContainText(/120\s000/);
 
     // «Смета PDF» → «Сохранить в файлы сделки»
     await editor.getByRole("button", { name: "Estimate PDF" }).click();
@@ -135,13 +141,13 @@ test.describe("treatment plans", () => {
     await expect(
       page.getByText("The estimate is saved to the deal files"),
     ).toBeVisible();
-    await page.keyboard.press("Escape");
+    await page.goto(`/#/deals/${deal.id}/show`);
 
     await main.getByRole("tab", { name: "Files" }).click();
     const files = main.getByRole("list", { name: "Files" });
     await expect(files.getByRole("listitem")).toHaveCount(1);
     await expect(files).toContainText(
-      /Estimate — Treatment plan — Нурланова Асель\.pdf/,
+      /Estimate — Treatment plan.* — Нурланова Асель\.pdf/,
     );
   });
 });

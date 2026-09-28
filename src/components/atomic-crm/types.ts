@@ -393,7 +393,12 @@ export type Call = {
 
 export type CallStatus = "in_progress" | "answered" | "missed";
 
-export type TelephonyProvider = "binotel" | "zadarma" | "mango" | "generic";
+export type TelephonyProvider =
+  | "binotel"
+  | "zadarma"
+  | "mango"
+  | "sipuni"
+  | "generic";
 
 /** Telephony connection of the clinic (owner and head; secrets stay hidden) */
 export type TelephonyStatus = {
@@ -676,7 +681,10 @@ export type IntegrationKind =
   | "dentalpro"
   | "medelement"
   | "1c_medicine"
-  | "other";
+  | "other"
+  // Real connectors (stage 27, see mis/types.ts)
+  | "dentist_plus"
+  | "macdent";
 
 export type IntegrationStatus = {
   kind: IntegrationKind;
@@ -687,7 +695,14 @@ export type IntegrationStatus = {
 
 /** One entry of public.external_refs */
 export type ExternalRef = {
-  entity: "patient" | "deal" | "sales" | "service";
+  entity:
+    | "patient"
+    | "deal"
+    | "sales"
+    | "service"
+    | "appointment"
+    | "payment"
+    | "doctor";
   entity_id: Identifier;
   system: string;
   external_id: string;

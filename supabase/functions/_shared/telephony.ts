@@ -1,5 +1,5 @@
 /**
- * Telephony webhooks (Binotel, Zadarma, Mango Office, generic JSON) mapped to
+ * Telephony webhooks (Binotel, Zadarma, Mango Office, Sipuni, generic JSON) mapped to
  * the provider-neutral shape of public.ingest_call, signature checks and
  * recording links. No Deno import here so that it can be unit tested; the
  * network calls take the fetch function as a parameter.
@@ -9,7 +9,13 @@
  * see docs/stages/12-telephony.md, «проверить на живом аккаунте».
  */
 
-export const PROVIDERS = ["binotel", "zadarma", "mango", "generic"] as const;
+export const PROVIDERS = [
+  "binotel",
+  "zadarma",
+  "mango",
+  "sipuni",
+  "generic",
+] as const;
 export type TelephonyProvider = (typeof PROVIDERS)[number];
 
 export const isProvider = (value: unknown): value is TelephonyProvider =>
@@ -469,6 +475,79 @@ export const mangoRecordingLink = async (
   return `https://app.mango-office.ru/vpbx/queries/recording/link/${encodeURIComponent(recordingId)}/play/${apiKey}/${expires}/${sign}`;
 };
 
+// --- Sipuni ----------------------------------------------------------------
+
+/** Sipuni statuses of a finished call that someone answered */
+const SIPUNI_ANSWERED = ["ANSWER", "ANSWERED"];
+
+/**
+ * Sipuni (sipuni.com), HTTP API «События АТС» (Настройки → API → «События
+ * на АТС»). The PBX calls the address (GET query or POST form/JSON) on each
+ * event of a call; call_id is the same for all of them:
+ * - event 1: the call starts (src_num / dst_num, src_type / dst_type:
+ *   1 external number, 2 internal number of an employee);
+ * - event 3: an employee answered;
+ * - event 2: the call ended: status ANSWER, BUSY, NOANSWER, CANCEL,
+ *   CONGESTION or CHANUNAVAIL; call_answer_timestamp, call_record_link;
+ * - event 4: a secondary leg ended (another employee's phone stopped
+ *   ringing): ignored, it says nothing about the call.
+ * timestamp is the Unix time (UTC) of the event, call_start_timestamp of
+ * the start; short_src_num / short_dst_num are the extensions. The public
+ * GitHub libraries of Sipuni do not describe these events: names follow the
+ * help center and are read tolerantly («проверить на живом аккаунте»).
+ */
+export const sipuniToCall = (body: Payload): CallEvent | null => {
+  const event = String(body.event ?? "").trim();
+  const callId = text(body.call_id) ?? text(body.callId);
+  if (!callId || event === "4") return null;
+  const numberOnly = (value: unknown) => (text(value) ?? "").replace(/\D/g, "");
+  // src_type / dst_type: 2 = internal; without them a short number is internal
+  const internal = (type: unknown, num: unknown) => {
+    const kind = text(type);
+    if (kind) return kind === "2";
+    const n = numberOnly(num);
+    return n.length > 0 && n.length <= 5;
+  };
+  const srcInternal = internal(body.src_type, body.src_num);
+  const dstInternal = internal(body.dst_type, body.dst_num);
+  if (srcInternal && dstInternal) return null; // a call between employees
+  const outgoing = srcInternal && !dstInternal;
+  const extension = outgoing
+    ? (text(body.short_src_num) ?? text(body.src_num))
+    : (text(body.short_dst_num) ?? (dstInternal ? text(body.dst_num) : null));
+  const call: IngestCall = {
+    call_id: callId,
+    direction: outgoing ? "out" : "in",
+    phone: text(outgoing ? body.dst_num : body.src_num),
+    extension,
+    started_at:
+      toIsoDate(body.call_start_timestamp) ??
+      (event === "1" ? toIsoDate(body.timestamp) : null),
+    status: null,
+  };
+  const status = String(body.status ?? "").toUpperCase();
+  if (event === "1" || event === "3" || (!event && !status)) {
+    return { call };
+  }
+  // event 2 (or no event with a final status): the end of the call
+  const answered = SIPUNI_ANSWERED.includes(status);
+  const end = Number(body.timestamp);
+  const answer = Number(body.call_answer_timestamp);
+  const talk =
+    answered && end > 0 && answer > 0 && end >= answer
+      ? Math.round(end - answer)
+      : number(body.duration ?? body.call_duration ?? body.talk_duration);
+  const record = text(body.call_record_link) ?? text(body.record_link);
+  return {
+    call: {
+      ...call,
+      status: answered ? "answered" : "missed",
+      duration: answered ? talk : 0,
+      record_url: isAudioUrl(record) ? record : null,
+    },
+  };
+};
+
 // --- generic ---------------------------------------------------------------
 
 const INCOMING = ["in", "incoming", "inbound", "0"];
@@ -547,6 +626,8 @@ export const toCallEvent = (
       return zadarmaToCall(body);
     case "mango":
       return mangoToCall(body, event);
+    case "sipuni":
+      return sipuniToCall(body);
     case "generic":
       return genericToCall(body);
   }
@@ -554,8 +635,8 @@ export const toCallEvent = (
 
 /**
  * Is the webhook really from the clinic's PBX? Without a stored secret the
- * token of the address is the only check. Binotel does not sign its
- * webhooks (its secret is the API one): the token is the check.
+ * token of the address is the only check. Binotel and Sipuni do not sign
+ * their webhooks: the token is the check.
  */
 export const verifyWebhook = async ({
   provider,
@@ -581,6 +662,7 @@ export const verifyWebhook = async ({
     case "generic":
       return verifyGeneric(raw, headers, secret);
     case "binotel":
+    case "sipuni":
       return true;
   }
 };
@@ -646,9 +728,33 @@ export const fetchRecordingUrl = async (
   }
 };
 
-/** What the PBX expects back */
+/**
+ * What the PBX expects back. Sipuni stops sending events unless the answer
+ * is {"success": true}.
+ */
 export const webhookResponseBody = (provider: TelephonyProvider) =>
-  provider === "binotel" ? JSON.stringify({ status: "success" }) : "OK";
+  provider === "binotel"
+    ? JSON.stringify({ status: "success" })
+    : provider === "sipuni"
+      ? JSON.stringify({ success: true })
+      : "OK";
+
+/** Content type of the answer (JSON for Binotel and Sipuni) */
+export const webhookResponseType = (provider: TelephonyProvider) =>
+  provider === "binotel" || provider === "sipuni"
+    ? "application/json"
+    : "text/plain";
+
+/**
+ * Sipuni can call the address with GET: the event is in the query (the
+ * address's own provider and token excluded).
+ */
+export const queryPayload = (url: URL): Payload =>
+  Object.fromEntries(
+    [...url.searchParams].filter(
+      ([key]) => !["provider", "token"].includes(key),
+    ),
+  );
 
 // --- crypto ----------------------------------------------------------------
 

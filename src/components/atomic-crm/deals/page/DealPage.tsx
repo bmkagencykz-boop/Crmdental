@@ -16,6 +16,7 @@ import { DealFields } from "./DealFields";
 import { DealHeader } from "./DealHeader";
 import { PatientBlock } from "./PatientBlock";
 import { UnsortedBanner } from "../../unsorted/UnsortedBanner";
+import { MisDealBadge, MisVisits } from "../../mis/MisVisits";
 
 /**
  * The deal card as a page, amoCRM layout in the CRM design: on the left the
@@ -43,8 +44,11 @@ const DealPageContent = () => {
       <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
         <UnsortedBanner deal={deal} />
         <DealHeader deal={deal} />
-        <div className="px-6 pb-3">
-          <TagsListEdit resource="deals" />
+        <div className="flex items-start gap-2 px-6 pb-3">
+          <MisDealBadge deal={deal} />
+          <div className="min-w-0 flex-1">
+            <TagsListEdit resource="deals" />
+          </div>
         </div>
         <nav
           className="flex gap-5 border-b border-border px-6 text-sm font-semibold"
@@ -82,6 +86,7 @@ const DealPageContent = () => {
                 <DealFields deal={deal} />
               </div>
               <PatientBlock deal={deal} />
+              <MisVisits patientId={deal.patient_id} compact />
             </>
           ) : tab === "payments" ? (
             <div className="px-6 py-5">

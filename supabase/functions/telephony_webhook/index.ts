@@ -5,15 +5,19 @@ import {
   isProvider,
   parseWebhookAddress,
   parseWebhookBody,
+  queryPayload,
   toCallEvent,
   verifyWebhook,
   webhookResponseBody,
+  webhookResponseType,
 } from "../_shared/telephony.ts";
 
 /**
  * Webhook given to the clinic's PBX (Settings → Телефония):
  *   POST /functions/v1/telephony_webhook?provider=<p>&token=<token>
  *   POST /functions/v1/telephony_webhook/mango/<token>   (Mango Office adds /events/...)
+ *   GET or POST /functions/v1/telephony_webhook?provider=sipuni&token=<token>
+ *     (Sipuni «События АТС» may send the event in the query)
  * The token identifies the clinic (telephony_integrations.webhook_token); the
  * payload is checked with the clinic's secret when one is set, mapped by
  * _shared/telephony.ts and stored by public.ingest_call (see its comment).
@@ -24,10 +28,13 @@ Deno.serve(async (req) => {
   const echo = url.searchParams.get("zd_echo");
   if (echo) return new Response(echo);
 
-  if (req.method !== "POST") {
+  const address = parseWebhookAddress(url);
+  if (
+    req.method !== "POST" &&
+    !(req.method === "GET" && address.provider === "sipuni")
+  ) {
     return new Response("Method Not Allowed", { status: 405 });
   }
-  const address = parseWebhookAddress(url);
   if (!address.token) return new Response("Missing token", { status: 401 });
 
   const { data: integration, error: integrationError } = await supabaseAdmin
@@ -46,8 +53,11 @@ Deno.serve(async (req) => {
     return new Response("Unknown provider", { status: 400 });
   }
 
-  const raw = await req.text();
-  const body = parseWebhookBody(raw, req.headers.get("content-type"));
+  const raw = req.method === "GET" ? "" : await req.text();
+  const body = {
+    ...(provider === "sipuni" ? queryPayload(url) : {}),
+    ...parseWebhookBody(raw, req.headers.get("content-type")),
+  };
   const verified = await verifyWebhook({
     provider,
     raw,
@@ -60,10 +70,7 @@ Deno.serve(async (req) => {
 
   const ok = () =>
     new Response(webhookResponseBody(provider), {
-      headers: {
-        "Content-Type":
-          provider === "binotel" ? "application/json" : "text/plain",
-      },
+      headers: { "Content-Type": webhookResponseType(provider) },
     });
 
   const event = toCallEvent(provider, body, address.event);
@@ -87,7 +94,10 @@ Deno.serve(async (req) => {
     return new Response("Unknown token", { status: 401 });
   }
   if (error?.code === "22023") {
-    return new Response("Unsupported call", { status: 400 });
+    // Sipuni stops sending events after answers other than {"success": true}
+    return provider === "sipuni"
+      ? ok()
+      : new Response("Unsupported call", { status: 400 });
   }
   if (error) {
     console.error("ingest_call failed", error);

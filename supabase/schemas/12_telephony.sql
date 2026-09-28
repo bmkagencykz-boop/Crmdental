@@ -1,6 +1,6 @@
 --
 -- Telephony (stage 12): calls received from the clinic's PBX (Binotel,
--- Zadarma, Mango Office or any PBX able to post JSON) through the edge
+-- Zadarma, Mango Office, Sipuni since stage 27, or any PBX able to post JSON) through the edge
 -- function telephony_webhook, which maps the provider payload to one
 -- provider-neutral shape and hands it to public.ingest_call.
 --
@@ -24,7 +24,7 @@ create table public.telephony_integrations (
     api_key text,
     created_at timestamp with time zone not null default now(),
     last_event_at timestamp with time zone,
-    constraint telephony_integrations_provider_check check (provider in ('binotel', 'zadarma', 'mango', 'generic'))
+    constraint telephony_integrations_provider_check check (provider in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic'))
 );
 
 alter table public.telephony_integrations
@@ -94,7 +94,7 @@ begin
   if org_id is null then
     raise exception 'Unknown webhook token' using errcode = '28000';
   end if;
-  if call_provider not in ('binotel', 'zadarma', 'mango', 'generic')
+  if call_provider not in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic')
     or call_external_id is null
     or call_direction not in ('in', 'out')
     or coalesce(call_status, 'in_progress') not in ('in_progress', 'answered', 'missed') then
@@ -250,7 +250,7 @@ begin
     or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
     raise exception 'Only the owner and the head manage telephony' using errcode = '42501';
   end if;
-  if telephony_provider is null or telephony_provider not in ('binotel', 'zadarma', 'mango', 'generic') then
+  if telephony_provider is null or telephony_provider not in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic') then
     raise exception 'Unknown telephony provider' using errcode = '22023';
   end if;
   insert into public.telephony_integrations (organization_id, provider, secret, api_key)

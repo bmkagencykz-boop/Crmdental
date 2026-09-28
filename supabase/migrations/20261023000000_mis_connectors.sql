@@ -1,0 +1,1771 @@
+--
+-- Stage 27: MIS connectors (Dentist Plus, MacDent) and the Sipuni PBX.
+-- Same statements as supabase/schemas/27_mis_connectors.sql, plus the
+-- changes of 11_import_mis.sql (new MIS kinds and external_refs entities) and
+-- 12_telephony.sql (provider sipuni in the table, ingest_call and
+-- save_telephony).
+--
+
+alter table public.external_refs drop constraint external_refs_entity_check;
+alter table public.external_refs add constraint external_refs_entity_check check (entity in ('patient', 'deal', 'sales', 'service', 'appointment', 'payment', 'doctor'));
+alter table public.integrations drop constraint integrations_kind_check;
+alter table public.integrations add constraint integrations_kind_check check (kind in ('ident', 'dentalpro', 'medelement', '1c_medicine', 'other', 'dentist_plus', 'macdent'));
+
+--
+-- Sipuni (12_telephony.sql)
+--
+
+alter table public.telephony_integrations drop constraint telephony_integrations_provider_check;
+alter table public.telephony_integrations add constraint telephony_integrations_provider_check check (provider in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic'));
+
+CREATE OR REPLACE FUNCTION "public"."ingest_call"("webhook_token" "text", "provider" "text", "call" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint;
+  call_provider text := lower(btrim(coalesce(ingest_call.provider, '')));
+  call_external_id text := nullif(btrim(call ->> 'call_id'), '');
+  call_direction text := coalesce(nullif(btrim(call ->> 'direction'), ''), 'in');
+  call_status text := nullif(btrim(call ->> 'status'), '');
+  call_phone text := private.normalize_phone(nullif(btrim(call ->> 'phone'), ''));
+  call_extension text := nullif(btrim(call ->> 'extension'), '');
+  call_started_at timestamp with time zone := nullif(btrim(call ->> 'started_at'), '')::timestamp with time zone;
+  call_duration integer := greatest(coalesce(nullif(btrim(call ->> 'duration'), '')::numeric, 0), 0)::integer;
+  call_record_url text := nullif(btrim(call ->> 'record_url'), '');
+  employee_id bigint;
+  call_source_id bigint;
+  found_call public.calls;
+  new_status text;
+  found_patient_id bigint;
+  found_deal_id bigint;
+  new_call_id bigint;
+  created_patient boolean := false;
+  created_deal boolean := false;
+  created_task boolean := false;
+begin
+  select i.organization_id into org_id
+  from public.telephony_integrations i
+  where i.webhook_token = ingest_call.webhook_token;
+  if org_id is null then
+    raise exception 'Unknown webhook token' using errcode = '28000';
+  end if;
+  if call_provider not in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic')
+    or call_external_id is null
+    or call_direction not in ('in', 'out')
+    or coalesce(call_status, 'in_progress') not in ('in_progress', 'answered', 'missed') then
+    raise exception 'Unsupported call' using errcode = '22023';
+  end if;
+
+  update public.telephony_integrations
+  set last_event_at = now()
+  where organization_id = org_id;
+
+  -- The events of one call may arrive at the same time
+  perform pg_advisory_xact_lock(hashtextextended(format('call:%s:%s:%s', org_id, call_provider, call_external_id), 0));
+
+  if call_extension is not null then
+    select s.id into employee_id
+    from public.sales s
+    where s.organization_id = org_id and s.phone_extension = call_extension and not s.disabled;
+  end if;
+
+  select * into found_call
+  from public.calls c
+  where c.organization_id = org_id and c.provider = call_provider and c.external_id = call_external_id;
+
+  if found then
+    -- A final status replaces "in progress", never the other way round
+    new_status := case
+      when call_status in ('answered', 'missed') then call_status
+      else found_call.status
+    end;
+    update public.calls c
+    set status = new_status,
+        duration_seconds = greatest(c.duration_seconds, call_duration),
+        recording_url = coalesce(call_record_url, c.recording_url),
+        sales_id = coalesce(employee_id, c.sales_id),
+        extension = coalesce(call_extension, c.extension),
+        phone = coalesce(c.phone, call_phone)
+    where c.id = found_call.id;
+    if new_status = 'missed' and found_call.status <> 'missed' and found_call.direction = 'in'
+      and found_call.deal_id is not null then
+      insert into public.tasks (organization_id, deal_id, type, text, due_date, sales_id)
+      select org_id, d.id, 'call', 'Перезвонить', now(), d.sales_id
+      from public.deals d
+      where d.organization_id = org_id and d.id = found_call.deal_id;
+      created_task := true;
+    end if;
+    return jsonb_build_object('call_id', found_call.id, 'patient_id', found_call.patient_id,
+      'deal_id', found_call.deal_id, 'created_patient', false, 'created_deal', false,
+      'created_task', created_task, 'duplicate', true);
+  end if;
+
+  -- A new call needs the patient's number (a recording of an unknown call,
+  -- a hidden number: nothing to attach it to)
+  if call_phone is null then
+    return jsonb_build_object('ignored', true);
+  end if;
+
+  -- Two new calls from one new number must not create two patients
+  perform pg_advisory_xact_lock(hashtextextended(format('phone:%s:%s', org_id, call_phone), 0));
+
+  select s.id into call_source_id from public.lead_sources s
+  where s.organization_id = org_id and s.code = 'call';
+  if call_source_id is null then
+    insert into public.lead_sources (organization_id, name, code, is_system, position)
+    select org_id, 'Звонок', 'call', true, coalesce(max(s.position) + 1, 0)
+    from public.lead_sources s
+    where s.organization_id = org_id
+    returning id into call_source_id;
+  end if;
+
+  select p.id into found_patient_id from public.patients p
+  where p.organization_id = org_id and p.phones @> array[call_phone]
+  order by p.last_seen desc, p.id desc
+  limit 1;
+  if found_patient_id is null then
+    insert into public.patients (organization_id, first_name, phone_jsonb, source_id)
+    values (
+      org_id,
+      coalesce(nullif(btrim(call ->> 'name'), ''), call_phone),
+      jsonb_build_array(jsonb_build_object('number', call_phone, 'type', 'mobile')),
+      call_source_id
+    )
+    returning id into found_patient_id;
+    created_patient := true;
+  end if;
+
+  -- The deal: the most recently updated open one, else a new request. An
+  -- outgoing call to a new number belongs to the employee who made it; an
+  -- incoming one is distributed by the clinic rules (handle_deal_before_write).
+  select d.id into found_deal_id
+  from public.deals d
+    join public.stages s on s.id = d.stage_id
+  where d.organization_id = org_id and d.patient_id = found_patient_id
+    and s.kind = 'open' and d.archived_at is null
+  order by d.updated_at desc, d.id desc
+  limit 1;
+  if found_deal_id is null then
+    -- An incoming call may open an unsorted lead (clinic setting)
+    insert into public.deals (organization_id, patient_id, source_id, sales_id, unsorted_at)
+    values (org_id, found_patient_id, call_source_id, case when call_direction = 'out' then employee_id end,
+      case when call_direction = 'in' then private.unsorted_intake(org_id, call_source_id) end)
+    returning id into found_deal_id;
+    created_deal := true;
+  end if;
+
+  insert into public.calls (
+    organization_id, patient_id, deal_id, direction, duration_seconds, called_at,
+    sales_id, external_id, recording_url, provider, status, phone, extension
+  ) values (
+    org_id, found_patient_id, found_deal_id, call_direction, call_duration,
+    -- Unknown start (a PBX in another time zone): now, minus the talk of a finished call
+    coalesce(call_started_at, now() - make_interval(secs => call_duration)),
+    employee_id, call_external_id, call_record_url, call_provider,
+    coalesce(call_status, 'in_progress'), call_phone, call_extension
+  )
+  returning id into new_call_id;
+
+  if call_status = 'missed' and call_direction = 'in' then
+    insert into public.tasks (organization_id, deal_id, type, text, due_date, sales_id)
+    select org_id, d.id, 'call', 'Перезвонить', now(), d.sales_id
+    from public.deals d
+    where d.organization_id = org_id and d.id = found_deal_id;
+    created_task := true;
+  end if;
+
+  update public.patients set last_seen = now()
+  where organization_id = org_id and id = found_patient_id;
+
+  return jsonb_build_object('call_id', new_call_id, 'patient_id', found_patient_id,
+    'deal_id', found_deal_id, 'created_patient', created_patient, 'created_deal', created_deal,
+    'created_task', created_task, 'duplicate', false);
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."save_telephony"("telephony_provider" "text", "new_secret" "text" DEFAULT NULL::"text", "new_api_key" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if private.current_organization_id() is null
+    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    raise exception 'Only the owner and the head manage telephony' using errcode = '42501';
+  end if;
+  if telephony_provider is null or telephony_provider not in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic') then
+    raise exception 'Unknown telephony provider' using errcode = '22023';
+  end if;
+  insert into public.telephony_integrations (organization_id, provider, secret, api_key)
+  values (
+    private.current_organization_id(),
+    telephony_provider,
+    nullif(btrim(new_secret), ''),
+    nullif(btrim(new_api_key), '')
+  )
+  on conflict (organization_id) do update
+  set provider = excluded.provider,
+      secret = case when new_secret is null then public.telephony_integrations.secret else excluded.secret end,
+      api_key = case when new_api_key is null then public.telephony_integrations.api_key else excluded.api_key end;
+end;
+$$;
+
+--
+-- MIS connectors (stage 27): Dentist Plus and MacDent
+--
+-- A clinic connects its dental MIS in Settings → Интеграция с МИС. The
+-- connection is a row of public.integrations (11_import_mis.sql) with the
+-- columns below: base URL and API key of the vendor, a webhook token, the
+-- sync directions, the mapping of the MIS statuses to the stages and the
+-- sync cursor. The table stays closed to every client role: the owner and the
+-- head go through the functions below, the API key never leaves the server.
+--
+-- Every sync operation is an SQL function taking a vendor-neutral JSON, so the
+-- business rules live here and are covered by the SQL tests; the edge
+-- functions (mis_webhook, mis_sync, mis_test_connection) only translate the
+-- vendor payloads (supabase/functions/_shared/mis/*.ts) and call them:
+--   public.mis_upsert_patient(connection, patient)
+--     { external_id, first_name, last_name, middle_name, full_name, phones[],
+--       birth_date }
+--     by external_refs, then by normalised phone, then created (source «МИС»)
+--   public.mis_upsert_appointment(connection, appointment)
+--     { external_id, patient: {...} | patient_external_id, starts_at, ends_at,
+--       status, status_label, doctor: { external_id, name }, service, comment }
+--     status: scheduled | confirmed | arrived | completed | in_treatment |
+--             cancelled | no_show
+--     the deal: the one of this appointment, else the patient's latest open
+--     deal, else a new one (source «МИС»); appointment_at / visit_at, doctor
+--     and service are set, the stage moves by the clinic's status mapping
+--   public.mis_visit_completed(connection, visit)
+--     { appointment_external_id, completed_at, treatment_started, patient }
+--   public.mis_upsert_payment(connection, payment)
+--     { external_id, amount, paid_at, kind: payment | prepayment, comment,
+--       appointment_external_id, patient | patient_external_id }
+--     one deal_payments row per MIS payment (external_refs 'payment')
+-- A stage move respects the rules of the digital pipeline (20): the stage
+-- checklist can block it, a deal is never refused automatically nor taken out
+-- of a refusal, and it only goes forward. Every move, done or skipped, is
+-- written to the deal feed (stage_trigger_runs, without trigger) and to
+-- public.mis_sync_log, the log of the settings screen.
+--
+-- Writes of a sync carry crm.audit_source = 'mis' (audit log) and the flag
+-- crm.mis_sync = 'on'. The outbound push (a deal reaching the «Записан» stage
+-- of the mapping with an appointment date set in the CRM, when the clinic
+-- switched it on) is queued by the trigger deal_mis_push into
+-- public.mis_outbox and sent by mis_sync (pg_cron through pg_net, like the
+-- webhooks of stage 20). Changes that came from the MIS are never pushed
+-- back: the trigger ignores writes made under the flag and appointment dates
+-- that the MIS itself sent.
+--
+
+--
+-- Tables
+--
+
+-- Connection columns of the MIS connectors
+alter table public.integrations add column base_url text;
+-- Secret: read by the edge functions only (service role)
+alter table public.integrations add column api_key text;
+-- Part of the webhook address given to the MIS: identifies the clinic
+alter table public.integrations add column webhook_token text not null default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+-- Sync directions: what the MIS may bring in, and the push of appointments
+alter table public.integrations add column sync_patients boolean not null default true;
+alter table public.integrations add column sync_appointments boolean not null default true;
+alter table public.integrations add column sync_payments boolean not null default true;
+alter table public.integrations add column push_appointments boolean not null default false;
+-- { "<status>": { "stage_id": 12 } | { "tag_id": 3 } } (statuses above)
+alter table public.integrations add column status_map jsonb not null default '{}'::jsonb;
+-- Polling: changes since this moment
+alter table public.integrations add column sync_cursor timestamp with time zone;
+alter table public.integrations add column connected_at timestamp with time zone;
+alter table public.integrations add constraint integrations_status_map_is_object check (jsonb_typeof(status_map) = 'object');
+
+create unique index integrations_webhook_token_idx on public.integrations using btree (webhook_token);
+
+-- Doctors of the MIS, linked to the clinic's doctors (by name when first
+-- seen, else by hand in the settings). The link is mirrored in external_refs
+-- (entity 'doctor'). A MIS that sends no doctor id gets 'name:<name>'.
+create table public.mis_doctors (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null,
+    kind text not null,
+    external_id text not null,
+    name text not null,
+    doctor_id bigint,
+    created_at timestamp with time zone not null default now(),
+    constraint mis_doctors_external_id_key unique (organization_id, kind, external_id)
+);
+
+-- Appointments of the MIS (the «Визиты из МИС» block of the patient)
+create table public.mis_appointments (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null,
+    kind text not null,
+    external_id text not null,
+    patient_id bigint not null,
+    deal_id bigint,
+    doctor_id bigint,
+    doctor_external_id text,
+    doctor_name text,
+    service_name text,
+    status text not null default 'scheduled',
+    -- The status as the MIS words it
+    status_label text,
+    starts_at timestamp with time zone,
+    ends_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    comment text,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    constraint mis_appointments_status_check check (status in ('scheduled', 'confirmed', 'arrived', 'completed', 'in_treatment', 'cancelled', 'no_show')),
+    constraint mis_appointments_external_id_key unique (organization_id, kind, external_id)
+);
+
+-- What the connector did (the sync log of the settings, last 90 days)
+create table public.mis_sync_log (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null,
+    kind text not null,
+    -- in: from the MIS; out: pushed to the MIS
+    direction text not null default 'in',
+    -- patient, appointment, visit, payment, poll, push, test, webhook, settings
+    operation text not null,
+    external_id text,
+    -- ok, skipped (nothing to do or a rule refused), error
+    result text not null default 'ok',
+    message text,
+    patient_id bigint,
+    deal_id bigint,
+    created_at timestamp with time zone not null default now(),
+    constraint mis_sync_log_direction_check check (direction in ('in', 'out')),
+    constraint mis_sync_log_result_check check (result in ('ok', 'skipped', 'error'))
+);
+
+-- Outbound queue: appointments of the CRM pushed to the MIS.
+-- pending -> sending -> done | pending (retry) | failed; pending -> cancelled
+create table public.mis_outbox (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null,
+    kind text not null,
+    deal_id bigint not null,
+    event_key text not null,
+    payload jsonb not null,
+    status text not null default 'pending',
+    attempts integer not null default 0,
+    next_attempt_at timestamp with time zone not null default now(),
+    error text,
+    claimed_at timestamp with time zone,
+    done_at timestamp with time zone,
+    created_at timestamp with time zone not null default now(),
+    constraint mis_outbox_status_check check (status in ('pending', 'sending', 'done', 'failed', 'cancelled')),
+    constraint mis_outbox_event_key_key unique (organization_id, kind, event_key)
+);
+
+alter table public.mis_doctors add constraint mis_doctors_organization_id_id_key unique (organization_id, id);
+alter table public.mis_appointments add constraint mis_appointments_organization_id_id_key unique (organization_id, id);
+alter table public.mis_sync_log add constraint mis_sync_log_organization_id_id_key unique (organization_id, id);
+alter table public.mis_outbox add constraint mis_outbox_organization_id_id_key unique (organization_id, id);
+
+alter table public.mis_doctors
+    add constraint mis_doctors_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.mis_doctors
+    add constraint mis_doctors_doctor_id_fkey foreign key (organization_id, doctor_id) references public.doctors(organization_id, id) on delete set null (doctor_id);
+alter table public.mis_appointments
+    add constraint mis_appointments_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+alter table public.mis_appointments
+    add constraint mis_appointments_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete set null (deal_id);
+alter table public.mis_appointments
+    add constraint mis_appointments_doctor_id_fkey foreign key (organization_id, doctor_id) references public.doctors(organization_id, id) on delete set null (doctor_id);
+alter table public.mis_sync_log
+    add constraint mis_sync_log_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.mis_outbox
+    add constraint mis_outbox_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete cascade;
+
+create index mis_appointments_patient_id_idx on public.mis_appointments using btree (organization_id, patient_id, starts_at desc);
+create index mis_appointments_deal_id_idx on public.mis_appointments using btree (organization_id, deal_id) where deal_id is not null;
+create index mis_sync_log_created_at_idx on public.mis_sync_log using btree (organization_id, kind, created_at desc);
+create index mis_outbox_due_idx on public.mis_outbox using btree (next_attempt_at) where status = 'pending';
+
+--
+-- Helpers
+--
+
+-- Name of the connector in the deal feed and the log
+CREATE OR REPLACE FUNCTION "private"."mis_kind_label"("connection_kind" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case connection_kind
+    when 'dentist_plus' then 'Dentist Plus'
+    when 'macdent' then 'MacDent'
+    else connection_kind
+  end
+$$;
+
+-- Default mapping of a new connection: the stages of the clinic template
+-- («Записан», «Пришёл на консультацию», «В лечении»), found by name, the
+-- default pipeline first. Cancelled and no-show appointments move nothing.
+CREATE OR REPLACE FUNCTION "private"."mis_default_status_map"("org_id" bigint) RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_object_agg(m.status, jsonb_build_object('stage_id', found.id)), '{}'::jsonb)
+  from (values
+    ('scheduled', 'Записан'),
+    ('confirmed', 'Записан'),
+    ('arrived', 'Пришёл на консультацию'),
+    ('completed', 'Пришёл на консультацию'),
+    ('in_treatment', 'В лечении')
+  ) as m(status, stage_name)
+    cross join lateral (
+      select s.id
+      from public.stages s
+        join public.pipelines p on p.id = s.pipeline_id
+      where p.organization_id = org_id and s.name = m.stage_name and s.kind <> 'lost'
+      order by p.is_default desc, p.position, p.id, s.position
+      limit 1
+    ) as found
+$$;
+
+-- A mapping sent by the settings, checked: known statuses, a stage of the
+-- clinic that is not a refusal (a refusal needs a reason, as in the digital
+-- pipeline), or a tag of the clinic.
+CREATE OR REPLACE FUNCTION "private"."mis_clean_status_map"("org_id" bigint, "status_map" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  entry record;
+  stage_value bigint;
+  tag_value bigint;
+  result jsonb := '{}'::jsonb;
+begin
+  if status_map is null or jsonb_typeof(status_map) <> 'object' then
+    raise exception 'Сопоставление статусов — объект' using errcode = '22023';
+  end if;
+  for entry in select e.key, e.value from jsonb_each(status_map) as e loop
+    if entry.key not in ('scheduled', 'confirmed', 'arrived', 'completed', 'in_treatment', 'cancelled', 'no_show') then
+      raise exception 'Неизвестный статус МИС: %', entry.key using errcode = '22023';
+    end if;
+    if jsonb_typeof(entry.value) <> 'object' then
+      continue;
+    end if;
+    stage_value := nullif(entry.value ->> 'stage_id', '')::bigint;
+    tag_value := nullif(entry.value ->> 'tag_id', '')::bigint;
+    if stage_value is not null then
+      if not exists (
+        select 1 from public.stages s
+        where s.organization_id = org_id and s.id = stage_value and s.kind <> 'lost'
+      ) then
+        raise exception 'Этап для статуса «%» не найден или это этап отказа', entry.key using errcode = '22023';
+      end if;
+      result := result || jsonb_build_object(entry.key, jsonb_build_object('stage_id', stage_value));
+    elsif tag_value is not null then
+      if not exists (select 1 from public.tags t where t.organization_id = org_id and t.id = tag_value) then
+        raise exception 'Тег для статуса «%» не найден', entry.key using errcode = '22023';
+      end if;
+      result := result || jsonb_build_object(entry.key, jsonb_build_object('tag_id', tag_value));
+    end if;
+  end loop;
+  return result;
+end;
+$$;
+
+-- The connection a sync call works for: a Dentist Plus or MacDent row that
+-- is connected (or in error). Starts the MIS session: audit source 'mis' and
+-- the flag crm.mis_sync that keeps these writes from being pushed back.
+CREATE OR REPLACE FUNCTION "private"."mis_connection"("connection" bigint) RETURNS "public"."integrations"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations;
+begin
+  select * into conn from public.integrations i where i.id = connection;
+  if not found or conn.kind not in ('dentist_plus', 'macdent') then
+    raise exception 'Unknown MIS connection' using errcode = 'P0002';
+  end if;
+  if conn.status not in ('connected', 'error') then
+    raise exception 'The MIS connection is not active' using errcode = '55000';
+  end if;
+  perform set_config('crm.audit_source', 'mis', true);
+  perform set_config('crm.mis_sync', 'on', true);
+  return conn;
+end;
+$$;
+
+-- Ends the MIS session started by private.mis_connection
+CREATE OR REPLACE FUNCTION "private"."mis_done"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform set_config('crm.audit_source', '', true);
+  perform set_config('crm.mis_sync', '', true);
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "private"."mis_log"("conn" "public"."integrations", "log_direction" "text", "log_operation" "text", "log_external_id" "text", "log_result" "text", "log_message" "text", "log_patient_id" bigint DEFAULT NULL::bigint, "log_deal_id" bigint DEFAULT NULL::bigint) RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  insert into public.mis_sync_log (organization_id, kind, direction, operation, external_id, result, message, patient_id, deal_id)
+  values (conn.organization_id, conn.kind, log_direction, log_operation, left(log_external_id, 200), log_result,
+    left(log_message, 1000), log_patient_id, log_deal_id);
+$$;
+
+-- Source «МИС» of the clinic, created on first use
+CREATE OR REPLACE FUNCTION "private"."mis_source_id"("org_id" bigint) RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  source_id bigint;
+begin
+  select s.id into source_id from public.lead_sources s
+  where s.organization_id = org_id and s.code = 'mis';
+  if source_id is null then
+    insert into public.lead_sources (organization_id, name, code, is_system, position)
+    select org_id, 'МИС', 'mis', true, coalesce(max(s.position) + 1, 0)
+    from public.lead_sources s
+    where s.organization_id = org_id
+    on conflict (organization_id, code) where code is not null do nothing
+    returning id into source_id;
+    if source_id is null then
+      select s.id into source_id from public.lead_sources s
+      where s.organization_id = org_id and s.code = 'mis';
+    end if;
+  end if;
+  return source_id;
+end;
+$$;
+
+-- The patient of a MIS record: by its MIS id (external_refs), then by any
+-- normalised phone, then created with the source «МИС» (when allowed). An
+-- existing patient only gets what it lacks (names, birth date, new phones).
+-- Returns { patient_id, outcome: created | updated | matched }.
+CREATE OR REPLACE FUNCTION "private"."mis_patient"("conn" "public"."integrations", "patient" "jsonb", "allow_create" boolean DEFAULT true) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := conn.organization_id;
+  ext text := nullif(btrim(patient ->> 'external_id'), '');
+  numbers text[];
+  first text := nullif(btrim(patient ->> 'first_name'), '');
+  last text := nullif(btrim(patient ->> 'last_name'), '');
+  middle text := nullif(btrim(patient ->> 'middle_name'), '');
+  full_name text := nullif(btrim(regexp_replace(coalesce(patient ->> 'full_name', ''), '\s+', ' ', 'g')), '');
+  birth date := nullif(btrim(patient ->> 'birth_date'), '')::date;
+  found_row public.patients;
+  saved public.patients;
+  outcome text;
+begin
+  if patient is null or jsonb_typeof(patient) <> 'object' then
+    raise exception 'Нет данных пациента' using errcode = '22023';
+  end if;
+  numbers := array(
+    select distinct n
+    from (
+      select private.normalize_phone(x) as n
+      from jsonb_array_elements_text(case when jsonb_typeof(patient -> 'phones') = 'array' then patient -> 'phones' else '[]'::jsonb end) as x
+      union all
+      select private.normalize_phone(patient ->> 'phone')
+    ) as normalized
+    where n is not null
+    order by n
+  );
+  -- «Фамилия Имя Отчество» when the MIS sends one field
+  if first is null and last is null and full_name is not null then
+    last := split_part(full_name, ' ', 1);
+    first := nullif(split_part(full_name, ' ', 2), '');
+    middle := coalesce(middle, nullif(btrim(substr(full_name, length(split_part(full_name, ' ', 1)) + length(split_part(full_name, ' ', 2)) + 3)), ''));
+  end if;
+  if ext is null and cardinality(numbers) = 0 then
+    raise exception 'Нет ни ID пациента в МИС, ни телефона' using errcode = '22023';
+  end if;
+
+  if ext is not null then
+    select pt.* into found_row
+    from public.external_refs r
+      join public.patients pt on pt.organization_id = r.organization_id and pt.id = r.entity_id
+    where r.organization_id = org_id and r.system = conn.kind and r.entity = 'patient' and r.external_id = ext;
+  end if;
+  if found_row.id is null and cardinality(numbers) > 0 then
+    -- Two records of one new number must not create two patients
+    perform pg_advisory_xact_lock(hashtextextended(format('phone:%s:%s', org_id, numbers[1]), 0));
+    select pt.* into found_row
+    from public.patients pt
+    where pt.organization_id = org_id and pt.phones && numbers
+    order by pt.id
+    limit 1;
+  end if;
+
+  if found_row.id is null then
+    if not allow_create then
+      raise exception 'Пациент не найден' using errcode = 'P0002';
+    end if;
+    insert into public.patients (organization_id, first_name, last_name, middle_name, phone_jsonb, birth_date, source_id)
+    values (
+      org_id,
+      coalesce(first, case when last is null then numbers[1] end),
+      last,
+      middle,
+      coalesce((select jsonb_agg(jsonb_build_object('number', n, 'type', 'Mobile')) from unnest(numbers) as n), '[]'::jsonb),
+      birth,
+      private.mis_source_id(org_id)
+    )
+    returning * into saved;
+    outcome := 'created';
+  else
+    update public.patients pt
+    set first_name = case
+          -- A patient created from a bare phone number gets the real name
+          when pt.first_name is null or (pt.first_name = any(pt.phones) and first is not null) then coalesce(first, pt.first_name)
+          else pt.first_name
+        end,
+        last_name = coalesce(pt.last_name, last),
+        middle_name = coalesce(pt.middle_name, middle),
+        birth_date = coalesce(pt.birth_date, birth),
+        phone_jsonb = pt.phone_jsonb || coalesce((
+          select jsonb_agg(jsonb_build_object('number', n, 'type', 'Mobile'))
+          from unnest(numbers) as n
+          where not n = any(pt.phones)
+        ), '[]'::jsonb)
+    where pt.organization_id = org_id and pt.id = found_row.id
+    returning * into saved;
+    outcome := case when to_jsonb(saved) is distinct from to_jsonb(found_row) then 'updated' else 'matched' end;
+  end if;
+
+  if ext is not null then
+    insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+    values (org_id, 'patient', saved.id, conn.kind, ext)
+    on conflict (organization_id, system, entity, external_id)
+    do update set entity_id = excluded.entity_id;
+  end if;
+  return jsonb_build_object('patient_id', saved.id, 'outcome', outcome);
+end;
+$$;
+
+-- The clinic's doctor of a MIS doctor: the stored link, else a doctor of the
+-- same name (then the only doctor with that surname); a new MIS doctor is
+-- remembered for the mapping of the settings, linked when a name matched.
+CREATE OR REPLACE FUNCTION "private"."mis_doctor_id"("conn" "public"."integrations", "doctor" "jsonb") RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := conn.organization_id;
+  doctor_name text := nullif(btrim(regexp_replace(coalesce(doctor ->> 'name', ''), '\s+', ' ', 'g')), '');
+  ext text := nullif(btrim(doctor ->> 'external_id'), '');
+  found_row public.mis_doctors;
+  matched bigint;
+begin
+  if doctor is null or jsonb_typeof(doctor) <> 'object' or (ext is null and doctor_name is null) then
+    return null;
+  end if;
+  ext := coalesce(ext, 'name:' || lower(doctor_name));
+  select * into found_row from public.mis_doctors md
+  where md.organization_id = org_id and md.kind = conn.kind and md.external_id = ext;
+  if found then
+    if doctor_name is not null and doctor_name is distinct from found_row.name then
+      update public.mis_doctors md set name = doctor_name where md.id = found_row.id;
+    end if;
+    return found_row.doctor_id;
+  end if;
+
+  if doctor_name is not null then
+    select d.id into matched
+    from public.doctors d
+    where d.organization_id = org_id
+      and lower(regexp_replace(btrim(d.name), '\s+', ' ', 'g')) = lower(doctor_name)
+    order by d.is_active desc, d.id
+    limit 1;
+    if matched is null then
+      select case when count(*) = 1 then min(d.id) end into matched
+      from public.doctors d
+      where d.organization_id = org_id and d.is_active
+        and lower(split_part(btrim(d.name), ' ', 1)) = lower(split_part(doctor_name, ' ', 1));
+    end if;
+  end if;
+  insert into public.mis_doctors (organization_id, kind, external_id, name, doctor_id)
+  values (org_id, conn.kind, ext, coalesce(doctor_name, ext), matched)
+  on conflict (organization_id, kind, external_id) do nothing;
+  if matched is not null then
+    insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+    values (org_id, 'doctor', matched, conn.kind, ext)
+    on conflict (organization_id, system, entity, external_id)
+    do update set entity_id = excluded.entity_id;
+  end if;
+  return matched;
+end;
+$$;
+
+-- Moves the deal by the clinic's mapping of a MIS status, with the rules of
+-- the digital pipeline: forward only, within the deal's pipeline, never out
+-- of a closed deal, and the stage checklist may refuse the move. A tag of the
+-- mapping is added. What happened goes to the deal feed and to the log.
+-- Returns { moved, skipped, reason, to_stage_id, tag_id }.
+CREATE OR REPLACE FUNCTION "private"."mis_apply_status"("conn" "public"."integrations", "target_deal_id" bigint, "status_key" "text", "source_key" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := conn.organization_id;
+  entry jsonb := conn.status_map -> status_key;
+  target_stage public.stages;
+  current_stage public.stages;
+  deal public.deals;
+  tag_value bigint := nullif(entry ->> 'tag_id', '')::bigint;
+  reason text;
+  run_status text := 'done';
+  label text := 'МИС: ' || private.mis_kind_label(conn.kind);
+  result jsonb := jsonb_build_object('moved', false);
+begin
+  if entry is null or jsonb_typeof(entry) <> 'object' then
+    return result;
+  end if;
+  select * into deal from public.deals d where d.organization_id = org_id and d.id = target_deal_id;
+  if not found then
+    return result;
+  end if;
+
+  if nullif(entry ->> 'stage_id', '') is not null then
+    select * into target_stage from public.stages s
+    where s.organization_id = org_id and s.id = (entry ->> 'stage_id')::bigint;
+    select * into current_stage from public.stages s where s.id = deal.stage_id;
+    if target_stage.id is null then
+      reason := 'Этап из сопоставления статусов не найден';
+    elsif target_stage.id = deal.stage_id then
+      return result || jsonb_build_object('unchanged', true);
+    elsif current_stage.kind <> 'open' then
+      reason := 'Сделка закрыта';
+    elsif target_stage.kind = 'lost' then
+      reason := 'Перевод в отказ требует причины';
+    elsif target_stage.pipeline_id <> deal.pipeline_id then
+      reason := 'Этап другой воронки';
+    elsif target_stage.position <= current_stage.position then
+      -- The deal is already further: nothing to do, the log keeps a trace
+      perform private.mis_log(conn, 'in', 'stage', source_key, 'skipped',
+        format('Сделка уже на этапе «%s», дальше «%s»', current_stage.name, target_stage.name),
+        deal.patient_id, deal.id);
+      return result || jsonb_build_object('skipped', true, 'reason', 'behind');
+    else
+      begin
+        update public.deals d
+        set stage_id = target_stage.id
+        where d.organization_id = org_id and d.id = deal.id;
+      exception when others then
+        get stacked diagnostics reason = message_text;
+      end;
+    end if;
+    if reason is not null then
+      run_status := 'skipped';
+    end if;
+    insert into public.stage_trigger_runs (organization_id, deal_id, trigger_id, trigger_name, event, event_key, action, status, details, error)
+    values (org_id, deal.id, null, label, 'mis', 'mis:' || conn.kind || ':' || coalesce(source_key, '') || ':' || status_key,
+      'move_stage', run_status,
+      case when target_stage.id is not null then jsonb_build_object('from_stage_id', deal.stage_id, 'to_stage_id', target_stage.id) else '{}'::jsonb end,
+      left(reason, 500));
+    perform private.mis_log(conn, 'in', 'stage', source_key, case when reason is null then 'ok' else 'skipped' end,
+      case when reason is null then format('Этап → «%s»', target_stage.name)
+        else format('Перевод на «%s» пропущен: %s', coalesce(target_stage.name, '?'), reason) end,
+      deal.patient_id, deal.id);
+    return result || jsonb_build_object('moved', reason is null, 'skipped', reason is not null,
+      'reason', reason, 'to_stage_id', target_stage.id);
+  end if;
+
+  if tag_value is not null and exists (select 1 from public.tags t where t.organization_id = org_id and t.id = tag_value) then
+    if not tag_value = any(deal.tags) then
+      update public.deals d set tags = array_append(d.tags, tag_value)
+      where d.organization_id = org_id and d.id = deal.id;
+      insert into public.stage_trigger_runs (organization_id, deal_id, trigger_id, trigger_name, event, event_key, action, status, details)
+      values (org_id, deal.id, null, label, 'mis', 'mis:' || conn.kind || ':' || coalesce(source_key, '') || ':' || status_key,
+        'add_tag', 'done', jsonb_build_object('tag_id', tag_value));
+    end if;
+    return result || jsonb_build_object('tag_id', tag_value);
+  end if;
+  return result;
+end;
+$$;
+
+-- Stores an appointment of the MIS and applies it to the deal (see
+-- public.mis_upsert_appointment). Raises on bad input; the callers log.
+CREATE OR REPLACE FUNCTION "private"."mis_store_appointment"("conn" "public"."integrations", "appt" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := conn.organization_id;
+  ext text := nullif(btrim(appt ->> 'external_id'), '');
+  status_key text := lower(coalesce(nullif(btrim(appt ->> 'status'), ''), 'scheduled'));
+  starts timestamp with time zone := nullif(btrim(appt ->> 'starts_at'), '')::timestamp with time zone;
+  ends timestamp with time zone := nullif(btrim(appt ->> 'ends_at'), '')::timestamp with time zone;
+  completed timestamp with time zone := nullif(btrim(appt ->> 'completed_at'), '')::timestamp with time zone;
+  appt_service text := nullif(btrim(appt ->> 'service'), '');
+  patient_ext text := nullif(btrim(appt ->> 'patient_external_id'), '');
+  found_row public.mis_appointments;
+  patient_result jsonb;
+  found_patient_id bigint;
+  deal public.deals;
+  target_stage public.stages;
+  mapped_doctor_id bigint;
+  doctor_ext text;
+  matched_service_id bigint;
+  created_deal boolean := false;
+  move jsonb := '{}'::jsonb;
+begin
+  if ext is null then
+    raise exception 'Нет ID записи в МИС' using errcode = '22023';
+  end if;
+  if status_key not in ('scheduled', 'confirmed', 'arrived', 'completed', 'in_treatment', 'cancelled', 'no_show') then
+    raise exception 'Неизвестный статус записи: %', status_key using errcode = '22023';
+  end if;
+  -- Two events of one appointment may arrive at the same time
+  perform pg_advisory_xact_lock(hashtextextended(format('mis:%s:%s:%s', org_id, conn.kind, ext), 0));
+
+  select * into found_row from public.mis_appointments a
+  where a.organization_id = org_id and a.kind = conn.kind and a.external_id = ext;
+
+  -- The patient
+  if jsonb_typeof(appt -> 'patient') = 'object' then
+    patient_result := private.mis_patient(conn, appt -> 'patient', conn.sync_patients);
+    found_patient_id := (patient_result ->> 'patient_id')::bigint;
+  elsif patient_ext is not null then
+    select r.entity_id into found_patient_id from public.external_refs r
+    where r.organization_id = org_id and r.system = conn.kind and r.entity = 'patient' and r.external_id = patient_ext;
+  end if;
+  found_patient_id := coalesce(found_patient_id, found_row.patient_id);
+  if found_patient_id is null then
+    raise exception 'Пациент записи не найден' using errcode = 'P0002';
+  end if;
+
+  -- The deal: the one of this appointment, the patient's latest open deal,
+  -- else a new one (not for a cancelled or missed appointment)
+  if found_row.deal_id is not null then
+    select * into deal from public.deals d
+    where d.organization_id = org_id and d.id = found_row.deal_id and d.patient_id = found_patient_id;
+  end if;
+  if deal.id is null then
+    select d.* into deal
+    from public.deals d
+      join public.stages s on s.id = d.stage_id
+    where d.organization_id = org_id and d.patient_id = found_patient_id
+      and s.kind = 'open' and d.archived_at is null
+    order by d.updated_at desc, d.id desc
+    limit 1;
+  end if;
+
+  mapped_doctor_id := private.mis_doctor_id(conn, appt -> 'doctor');
+  doctor_ext := coalesce(
+    nullif(btrim(appt -> 'doctor' ->> 'external_id'), ''),
+    'name:' || lower(nullif(btrim(regexp_replace(coalesce(appt -> 'doctor' ->> 'name', ''), '\s+', ' ', 'g')), '')));
+  if appt_service is not null then
+    select s.id into matched_service_id from public.services s
+    where s.organization_id = org_id and lower(btrim(s.name)) = lower(appt_service) and not s.is_archived
+    order by s.position, s.id
+    limit 1;
+  end if;
+
+  if deal.id is null and status_key not in ('cancelled', 'no_show') then
+    select s.* into target_stage from public.stages s
+    where s.organization_id = org_id and s.id = nullif(conn.status_map -> status_key ->> 'stage_id', '')::bigint
+      and s.kind <> 'lost';
+    insert into public.deals (organization_id, patient_id, pipeline_id, stage_id, name, source_id, service_id, doctor_id)
+    values (org_id, found_patient_id, target_stage.pipeline_id, target_stage.id, appt_service,
+      private.mis_source_id(org_id), matched_service_id, mapped_doctor_id)
+    returning * into deal;
+    created_deal := true;
+  end if;
+
+  insert into public.mis_appointments (
+    organization_id, kind, external_id, patient_id, deal_id, doctor_id, doctor_external_id, doctor_name,
+    service_name, status, status_label, starts_at, ends_at, completed_at, comment
+  ) values (
+    org_id, conn.kind, ext, found_patient_id, deal.id, mapped_doctor_id,
+    case when appt -> 'doctor' is not null then doctor_ext end,
+    nullif(btrim(appt -> 'doctor' ->> 'name'), ''),
+    appt_service, status_key, nullif(btrim(appt ->> 'status_label'), ''),
+    starts, ends,
+    case when status_key in ('arrived', 'completed', 'in_treatment') then coalesce(completed, starts) end,
+    nullif(btrim(appt ->> 'comment'), '')
+  )
+  on conflict (organization_id, kind, external_id) do update
+  set patient_id = excluded.patient_id,
+      deal_id = coalesce(excluded.deal_id, public.mis_appointments.deal_id),
+      doctor_id = coalesce(excluded.doctor_id, public.mis_appointments.doctor_id),
+      doctor_external_id = coalesce(excluded.doctor_external_id, public.mis_appointments.doctor_external_id),
+      doctor_name = coalesce(excluded.doctor_name, public.mis_appointments.doctor_name),
+      service_name = coalesce(excluded.service_name, public.mis_appointments.service_name),
+      status = excluded.status,
+      status_label = coalesce(excluded.status_label, public.mis_appointments.status_label),
+      starts_at = coalesce(excluded.starts_at, public.mis_appointments.starts_at),
+      ends_at = coalesce(excluded.ends_at, public.mis_appointments.ends_at),
+      completed_at = coalesce(excluded.completed_at, public.mis_appointments.completed_at),
+      comment = coalesce(excluded.comment, public.mis_appointments.comment),
+      updated_at = now();
+
+  if deal.id is not null then
+    insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+    values (org_id, 'appointment', deal.id, conn.kind, ext)
+    on conflict (organization_id, system, entity, external_id)
+    do update set entity_id = excluded.entity_id;
+
+    -- The dates, the doctor and the service of the deal
+    update public.deals d
+    set appointment_at = case
+          when status_key in ('scheduled', 'confirmed') and starts is not null then starts
+          -- A cancelled appointment frees the deal's date
+          when status_key in ('cancelled', 'no_show') and d.appointment_at = coalesce(starts, found_row.starts_at) then null
+          else d.appointment_at
+        end,
+        visit_at = case
+          when status_key in ('arrived', 'completed', 'in_treatment') then coalesce(completed, starts, found_row.starts_at, d.visit_at, now())
+          else d.visit_at
+        end,
+        doctor_id = case when status_key in ('cancelled', 'no_show') then d.doctor_id else coalesce(mapped_doctor_id, d.doctor_id) end,
+        service_id = coalesce(d.service_id, matched_service_id)
+    where d.organization_id = org_id and d.id = deal.id;
+
+    if not created_deal then
+      move := private.mis_apply_status(conn, deal.id, status_key, ext);
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'appointment', case when found_row.id is null then 'created' else 'updated' end,
+    'patient_id', found_patient_id,
+    'patient', coalesce(patient_result ->> 'outcome', 'matched'),
+    'deal_id', deal.id,
+    'created_deal', created_deal,
+    'move', move
+  );
+end;
+$$;
+
+--
+-- Sync operations (edge functions, service role only)
+--
+
+-- A patient of the MIS (see the header). Logged; an error is reported in
+-- the result, not raised, so that a batch goes on.
+CREATE OR REPLACE FUNCTION "public"."mis_upsert_patient"("connection" bigint, "patient" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations := private.mis_connection(connection);
+  ext text := nullif(btrim(patient ->> 'external_id'), '');
+  result jsonb;
+  error_message text;
+begin
+  if not conn.sync_patients then
+    perform private.mis_log(conn, 'in', 'patient', ext, 'skipped', 'Приём пациентов из МИС выключен');
+    perform private.mis_done();
+    return jsonb_build_object('result', 'skipped');
+  end if;
+  begin
+    result := private.mis_patient(conn, patient, true);
+  exception when others then
+    get stacked diagnostics error_message = message_text;
+  end;
+  if error_message is not null then
+    perform private.mis_log(conn, 'in', 'patient', ext, 'error', error_message);
+    perform private.mis_done();
+    return jsonb_build_object('result', 'error', 'error', error_message);
+  end if;
+  perform private.mis_log(conn, 'in', 'patient', ext,
+    case when result ->> 'outcome' = 'matched' then 'skipped' else 'ok' end,
+    case result ->> 'outcome'
+      when 'created' then 'Пациент создан'
+      when 'updated' then 'Пациент дополнен'
+      else 'Пациент уже в CRM'
+    end,
+    (result ->> 'patient_id')::bigint);
+  perform private.mis_done();
+  return result || jsonb_build_object('result', 'ok');
+end;
+$$;
+
+-- An appointment (visit) of the MIS: see the header
+CREATE OR REPLACE FUNCTION "public"."mis_upsert_appointment"("connection" bigint, "appt" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations := private.mis_connection(connection);
+  ext text := nullif(btrim(appt ->> 'external_id'), '');
+  result jsonb;
+  error_message text;
+begin
+  if not conn.sync_appointments then
+    perform private.mis_log(conn, 'in', 'appointment', ext, 'skipped', 'Приём записей из МИС выключен');
+    perform private.mis_done();
+    return jsonb_build_object('result', 'skipped');
+  end if;
+  begin
+    result := private.mis_store_appointment(conn, appt);
+  exception when others then
+    get stacked diagnostics error_message = message_text;
+  end;
+  if error_message is not null then
+    perform private.mis_log(conn, 'in', 'appointment', ext, 'error', error_message);
+    perform private.mis_done();
+    return jsonb_build_object('result', 'error', 'error', error_message);
+  end if;
+  perform private.mis_log(conn, 'in', 'appointment', ext, 'ok',
+    concat_ws(', ',
+      case when result ->> 'appointment' = 'created' then 'Запись принята' else 'Запись обновлена' end,
+      'статус ' || coalesce(nullif(btrim(appt ->> 'status_label'), ''), appt ->> 'status', 'scheduled'),
+      case when (result ->> 'created_deal')::boolean then 'новая сделка' end),
+    (result ->> 'patient_id')::bigint, (result ->> 'deal_id')::bigint);
+  perform private.mis_done();
+  return result || jsonb_build_object('result', 'ok');
+end;
+$$;
+
+-- A visit took place in the MIS: the deal gets visit_at and moves by the
+-- mapping of «completed» (or «in_treatment» when the treatment started)
+CREATE OR REPLACE FUNCTION "public"."mis_visit_completed"("connection" bigint, "visit" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations := private.mis_connection(connection);
+  ext text := coalesce(nullif(btrim(visit ->> 'appointment_external_id'), ''), nullif(btrim(visit ->> 'external_id'), ''));
+  status_key text := case
+    when coalesce((visit ->> 'treatment_started')::boolean, false) then 'in_treatment'
+    when visit ->> 'status' in ('arrived', 'completed', 'in_treatment') then visit ->> 'status'
+    else 'completed'
+  end;
+  found_row public.mis_appointments;
+  appt jsonb;
+  result jsonb;
+  error_message text;
+begin
+  if not conn.sync_appointments then
+    perform private.mis_log(conn, 'in', 'visit', ext, 'skipped', 'Приём записей из МИС выключен');
+    perform private.mis_done();
+    return jsonb_build_object('result', 'skipped');
+  end if;
+  begin
+    select * into found_row from public.mis_appointments a
+    where a.organization_id = conn.organization_id and a.kind = conn.kind and a.external_id = ext;
+    if found_row.id is null and jsonb_typeof(visit -> 'patient') is distinct from 'object'
+      and nullif(btrim(visit ->> 'patient_external_id'), '') is null then
+      raise exception 'Запись визита не найдена' using errcode = 'P0002';
+    end if;
+    appt := jsonb_strip_nulls(jsonb_build_object(
+      'external_id', ext,
+      'status', status_key,
+      'status_label', visit ->> 'status_label',
+      'completed_at', coalesce(nullif(btrim(visit ->> 'completed_at'), ''), now()::text),
+      'starts_at', coalesce(nullif(btrim(visit ->> 'starts_at'), ''), found_row.starts_at::text, visit ->> 'completed_at'),
+      'patient', visit -> 'patient',
+      'patient_external_id', visit ->> 'patient_external_id',
+      'doctor', visit -> 'doctor',
+      'service', visit ->> 'service'
+    ));
+    result := private.mis_store_appointment(conn, appt);
+  exception when others then
+    get stacked diagnostics error_message = message_text;
+  end;
+  if error_message is not null then
+    perform private.mis_log(conn, 'in', 'visit', ext, 'error', error_message);
+    perform private.mis_done();
+    return jsonb_build_object('result', 'error', 'error', error_message);
+  end if;
+  perform private.mis_log(conn, 'in', 'visit', ext, 'ok',
+    case when status_key = 'in_treatment' then 'Лечение начато' else 'Визит состоялся' end,
+    (result ->> 'patient_id')::bigint, (result ->> 'deal_id')::bigint);
+  perform private.mis_done();
+  return result || jsonb_build_object('result', 'ok');
+end;
+$$;
+
+-- A payment of the MIS: one deal_payments row per MIS payment id (a repeat
+-- is skipped). The deal: the one of its appointment, else the patient's
+-- latest open deal, else their latest deal, else a new one (source «МИС»).
+CREATE OR REPLACE FUNCTION "public"."mis_upsert_payment"("connection" bigint, "payment" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations := private.mis_connection(connection);
+  org_id bigint := conn.organization_id;
+  ext text := nullif(btrim(payment ->> 'external_id'), '');
+  paid bigint;
+  paid_on date;
+  payment_kind text := case when payment ->> 'kind' = 'prepayment' then 'prepayment' else 'payment' end;
+  existing_id bigint;
+  found_patient_id bigint;
+  target_deal_id bigint;
+  new_payment_id bigint;
+  error_message text;
+begin
+  if not conn.sync_payments then
+    perform private.mis_log(conn, 'in', 'payment', ext, 'skipped', 'Приём оплат из МИС выключен');
+    perform private.mis_done();
+    return jsonb_build_object('result', 'skipped');
+  end if;
+  begin
+    if ext is null then
+      raise exception 'Нет ID оплаты в МИС' using errcode = '22023';
+    end if;
+    paid := round(nullif(btrim(payment ->> 'amount'), '')::numeric)::bigint;
+    if paid is null or paid <= 0 then
+      raise exception 'Сумма оплаты должна быть больше нуля' using errcode = '22023';
+    end if;
+    -- A date, or a moment read in the clinic's time zone
+    if nullif(btrim(payment ->> 'paid_at'), '') ~ '^\d{4}-\d{2}-\d{2}$' then
+      paid_on := (payment ->> 'paid_at')::date;
+    elsif nullif(btrim(payment ->> 'paid_at'), '') is not null then
+      paid_on := ((payment ->> 'paid_at')::timestamp with time zone at time zone
+        coalesce((select o.timezone from public.organizations o where o.id = org_id), 'Asia/Almaty'))::date;
+    end if;
+    perform pg_advisory_xact_lock(hashtextextended(format('mis-payment:%s:%s:%s', org_id, conn.kind, ext), 0));
+    select r.entity_id into existing_id from public.external_refs r
+    where r.organization_id = org_id and r.system = conn.kind and r.entity = 'payment' and r.external_id = ext;
+    if existing_id is null then
+      -- The deal of the appointment
+      if nullif(btrim(payment ->> 'appointment_external_id'), '') is not null then
+        select a.deal_id, a.patient_id into target_deal_id, found_patient_id from public.mis_appointments a
+        where a.organization_id = org_id and a.kind = conn.kind
+          and a.external_id = btrim(payment ->> 'appointment_external_id');
+      end if;
+      if found_patient_id is null and jsonb_typeof(payment -> 'patient') = 'object' then
+        found_patient_id := (private.mis_patient(conn, payment -> 'patient', conn.sync_patients) ->> 'patient_id')::bigint;
+      elsif found_patient_id is null and nullif(btrim(payment ->> 'patient_external_id'), '') is not null then
+        select r.entity_id into found_patient_id from public.external_refs r
+        where r.organization_id = org_id and r.system = conn.kind and r.entity = 'patient'
+          and r.external_id = btrim(payment ->> 'patient_external_id');
+      end if;
+      if target_deal_id is null and found_patient_id is null then
+        raise exception 'Пациент оплаты не найден' using errcode = 'P0002';
+      end if;
+      if target_deal_id is null then
+        select d.id into target_deal_id
+        from public.deals d
+          join public.stages s on s.id = d.stage_id
+        where d.organization_id = org_id and d.patient_id = found_patient_id and d.archived_at is null
+        order by (s.kind = 'open') desc, d.updated_at desc, d.id desc
+        limit 1;
+      end if;
+      if target_deal_id is null then
+        insert into public.deals (organization_id, patient_id, source_id)
+        values (org_id, found_patient_id, private.mis_source_id(org_id))
+        returning id into target_deal_id;
+      end if;
+      insert into public.deal_payments (organization_id, deal_id, amount, paid_at, comment, kind)
+      values (org_id, target_deal_id, paid, coalesce(paid_on, current_date),
+        coalesce(nullif(btrim(payment ->> 'comment'), ''), 'Оплата из МИС'),
+        payment_kind)
+      returning id into new_payment_id;
+      insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+      values (org_id, 'payment', new_payment_id, conn.kind, ext);
+    end if;
+  exception when others then
+    get stacked diagnostics error_message = message_text;
+  end;
+  if error_message is not null then
+    perform private.mis_log(conn, 'in', 'payment', ext, 'error', error_message);
+    perform private.mis_done();
+    return jsonb_build_object('result', 'error', 'error', error_message);
+  end if;
+  if existing_id is not null then
+    perform private.mis_log(conn, 'in', 'payment', ext, 'skipped', 'Оплата уже в CRM', null,
+      (select p.deal_id from public.deal_payments p where p.organization_id = org_id and p.id = existing_id));
+    perform private.mis_done();
+    return jsonb_build_object('result', 'skipped', 'duplicate', true, 'payment_id', existing_id);
+  end if;
+  perform private.mis_log(conn, 'in', 'payment', ext, 'ok',
+    format('%s %s ₸', case when payment_kind = 'prepayment' then 'Предоплата' else 'Оплата' end, paid),
+    (select d.patient_id from public.deals d where d.organization_id = org_id and d.id = target_deal_id), target_deal_id);
+  perform private.mis_done();
+  return jsonb_build_object('result', 'ok', 'payment_id', new_payment_id, 'deal_id', target_deal_id);
+end;
+$$;
+
+-- End of a poll, a test or a webhook batch (edge functions): the status of
+-- the connection (connected, or error with the message), the sync time and
+-- cursor, one line in the log. Old log lines (90 days) are purged.
+CREATE OR REPLACE FUNCTION "public"."mis_record_sync"("connection" bigint, "operation" "text", "ok" boolean, "message" "text" DEFAULT NULL::"text", "new_cursor" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations;
+begin
+  select * into conn from public.integrations i where i.id = connection;
+  if not found or conn.kind not in ('dentist_plus', 'macdent') then
+    raise exception 'Unknown MIS connection' using errcode = 'P0002';
+  end if;
+  if conn.status in ('connected', 'error') then
+    update public.integrations i
+    set status = case when ok then 'connected' else 'error' end,
+        last_error = case when ok then null else left(coalesce(nullif(btrim(message), ''), 'Ошибка обмена с МИС'), 500) end,
+        last_sync_at = case when operation in ('poll', 'sync', 'webhook') and ok then now() else i.last_sync_at end,
+        sync_cursor = coalesce(new_cursor, i.sync_cursor)
+    where i.id = conn.id;
+  end if;
+  perform private.mis_log(conn, 'in', operation, null, case when ok then 'ok' else 'error' end,
+    coalesce(nullif(btrim(message), ''), case when ok then 'Готово' else 'Ошибка обмена с МИС' end));
+  delete from public.mis_sync_log l
+  where l.organization_id = conn.organization_id and l.kind = conn.kind and l.created_at < now() - interval '90 days';
+end;
+$$;
+
+--
+-- Outbound push
+--
+
+-- A deal reaching the «scheduled» stage of the mapping with an appointment
+-- date set in the CRM is queued for the MIS (connections with the push on).
+-- Writes of a MIS sync and dates the MIS sent are not pushed back.
+CREATE OR REPLACE FUNCTION "private"."handle_deal_mis_push"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  conn public.integrations;
+  patient public.patients;
+  payload jsonb;
+begin
+  if new.appointment_at is null
+    or current_setting('crm.importing', true) = 'on'
+    or current_setting('crm.mis_sync', true) = 'on'
+    or current_setting('crm.audit_source', true) = 'mis'
+    or (tg_op = 'UPDATE' and new.stage_id is not distinct from old.stage_id
+      and new.appointment_at is not distinct from old.appointment_at) then
+    return null;
+  end if;
+  for conn in
+    select * from public.integrations i
+    where i.organization_id = new.organization_id
+      and i.kind in ('dentist_plus', 'macdent')
+      and i.push_appointments
+      and i.status in ('connected', 'error')
+      and i.api_key is not null
+  loop
+    if nullif(conn.status_map -> 'scheduled' ->> 'stage_id', '')::bigint is distinct from new.stage_id then
+      continue;
+    end if;
+    -- The MIS already has this appointment
+    if exists (
+      select 1 from public.mis_appointments a
+      where a.organization_id = new.organization_id and a.kind = conn.kind
+        and a.deal_id = new.id and a.starts_at = new.appointment_at
+    ) then
+      continue;
+    end if;
+    if patient.id is null then
+      select * into patient from public.patients p where p.organization_id = new.organization_id and p.id = new.patient_id;
+    end if;
+    payload := jsonb_build_object(
+      'deal_id', new.id,
+      'patient', private.patient_json(patient) || jsonb_build_object('external_id', (
+        select r.external_id from public.external_refs r
+        where r.organization_id = new.organization_id and r.system = conn.kind
+          and r.entity = 'patient' and r.entity_id = patient.id
+        order by r.id limit 1)),
+      'appointment', jsonb_build_object(
+        'starts_at', new.appointment_at,
+        'doctor_external_id', (
+          select md.external_id from public.mis_doctors md
+          where md.organization_id = new.organization_id and md.kind = conn.kind
+            and md.doctor_id = new.doctor_id and md.external_id not like 'name:%'
+          order by md.id limit 1),
+        'doctor_name', (select d.name from public.doctors d where d.organization_id = new.organization_id and d.id = new.doctor_id),
+        'service', (select s.name from public.services s where s.organization_id = new.organization_id and s.id = new.service_id),
+        'comment', new.description
+      )
+    );
+    insert into public.mis_outbox (organization_id, kind, deal_id, event_key, payload)
+    values (new.organization_id, conn.kind, new.id,
+      'appointment:' || new.id || ':' || extract(epoch from new.appointment_at), payload)
+    on conflict (organization_id, kind, event_key) do nothing;
+  end loop;
+  return null;
+end;
+$$;
+
+-- Dispatcher (edge function mis_sync, service role only): the due rows of
+-- the queue with their connection, FOR UPDATE SKIP LOCKED; rows of a run
+-- that died come back after 10 minutes.
+CREATE OR REPLACE FUNCTION "public"."claim_mis_outbox"("max_rows" integer DEFAULT 20) RETURNS TABLE("id" bigint, "organization_id" bigint, "kind" "text", "connection_id" bigint, "base_url" "text", "api_key" "text", "settings" "jsonb", "deal_id" bigint, "payload" "jsonb", "attempts" integer)
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  update public.mis_outbox o
+  set status = 'pending', next_attempt_at = now()
+  where o.status = 'sending' and o.claimed_at < now() - interval '10 minutes';
+
+  return query
+  with due as (
+    select o.id
+    from public.mis_outbox o
+      join public.integrations i on i.organization_id = o.organization_id and i.kind = o.kind
+    where o.status = 'pending' and o.next_attempt_at <= now()
+      and i.push_appointments and i.status in ('connected', 'error') and i.api_key is not null
+    order by o.next_attempt_at, o.id
+    limit greatest(max_rows, 0)
+    for update of o skip locked
+  ), taken as (
+    update public.mis_outbox o
+    set status = 'sending', claimed_at = now()
+    from due
+    where o.id = due.id
+    returning o.id, o.organization_id, o.kind, o.deal_id, o.payload, o.attempts
+  )
+  select t.id, t.organization_id, t.kind, i.id, i.base_url, i.api_key, i.settings, t.deal_id, t.payload, t.attempts
+  from taken t
+    join public.integrations i on i.organization_id = t.organization_id and i.kind = t.kind
+  order by t.id;
+end;
+$$;
+
+-- Result of a push (edge function mis_sync). Success: the ids the MIS gave
+-- ({ patient_external_id, appointment_external_id }) are stored, so the
+-- appointment coming back from the MIS is recognised. Failure: retried
+-- (1, 5, 30 min, 2 h), failed after 5 attempts.
+CREATE OR REPLACE FUNCTION "public"."complete_mis_outbox"("outbox_id" bigint, "delivered" boolean, "error_text" "text" DEFAULT NULL::"text", "result" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  row_data public.mis_outbox;
+  conn public.integrations;
+  deal public.deals;
+  patient_ext text := nullif(btrim(result ->> 'patient_external_id'), '');
+  appointment_ext text := nullif(btrim(result ->> 'appointment_external_id'), '');
+  new_status text;
+  message text := left(coalesce(nullif(btrim(error_text), ''), 'Ошибка отправки в МИС'), 500);
+begin
+  select * into row_data from public.mis_outbox o where o.id = outbox_id for update;
+  if not found or row_data.status <> 'sending' then
+    return null;
+  end if;
+  select * into conn from public.integrations i
+  where i.organization_id = row_data.organization_id and i.kind = row_data.kind;
+  select * into deal from public.deals d
+  where d.organization_id = row_data.organization_id and d.id = row_data.deal_id;
+  perform set_config('crm.audit_source', 'mis', true);
+  perform set_config('crm.mis_sync', 'on', true);
+
+  if delivered then
+    update public.mis_outbox o
+    set status = 'done', attempts = o.attempts + 1, error = null, done_at = now()
+    where o.id = row_data.id;
+    if patient_ext is not null and deal.id is not null then
+      insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+      values (row_data.organization_id, 'patient', deal.patient_id, row_data.kind, patient_ext)
+      on conflict (organization_id, system, entity, external_id) do nothing;
+    end if;
+    if appointment_ext is not null and deal.id is not null then
+      insert into public.mis_appointments (organization_id, kind, external_id, patient_id, deal_id, doctor_id,
+        doctor_name, service_name, status, starts_at)
+      values (row_data.organization_id, row_data.kind, appointment_ext, deal.patient_id, deal.id, deal.doctor_id,
+        row_data.payload -> 'appointment' ->> 'doctor_name', row_data.payload -> 'appointment' ->> 'service',
+        'scheduled', (row_data.payload -> 'appointment' ->> 'starts_at')::timestamp with time zone)
+      on conflict (organization_id, kind, external_id) do nothing;
+      insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+      values (row_data.organization_id, 'appointment', deal.id, row_data.kind, appointment_ext)
+      on conflict (organization_id, system, entity, external_id) do nothing;
+    end if;
+    perform private.mis_log(conn, 'out', 'push', appointment_ext, 'ok', 'Запись передана в МИС', deal.patient_id, deal.id);
+    perform private.mis_done();
+    return 'done';
+  end if;
+
+  new_status := case when row_data.attempts + 1 >= 5 then 'failed' else 'pending' end;
+  update public.mis_outbox o
+  set status = new_status, attempts = o.attempts + 1, error = message,
+      next_attempt_at = now() + private.webhook_retry_delay(o.attempts + 1)
+  where o.id = row_data.id;
+  update public.integrations i set last_error = message
+  where i.id = conn.id;
+  perform private.mis_log(conn, 'out', 'push', null, 'error',
+    case when new_status = 'failed' then 'Не удалось передать запись в МИС: ' else 'Повтор позже: ' end || message,
+    deal.patient_id, deal.id);
+  perform private.mis_done();
+  return new_status;
+end;
+$$;
+
+-- Called by pg_cron: 'push' every minute when the queue has due rows,
+-- 'poll' every 10 minutes when a connection is active. Starts the edge
+-- function mis_sync with the dispatchers' key (Vault secrets project_url and
+-- automessages_dispatch_key, as for the webhooks of stage 20).
+CREATE OR REPLACE FUNCTION "private"."request_mis_sync"("mode" "text") RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  project_url text;
+  dispatch_key text;
+begin
+  if mode = 'push' and not exists (
+    select 1 from public.mis_outbox o
+    where (o.status = 'pending' and o.next_attempt_at <= now())
+      or (o.status = 'sending' and o.claimed_at < now() - interval '10 minutes')
+  ) then
+    return null;
+  end if;
+  if mode = 'poll' and not exists (
+    select 1 from public.integrations i
+    where i.kind in ('dentist_plus', 'macdent') and i.status in ('connected', 'error') and i.api_key is not null
+  ) then
+    return null;
+  end if;
+  if to_regclass('vault.decrypted_secrets') is null then
+    return null;
+  end if;
+  execute 'select decrypted_secret from vault.decrypted_secrets where name = $1'
+    into project_url using 'project_url';
+  execute 'select decrypted_secret from vault.decrypted_secrets where name = $1'
+    into dispatch_key using 'automessages_dispatch_key';
+  if project_url is null or dispatch_key is null then
+    raise warning 'mis_sync: Vault secrets project_url and automessages_dispatch_key are not set';
+    return null;
+  end if;
+  return net.http_post(
+    url := rtrim(project_url, '/') || '/functions/v1/mis_sync',
+    body := jsonb_build_object('mode', mode),
+    params := '{}'::jsonb,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || dispatch_key
+    ),
+    timeout_milliseconds := 5000
+  );
+end;
+$$;
+
+--
+-- Settings (owner and head; the API key never comes back)
+--
+
+-- The connection of a MIS, without its key
+CREATE OR REPLACE FUNCTION "public"."mis_connection_status"("connection_kind" "text") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'id', i.id,
+    'kind', i.kind,
+    'status', i.status,
+    'base_url', i.base_url,
+    'has_api_key', i.api_key is not null,
+    'webhook_token', i.webhook_token,
+    'sync_patients', i.sync_patients,
+    'sync_appointments', i.sync_appointments,
+    'sync_payments', i.sync_payments,
+    'push_appointments', i.push_appointments,
+    'status_map', i.status_map,
+    'last_sync_at', i.last_sync_at,
+    'last_error', i.last_error,
+    'connected_at', i.connected_at,
+    'created_at', i.created_at
+  )
+  from public.integrations i
+  where i.organization_id = private.current_organization_id()
+    and i.kind = connection_kind
+    and connection_kind in ('dentist_plus', 'macdent')
+    and private.current_user_role() in ('owner', 'head')
+$$;
+
+-- Connects a MIS or changes its settings. settings: { base_url, api_key
+-- (null or absent: keep, empty: remove), sync_patients, sync_appointments,
+-- sync_payments, push_appointments, status_map }. A connection with a key is
+-- «connected» until a sync fails; without a key it is only «requested».
+CREATE OR REPLACE FUNCTION "public"."save_mis_connection"("connection_kind" "text", "connection_settings" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := private.current_organization_id();
+  current_row public.integrations;
+  new_base_url text;
+  new_key text;
+  new_map jsonb;
+  new_status text;
+begin
+  if org_id is null or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    raise exception 'Only the owner and the head manage the MIS connection' using errcode = '42501';
+  end if;
+  if connection_kind is null or connection_kind not in ('dentist_plus', 'macdent') then
+    raise exception 'Unknown MIS' using errcode = '22023';
+  end if;
+  if connection_settings is null or jsonb_typeof(connection_settings) <> 'object' then
+    connection_settings := '{}'::jsonb;
+  end if;
+  insert into public.integrations (organization_id, kind, status_map)
+  values (org_id, connection_kind, private.mis_default_status_map(org_id))
+  on conflict (organization_id, kind) do nothing;
+  select * into current_row from public.integrations i
+  where i.organization_id = org_id and i.kind = connection_kind
+  for update;
+
+  new_base_url := case
+    when connection_settings ? 'base_url' then nullif(btrim(connection_settings ->> 'base_url'), '')
+    else current_row.base_url
+  end;
+  if new_base_url is not null and new_base_url !~ '^https://[^/\s]+' then
+    raise exception 'Адрес API должен начинаться с https://' using errcode = '22023';
+  end if;
+  new_key := case
+    when connection_settings ->> 'api_key' is null then current_row.api_key
+    else nullif(btrim(connection_settings ->> 'api_key'), '')
+  end;
+  new_map := case
+    when connection_settings ? 'status_map' then private.mis_clean_status_map(org_id, connection_settings -> 'status_map')
+    when current_row.status_map = '{}'::jsonb then private.mis_default_status_map(org_id)
+    else current_row.status_map
+  end;
+  new_status := case
+    when new_key is null then 'requested'
+    when current_row.status in ('connected', 'error') and current_row.api_key is not distinct from new_key then current_row.status
+    else 'connected'
+  end;
+
+  update public.integrations i
+  set base_url = new_base_url,
+      api_key = new_key,
+      status = new_status,
+      last_error = case when new_status = 'connected' and current_row.api_key is distinct from new_key then null else i.last_error end,
+      connected_at = case when new_status = 'connected' and current_row.status <> 'connected' then now() else i.connected_at end,
+      sync_patients = coalesce((connection_settings ->> 'sync_patients')::boolean, i.sync_patients),
+      sync_appointments = coalesce((connection_settings ->> 'sync_appointments')::boolean, i.sync_appointments),
+      sync_payments = coalesce((connection_settings ->> 'sync_payments')::boolean, i.sync_payments),
+      push_appointments = coalesce((connection_settings ->> 'push_appointments')::boolean, i.push_appointments),
+      status_map = new_map
+  where i.id = current_row.id;
+  return public.mis_connection_status(connection_kind);
+end;
+$$;
+
+-- Switches the MIS off: the key is removed, the push queue cancelled
+CREATE OR REPLACE FUNCTION "public"."disconnect_mis"("connection_kind" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := private.current_organization_id();
+begin
+  if org_id is null or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    raise exception 'Only the owner and the head manage the MIS connection' using errcode = '42501';
+  end if;
+  update public.integrations i
+  set status = 'disabled', api_key = null, push_appointments = false, last_error = null
+  where i.organization_id = org_id and i.kind = connection_kind and connection_kind in ('dentist_plus', 'macdent');
+  update public.mis_outbox o
+  set status = 'cancelled', error = coalesce(o.error, 'МИС отключена')
+  where o.organization_id = org_id and o.kind = connection_kind and o.status = 'pending';
+end;
+$$;
+
+-- New webhook address for the MIS: the old one stops working
+CREATE OR REPLACE FUNCTION "public"."regenerate_mis_token"("connection_kind" "text") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  new_token text;
+begin
+  if private.current_organization_id() is null
+    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    raise exception 'Only the owner and the head manage the MIS connection' using errcode = '42501';
+  end if;
+  update public.integrations i
+  set webhook_token = replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
+  where i.organization_id = private.current_organization_id() and i.kind = connection_kind
+    and connection_kind in ('dentist_plus', 'macdent')
+  returning i.webhook_token into new_token;
+  if new_token is null then
+    raise exception 'The MIS is not connected' using errcode = 'P0002';
+  end if;
+  return new_token;
+end;
+$$;
+
+-- Doctor mapping of the settings: a MIS doctor -> a doctor of the clinic
+-- (null unlinks). The appointments of that MIS doctor follow.
+CREATE OR REPLACE FUNCTION "public"."link_mis_doctor"("mis_doctor_id" bigint, "target_doctor_id" bigint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := private.current_organization_id();
+  found_row public.mis_doctors;
+begin
+  if org_id is null or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    raise exception 'Only the owner and the head manage the MIS connection' using errcode = '42501';
+  end if;
+  select * into found_row from public.mis_doctors md
+  where md.organization_id = org_id and md.id = mis_doctor_id
+  for update;
+  if not found then
+    raise exception 'Unknown MIS doctor' using errcode = 'P0002';
+  end if;
+  if target_doctor_id is not null and not exists (
+    select 1 from public.doctors d where d.organization_id = org_id and d.id = target_doctor_id
+  ) then
+    raise exception 'Unknown doctor' using errcode = 'P0002';
+  end if;
+  update public.mis_doctors md set doctor_id = target_doctor_id where md.id = found_row.id;
+  delete from public.external_refs r
+  where r.organization_id = org_id and r.system = found_row.kind and r.entity = 'doctor'
+    and r.external_id = found_row.external_id;
+  if target_doctor_id is not null then
+    insert into public.external_refs (organization_id, entity, entity_id, system, external_id)
+    values (org_id, 'doctor', target_doctor_id, found_row.kind, found_row.external_id);
+  end if;
+  update public.mis_appointments a
+  set doctor_id = target_doctor_id
+  where a.organization_id = org_id and a.kind = found_row.kind and a.doctor_external_id = found_row.external_id;
+end;
+$$;
+
+--
+-- Triggers
+--
+
+-- After the other deal triggers that set the stage
+create or replace trigger deal_mis_push
+    after insert or update of stage_id, appointment_at on public.deals
+    for each row execute function private.handle_deal_mis_push();
+
+-- The references of deleted appointments' deals, payments and doctors
+create or replace trigger deal_deleted_mis_refs
+    after delete on public.deals
+    for each row execute function private.delete_external_refs('appointment');
+
+create or replace trigger payment_deleted_external_refs
+    after delete on public.deal_payments
+    for each row execute function private.delete_external_refs('payment');
+
+create or replace trigger doctor_deleted_external_refs
+    after delete on public.doctors
+    for each row execute function private.delete_external_refs('doctor');
+
+-- Audit log: the connection settings, never the key nor the token
+create or replace trigger audit_mis_connection
+    after insert or update or delete on public.integrations
+    for each row execute function private.audit_row('mis_connection', 'kind,base_url,sync_patients,sync_appointments,sync_payments,push_appointments,status_map');
+
+--
+-- Row Level Security
+--
+
+alter table public.mis_doctors enable row level security;
+alter table public.mis_appointments enable row level security;
+alter table public.mis_sync_log enable row level security;
+alter table public.mis_outbox enable row level security;
+
+-- Visits of the MIS follow their deal (all the clinic for those without deal)
+create policy "Organization members can read" on public.mis_appointments for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (deal_id is null or exists (select 1 from public.deals d where d.organization_id = mis_appointments.organization_id and d.id = mis_appointments.deal_id)));
+
+-- The mapping and the log: owner and head (settings)
+create policy "Owner and head can read" on public.mis_doctors for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can read" on public.mis_sync_log for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can read" on public.mis_outbox for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+
+--
+-- Grants
+--
+
+-- Written by the functions only
+revoke all on table public.mis_doctors from anon, authenticated;
+grant select on table public.mis_doctors to authenticated;
+grant all on table public.mis_doctors to service_role;
+revoke all on sequence public.mis_doctors_id_seq from anon, authenticated;
+grant all on sequence public.mis_doctors_id_seq to service_role;
+
+revoke all on table public.mis_appointments from anon, authenticated;
+grant select on table public.mis_appointments to authenticated;
+grant all on table public.mis_appointments to service_role;
+revoke all on sequence public.mis_appointments_id_seq from anon, authenticated;
+grant all on sequence public.mis_appointments_id_seq to service_role;
+
+revoke all on table public.mis_sync_log from anon, authenticated;
+grant select on table public.mis_sync_log to authenticated;
+grant all on table public.mis_sync_log to service_role;
+revoke all on sequence public.mis_sync_log_id_seq from anon, authenticated;
+grant all on sequence public.mis_sync_log_id_seq to service_role;
+
+revoke all on table public.mis_outbox from anon, authenticated;
+grant select on table public.mis_outbox to authenticated;
+grant all on table public.mis_outbox to service_role;
+revoke all on sequence public.mis_outbox_id_seq from anon, authenticated;
+grant all on sequence public.mis_outbox_id_seq to service_role;
+
+-- Settings (checked inside)
+revoke all on function public.mis_connection_status(text) from public, anon;
+grant execute on function public.mis_connection_status(text) to authenticated, service_role;
+revoke all on function public.save_mis_connection(text, jsonb) from public, anon;
+grant execute on function public.save_mis_connection(text, jsonb) to authenticated, service_role;
+revoke all on function public.disconnect_mis(text) from public, anon;
+grant execute on function public.disconnect_mis(text) to authenticated, service_role;
+revoke all on function public.regenerate_mis_token(text) from public, anon;
+grant execute on function public.regenerate_mis_token(text) to authenticated, service_role;
+revoke all on function public.link_mis_doctor(bigint, bigint) from public, anon;
+grant execute on function public.link_mis_doctor(bigint, bigint) to authenticated, service_role;
+
+-- Sync operations and the dispatcher: service role only
+revoke all on function public.mis_upsert_patient(bigint, jsonb) from public, anon, authenticated;
+grant execute on function public.mis_upsert_patient(bigint, jsonb) to service_role;
+revoke all on function public.mis_upsert_appointment(bigint, jsonb) from public, anon, authenticated;
+grant execute on function public.mis_upsert_appointment(bigint, jsonb) to service_role;
+revoke all on function public.mis_visit_completed(bigint, jsonb) from public, anon, authenticated;
+grant execute on function public.mis_visit_completed(bigint, jsonb) to service_role;
+revoke all on function public.mis_upsert_payment(bigint, jsonb) from public, anon, authenticated;
+grant execute on function public.mis_upsert_payment(bigint, jsonb) to service_role;
+revoke all on function public.mis_record_sync(bigint, text, boolean, text, timestamp with time zone) from public, anon, authenticated;
+grant execute on function public.mis_record_sync(bigint, text, boolean, text, timestamp with time zone) to service_role;
+revoke all on function public.claim_mis_outbox(integer) from public, anon, authenticated;
+grant execute on function public.claim_mis_outbox(integer) to service_role;
+revoke all on function public.complete_mis_outbox(bigint, boolean, text, jsonb) from public, anon, authenticated;
+grant execute on function public.complete_mis_outbox(bigint, boolean, text, jsonb) to service_role;
+
+-- Definer helpers: not callable by clients
+revoke all on function private.mis_kind_label(text) from public, anon, authenticated;
+revoke all on function private.mis_default_status_map(bigint) from public, anon, authenticated;
+revoke all on function private.mis_clean_status_map(bigint, jsonb) from public, anon, authenticated;
+revoke all on function private.mis_connection(bigint) from public, anon, authenticated;
+revoke all on function private.mis_done() from public, anon, authenticated;
+revoke all on function private.mis_log(public.integrations, text, text, text, text, text, bigint, bigint) from public, anon, authenticated;
+revoke all on function private.mis_source_id(bigint) from public, anon, authenticated;
+revoke all on function private.mis_patient(public.integrations, jsonb, boolean) from public, anon, authenticated;
+revoke all on function private.mis_doctor_id(public.integrations, jsonb) from public, anon, authenticated;
+revoke all on function private.mis_apply_status(public.integrations, bigint, text, text) from public, anon, authenticated;
+revoke all on function private.mis_store_appointment(public.integrations, jsonb) from public, anon, authenticated;
+revoke all on function private.handle_deal_mis_push() from public, anon, authenticated;
+revoke all on function private.request_mis_sync(text) from public, anon, authenticated;
+grant execute on function private.mis_kind_label(text) to service_role;
+grant execute on function private.mis_default_status_map(bigint) to service_role;
+grant execute on function private.mis_clean_status_map(bigint, jsonb) to service_role;
+grant execute on function private.mis_connection(bigint) to service_role;
+grant execute on function private.mis_done() to service_role;
+grant execute on function private.mis_log(public.integrations, text, text, text, text, text, bigint, bigint) to service_role;
+grant execute on function private.mis_source_id(bigint) to service_role;
+grant execute on function private.mis_patient(public.integrations, jsonb, boolean) to service_role;
+grant execute on function private.mis_doctor_id(public.integrations, jsonb) to service_role;
+grant execute on function private.mis_apply_status(public.integrations, bigint, text, text) to service_role;
+grant execute on function private.mis_store_appointment(public.integrations, jsonb) to service_role;
+
+
+-- Polling every 10 minutes, the push queue every minute; skipped where
+-- pg_cron is not installed, e.g. the SQL tests
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('mis-sync', '*/10 * * * *', $cmd$select private.request_mis_sync('poll')$cmd$);
+    perform cron.schedule('mis-push', '* * * * *', $cmd$select private.request_mis_sync('push')$cmd$);
+  end if;
+end;
+$$;

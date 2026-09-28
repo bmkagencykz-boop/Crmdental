@@ -51,6 +51,12 @@ import type {
   Webhook,
   WebhookDelivery,
 } from "../../../pipeline-automation/types";
+import type {
+  MisAppointment,
+  MisConnection,
+  MisDoctor,
+  MisSyncLogEntry,
+} from "../../../mis/types";
 
 export interface Db {
   sales: Sale[];
@@ -106,4 +112,9 @@ export interface Db {
   api_keys: ApiKey[];
   // Setup wizard (stage 24)
   onboarding_progress: Array<OnboardingProgress & { id: number }>;
+  // MIS connectors (stage 27)
+  mis_connections: MisConnection[];
+  mis_doctors: MisDoctor[];
+  mis_appointments: MisAppointment[];
+  mis_sync_log: MisSyncLogEntry[];
 }

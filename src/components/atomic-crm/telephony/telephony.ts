@@ -4,8 +4,34 @@ export const TELEPHONY_PROVIDERS: TelephonyProvider[] = [
   "binotel",
   "zadarma",
   "mango",
+  "sipuni",
   "generic",
 ];
+
+type ProviderText =
+  | "providers"
+  | "secret_help"
+  | "api_key_help"
+  | "instructions";
+
+/**
+ * Translation key of a text of a provider. Sipuni (stage 27) keeps its
+ * texts in its own namespace «sipuni».
+ */
+export const providerTextKey = (
+  provider: TelephonyProvider,
+  text: ProviderText,
+) =>
+  provider === "sipuni"
+    ? `sipuni.${text === "providers" ? "name" : text}`
+    : `telephony.${text}.${provider}`;
+
+/**
+ * Does the provider use the secret and the API key fields? Sipuni does not
+ * sign its events and its recording links come with them: none.
+ */
+export const providerUsesKeys = (provider: TelephonyProvider) =>
+  provider !== "sipuni";
 
 /**
  * Address of the telephony_webhook edge function for the clinic's PBX.

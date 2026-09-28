@@ -21,7 +21,11 @@ import { cn } from "@/lib/utils";
 
 import type { CrmDataProvider } from "../providers/types";
 import type { Sale, TelephonyProvider } from "../types";
-import { TELEPHONY_PROVIDERS } from "./telephony";
+import {
+  providerTextKey,
+  providerUsesKeys,
+  TELEPHONY_PROVIDERS,
+} from "./telephony";
 
 const dateTime = (value: string) =>
   new Date(value).toLocaleString("ru-RU", {
@@ -125,7 +129,9 @@ export const TelephonySettings = () => {
           )}
           {connected
             ? translate("telephony.status_connected", {
-                provider: translate(`telephony.providers.${status.provider}`),
+                provider: translate(
+                  providerTextKey(status.provider, "providers"),
+                ),
               })
             : translate("telephony.status_disconnected")}
         </div>
@@ -163,30 +169,36 @@ export const TelephonySettings = () => {
                   : "soft hover:bg-card",
               )}
             >
-              {translate(`telephony.providers.${value}`)}
+              {translate(providerTextKey(value, "providers"))}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex max-w-xl flex-col gap-4">
-        <SecretField
-          id="telephony-secret"
-          label={translate("telephony.secret")}
-          help={translate(`telephony.secret_help.${provider}`)}
-          value={secret}
-          onChange={setSecret}
-          placeholder={translate(
-            secretStored && status.has_secret
-              ? "telephony.stored"
-              : "telephony.optional",
-          )}
-        />
-        {provider !== "generic" ? (
+        {providerUsesKeys(provider) ? (
+          <SecretField
+            id="telephony-secret"
+            label={translate("telephony.secret")}
+            help={translate(providerTextKey(provider, "secret_help"))}
+            value={secret}
+            onChange={setSecret}
+            placeholder={translate(
+              secretStored && status.has_secret
+                ? "telephony.stored"
+                : "telephony.optional",
+            )}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {translate("sipuni.no_keys")}
+          </p>
+        )}
+        {provider !== "generic" && providerUsesKeys(provider) ? (
           <SecretField
             id="telephony-api-key"
             label={translate("telephony.api_key")}
-            help={translate(`telephony.api_key_help.${provider}`)}
+            help={translate(providerTextKey(provider, "api_key_help"))}
             value={apiKey}
             onChange={setApiKey}
             placeholder={translate(
@@ -253,10 +265,10 @@ export const TelephonySettings = () => {
       <section className="flex max-w-3xl flex-col gap-2 rounded-md bg-card px-5 py-4">
         <h3 className="text-sm font-semibold">
           {translate("telephony.setup_title")} ·{" "}
-          {translate(`telephony.providers.${provider}`)}
+          {translate(providerTextKey(provider, "providers"))}
         </h3>
         <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
-          {translate(`telephony.instructions.${provider}`)
+          {translate(providerTextKey(provider, "instructions"))
             .split("\n")
             .map((step) => (
               <li key={step}>{step}</li>

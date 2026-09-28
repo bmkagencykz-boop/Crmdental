@@ -113,6 +113,7 @@ import { createListPlanDemo } from "./listsPlans";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 import { createDigitalPipelineDemo } from "./digitalPipeline";
 import { createOnboardingDemo } from "./onboarding";
+import { createMisDemo } from "./misConnectors";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -270,6 +271,12 @@ export const createDataProvider = ({
   });
   // Setup wizard (stage 24)
   const onboardingDemo = createOnboardingDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+  });
+  // MIS connectors (stage 27)
+  const misDemo = createMisDemo({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
@@ -726,6 +733,7 @@ export const createDataProvider = ({
     ...listPlanDemo.methods,
     ...pipelineDemo.methods,
     ...onboardingDemo.methods,
+    ...misDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();

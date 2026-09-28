@@ -192,3 +192,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.api]
 verify_jwt = false
+[functions.mis_webhook]
+verify_jwt = false
+[functions.mis_sync]
+verify_jwt = false
+[functions.mis_test_connection]
+verify_jwt = false

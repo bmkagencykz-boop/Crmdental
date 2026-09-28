@@ -71,7 +71,9 @@ test.describe("integrations marketplace", () => {
     await ident.click();
     const detail = page.getByTestId("integration-detail");
     await expect(detail.getByText("What it does")).toBeVisible();
-    await detail.getByRole("button", { name: "Request" }).click();
+    await detail
+      .getByRole("button", { name: "Leave a request: IDENT" })
+      .click();
     await expect(detail.getByText("Request sent")).toBeVisible();
     await page.keyboard.press("Escape");
 
@@ -167,11 +169,11 @@ test.describe("integrations marketplace", () => {
     await page.getByRole("button", { name: "Done" }).click();
 
     await expect(page).toHaveURL(/category=apps/);
-    await expect(
-      page
-        .getByRole("button", { name: "Сквозная аналитика Roistat-like" })
-        .getByTestId("integration-badge"),
-    ).toHaveText("Connected");
+    // The installed app opens on its page, connected
+    const installedApp = page.getByRole("dialog", {
+      name: "Сквозная аналитика Roistat-like",
+    });
+    await expect(installedApp.getByText("Connected").first()).toBeVisible();
     const { data: hooks } = await adminSupabase
       .from("webhooks")
       .select("url, app_id")

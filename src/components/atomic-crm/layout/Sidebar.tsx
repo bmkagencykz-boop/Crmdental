@@ -58,7 +58,7 @@ export const Sidebar = () => {
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-30 flex flex-col items-center pt-5 pb-6"
+      className="fixed inset-y-0 left-0 z-30 flex flex-col items-center overflow-y-auto pt-4 pb-4 [scrollbar-width:none]"
       style={{ width: SIDEBAR_WIDTH }}
       aria-label={translate("crm.navigation.label")}
     >
@@ -69,7 +69,7 @@ export const Sidebar = () => {
       >
         <LogoMark />
       </Link>
-      <nav className="mt-9 flex flex-1 flex-col items-center gap-3">
+      <nav className="mt-6 flex flex-1 flex-col items-center gap-2">
         {items.map((item) =>
           item.resource ? (
             // The integrator (stage 25) only sees Сделки, Интеграции, Настройки
@@ -81,7 +81,7 @@ export const Sidebar = () => {
           ),
         )}
       </nav>
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center mt-4 gap-2">
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />
         </CanAccess>
@@ -119,11 +119,11 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
     <Link
       to={item.to}
       aria-current={active ? "page" : undefined}
-      className="group flex w-[4.75rem] flex-col items-center gap-1.5 rounded-xl no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex w-[4.75rem] flex-col items-center gap-1 rounded-lg no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span
         className={cn(
-          "relative flex size-12 items-center justify-center rounded-lg transition-all duration-200",
+          "relative flex size-10 items-center justify-center rounded-lg transition-all duration-200",
           active
             ? "bg-primary text-primary-foreground shadow-[0_8px_22px_-10px_rgba(239,59,110,0.7)]"
             : "border border-nav-button-border bg-nav-button text-foreground shadow-card group-hover:border-primary/60 group-hover:text-brand-link",

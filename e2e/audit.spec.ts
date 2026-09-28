@@ -74,7 +74,9 @@ test.describe("audit log", () => {
 
   test("a manager cannot open the log", async ({ page, login }) => {
     await login("manager@smile.kz");
-    await expect(page.getByRole("link", { name: "Deals" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Deals", exact: true }),
+    ).toBeVisible();
     await page.goto("/#/audit");
     await expect(
       page.getByText("The audit log is available to the owner and the head"),

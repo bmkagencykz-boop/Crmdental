@@ -29,6 +29,7 @@ import { useDictionaryMutations } from "../settings/useDictionaryMutations";
 import { TASK_TYPES } from "../tasks/taskTypes";
 import type { MessageTemplate, Sale, Stage, Tag } from "../types";
 import {
+  actionLabelKey,
   cleanTrigger,
   DELAY_UNITS,
   DELAYED_EVENTS,
@@ -40,6 +41,7 @@ import {
   type DelayUnit,
 } from "./automation";
 import type { StageTrigger, StageTriggerField, Webhook } from "./types";
+import type { Salesbot } from "../salesbot/types";
 
 const ROUND_ROBIN = "round_robin";
 
@@ -225,7 +227,7 @@ export const StageTriggerDialog = ({
               <SelectContent>
                 {STAGE_TRIGGER_ACTIONS.map((action) => (
                   <SelectItem key={action} value={action}>
-                    {translate(`pipeline_automation.actions.${action}`)}
+                    {translate(actionLabelKey(action))}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -468,6 +470,14 @@ const ActionParams = ({
     pagination: { page: 1, perPage: 100 },
     sort: { field: "id", order: "ASC" },
   });
+  const { data: salesbots = [] } = useGetList<Salesbot>(
+    "salesbots",
+    {
+      pagination: { page: 1, perPage: 200 },
+      sort: { field: "position", order: "ASC" },
+    },
+    { enabled: draft.action === "start_salesbot" },
+  );
 
   switch (draft.action) {
     case "move_stage":
@@ -617,6 +627,26 @@ const ActionParams = ({
       ) : (
         <p className="text-sm text-muted-foreground">
           {translate("pipeline_automation.dialog.no_webhooks")}
+        </p>
+      );
+    case "start_salesbot":
+      return salesbots.length ? (
+        <Row label={translate("salesbot.pipeline.bot")}>
+          <IdSelect
+            value={draft.salesbot_id}
+            onChange={(salesbot_id) => patch({ salesbot_id })}
+            items={salesbots.map((bot) => ({
+              id: bot.id,
+              name: bot.is_active
+                ? bot.name
+                : `${bot.name} (${translate("salesbot.list.inactive")})`,
+            }))}
+            label={translate("salesbot.pipeline.bot")}
+          />
+        </Row>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {translate("salesbot.pipeline.no_bots")}
         </p>
       );
     case "set_field":

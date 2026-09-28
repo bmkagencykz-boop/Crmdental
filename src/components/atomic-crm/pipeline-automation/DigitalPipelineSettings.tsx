@@ -471,6 +471,13 @@ const useTriggerSummary = () => {
     pagination: { page: 1, perPage: 100 },
     sort: { field: "id", order: "ASC" },
   });
+  const { data: salesbots = [] } = useGetList<{ id: Identifier; name: string }>(
+    "salesbots",
+    {
+      pagination: { page: 1, perPage: 200 },
+      sort: { field: "position", order: "ASC" },
+    },
+  );
   return (trigger: StageTrigger) => {
     const event = DELAYED_EVENTS.includes(trigger.event)
       ? translate(`pipeline_automation.summary.${trigger.event}`, {
@@ -520,6 +527,11 @@ const useTriggerSummary = () => {
         });
         break;
       }
+      case "start_salesbot":
+        action = translate("salesbot.pipeline.summary", {
+          name: name(salesbots, trigger.salesbot_id),
+        });
+        break;
       case "set_field":
         action = translate("pipeline_automation.summary.set_field", {
           field: translate(`pipeline_automation.fields.${trigger.field_name}`),

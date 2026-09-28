@@ -69,6 +69,7 @@ import type { BatchRow, ImportMode } from "../../import/importMapping";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
 import {
+  automessageSendTime,
   automessageValues,
   isAutomessageOpen,
   renderTemplate,
@@ -113,6 +114,7 @@ import { createListPlanDemo } from "./listsPlans";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 import { createDigitalPipelineDemo } from "./digitalPipeline";
 import { createOnboardingDemo } from "./onboarding";
+import { createSalesbotDemo } from "./salesbot";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -225,6 +227,7 @@ export const createDataProvider = ({
       "patient_message",
       "response_overdue",
       "task_overdue",
+      "bot_handoff",
     ],
     browser_enabled: false,
     telegram_enabled: true,
@@ -260,6 +263,19 @@ export const createDataProvider = ({
       );
       return template ? renderAutomessage(deal, template) : "";
     },
+    startSalesbot: (dealId, botId) =>
+      salesbotDemo.start(botId, dealId, "pipeline"),
+  });
+  // «Салесбот» (stage 26)
+  const salesbotDemo = createSalesbotDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+    renderText: (deal, body) =>
+      renderAutomessage(deal, { body } as MessageTemplate),
+    sendTime: (now) =>
+      automessageSendTime(now, db.organizations?.[0]?.timezone),
   });
   // Deal list and sales plan (stage 21)
   const listPlanDemo = createListPlanDemo({
@@ -321,6 +337,7 @@ export const createDataProvider = ({
     const rows = (await all<Automessage>("automessages")).filter(
       (row) =>
         row.deal_id === dealId &&
+        row.salesbot_session_id == null &&
         statuses.includes(row.status) &&
         (!onlyTiming || row.timing === onlyTiming),
     );
@@ -409,6 +426,18 @@ export const createDataProvider = ({
             data: { processed_at: new Date().toISOString(), ...data },
             previousData: row,
           });
+        // A message of a salesbot has its text and stays when the stage changes
+        if (row.salesbot_session_id != null && deal && !deal.archived_at) {
+          if (!messengerConnected) {
+            await close({
+              status: "failed",
+              error: "Мессенджеры не подключены (Настройки → Мессенджеры)",
+            });
+          } else {
+            await storeOutgoing(deal, row.text ?? "", null, row.id);
+          }
+          continue;
+        }
         if (!deal || deal.stage_id !== row.stage_id || deal.archived_at) {
           await close({ status: "cancelled", error: "Сделка ушла с этапа" });
           continue;
@@ -533,6 +562,8 @@ export const createDataProvider = ({
     if (attachment) await listDealFile(deal, attachment, salesId, data.id);
     // Same as the message trigger of the digital pipeline
     await pipelineDemo.onMessage(data);
+    // Same as the message trigger of the salesbots
+    await salesbotDemo.onMessage(data);
     // Same as private.handle_automessage_sent
     if (automessageId != null) {
       const row = (await all<Automessage>("automessages")).find(
@@ -725,6 +756,7 @@ export const createDataProvider = ({
     ...unsortedDemo.methods,
     ...listPlanDemo.methods,
     ...pipelineDemo.methods,
+    ...salesbotDemo.methods,
     ...onboardingDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
@@ -1446,7 +1478,8 @@ export const createDataProvider = ({
     row: Omit<AuditLogEntry, "id" | "at" | "sales_id" | "source">,
   ) => {
     // Changes of the digital pipeline have no author (source automation)
-    const automatic = pipelineDemo.isAutomating();
+    const automatic =
+      pipelineDemo.isAutomating() || salesbotDemo.isAutomating();
     const salesId = automatic ? null : ((await currentSalesId()) ?? null);
     return baseDataProvider.create("audit_log", {
       data: {
@@ -1466,7 +1499,9 @@ export const createDataProvider = ({
         ...event,
         sales_id:
           event.sales_id ??
-          (pipelineDemo.isAutomating() ? null : await currentSalesId()) ??
+          (pipelineDemo.isAutomating() || salesbotDemo.isAutomating()
+            ? null
+            : await currentSalesId()) ??
           null,
         created_at: new Date().toISOString(),
       },
@@ -2216,6 +2251,7 @@ export const createDataProvider = ({
       } satisfies ResourceCallbacks<DealNote>,
       // After the rules above: the digital pipeline sees the saved deal
       ...pipelineDemo.callbacks,
+      ...salesbotDemo.callbacks,
     ],
   ) as CrmDataProvider;
 

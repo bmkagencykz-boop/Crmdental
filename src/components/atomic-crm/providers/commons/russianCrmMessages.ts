@@ -1362,12 +1362,14 @@ export const russianCrmMessages: CrmMessages = {
         "Новое сообщение |||| %{smart_count} новых сообщения |||| %{smart_count} новых сообщений",
       task_overdue: "Задача просрочена",
       response_overdue: "Пациент ждёт ответа",
+      bot_handoff: "Бот передал диалог",
     },
     kind_options: {
       lead_assigned: "Мне назначили сделку",
       patient_message: "Сообщения пациентов",
       task_overdue: "Просроченные задачи",
       response_overdue: "Пациент ждёт ответа",
+      bot_handoff: "Бот передал диалог",
     },
     browser: {
       enable: "Включить уведомления в браузере",

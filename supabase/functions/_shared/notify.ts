@@ -11,7 +11,8 @@ export type NotificationKind =
   | "lead_assigned"
   | "patient_message"
   | "task_overdue"
-  | "response_overdue";
+  | "response_overdue"
+  | "bot_handoff";
 
 /** A notification to send, as returned by public.claim_telegram_notifications */
 export type ClaimedNotification = {
@@ -29,6 +30,7 @@ const KIND_ICONS: Record<NotificationKind, string> = {
   patient_message: "💬",
   task_overdue: "⏰",
   response_overdue: "🔥",
+  bot_handoff: "🤝",
 };
 
 /** Telegram HTML parse mode: only &, < and > must be escaped */

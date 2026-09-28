@@ -4,6 +4,7 @@ import {
   Bell,
   CheckCheck,
   Flame,
+  Forward,
   MessageCircle,
   UserPlus,
   type LucideIcon,
@@ -44,6 +45,7 @@ const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
   patient_message: MessageCircle,
   task_overdue: AlarmClock,
   response_overdue: Flame,
+  bot_handoff: Forward,
 };
 
 /** Title of a notification in the language of the user */

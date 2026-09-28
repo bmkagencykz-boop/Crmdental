@@ -53,6 +53,7 @@ import { getListPlanMethods } from "./listPlanMethods";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 import { getPipelineAutomationMethods } from "./pipelineAutomationMethods";
 import { getOnboardingMethods } from "./onboardingMethods";
+import { getSalesbotMethods } from "./salesbotMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -110,6 +111,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getPipelineAutomationMethods(),
     // Setup wizard (stage 24)
     ...getOnboardingMethods(),
+    // «Салесбот» (stage 26)
+    ...getSalesbotMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

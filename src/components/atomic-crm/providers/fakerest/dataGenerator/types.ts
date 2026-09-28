@@ -51,6 +51,11 @@ import type {
   Webhook,
   WebhookDelivery,
 } from "../../../pipeline-automation/types";
+import type {
+  Salesbot,
+  SalesbotLog,
+  SalesbotSession,
+} from "../../../salesbot/types";
 
 export interface Db {
   sales: Sale[];
@@ -104,6 +109,10 @@ export interface Db {
   webhooks: Webhook[];
   webhook_deliveries: WebhookDelivery[];
   api_keys: ApiKey[];
+  // «Салесбот» (stage 26)
+  salesbots: Salesbot[];
+  salesbot_sessions: SalesbotSession[];
+  salesbot_logs: SalesbotLog[];
   // Setup wizard (stage 24)
   onboarding_progress: Array<OnboardingProgress & { id: number }>;
 }

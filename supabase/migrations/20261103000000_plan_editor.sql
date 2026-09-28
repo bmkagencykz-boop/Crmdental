@@ -153,6 +153,61 @@ begin
 end;
 $$;
 
+-- The stage-29 items moved to real stages: a stage («Этап N») per stage
+-- number of the items without a stage, «Этап 1» for a plan without any, the
+-- items linked to their stage. Run once by the migration of stage 34; safe
+-- to run again (only what has no stage yet). Returns the items moved.
+CREATE OR REPLACE FUNCTION "private"."move_treatment_items_to_stages"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  moved integer;
+begin
+  insert into public.treatment_stages (organization_id, plan_id, position, name, doctor_id)
+  select n.organization_id, n.plan_id, n.stage_no, 'Этап ' || n.stage_no, p.doctor_id
+  from (
+    select i.organization_id, i.plan_id, i.stage_no
+    from public.treatment_plan_items i
+    where i.stage_id is null
+    group by i.organization_id, i.plan_id, i.stage_no
+    union
+    select p.organization_id, p.id, 1
+    from public.treatment_plans p
+    where not exists (select 1 from public.treatment_stages s where s.organization_id = p.organization_id and s.plan_id = p.id)
+      and not exists (select 1 from public.treatment_plan_items i
+        where i.organization_id = p.organization_id and i.plan_id = p.id and i.stage_id is null)
+  ) n
+    join public.treatment_plans p on p.organization_id = n.organization_id and p.id = n.plan_id
+  where not exists (select 1 from public.treatment_stages s
+    where s.organization_id = n.organization_id and s.plan_id = n.plan_id and s.position = n.stage_no)
+  order by n.organization_id, n.plan_id, n.stage_no;
+
+  update public.treatment_plan_items i
+  set stage_id = s.id
+  from public.treatment_stages s
+  where i.stage_id is null
+    and s.organization_id = i.organization_id and s.plan_id = i.plan_id and s.position = i.stage_no;
+  get diagnostics moved = row_count;
+  return moved;
+end;
+$$;
+
+-- «Оплачено» of a plan: the payments of its deal (deals.paid_amount). One
+-- function, so that the patient payments and deposits can take over later
+-- without touching the views and the editor. Runs with the caller's rights.
+CREATE OR REPLACE FUNCTION "private"."treatment_plan_paid"("org_id" bigint, "target_deal_id" bigint) RETURNS bigint
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO ''
+    AS $$
+begin
+  return coalesce((
+    select d.paid_amount from public.deals d
+    where d.organization_id = org_id and d.id = target_deal_id
+  ), 0);
+end;
+$$;
+
 -- The stage of a plan with this number, created («Этап N») when missing:
 -- items written with a stage number only (stage 29)
 CREATE OR REPLACE FUNCTION "private"."treatment_stage_at"("org_id" bigint, "target_plan_id" bigint, "stage_number" integer) RETURNS bigint
@@ -285,8 +340,9 @@ begin
 end;
 $$;
 
--- After a stage is written: the stage number of its items, the totals and
--- the progress of the plan (status, discount, a deleted stage)
+-- After a stage is written: the stage number of its items, the numbers of
+-- the next stages when one is deleted, the totals and the progress of the
+-- plan (status, discount, a deleted stage)
 CREATE OR REPLACE FUNCTION "private"."handle_treatment_stage_after_write"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -299,6 +355,13 @@ begin
     update public.treatment_plan_items i
     set stage_no = new.position
     where i.organization_id = org_id and i.stage_id = new.id and i.stage_no <> new.position;
+  end if;
+  -- A deleted stage: the next ones move up («Этап 3» becomes «Этап 2»)
+  if tg_op = 'DELETE' and exists (
+    select 1 from public.treatment_plans p where p.organization_id = org_id and p.id = target_plan_id) then
+    update public.treatment_stages s
+    set position = s.position - 1
+    where s.organization_id = org_id and s.plan_id = target_plan_id and s.position > old.position;
   end if;
   if tg_op = 'DELETE'
     or (tg_op = 'UPDATE' and (new.status <> old.status or new.discount_percent <> old.discount_percent)) then
@@ -688,24 +751,7 @@ $$;
 
 select private.seed_treatment_dictionaries(o.id) from public.organizations o;
 
-insert into public.treatment_stages (organization_id, plan_id, position, name, doctor_id)
-select n.organization_id, n.plan_id, n.stage_no, 'Этап ' || n.stage_no, p.doctor_id
-from (
-    select i.organization_id, i.plan_id, i.stage_no
-    from public.treatment_plan_items i
-    group by i.organization_id, i.plan_id, i.stage_no
-    union
-    select p.organization_id, p.id, 1
-    from public.treatment_plans p
-    where not exists (select 1 from public.treatment_plan_items i where i.organization_id = p.organization_id and i.plan_id = p.id)
-) n
-    join public.treatment_plans p on p.organization_id = n.organization_id and p.id = n.plan_id
-order by n.organization_id, n.plan_id, n.stage_no;
-
-update public.treatment_plan_items i
-set stage_id = s.id
-from public.treatment_stages s
-where s.organization_id = i.organization_id and s.plan_id = i.plan_id and s.position = i.stage_no;
+select private.move_treatment_items_to_stages();
 
 alter table public.treatment_plan_items alter column stage_id set not null;
 
@@ -749,7 +795,10 @@ select
     tp.plan_type_id,
     tp.complaints,
     tp.insurance_policy,
-    t.stages_count
+    t.stages_count,
+    t.gross_amount - t.subtotal_amount as stages_discount_amount,
+    t.subtotal_amount - private.treatment_plan_total(t.subtotal_amount, tp.discount_percent, tp.discount_amount) as extra_discount_amount,
+    private.treatment_plan_paid(tp.organization_id, tp.deal_id) as paid_amount
 from public.treatment_plans tp
     join public.deals d on d.organization_id = tp.organization_id and d.id = tp.deal_id
     cross join lateral (
@@ -929,6 +978,8 @@ revoke all on function private.treatment_stage_progress(bigint, bigint) from pub
 grant execute on function private.treatment_stage_progress(bigint, bigint) to service_role;
 revoke all on function private.refresh_treatment_plan(bigint, bigint) from public;
 grant execute on function private.refresh_treatment_plan(bigint, bigint) to service_role;
+revoke all on function private.move_treatment_items_to_stages() from public;
+grant execute on function private.move_treatment_items_to_stages() to service_role;
 revoke all on function private.seed_treatment_dictionaries(bigint) from public;
 grant execute on function private.seed_treatment_dictionaries(bigint) to service_role;
 revoke all on function private.handle_treatment_stage_before_write() from public;

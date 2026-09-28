@@ -1,9 +1,13 @@
 import type { Deal, Service } from "../../../types";
 import { lineTotal, planTotals } from "../../../treatment/planMath";
+import { templateLines } from "../../../treatment/planStages";
 import type {
+  PlanDictionaryItem,
   PlanStatus,
+  StageStatus,
   TreatmentPlan,
   TreatmentPlanItem,
+  TreatmentStage,
 } from "../../../treatment/types";
 import type { Db } from "./types";
 
@@ -99,13 +103,15 @@ const TEMPLATES: Record<string, { economy: Line[]; premium: Line[] }> = {
     economy: [
       [1, "G-01", null, 1],
       [2, "T-02", "16", 1],
-      [2, "T-01", "25, 26", 2],
+      [2, "T-01", "25", 1],
+      [2, "T-01", "26", 1],
       [3, "T-04", "46", 1],
     ],
     premium: [
       [1, "G-01", null, 1],
       [2, "T-03", "16", 1],
-      [2, "T-07", "25, 26", 2],
+      [2, "T-07", "25", 1],
+      [2, "T-07", "26", 1],
       [3, "T-05", "46", 1],
       [3, "O-02", "46", 1],
     ],
@@ -147,8 +153,8 @@ const TEMPLATES: Record<string, { economy: Line[]; premium: Line[] }> = {
   Ортодонтия: {
     economy: [
       [1, "D-04", null, 1],
-      [2, "R-01", "верхняя челюсть", 1],
-      [2, "R-01", "нижняя челюсть", 1],
+      [2, "R-01", "Верхняя челюсть", 1],
+      [2, "R-01", "Нижняя челюсть", 1],
       [3, "R-05", null, 2],
     ],
     premium: [
@@ -172,6 +178,77 @@ const TEMPLATES: Record<string, { economy: Line[]; premium: Line[] }> = {
     ],
   },
 };
+
+/** The stages of the plans by the direction of the deal: [name, direction] */
+const STAGE_NAMES: Record<string, [string, string][]> = {
+  Имплантация: [
+    ["Диагностика и удаление", "Хирургия"],
+    ["Установка импланта", "Имплантация"],
+    ["Протезирование на импланте", "Ортопедия"],
+  ],
+  Терапия: [
+    ["Профессиональная гигиена", "Гигиена"],
+    ["Лечение кариеса", "Терапия"],
+    ["Эндодонтия и коронка", "Терапия"],
+  ],
+  Протезирование: [
+    ["Подготовка зубов", "Ортопедия"],
+    ["Коронки", "Ортопедия"],
+  ],
+  Хирургия: [
+    ["Удаление и пластика", "Хирургия"],
+    ["Синус-лифтинг", "Хирургия"],
+  ],
+  Гигиена: [
+    ["Гигиена", "Гигиена"],
+    ["Отбеливание", "Гигиена"],
+  ],
+  Ортодонтия: [
+    ["Диагностика", "Ортодонтия"],
+    ["Брекет-система", "Ортодонтия"],
+    ["Ретенция", "Ортодонтия"],
+  ],
+  "Детская стоматология": [
+    ["Лечение молочных зубов", "Детская стоматология"],
+    ["Профилактика", "Детская стоматология"],
+  ],
+};
+
+const COMPLAINTS: Record<string, string> = {
+  Имплантация: "Отсутствует зуб 36, трудно жевать слева",
+  Терапия: "Боль от холодного справа, кариес на нескольких зубах",
+  Протезирование: "Скол передних зубов, эстетика",
+  Хирургия: "Ноют зубы мудрости, отёк десны",
+  Гигиена: "Налёт и кровоточивость дёсен",
+  Ортодонтия: "Скученность зубов, неправильный прикус",
+  "Детская стоматология": "Кариес молочных зубов у ребёнка",
+};
+
+export const DEMO_PLAN_TYPES = [
+  "Основной",
+  "Альтернативный",
+  "Эконом",
+  "Премиум",
+];
+export const DEMO_DIRECTIONS = [
+  "Терапия",
+  "Хирургия",
+  "Ортопедия",
+  "Ортодонтия",
+  "Пародонтология",
+  "Имплантация",
+  "Гигиена",
+  "Детская стоматология",
+];
+
+const dictionary = (names: string[]): PlanDictionaryItem[] =>
+  names.map((name, index) => ({
+    id: index + 1,
+    name,
+    position: index,
+    is_archived: false,
+    created_at: new Date().toISOString(),
+  }));
 
 const MEDICAL = [
   { allergies: "Лидокаин (сыпь)", chronic_diseases: null },
@@ -211,6 +288,15 @@ export const generateTreatmentPlans = (db: Db) => {
 
   db.treatment_plans = [];
   db.treatment_plan_items = [];
+  // The plan editor (stage 34): the dictionaries of the clinic, the stages
+  db.treatment_plan_types = dictionary(DEMO_PLAN_TYPES);
+  db.treatment_directions = dictionary(DEMO_DIRECTIONS);
+  db.treatment_stages = [];
+  db.treatment_stage_templates = [];
+  const typeId = (name: string) =>
+    db.treatment_plan_types.find((t) => t.name === name)?.id ?? null;
+  const directionId = (name: string) =>
+    db.treatment_directions.find((d) => d.name === name)?.id ?? null;
   const stageName = (deal: Deal) =>
     db.stages.find((s) => s.id === deal.stage_id)?.name;
   const serviceName = (deal: Deal) =>
@@ -225,9 +311,18 @@ export const generateTreatmentPlans = (db: Db) => {
       isMain = false,
       discountPercent = 0,
       doneStages = 0,
-    }: { isMain?: boolean; discountPercent?: number; doneStages?: number } = {},
+      planType = "Основной",
+      stageDiscount = 0,
+    }: {
+      isMain?: boolean;
+      discountPercent?: number;
+      doneStages?: number;
+      planType?: string;
+      stageDiscount?: number;
+    } = {},
   ) => {
     const created = new Date(new Date(deal.created_at).getTime() + DAY);
+    const direction = serviceName(deal);
     const plan: TreatmentPlan = {
       id: db.treatment_plans.length + 1,
       deal_id: deal.id,
@@ -245,8 +340,45 @@ export const generateTreatmentPlans = (db: Db) => {
         : null,
       created_at: created.toISOString(),
       updated_at: created.toISOString(),
+      plan_type_id: typeId(planType),
+      complaints: COMPLAINTS[direction] ?? null,
+      insurance_policy: null,
     };
     db.treatment_plans.push(plan);
+    // The stages: one per stage number of the lines, named by direction
+    const names = STAGE_NAMES[direction] ?? STAGE_NAMES.Терапия;
+    const stageOf = new Map<number, TreatmentStage>();
+    for (const number of [...new Set(lines.map(([n]) => n))].sort()) {
+      const [stageName, stageDirection] = names[number - 1] ?? [
+        `Этап ${number}`,
+        direction,
+      ];
+      const stageStatus: StageStatus =
+        number <= doneStages
+          ? "done"
+          : ["in_progress", "completed"].includes(status) &&
+              number === doneStages + 1
+            ? "in_progress"
+            : "new";
+      const stage: TreatmentStage = {
+        id: db.treatment_stages.length + 1,
+        plan_id: plan.id,
+        position: number,
+        name: stageName,
+        doctor_id: plan.doctor_id ?? null,
+        direction_id: directionId(stageDirection),
+        deadline: new Date(created.getTime() + number * 14 * DAY)
+          .toISOString()
+          .slice(0, 10),
+        description: null,
+        status: status === "completed" ? "done" : stageStatus,
+        discount_percent: number === 1 ? stageDiscount : 0,
+        created_at: plan.created_at,
+        updated_at: plan.created_at,
+      };
+      db.treatment_stages.push(stage);
+      stageOf.set(number, stage);
+    }
     const positions = new Map<number, number>();
     const items = lines.flatMap(([stage, code, tooth, quantity, discount]) => {
       const service = byCode.get(code) as Service | undefined;
@@ -257,6 +389,7 @@ export const generateTreatmentPlans = (db: Db) => {
       const item: TreatmentPlanItem = {
         id: db.treatment_plan_items.length + 1,
         plan_id: plan.id,
+        stage_id: stageOf.get(stage)?.id ?? null,
         stage_no: stage,
         service_id: service.id,
         name: service.name,
@@ -276,7 +409,11 @@ export const generateTreatmentPlans = (db: Db) => {
       db.treatment_plan_items.push(item);
       return [item];
     });
-    return { plan, total: planTotals(plan, items).total };
+    return {
+      plan,
+      items,
+      total: planTotals(plan, items, [...stageOf.values()]).total,
+    };
   };
 
   const candidates = db.deals
@@ -295,8 +432,13 @@ export const generateTreatmentPlans = (db: Db) => {
   pick("Пришёл на консультацию", 2).forEach((deal, index) => {
     const template = TEMPLATES[serviceName(deal)] ?? TEMPLATES.Терапия;
     if (index === 0) {
-      addPlan(deal, "Вариант эконом", "presented", template.economy);
-      addPlan(deal, "Вариант премиум", "presented", template.premium);
+      addPlan(deal, "Вариант эконом", "presented", template.economy, {
+        planType: "Эконом",
+      });
+      addPlan(deal, "Вариант премиум", "presented", template.premium, {
+        planType: "Премиум",
+        stageDiscount: 5,
+      });
     } else {
       addPlan(deal, "План лечения", "draft", template.economy);
     }
@@ -305,7 +447,9 @@ export const generateTreatmentPlans = (db: Db) => {
   pick("План согласован", 3).forEach((deal, index) => {
     const template = TEMPLATES[serviceName(deal)] ?? TEMPLATES.Терапия;
     if (index === 0) {
-      addPlan(deal, "Вариант эконом", "declined", template.economy);
+      addPlan(deal, "Вариант эконом", "declined", template.economy, {
+        planType: "Эконом",
+      });
       const { total } = addPlan(
         deal,
         "Вариант премиум",
@@ -314,6 +458,7 @@ export const generateTreatmentPlans = (db: Db) => {
         {
           isMain: true,
           discountPercent: 5,
+          planType: "Премиум",
         },
       );
       setAmount(deal, total);
@@ -363,6 +508,64 @@ export const generateTreatmentPlans = (db: Db) => {
       );
       setAmount(deal, total);
     });
+
+  // Stage templates of the clinic: from the demo plans, without teeth
+  const templateFrom = (
+    name: string,
+    direction: string,
+    template: Line[],
+    stageNo: number,
+  ) => {
+    const items = template
+      .filter(([n]) => n === stageNo)
+      .flatMap(([, code, , quantity, discount], index) => {
+        const service = byCode.get(code);
+        if (!service) return [];
+        return [
+          {
+            id: index + 1,
+            plan_id: 0,
+            stage_no: stageNo,
+            service_id: service.id,
+            name: service.name,
+            quantity,
+            unit_price: service.price ?? 0,
+            discount_percent: discount ?? 0,
+            done: false,
+            position: index,
+          } satisfies TreatmentPlanItem,
+        ];
+      });
+    db.treatment_stage_templates.push({
+      id: db.treatment_stage_templates.length + 1,
+      name,
+      direction_id: directionId(direction),
+      description: null,
+      items: templateLines(items),
+      created_by: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  };
+  templateFrom(
+    "Профессиональная гигиена",
+    "Гигиена",
+    TEMPLATES.Гигиена.economy,
+    1,
+  );
+  templateFrom(
+    "Имплантация одного зуба",
+    "Имплантация",
+    TEMPLATES.Имплантация.economy,
+    2,
+  );
+  templateFrom(
+    "Коронка на имплант",
+    "Ортопедия",
+    TEMPLATES.Имплантация.economy,
+    3,
+  );
+  templateFrom("Лечение кариеса", "Терапия", TEMPLATES.Терапия.economy, 2);
 
   // The light patient card: a few patients with medical notes and a doctor
   const withPlans = new Set(db.treatment_plans.map((plan) => plan.patient_id));

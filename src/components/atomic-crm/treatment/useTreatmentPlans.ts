@@ -12,9 +12,12 @@ import type { CrmDataProvider } from "../providers/types";
 import { useCurrentSale } from "../quick-replies/useQuickReplies";
 import { canExceedLimits } from "./planMath";
 import type {
+  PlanDictionaryItem,
   TreatmentPlan,
   TreatmentPlanItem,
   TreatmentPlanSummary,
+  TreatmentStage,
+  TreatmentStageTemplate,
 } from "./types";
 
 const everything = { page: 1, perPage: 500 };
@@ -45,11 +48,54 @@ export const usePlanItems = (planId: Identifier | undefined) =>
     { enabled: planId != null },
   );
 
+/** The stages of a plan, in order (stage 34) */
+export const usePlanStages = (planId: Identifier | undefined) =>
+  useGetList<TreatmentStage>(
+    "treatment_stages",
+    {
+      filter: { plan_id: planId },
+      sort: { field: "position", order: "ASC" },
+      pagination: everything,
+    },
+    { enabled: planId != null },
+  );
+
+/** «Сохранить как шаблон этапа» → «Добавить этап из шаблона» */
+export const useStageTemplates = (enabled = true) =>
+  useGetList<TreatmentStageTemplate>(
+    "treatment_stage_templates",
+    {
+      sort: { field: "name", order: "ASC" },
+      pagination: everything,
+    },
+    { enabled },
+  );
+
+const dictionaryOptions = { staleTime: 5 * 60 * 1000 };
+const byPosition = { field: "position", order: "ASC" as const };
+/** «Тип плана»: a clinic dictionary */
+export const usePlanTypes = () =>
+  useGetList<PlanDictionaryItem>(
+    "treatment_plan_types",
+    { sort: byPosition, pagination: everything },
+    dictionaryOptions,
+  );
+/** «Направление» of a stage: a clinic dictionary */
+export const useDirections = () =>
+  useGetList<PlanDictionaryItem>(
+    "treatment_directions",
+    { sort: byPosition, pagination: everything },
+    dictionaryOptions,
+  );
+
 /** Everything a change of a plan can touch: totals, deal amount, stage, feed */
 const REFRESHED = [
   "treatment_plans_summary",
   "treatment_plans",
   "treatment_plan_items",
+  "treatment_stages",
+  "treatment_plan_stages",
+  "treatment_stage_templates",
   "deals",
   "deal_events",
   "stage_trigger_runs",
@@ -155,6 +201,63 @@ export const usePlanMutations = () => {
     onSettled: () => refresh(),
     onError,
   });
+  const createStage = useMutation({
+    mutationFn: async (data: Partial<TreatmentStage>) =>
+      (await dataProvider.create<TreatmentStage>("treatment_stages", { data }))
+        .data,
+    onSettled: () => refresh(),
+    onError,
+  });
+  const updateStage = useMutation({
+    mutationFn: async ({
+      stage,
+      data,
+    }: {
+      stage: TreatmentStage;
+      data: Partial<TreatmentStage>;
+    }) =>
+      (
+        await dataProvider.update<TreatmentStage>("treatment_stages", {
+          id: stage.id,
+          data,
+          previousData: stage,
+        })
+      ).data,
+    onSettled: () => refresh(),
+    onError,
+  });
+  const deleteStage = useMutation({
+    mutationFn: (stage: TreatmentStage) =>
+      dataProvider.delete("treatment_stages", {
+        id: stage.id,
+        previousData: stage,
+      }),
+    onSuccess: () => {
+      notify("plan_editor.notify.stage_deleted", { type: "info" });
+    },
+    onSettled: () => refresh(),
+    onError,
+  });
+  const saveTemplate = useMutation({
+    mutationFn: ({ stage, name }: { stage: TreatmentStage; name?: string }) =>
+      dataProvider.saveStageTemplate(stage.id, name ?? null),
+    onSuccess: () => {
+      notify("plan_editor.notify.template_saved", { type: "info" });
+    },
+    onSettled: () => refresh(),
+    onError,
+  });
+  const addFromTemplate = useMutation({
+    mutationFn: ({
+      plan,
+      template,
+    }: {
+      plan: TreatmentPlan;
+      template: TreatmentStageTemplate;
+    }) => dataProvider.addStageFromTemplate(plan.id, template.id),
+    onSettled: () => refresh(),
+    onError,
+  });
   return {
     createPlan,
     updatePlan,
@@ -163,6 +266,11 @@ export const usePlanMutations = () => {
     createItem,
     updateItem,
     deleteItem,
+    createStage,
+    updateStage,
+    deleteStage,
+    saveTemplate,
+    addFromTemplate,
   };
 };
 

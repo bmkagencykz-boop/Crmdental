@@ -72,14 +72,14 @@ export const ServiceSearch = ({
             setQuery("");
           }
         }}
-        className="field h-8 w-full rounded-md border border-input px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="field h-10 w-full rounded-full px-4 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
       />
       {open && options.length > 0 ? (
         <ul
           id="treatment-service-results"
           role="listbox"
           aria-label={translate("treatment.items.add")}
-          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover py-1 text-sm shadow-card"
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-2xl bg-popover py-1 text-sm shadow-card"
         >
           {options.map((option, index) => (
             <li

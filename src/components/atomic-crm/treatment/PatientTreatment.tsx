@@ -1,6 +1,7 @@
 import { useCanAccess, useNotify, useTranslate, useUpdate } from "ra-core";
 import { useState } from "react";
 import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import {
@@ -13,7 +14,8 @@ import type { Patient } from "../types";
 import { MEDICAL_FIELDS, type MedicalField } from "./medical";
 import { MainPlanMark, PlanStatusBadge } from "./PlanBits";
 import { AGREED_STATUSES } from "./types";
-import { usePlans } from "./useTreatmentPlans";
+import { planPath } from "./planUi";
+import { usePlanRights, usePlans } from "./useTreatmentPlans";
 
 const tenge = (amount: number) => `${formatTenge(amount)} ₸`;
 
@@ -165,6 +167,7 @@ const MedicalRow = ({
 export const PatientPlans = ({ patient }: { patient: Patient }) => {
   const translate = useTranslate();
   const { data: plans = [], isPending } = usePlans({ patient_id: patient.id });
+  const { canEdit } = usePlanRights();
   if (isPending) return null;
   const main = plans.filter(
     (plan) => plan.is_main && AGREED_STATUSES.includes(plan.status),
@@ -202,17 +205,27 @@ export const PatientPlans = ({ patient }: { patient: Patient }) => {
           />
         </div>
       ) : null}
+      {canEdit ? (
+        <Button size="sm" variant="outline" className="self-start" asChild>
+          <Link to={planPath(patient.id, "new")}>
+            {translate("plan_editor.actions.new_plan")}
+          </Link>
+        </Button>
+      ) : null}
       {plans.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {translate("treatment.patient.no_plans")}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-md border border-border text-sm">
+        <ul className="flex flex-col gap-1.5 text-sm">
           {[...plans].reverse().map((plan) => (
             <li key={plan.id}>
               <Link
-                to={`/deals/${plan.deal_id}/show`}
-                className="flex items-center gap-2 px-3 py-2 text-foreground no-underline transition-colors hover:bg-muted/50"
+                to={planPath(plan.patient_id, plan.id)}
+                aria-label={translate("plan_editor.open_plan", {
+                  name: plan.name,
+                })}
+                className="flex items-center gap-2 rounded-2xl bg-pill px-4 py-2.5 text-foreground no-underline transition-colors hover:bg-pill-hover"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">

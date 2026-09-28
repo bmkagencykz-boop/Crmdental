@@ -23,7 +23,10 @@ import { PatientBlock } from "./PatientBlock";
 import { UnsortedBanner } from "../../unsorted/UnsortedBanner";
 import { MisDealBadge, MisVisits } from "../../mis/MisVisits";
 import { DealVisits } from "../../schedule/DealVisits";
-import { DealTreatmentPlans } from "../../treatment/DealTreatmentPlans";
+import {
+  DealPlanLink,
+  DealTreatmentPlans,
+} from "../../treatment/DealTreatmentPlans";
 import { DealAttribution } from "../../marketing/DealAttribution";
 
 /**
@@ -104,6 +107,7 @@ const DealPageContent = () => {
               <div className="flex flex-col gap-4 px-4 py-4">
                 <StageScript deal={deal} />
                 <StageChecklist deal={deal} />
+                {canSeePlans ? <DealPlanLink deal={deal} /> : null}
                 <DealAutomessages deal={deal} />
                 <DealFields deal={deal} />
               </div>

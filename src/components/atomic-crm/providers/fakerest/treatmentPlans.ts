@@ -7,13 +7,22 @@ import {
   discountExceeds,
   lineTotal,
   planTotals,
+  stageStatusAfterProgress,
   statusAfterProgress,
 } from "../../treatment/planMath";
+import {
+  itemsFromTemplate,
+  MAX_STAGES,
+  nextStagePosition,
+  templateLines,
+} from "../../treatment/planStages";
 import type {
   PlanServiceRow,
   TreatmentPlan,
   TreatmentPlanItem,
   TreatmentPlanSummary,
+  TreatmentStage,
+  TreatmentStageTemplate,
 } from "../../treatment/types";
 import type {
   AuditLogEntry,
@@ -38,6 +47,35 @@ const AUDITED = [
   "discount_amount",
   "doctor_id",
   "note",
+  "plan_type_id",
+  "complaints",
+  "insurance_policy",
+] as const;
+const STAGE_AUDITED = [
+  "name",
+  "position",
+  "status",
+  "doctor_id",
+  "direction_id",
+  "deadline",
+  "discount_percent",
+  "description",
+] as const;
+/** Columns of treatment_plans_summary, never written to a plan */
+const SUMMARY_KEYS = [
+  "items_count",
+  "done_count",
+  "gross_amount",
+  "subtotal_amount",
+  "done_amount",
+  "total_amount",
+  "discount_total",
+  "deal_name",
+  "deal_paid_amount",
+  "stages_count",
+  "stages_discount_amount",
+  "extra_discount_amount",
+  "paid_amount",
 ] as const;
 
 const forbidden = (message: string) =>
@@ -48,7 +86,9 @@ const forbidden = (message: string) =>
  * supabase/schemas/29_treatment_plans.sql — totals (planMath.ts), the main
  * agreed plan of the deal and its plan amount, the move to «План
  * согласован» (the stage checklist may refuse it: skipped, in the feed),
- * progress, the discount limit and the price list per role.
+ * progress, the discount limit and the price list per role. The stages of
+ * a plan and the stage templates of stage 34 (34_plan_editor.sql): numbers,
+ * status after the items, discounts, cancelled stages aside, templates.
  */
 export const createTreatmentDemo = ({
   baseDataProvider,
@@ -68,6 +108,8 @@ export const createTreatmentDemo = ({
   // «Дублировать план» copies the discounts as they are
   let copying = false;
   const previousPlans = new Map<string, TreatmentPlan>();
+  const previousStages = new Map<string, TreatmentStage>();
+  const previousItems = new Map<string, TreatmentPlanItem>();
 
   const myRole = async () => {
     const salesId = await currentSalesId();
@@ -111,12 +153,91 @@ export const createTreatmentDemo = ({
     (await all<TreatmentPlanItem>("treatment_plan_items")).filter((item) =>
       same(item.plan_id, planId),
     );
+  const stagesOf = async (planId: Identifier) =>
+    (await all<TreatmentStage>("treatment_stages"))
+      .filter((stage) => same(stage.plan_id, planId))
+      .sort((a, b) => a.position - b.position);
+  const getStage = async (id: Identifier) =>
+    (await all<TreatmentStage>("treatment_stages")).find((stage) =>
+      same(stage.id, id),
+    );
+  /** The totals of a plan with its stages (treatment_plans_summary) */
+  const totalsOf = async (plan: TreatmentPlan) =>
+    planTotals(plan, await itemsOf(plan.id), await stagesOf(plan.id));
+  const auditStage = async (
+    action: "create" | "update" | "delete",
+    stage: TreatmentStage,
+    previous?: TreatmentStage,
+  ) => {
+    const changes: Record<string, [unknown, unknown]> = {};
+    for (const field of STAGE_AUDITED) {
+      const before = action === "create" ? null : (previous ?? stage)[field];
+      const after = action === "delete" ? null : stage[field];
+      if (
+        (action !== "update" ||
+          JSON.stringify(before ?? null) !== JSON.stringify(after ?? null)) &&
+        (before != null || after != null)
+      ) {
+        changes[field] = [before, after];
+      }
+    }
+    if (!Object.keys(changes).length) return;
+    await logAudit({
+      entity: "treatment_stage" as AuditLogEntry["entity"],
+      entity_id: stage.id,
+      action,
+      changes: changes as AuditLogEntry["changes"],
+    });
+  };
+  /** The stage of a plan with this number, created («Этап N») when missing */
+  const stageAt = async (plan: TreatmentPlan, position: number) => {
+    const found = (await stagesOf(plan.id)).find(
+      (stage) => stage.position === position,
+    );
+    if (found) return found;
+    const { data } = await baseDataProvider.create<TreatmentStage>(
+      "treatment_stages",
+      {
+        data: {
+          plan_id: plan.id,
+          position,
+          name: `Этап ${position}`,
+          doctor_id: plan.doctor_id ?? null,
+          direction_id: null,
+          deadline: null,
+          description: null,
+          status: "new",
+          discount_percent: 0,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+        },
+      },
+    );
+    return data;
+  };
+  /** Same as private.treatment_stage_progress */
+  const stageProgress = async (stageId: Identifier | null | undefined) => {
+    if (stageId == null) return;
+    const stage = await getStage(stageId);
+    if (!stage) return;
+    const items = (await all<TreatmentPlanItem>("treatment_plan_items")).filter(
+      (item) => same(item.stage_id, stage.id),
+    );
+    const next = stageStatusAfterProgress(stage.status, items);
+    if (next !== stage.status) {
+      await baseDataProvider.update("treatment_stages", {
+        id: stage.id,
+        data: { status: next, updated_at: nowIso() },
+        previousData: stage,
+      });
+    }
+  };
 
   /** Same as private.sync_treatment_plan_amount */
   const syncAmount = async (planId: Identifier) => {
     const plan = await getPlan(planId);
     if (!plan?.is_main) return;
-    const { total } = planTotals(plan, await itemsOf(plan.id));
+    const { total } = await totalsOf(plan);
     const deal = await getDeal(plan.deal_id);
     if (!deal || deal.plan_amount === total) return;
     await getDataProvider().update("deals", {
@@ -234,11 +355,21 @@ export const createTreatmentDemo = ({
     });
   };
 
-  /** Same as handle_treatment_item_after_write */
+  /** Same as private.refresh_treatment_plan: cancelled stages aside */
   const afterItemsChanged = async (planId: Identifier) => {
     const plan = await getPlan(planId);
     if (!plan) return;
-    const next = statusAfterProgress(plan.status, await itemsOf(plan.id));
+    const cancelled = new Set(
+      (await stagesOf(plan.id))
+        .filter((stage) => stage.status === "cancelled")
+        .map((stage) => String(stage.id)),
+    );
+    const next = statusAfterProgress(
+      plan.status,
+      (await itemsOf(plan.id)).filter(
+        (item) => !cancelled.has(String(item.stage_id)),
+      ),
+    );
     if (next !== plan.status) {
       await getDataProvider().update("treatment_plans", {
         id: plan.id,
@@ -297,15 +428,18 @@ export const createTreatmentDemo = ({
   };
 
   const summaries = async (): Promise<TreatmentPlanSummary[]> => {
-    const [plans, items, deals] = await Promise.all([
+    const [plans, items, deals, stages] = await Promise.all([
       all<TreatmentPlan>("treatment_plans"),
       all<TreatmentPlanItem>("treatment_plan_items"),
       all<Deal>("deals"),
+      all<TreatmentStage>("treatment_stages"),
     ]);
     return plans.map((plan) => {
+      const planStages = stages.filter((stage) => same(stage.plan_id, plan.id));
       const totals = planTotals(
         plan,
         items.filter((item) => same(item.plan_id, plan.id)),
+        planStages,
       );
       const deal = deals.find((d) => same(d.id, plan.deal_id));
       return {
@@ -319,6 +453,12 @@ export const createTreatmentDemo = ({
         discount_total: totals.discountTotal,
         deal_name: deal?.name ?? null,
         deal_paid_amount: deal?.paid_amount ?? 0,
+        stages_count: planStages.filter((stage) => stage.status !== "cancelled")
+          .length,
+        stages_discount_amount: totals.stagesDiscount,
+        extra_discount_amount: totals.planDiscount,
+        // private.treatment_plan_paid: the payments of the deal
+        paid_amount: deal?.paid_amount ?? 0,
       };
     });
   };
@@ -341,29 +481,119 @@ export const createTreatmentDemo = ({
               discount_amount: source.discount_amount,
               note: source.note ?? null,
               doctor_id: source.doctor_id ?? null,
+              plan_type_id: source.plan_type_id ?? null,
+              complaints: source.complaints ?? null,
+              insurance_policy: source.insurance_policy ?? null,
             },
           },
         );
-        for (const item of await itemsOf(source.id)) {
-          await getDataProvider().create("treatment_plan_items", {
-            data: {
-              plan_id: plan.id,
-              stage_no: item.stage_no,
-              service_id: item.service_id ?? null,
-              name: item.name,
-              tooth: item.tooth ?? null,
-              quantity: item.quantity,
-              unit_price: item.unit_price,
-              discount_percent: item.discount_percent,
-              position: item.position,
-              done: false,
+        const items = await itemsOf(source.id);
+        for (const stage of await stagesOf(source.id)) {
+          const { data: copy } = await getDataProvider().create<TreatmentStage>(
+            "treatment_stages",
+            {
+              data: {
+                plan_id: plan.id,
+                position: stage.position,
+                name: stage.name,
+                doctor_id: stage.doctor_id ?? null,
+                direction_id: stage.direction_id ?? null,
+                deadline: stage.deadline ?? null,
+                description: stage.description ?? null,
+                status: stage.status === "cancelled" ? "cancelled" : "new",
+                discount_percent: stage.discount_percent,
+              },
             },
-          });
+          );
+          for (const item of items.filter((i) => same(i.stage_id, stage.id))) {
+            await getDataProvider().create("treatment_plan_items", {
+              data: {
+                plan_id: plan.id,
+                stage_id: copy.id,
+                stage_no: copy.position,
+                service_id: item.service_id ?? null,
+                name: item.name,
+                tooth: item.tooth ?? null,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                discount_percent: item.discount_percent,
+                position: item.position,
+                done: false,
+              },
+            });
+          }
         }
         return plan.id;
       } finally {
         copying = false;
       }
+    },
+    /** Same as public.save_stage_template */
+    saveStageTemplate: async (
+      stageId: Identifier,
+      name?: string | null,
+    ): Promise<Identifier> => {
+      await checkRights();
+      const stage = await getStage(stageId);
+      if (!stage) throw new Error("Этап не найден");
+      const items = (
+        await all<TreatmentPlanItem>("treatment_plan_items")
+      ).filter((item) => same(item.stage_id, stage.id));
+      const { data } = await getDataProvider().create<TreatmentStageTemplate>(
+        "treatment_stage_templates",
+        {
+          data: {
+            name: name?.trim() || stage.name,
+            direction_id: stage.direction_id ?? null,
+            description: stage.description ?? null,
+            items: templateLines(items),
+          },
+        },
+      );
+      return data.id;
+    },
+    /** Same as public.add_stage_from_template */
+    addStageFromTemplate: async (
+      planId: Identifier,
+      templateId: Identifier,
+    ): Promise<Identifier> => {
+      const plan = await getPlan(planId);
+      if (!plan) throw new Error("План не найден");
+      const template = (
+        await all<TreatmentStageTemplate>("treatment_stage_templates")
+      ).find((t) => same(t.id, templateId));
+      if (!template) throw new Error("Шаблон не найден");
+      const { data: stage } = await getDataProvider().create<TreatmentStage>(
+        "treatment_stages",
+        {
+          data: {
+            plan_id: plan.id,
+            name: template.name,
+            direction_id: template.direction_id ?? null,
+            description: template.description ?? null,
+          },
+        },
+      );
+      const lines = itemsFromTemplate(template, await all<Service>("services"));
+      copying = true;
+      try {
+        for (const [position, line] of lines.entries()) {
+          await getDataProvider().create("treatment_plan_items", {
+            data: {
+              ...line,
+              plan_id: plan.id,
+              stage_id: stage.id,
+              stage_no: stage.position,
+              tooth: null,
+              done: false,
+              position,
+            },
+          });
+        }
+      } finally {
+        copying = false;
+      }
+      return stage.id;
     },
     /** Same as public.report_plan_services */
     getPlanServicesReport: async (
@@ -372,12 +602,22 @@ export const createTreatmentDemo = ({
       if (!canExceedLimits(await myRole())) {
         throw new Error("reports.forbidden");
       }
-      const [plans, items, deals, services] = await Promise.all([
+      const [plans, allItems, deals, services, stages] = await Promise.all([
         all<TreatmentPlan>("treatment_plans"),
         all<TreatmentPlanItem>("treatment_plan_items"),
         all<Deal>("deals"),
         all<Service>("services"),
+        all<TreatmentStage>("treatment_stages"),
       ]);
+      // Cancelled stages aside (stage 34)
+      const cancelled = new Set(
+        stages
+          .filter((stage) => stage.status === "cancelled")
+          .map((stage) => String(stage.id)),
+      );
+      const items = allItems.filter(
+        (item) => !cancelled.has(String(item.stage_id)),
+      );
       const rows = new Map<string, PlanServiceRow & { planIds: Set<string> }>();
       for (const plan of plans) {
         if (!plan.is_main || !plan.agreed_at) continue;
@@ -454,6 +694,9 @@ export const createTreatmentDemo = ({
           is_main: false,
           note: null,
           agreed_at: null,
+          plan_type_id: null,
+          complaints: null,
+          insurance_policy: null,
           ...data,
           name: data.name?.trim() || "План лечения",
           status: data.status ?? "draft",
@@ -473,6 +716,8 @@ export const createTreatmentDemo = ({
       },
       afterCreate: async (result) => {
         const plan = result.data as TreatmentPlan;
+        // A new plan starts with «Этап 1» (a duplicate copies its stages)
+        if (!copying) await stageAt(plan, 1);
         await auditPlan("create", plan);
         if (plan.is_main) await syncAmount(plan.id);
         if (plan.status === "agreed") await moveStage(plan);
@@ -484,17 +729,7 @@ export const createTreatmentDemo = ({
         if (!previous) throw new Error("План не найден");
         const data = { ...params.data } as Partial<TreatmentPlan> &
           Partial<TreatmentPlanSummary>;
-        for (const key of [
-          "items_count",
-          "done_count",
-          "gross_amount",
-          "subtotal_amount",
-          "done_amount",
-          "total_amount",
-          "discount_total",
-          "deal_name",
-          "deal_paid_amount",
-        ] as const) {
+        for (const key of SUMMARY_KEYS) {
           delete data[key];
         }
         if (data.deal_id != null && !same(data.deal_id, previous.deal_id)) {
@@ -505,7 +740,7 @@ export const createTreatmentDemo = ({
           Number(next.discount_percent) !== Number(previous.discount_percent) ||
           Number(next.discount_amount) !== Number(previous.discount_amount)
         ) {
-          const { subtotal } = planTotals(next, await itemsOf(next.id));
+          const { subtotal } = await totalsOf(next);
           await checkDiscount(
             Number(next.discount_percent),
             subtotal,
@@ -561,6 +796,12 @@ export const createTreatmentDemo = ({
             previousData: item,
           });
         }
+        for (const stage of await stagesOf(plan.id)) {
+          await baseDataProvider.delete("treatment_stages", {
+            id: stage.id,
+            previousData: stage,
+          });
+        }
         await auditPlan("delete", plan);
         return result;
       },
@@ -573,9 +814,16 @@ export const createTreatmentDemo = ({
         const plan = await getPlan(data.plan_id!);
         if (!plan) throw new Error("План не найден");
         const items = await itemsOf(plan.id);
-        const stage_no = Number(data.stage_no ?? 1);
+        // Written by the id of its stage, or by a stage number only
+        const stage =
+          data.stage_id != null
+            ? await getStage(data.stage_id)
+            : await stageAt(plan, Number(data.stage_no ?? 1));
+        if (!stage || !same(stage.plan_id, plan.id)) {
+          throw new Error("Этап не найден в плане");
+        }
+        const stage_no = stage.position;
         const item = {
-          stage_no,
           quantity: 1,
           unit_price: 0,
           discount_percent: 0,
@@ -589,11 +837,15 @@ export const createTreatmentDemo = ({
             ) + 1,
           created_at: nowIso(),
           ...data,
+          stage_id: stage.id,
+          stage_no,
         } as TreatmentPlanItem;
         return { ...params, data: { ...item, ...(await prepareItem(item)) } };
       },
       afterCreate: async (result) => {
-        await afterItemsChanged((result.data as TreatmentPlanItem).plan_id);
+        const item = result.data as TreatmentPlanItem;
+        await stageProgress(item.stage_id);
+        await afterItemsChanged(item.plan_id);
         return result;
       },
       beforeUpdate: async (params) => {
@@ -606,10 +858,34 @@ export const createTreatmentDemo = ({
         if (data.plan_id != null && !same(data.plan_id, previous.plan_id)) {
           throw new Error("Позиция не переносится в другой план");
         }
+        // Moved by a stage number only (stage 29): the stage of that number
+        if (
+          data.stage_no != null &&
+          data.stage_no !== previous.stage_no &&
+          (data.stage_id == null || same(data.stage_id, previous.stage_id))
+        ) {
+          const plan = await getPlan(previous.plan_id);
+          if (plan) data.stage_id = (await stageAt(plan, data.stage_no)).id;
+        }
+        if (data.stage_id != null) {
+          const stage = await getStage(data.stage_id);
+          if (!stage || !same(stage.plan_id, previous.plan_id)) {
+            throw new Error("Этап не найден в плане");
+          }
+          data.stage_no = stage.position;
+        }
+        previousItems.set(String(params.id), previous);
         return { ...params, data: await prepareItem(data, previous) };
       },
       afterUpdate: async (result) => {
-        await afterItemsChanged((result.data as TreatmentPlanItem).plan_id);
+        const item = result.data as TreatmentPlanItem;
+        const previous = previousItems.get(String(item.id));
+        previousItems.delete(String(item.id));
+        if (previous && !same(previous.stage_id, item.stage_id)) {
+          await stageProgress(previous.stage_id);
+        }
+        await stageProgress(item.stage_id);
+        await afterItemsChanged(item.plan_id);
         return result;
       },
       beforeDelete: async (params) => {
@@ -617,8 +893,172 @@ export const createTreatmentDemo = ({
         return params;
       },
       afterDelete: async (result) => {
-        await afterItemsChanged((result.data as TreatmentPlanItem).plan_id);
+        const item = result.data as TreatmentPlanItem;
+        await stageProgress(item.stage_id);
+        await afterItemsChanged(item.plan_id);
         return result;
+      },
+    },
+    {
+      resource: "treatment_stages",
+      beforeCreate: async (params) => {
+        await checkRights();
+        const data = params.data as Partial<TreatmentStage>;
+        const plan = await getPlan(data.plan_id!);
+        if (!plan) throw new Error("План не найден");
+        const position =
+          Number(data.position ?? 0) >= 1
+            ? Number(data.position)
+            : nextStagePosition(await stagesOf(plan.id));
+        if (position > MAX_STAGES) {
+          throw new Error("В плане не больше 20 этапов");
+        }
+        const discount = Number(data.discount_percent ?? 0);
+        if (discount > 0) await checkDiscount(discount);
+        return {
+          ...params,
+          data: {
+            status: "new",
+            direction_id: null,
+            deadline: null,
+            created_at: nowIso(),
+            ...data,
+            position,
+            name: data.name?.trim() || `Этап ${position}`,
+            description: data.description?.trim() || null,
+            doctor_id: data.doctor_id ?? plan.doctor_id ?? null,
+            discount_percent: discount,
+            updated_at: nowIso(),
+          },
+        };
+      },
+      afterCreate: async (result) => {
+        await auditStage("create", result.data as TreatmentStage);
+        return result;
+      },
+      beforeUpdate: async (params) => {
+        await checkRights();
+        const previous = await getStage(params.id);
+        if (!previous) throw new Error("Этап не найден");
+        const data = { ...params.data } as Partial<TreatmentStage>;
+        if (data.plan_id != null && !same(data.plan_id, previous.plan_id)) {
+          throw new Error("Этап не переносится в другой план");
+        }
+        const next = { ...previous, ...data };
+        if (
+          Number(next.discount_percent) > 0 &&
+          Number(next.discount_percent) !== Number(previous.discount_percent)
+        ) {
+          await checkDiscount(Number(next.discount_percent));
+        }
+        previousStages.set(String(params.id), previous);
+        return {
+          ...params,
+          data: {
+            ...data,
+            ...("name" in data
+              ? { name: data.name?.trim() || `Этап ${next.position}` }
+              : {}),
+            ...("description" in data
+              ? { description: data.description?.trim() || null }
+              : {}),
+            ...("discount_percent" in data
+              ? { discount_percent: Number(data.discount_percent ?? 0) }
+              : {}),
+            updated_at: nowIso(),
+          },
+        };
+      },
+      afterUpdate: async (result) => {
+        const stage = result.data as TreatmentStage;
+        const previous = previousStages.get(String(stage.id));
+        previousStages.delete(String(stage.id));
+        if (!previous) return result;
+        await auditStage("update", stage, previous);
+        if (stage.position !== previous.position) {
+          const items = (
+            await all<TreatmentPlanItem>("treatment_plan_items")
+          ).filter((item) => same(item.stage_id, stage.id));
+          for (const item of items) {
+            await baseDataProvider.update("treatment_plan_items", {
+              id: item.id,
+              data: { stage_no: stage.position },
+              previousData: item,
+            });
+          }
+        }
+        if (
+          stage.status !== previous.status ||
+          Number(stage.discount_percent) !== Number(previous.discount_percent)
+        ) {
+          await afterItemsChanged(stage.plan_id);
+        }
+        return result;
+      },
+      beforeDelete: async (params) => {
+        await checkRights();
+        return params;
+      },
+      afterDelete: async (result) => {
+        const stage = result.data as TreatmentStage;
+        const items = (
+          await all<TreatmentPlanItem>("treatment_plan_items")
+        ).filter((item) => same(item.stage_id, stage.id));
+        for (const item of items) {
+          await baseDataProvider.delete("treatment_plan_items", {
+            id: item.id,
+            previousData: item,
+          });
+        }
+        // The next stages move up
+        for (const next of await stagesOf(stage.plan_id)) {
+          if (next.position <= stage.position) continue;
+          await getDataProvider().update("treatment_stages", {
+            id: next.id,
+            data: { position: next.position - 1 },
+            previousData: next,
+          });
+        }
+        await auditStage("delete", stage);
+        await afterItemsChanged(stage.plan_id);
+        return result;
+      },
+    },
+    {
+      resource: "treatment_stage_templates",
+      beforeCreate: async (params) => {
+        await checkRights();
+        return {
+          ...params,
+          data: {
+            description: null,
+            direction_id: null,
+            items: [],
+            ...params.data,
+            name: params.data.name?.trim() || "Этап",
+            created_by: (await currentSalesId()) ?? null,
+            created_at: nowIso(),
+            updated_at: nowIso(),
+          },
+        };
+      },
+      afterCreate: async (result) => {
+        const template = result.data as TreatmentStageTemplate;
+        await logAudit({
+          entity: "treatment_stage_template" as AuditLogEntry["entity"],
+          entity_id: template.id,
+          action: "create",
+          changes: { name: [null, template.name] } as AuditLogEntry["changes"],
+        });
+        return result;
+      },
+      beforeUpdate: async (params) => {
+        await checkRights();
+        return params;
+      },
+      beforeDelete: async (params) => {
+        await checkRights();
+        return params;
       },
     },
     {
@@ -648,28 +1088,31 @@ export const createTreatmentDemo = ({
   const views = {
     treatment_plans: summaries,
     treatment_plan_stages: async () => {
-      const items = await all<TreatmentPlanItem>("treatment_plan_items");
-      const rows = new Map<string, any>();
-      for (const item of items) {
-        const key = `${item.plan_id}:${item.stage_no}`;
-        const row = rows.get(key) ?? {
-          id: key,
-          plan_id: item.plan_id,
-          stage_no: item.stage_no,
-          items_count: 0,
-          done_count: 0,
-          subtotal_amount: 0,
+      const [stages, items] = await Promise.all([
+        all<TreatmentStage>("treatment_stages"),
+        all<TreatmentPlanItem>("treatment_plan_items"),
+      ]);
+      return stages.map((stage) => {
+        const own = items.filter((item) => same(item.stage_id, stage.id));
+        const [group] = planTotals(
+          { discount_percent: 0, discount_amount: 0 },
+          own,
+          [stage],
+        ).stages;
+        return {
+          id: stage.id,
+          plan_id: stage.plan_id,
+          stage_no: stage.position,
+          items_count: own.length,
+          done_count: own.filter((item) => item.done).length,
+          subtotal_amount: group?.subtotal ?? 0,
+          stage_id: stage.id,
+          name: stage.name,
+          status: stage.status,
+          discount_percent: stage.discount_percent,
+          total_amount: group?.total ?? 0,
         };
-        row.items_count++;
-        if (item.done) row.done_count++;
-        row.subtotal_amount += lineTotal(
-          item.quantity,
-          item.unit_price,
-          item.discount_percent,
-        );
-        rows.set(key, row);
-      }
-      return [...rows.values()];
+      });
     },
   };
 

@@ -1,47 +1,28 @@
-import { useTranslate, type Identifier } from "ra-core";
-import { useState } from "react";
+import { useTranslate } from "ra-core";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 import { formatTenge } from "../onboarding/servicePresets";
 import type { Deal } from "../types";
 import { formatDate } from "./format";
 import { MainPlanMark, PlanStatusBadge } from "./PlanBits";
-import { PlanEditor } from "./PlanEditor";
+import { planPath } from "./planUi";
 import { progressPlan, remainingToPay } from "./planMath";
-import { usePlanMutations, usePlanRights, usePlans } from "./useTreatmentPlans";
+import { usePlanRights, usePlans } from "./useTreatmentPlans";
 
 const tenge = (amount: number) => `${formatTenge(amount)} ₸`;
 
 /**
  * Tab «План лечения» of the deal page: the plans of the deal (variants)
  * with their status and total, the progress of the main plan («Выполнено N
- * из M») and what is left to pay. A plan opens in a wide editor.
+ * из M») and what is left to pay. A plan opens as a full page (stage 34):
+ * /patients/:patientId/plans/:planId.
  */
 export const DealTreatmentPlans = ({ deal }: { deal: Deal }) => {
   const translate = useTranslate();
   const { data: plans = [], isPending } = usePlans({ deal_id: deal.id });
   const { canEdit } = usePlanRights();
-  const { createPlan } = usePlanMutations();
-  const [openId, setOpenId] = useState<Identifier | null>(null);
-  const open = plans.find((plan) => String(plan.id) === String(openId));
   const main = progressPlan(plans);
-
-  const newPlan = () =>
-    createPlan.mutate(
-      {
-        deal_id: deal.id,
-        name: plans.length
-          ? translate("treatment.plans.variant_name", { n: plans.length + 1 })
-          : translate("treatment.plans.default_name"),
-      },
-      { onSuccess: (plan) => setOpenId(plan.id) },
-    );
 
   if (isPending) return null;
 
@@ -77,9 +58,11 @@ export const DealTreatmentPlans = ({ deal }: { deal: Deal }) => {
         <h3 className="text-sm font-semibold">
           {translate("treatment.plans.title")}
         </h3>
-        {canEdit ? (
-          <Button size="sm" onClick={newPlan} disabled={createPlan.isPending}>
-            {translate("treatment.actions.new_plan")}
+        {canEdit && deal.patient_id != null ? (
+          <Button size="sm" asChild>
+            <Link to={planPath(deal.patient_id, "new", deal.id)}>
+              {translate("treatment.actions.new_plan")}
+            </Link>
           </Button>
         ) : null}
       </div>
@@ -90,15 +73,17 @@ export const DealTreatmentPlans = ({ deal }: { deal: Deal }) => {
         </p>
       ) : (
         <ul
-          className="flex flex-col divide-y divide-border rounded-md border border-border"
+          className="flex flex-col gap-1.5"
           aria-label={translate("treatment.plans.title")}
         >
           {plans.map((plan) => (
             <li key={plan.id}>
-              <button
-                type="button"
-                onClick={() => setOpenId(plan.id)}
-                className="flex w-full flex-col gap-1 px-3 py-2 text-left transition-colors hover:bg-muted/50"
+              <Link
+                to={planPath(plan.patient_id, plan.id)}
+                aria-label={translate("plan_editor.open_plan", {
+                  name: plan.name,
+                })}
+                className="flex w-full flex-col gap-1 rounded-2xl bg-pill px-4 py-3 text-left text-foreground no-underline transition-colors hover:bg-pill-hover"
               >
                 <span className="flex w-full items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">
@@ -135,42 +120,65 @@ export const DealTreatmentPlans = ({ deal }: { deal: Deal }) => {
                         })}
                   </span>
                 </span>
-              </button>
+              </Link>
             </li>
           ))}
         </ul>
       )}
-
-      <Dialog
-        open={open != null}
-        onOpenChange={(value) => {
-          if (!value) setOpenId(null);
-        }}
-      >
-        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-5xl">
-          <DialogTitle className="sr-only">
-            {open?.name ?? translate("treatment.tab")}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            {translate("treatment.tab")}
-          </DialogDescription>
-          {open ? (
-            <PlanEditor
-              deal={deal}
-              plan={open}
-              onDuplicated={() => setOpenId(null)}
-              onDeleted={() => setOpenId(null)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
+/**
+ * On the main tab of the deal page: the main plan (or the latest one) as a
+ * pill that opens the plan page, with its total.
+ */
+export const DealPlanLink = ({ deal }: { deal: Deal }) => {
+  const translate = useTranslate();
+  const { data: plans = [] } = usePlans({ deal_id: deal.id });
+  const plan =
+    plans.find((p) => p.is_main) ??
+    [...plans].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+  if (!plan) return null;
+  return (
+    <Link
+      to={planPath(plan.patient_id, plan.id)}
+      aria-label={translate("plan_editor.open_plan", { name: plan.name })}
+      className="flex items-center gap-3 rounded-2xl bg-pill px-4 py-2.5 text-sm text-foreground no-underline transition-colors hover:bg-pill-hover"
+      data-testid="deal-plan-link"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs text-muted-foreground">
+          {translate("plan_editor.title")}
+        </span>
+        <span className="block truncate">{plan.name}</span>
+      </span>
+      <span className="font-light tabular-nums">
+        {tenge(plan.total_amount)}
+      </span>
+      <span
+        className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
+        aria-hidden
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7 17L17 7M9 7h8v8" />
+        </svg>
+      </span>
+    </Link>
+  );
+};
+
 const Figure = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-md bg-card/70 px-3 py-2">
+  <div className="rounded-2xl bg-pill px-3 py-2">
     <div className="text-xs text-muted-foreground">{label}</div>
-    <div className="font-semibold tabular-nums">{value}</div>
+    <div className="text-lg font-light tabular-nums">{value}</div>
   </div>
 );

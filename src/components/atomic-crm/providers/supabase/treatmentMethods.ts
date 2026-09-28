@@ -19,6 +19,30 @@ export const getTreatmentMethods = () => ({
     if (error) throw error;
     return data as Identifier;
   },
+  /** «Сохранить как шаблон этапа» (public.save_stage_template, stage 34) */
+  async saveStageTemplate(
+    stageId: Identifier,
+    name?: string | null,
+  ): Promise<Identifier> {
+    const { data, error } = await getSupabaseClient().rpc(
+      "save_stage_template",
+      { source_stage_id: stageId, template_name: name ?? null },
+    );
+    if (error) throw error;
+    return data as Identifier;
+  },
+  /** «Добавить этап из шаблона»: the new stage (public.add_stage_from_template) */
+  async addStageFromTemplate(
+    planId: Identifier,
+    templateId: Identifier,
+  ): Promise<Identifier> {
+    const { data, error } = await getSupabaseClient().rpc(
+      "add_stage_from_template",
+      { target_plan_id: planId, source_template_id: templateId },
+    );
+    if (error) throw error;
+    return data as Identifier;
+  },
   /** Reports «Деньги» → «Согласованные планы по позициям» */
   async getPlanServicesReport(
     filters: ReportFilters,

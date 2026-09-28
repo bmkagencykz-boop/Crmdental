@@ -1,11 +1,18 @@
 import type { Identifier } from "ra-core";
 
-import type { PlanStatus, TreatmentPlan, TreatmentPlanItem } from "./types";
+import type {
+  PlanStatus,
+  StageStatus,
+  TreatmentPlan,
+  TreatmentPlanItem,
+  TreatmentStage,
+} from "./types";
 
 /**
  * Totals of a treatment plan, in whole tenge: the twin of the database
  * (supabase/schemas/29_treatment_plans.sql — the line_total column,
- * private.treatment_plan_total, public.treatment_plans_summary). Rounding is
+ * private.treatment_plan_total; 34_plan_editor.sql — the stages,
+ * private.treatment_stage_total, public.treatment_plans_summary). Rounding is
  * half up, like round() of PostgreSQL on positive numbers; BigInt keeps
  * large sums exact.
  */
@@ -51,22 +58,50 @@ export const planTotal = (
       planDiscount(subtotal, discountPercent, discountAmount),
   );
 
+/** The total of a stage: Σ line totals − round(Σ × stage % / 100) (private.treatment_stage_total) */
+export const stageTotal = (linesTotal: number, discountPercent: number) =>
+  Math.round(linesTotal) -
+  roundDiv(whole(linesTotal) * hundredths(discountPercent));
+
+/** What the totals need of a stage (stage 34) */
+export type StageLike = Pick<
+  TreatmentStage,
+  "id" | "position" | "status" | "discount_percent"
+> &
+  Partial<
+    Pick<TreatmentStage, "name" | "doctor_id" | "deadline" | "direction_id">
+  >;
+
 export type StageTotals = {
   stage_no: number;
+  /** The stage itself (stage 34); none for the items of a bare stage number */
+  stage?: StageLike;
   items: TreatmentPlanItem[];
+  /** Σ line totals (after the discounts of the items) */
   subtotal: number;
+  /** The stage discount, tenge */
+  discount: number;
+  /** subtotal − the stage discount */
+  total: number;
   done: number;
+  /** A cancelled stage counts in no total */
+  cancelled: boolean;
 };
 
 export type PlanTotals = {
-  /** Σ quantity × price */
+  /** «Итого»: Σ quantity × price */
   gross: number;
-  /** Σ line totals (after the discounts of the items) */
+  /** Σ stage totals (after the discounts of the items and of the stages) */
   subtotal: number;
-  /** gross − subtotal */
+  /** gross − Σ line totals */
   itemsDiscount: number;
-  /** subtotal − total */
+  /** Σ line totals − subtotal: the discounts of the stages */
+  stageDiscount: number;
+  /** «Скидка в этапах»: gross − subtotal (items and stages) */
+  stagesDiscount: number;
+  /** «Дополнительная скидка»: subtotal − total */
   planDiscount: number;
+  /** «Итого со скидкой» */
   total: number;
   /** gross − total: every discount */
   discountTotal: number;
@@ -85,40 +120,85 @@ export const compareItems = (a: TreatmentPlanItem, b: TreatmentPlanItem) =>
   a.position - b.position ||
   Number(a.id) - Number(b.id);
 
-/** Items grouped by stage, stages and items in order */
-export const groupByStage = (items: TreatmentPlanItem[]): StageTotals[] => {
-  const stages = new Map<number, StageTotals>();
-  for (const item of [...items].sort(compareItems)) {
-    const stage = stages.get(item.stage_no) ?? {
-      stage_no: item.stage_no,
-      items: [],
-      subtotal: 0,
-      done: 0,
-    };
-    stage.items.push(item);
-    stage.subtotal += itemTotal(item);
-    if (item.done) stage.done++;
-    stages.set(item.stage_no, stage);
+const emptyStage = (stage_no: number, stage?: StageLike): StageTotals => ({
+  stage_no,
+  stage,
+  items: [],
+  subtotal: 0,
+  discount: 0,
+  total: 0,
+  done: 0,
+  cancelled: stage?.status === "cancelled",
+});
+
+/**
+ * Items grouped by stage, stages and items in order. With the stages of the
+ * plan (stage 34) every stage is there, even an empty one, and an item goes
+ * to its stage_id; without them (stage 29) the items are grouped by their
+ * stage number.
+ */
+export const groupByStage = (
+  items: TreatmentPlanItem[],
+  stages: StageLike[] = [],
+): StageTotals[] => {
+  const groups = new Map<string, StageTotals>();
+  const byNumber = new Map<number, string>();
+  for (const stage of [...stages].sort((a, b) => a.position - b.position)) {
+    const key = `s${stage.id}`;
+    groups.set(key, emptyStage(stage.position, stage));
+    byNumber.set(stage.position, key);
   }
-  return [...stages.values()];
+  for (const item of [...items].sort(compareItems)) {
+    const key =
+      item.stage_id != null && groups.has(`s${item.stage_id}`)
+        ? `s${item.stage_id}`
+        : (byNumber.get(item.stage_no) ?? `n${item.stage_no}`);
+    const group = groups.get(key) ?? emptyStage(item.stage_no);
+    group.items.push(item);
+    group.subtotal += itemTotal(item);
+    if (item.done) group.done++;
+    groups.set(key, group);
+  }
+  return [...groups.values()]
+    .map((group) => {
+      const total = stageTotal(
+        group.subtotal,
+        Number(group.stage?.discount_percent ?? 0),
+      );
+      return { ...group, total, discount: group.subtotal - total };
+    })
+    .sort((a, b) => a.stage_no - b.stage_no);
 };
 
+/**
+ * The totals of a plan, like public.treatment_plans_summary: the stage
+ * discounts, cancelled stages aside, then the extra discount of the plan.
+ */
 export const planTotals = (
   plan: Pick<TreatmentPlan, "discount_percent" | "discount_amount">,
   items: TreatmentPlanItem[],
+  stages: StageLike[] = [],
 ): PlanTotals => {
   let gross = 0;
+  let lines = 0;
   let subtotal = 0;
   let doneAmount = 0;
   let doneCount = 0;
-  for (const item of items) {
-    const line = itemTotal(item);
-    gross += Math.round(item.quantity) * Math.round(item.unit_price);
-    subtotal += line;
-    if (item.done) {
-      doneCount++;
-      doneAmount += line;
+  let itemsCount = 0;
+  const groups = groupByStage(items, stages);
+  for (const group of groups) {
+    if (group.cancelled) continue;
+    for (const item of group.items) {
+      const line = itemTotal(item);
+      gross += Math.round(item.quantity) * Math.round(item.unit_price);
+      itemsCount++;
+      if (item.done) {
+        doneCount++;
+        doneAmount += line;
+      }
     }
+    lines += group.subtotal;
+    subtotal += group.total;
   }
   const total = planTotal(
     subtotal,
@@ -128,15 +208,34 @@ export const planTotals = (
   return {
     gross,
     subtotal,
-    itemsDiscount: gross - subtotal,
+    itemsDiscount: gross - lines,
+    stageDiscount: lines - subtotal,
+    stagesDiscount: gross - subtotal,
     planDiscount: subtotal - total,
     total,
     discountTotal: gross - total,
-    itemsCount: items.length,
+    itemsCount,
     doneCount,
     doneAmount,
-    stages: groupByStage(items),
+    stages: groups,
   };
+};
+
+/**
+ * The status of a stage after its items changed: all done → done, some done
+ * → in progress, no longer all done → in progress; a cancelled stage stays
+ * cancelled (private.treatment_stage_progress)
+ */
+export const stageStatusAfterProgress = (
+  status: StageStatus,
+  items: Pick<TreatmentPlanItem, "done">[],
+): StageStatus => {
+  if (status === "cancelled") return status;
+  const done = items.filter((item) => item.done).length;
+  if (items.length > 0 && done === items.length) return "done";
+  if (status === "done") return "in_progress";
+  if (done > 0 && status === "new") return "in_progress";
+  return status;
 };
 
 /**

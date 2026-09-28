@@ -37,6 +37,23 @@ describe("canAccess", () => {
     );
   });
 
+  it("lets everybody read the price list, editors change it, owner and head see the cost", () => {
+    const can = (
+      role: "owner" | "head" | "manager" | "integrator",
+      resource: string,
+      action: string,
+    ) => canAccess(role, { resource, action });
+    expect(can("manager", "price_list", "menu")).toBe(true);
+    expect(can("manager", "price_list", "list")).toBe(true);
+    expect(can("manager", "price_list", "edit")).toBe(false);
+    expect(can("manager", "service_costs", "list")).toBe(false);
+    expect(can("head", "price_list", "edit")).toBe(true);
+    expect(can("head", "service_costs", "list")).toBe(true);
+    expect(can("integrator", "price_list", "edit")).toBe(true);
+    expect(can("integrator", "service_costs", "list")).toBe(false);
+    expect(can("owner", "service_costs", "list")).toBe(true);
+  });
+
   it("shows the reports to the owner and the head only", () => {
     expect(canAccess("owner", { resource: "reports", action: "list" })).toBe(
       true,

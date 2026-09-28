@@ -62,6 +62,15 @@ export const canAccess = <
     if (allowed !== undefined) return allowed;
   }
 
+  // The price list (stage 35): everybody reads the prices, the owner and
+  // the head change them; the cost price is theirs only
+  if (params.resource === "price_list") {
+    return role === "head" || ["list", "show", "menu"].includes(params.action);
+  }
+  if (params.resource === "service_costs") {
+    return role === "head";
+  }
+
   // Marketplace of integrations (stage 25): owner, head (and integrator)
   if (params.resource === "integrations") {
     return role === "head";
@@ -128,6 +137,10 @@ export const canAccess = <
  */
 const integratorCanAccess = ({ resource, action }: CanAccessParams) => {
   if (resource === "configuration" || resource === "integrations") {
+    return true;
+  }
+  // The price list is configuration (stage 35): edited, but no cost price
+  if (resource === "price_list") {
     return true;
   }
   if (resource === "deals") {

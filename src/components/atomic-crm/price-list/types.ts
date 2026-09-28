@@ -42,3 +42,28 @@ export type BulkServiceResult = {
   deleted: number;
   archived: number;
 };
+
+/** A service to create (import, starter price list) */
+export type NewService = {
+  name: string;
+  code?: string | null;
+  /** The path «Раздел / Подраздел»: the database finds or creates it */
+  category?: string | null;
+  category_id?: Identifier | null;
+  price?: number | null;
+  position: number;
+  unit?: Service["unit"];
+  duration_minutes?: number | null;
+  specialty?: string | null;
+  materials_note?: string | null;
+  is_archived?: boolean;
+};
+
+/** A cost price (public.service_costs: the owner and the head only) */
+export type ServiceCost = {
+  id: Identifier;
+  service_id: Identifier;
+  cost_price: number;
+  updated_by?: Identifier | null;
+  updated_at?: string;
+};

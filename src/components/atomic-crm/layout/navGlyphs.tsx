@@ -86,6 +86,15 @@ export const ReportsGlyph = glyph(
   </>,
 );
 
+/** Прайс: a price tag with its hole and two lines of a price list */
+export const PriceListGlyph = glyph(
+  <>
+    <path d="M3.5 12.5V3.5h9l8 8-9 9z" />
+    <circle cx="8" cy="8" r="1.25" />
+    <path d="M11 13l2.5 2.5M13 11l2.5 2.5" />
+  </>,
+);
+
 /** Рассылки: an envelope */
 export const MailingsGlyph = glyph(
   <>

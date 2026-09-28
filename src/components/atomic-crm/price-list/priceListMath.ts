@@ -57,7 +57,8 @@ export const parseChange = (raw: string): number | null => {
 export const marginPercent = (
   price: number | null | undefined,
   cost: number | null | undefined,
-) => (price && cost != null ? Math.round(((price - cost) / price) * 100) : null);
+) =>
+  price && cost != null ? Math.round(((price - cost) / price) * 100) : null;
 
 // --- categories --------------------------------------------------------------
 
@@ -129,9 +130,7 @@ export const categoryWithChildren = (
   id: Identifier,
 ) => [
   String(id),
-  ...categories
-    .filter((c) => same(c.parent_id, id))
-    .map((c) => String(c.id)),
+  ...categories.filter((c) => same(c.parent_id, id)).map((c) => String(c.id)),
 ];
 
 /** A name the database accepts: trimmed, no «/», ≤ 100 characters */
@@ -212,7 +211,10 @@ export const filterPriceRows = <T extends PriceListRow>(
   );
 };
 
-const compareCodes = (a: string | null | undefined, b: string | null | undefined) =>
+const compareCodes = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+) =>
   !a ? (!b ? 0 : 1) : !b ? -1 : a.localeCompare(b, "ru", { numeric: true });
 
 /** Nulls last whatever the order */

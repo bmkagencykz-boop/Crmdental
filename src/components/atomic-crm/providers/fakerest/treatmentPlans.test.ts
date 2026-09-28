@@ -99,7 +99,9 @@ describe("demo treatment plans", () => {
     const { db } = setup();
     const priced = db.services.filter((s) => s.price != null && s.code);
     expect(priced.length).toBeGreaterThanOrEqual(40);
-    expect(new Set(priced.map((s) => s.category)).size).toBe(8);
+    expect(new Set(priced.map((s) => s.category?.split(" / ")[0])).size).toBe(
+      8,
+    );
     const statuses = new Set(db.treatment_plans.map((p) => p.status));
     for (const status of [
       "draft",

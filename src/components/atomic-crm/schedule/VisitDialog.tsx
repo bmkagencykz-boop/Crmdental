@@ -284,6 +284,18 @@ const VisitFields = ({ visit }: { visit?: Visit }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctorId, doctors.length]);
+  // The price list gives the length of a visit of the service (stage 35),
+  // unless the duration was chosen
+  const firstService = useRef(serviceId);
+  useEffect(() => {
+    if (visit || String(serviceId) === String(firstService.current)) return;
+    firstService.current = serviceId;
+    const minutes = findById(services, serviceId)?.duration_minutes;
+    if (minutes && !getFieldState("duration").isDirty) {
+      setValue("duration", minutes);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId, services.length]);
   useEffect(() => {
     if (visit || serviceId != null) return;
     const deal = openDeals.find((item) => String(item.id) === String(dealId));
@@ -299,6 +311,9 @@ const VisitFields = ({ visit }: { visit?: Visit }) => {
       ...DURATION_CHOICES,
       ...(findById(doctors, doctorId)?.visit_minutes
         ? [findById(doctors, doctorId)!.visit_minutes!]
+        : []),
+      ...(findById(services, serviceId)?.duration_minutes
+        ? [findById(services, serviceId)!.duration_minutes!]
         : []),
     ]),
   )

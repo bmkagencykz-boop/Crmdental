@@ -111,7 +111,7 @@ END;
 $_$;
 
 -- Staff row of an auth user in an organization. Invitations only grant the
--- head or manager role: an organization has a single owner, its creator.
+-- head, manager or integrator role: an organization has a single owner, its creator.
 CREATE OR REPLACE FUNCTION "private"."create_sales_for_user"("auth_user" "auth"."users", "org_id" bigint, "user_role" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -136,7 +136,7 @@ CREATE OR REPLACE FUNCTION "private"."invited_role"("app_metadata" "jsonb") RETU
     LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
     AS $$
-  select case when app_metadata ->> 'role' in ('head', 'manager') then app_metadata ->> 'role' else 'manager' end
+  select case when app_metadata ->> 'role' in ('head', 'manager', 'integrator') then app_metadata ->> 'role' else 'manager' end
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
@@ -464,7 +464,8 @@ CREATE OR REPLACE FUNCTION "private"."manager_deal_visibility"() RETURNS "text"
     SET "search_path" TO ''
     AS $$
 begin
-  if private.current_user_role() in ('owner', 'head') then
+  -- The integrator (stage 25) reads every deal to test the automations
+  if private.current_user_role() in ('owner', 'head', 'integrator') then
     return 'all';
   end if;
   return coalesce((
@@ -911,7 +912,7 @@ begin
 end;
 $$;
 
--- Is the clinic connected to Wazzup24 (owner and head; the key stays secret)
+-- Is the clinic connected to Wazzup24 (owner, head, integrator; the key stays secret)
 CREATE OR REPLACE FUNCTION "public"."messenger_status"() RETURNS TABLE("connected" boolean, "connected_at" timestamp with time zone, "last_error" "text")
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -919,7 +920,7 @@ CREATE OR REPLACE FUNCTION "public"."messenger_status"() RETURNS TABLE("connecte
   select i.api_key is not null, i.connected_at, i.last_error
   from public.messenger_integrations i
   where i.organization_id = private.current_organization_id()
-    and private.current_user_role() in ('owner', 'head')
+    and private.current_user_role() in ('owner', 'head', 'integrator')
 $$;
 
 -- First answer to the patient: deals.first_response_at (response time reports)

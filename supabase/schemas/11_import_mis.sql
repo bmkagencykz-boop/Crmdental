@@ -37,7 +37,7 @@ create table public.integrations (
     last_sync_at timestamp with time zone,
     last_error text,
     created_at timestamp with time zone not null default now(),
-    constraint integrations_kind_check check (kind in ('ident', 'dentalpro', 'medelement', '1c_medicine', 'other')),
+    constraint integrations_kind_check check (kind in ('ident', 'dentalpro', 'medelement', '1c_medicine', 'dentist_plus', 'macdent', 'other')),
     constraint integrations_status_check check (status in ('requested', 'connected', 'error', 'disabled')),
     constraint integrations_settings_is_object check (jsonb_typeof(settings) = 'object'),
     constraint integrations_organization_id_kind_key unique (organization_id, kind)
@@ -434,8 +434,8 @@ declare
   org_id bigint := private.current_organization_id();
   saved_status text;
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
-    raise exception 'Заявку оставляет владелец или руководитель клиники'
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
+    raise exception 'Заявку оставляет владелец, руководитель или интегратор клиники'
       using errcode = 'insufficient_privilege';
   end if;
   insert into public.integrations (organization_id, kind)

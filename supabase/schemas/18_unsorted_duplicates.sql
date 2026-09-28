@@ -227,7 +227,8 @@ declare
   target_row public.deals;
   merged_patient_id bigint;
 begin
-  if org_id is null then
+  -- The integrator (stage 25) only reads the deals
+  if org_id is null or private.current_user_role() = 'integrator' then
     raise exception 'Нет доступа' using errcode = '42501';
   end if;
   select * into lead_row from public.deals d

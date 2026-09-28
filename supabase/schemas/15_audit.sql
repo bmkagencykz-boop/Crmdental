@@ -261,7 +261,7 @@ begin
   diff := private.audit_diff(
     case when tg_op = 'UPDATE' then to_jsonb(old) end,
     to_jsonb(new),
-    array['first_name', 'last_name', 'email', 'role', 'disabled']
+    array['first_name', 'last_name', 'email', 'role', 'disabled', 'access_expires_at', 'can_read_messages']
   );
   if tg_op = 'INSERT' then
     diff := diff - 'disabled';

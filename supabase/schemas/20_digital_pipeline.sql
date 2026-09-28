@@ -522,8 +522,8 @@ CREATE OR REPLACE FUNCTION "public"."send_test_webhook"("target_webhook_id" bigi
 declare
   org_id bigint := private.current_organization_id();
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
-    raise exception 'Only the owner and the head manage webhooks' using errcode = '42501';
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
+    raise exception 'Only the owner, the head and the integrator manage webhooks' using errcode = '42501';
   end if;
   if not exists (
     select 1 from public.webhooks w
@@ -545,8 +545,8 @@ declare
   org_id bigint := private.current_organization_id();
   new_secret text := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
-    raise exception 'Only the owner and the head manage webhooks' using errcode = '42501';
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
+    raise exception 'Only the owner, the head and the integrator manage webhooks' using errcode = '42501';
   end if;
   update public.webhooks w
   set secret = new_secret
@@ -1051,8 +1051,8 @@ declare
   new_key text := 'dcrm_' || replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
   new_row public.api_keys;
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
-    raise exception 'Only the owner and the head manage API keys' using errcode = '42501';
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
+    raise exception 'Only the owner, the head and the integrator manage API keys' using errcode = '42501';
   end if;
   if key_scope is null or key_scope not in ('read', 'write') then
     raise exception 'Доступ ключа: read или write' using errcode = '22023';
@@ -1071,8 +1071,8 @@ CREATE OR REPLACE FUNCTION "public"."revoke_api_key"("key_id" bigint) RETURNS bo
     SET "search_path" TO ''
     AS $$
 begin
-  if private.current_organization_id() is null or private.current_user_role() not in ('owner', 'head') then
-    raise exception 'Only the owner and the head manage API keys' using errcode = '42501';
+  if private.current_organization_id() is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
+    raise exception 'Only the owner, the head and the integrator manage API keys' using errcode = '42501';
   end if;
   update public.api_keys k
   set revoked_at = now()
@@ -1214,7 +1214,7 @@ CREATE OR REPLACE FUNCTION "public"."api_list_deals"("api_key" "text", "params" 
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, false)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'deals:read')).organization_id;
   page_number integer := (private.api_page(params)).page;
   page_size integer := (private.api_page(params)).per_page;
   f_pipeline bigint := (params ->> 'pipeline_id')::bigint;
@@ -1253,7 +1253,7 @@ CREATE OR REPLACE FUNCTION "public"."api_get_deal"("api_key" "text", "deal_id" b
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, false)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'deals:read')).organization_id;
   deal public.deals;
   patient public.patients;
 begin
@@ -1274,7 +1274,7 @@ CREATE OR REPLACE FUNCTION "public"."api_create_deal"("api_key" "text", "body" "
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, true)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'deals:write')).organization_id;
   new_patient_id bigint;
   new_pipeline_id bigint;
   new_stage_id bigint;
@@ -1337,7 +1337,7 @@ CREATE OR REPLACE FUNCTION "public"."api_update_deal"("api_key" "text", "deal_id
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, true)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'deals:write')).organization_id;
   deal public.deals;
   new_stage_id bigint;
   new_pipeline_id bigint;
@@ -1391,7 +1391,7 @@ CREATE OR REPLACE FUNCTION "public"."api_list_patients"("api_key" "text", "param
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, false)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'patients:read')).organization_id;
   page_number integer := (private.api_page(params)).page;
   page_size integer := (private.api_page(params)).per_page;
   f_phone text := private.normalize_phone(params ->> 'phone');
@@ -1430,7 +1430,7 @@ CREATE OR REPLACE FUNCTION "public"."api_create_patient"("api_key" "text", "body
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, true)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'patients:write')).organization_id;
   result jsonb := private.api_find_or_create_patient(org_id, body);
   patient public.patients;
 begin
@@ -1446,7 +1446,7 @@ CREATE OR REPLACE FUNCTION "public"."api_add_deal_note"("api_key" "text", "deal_
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, true)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'deals:write')).organization_id;
   note_text text := nullif(btrim(coalesce(body ->> 'text', '')), '');
   note public.deal_notes;
 begin
@@ -1469,7 +1469,7 @@ CREATE OR REPLACE FUNCTION "public"."api_list_pipelines"("api_key" "text") RETUR
     SET "search_path" TO ''
     AS $$
 declare
-  org_id bigint := (private.api_authenticate(api_key, false)).organization_id;
+  org_id bigint := (private.api_authorize(api_key, 'settings:read')).organization_id;
 begin
   return jsonb_build_object('data', coalesce((
     select jsonb_agg(jsonb_build_object(

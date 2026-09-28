@@ -18,7 +18,8 @@ create schema if not exists "private";
 
 -- Tenant helpers. Declared before the tables because they are used as column
 -- defaults. SECURITY DEFINER so that they can read public.sales without
--- recursing into its RLS policies. A disabled user belongs to no organization.
+-- recursing into its RLS policies. A disabled user belongs to no organization,
+-- nor does an integrator whose access expired (sales.access_expires_at, stage 25).
 create or replace function private.current_organization_id() returns bigint
     language plpgsql stable security definer
     set search_path to ''
@@ -28,6 +29,7 @@ begin
     select s.organization_id
     from public.sales s
     where s.user_id = auth.uid() and not s.disabled
+      and (s.access_expires_at is null or s.access_expires_at > now())
   );
 end;
 $$;
@@ -41,6 +43,7 @@ begin
     select s.role
     from public.sales s
     where s.user_id = auth.uid() and not s.disabled
+      and (s.access_expires_at is null or s.access_expires_at > now())
   );
 end;
 $$;
@@ -54,6 +57,7 @@ begin
     select s.id
     from public.sales s
     where s.user_id = auth.uid() and not s.disabled
+      and (s.access_expires_at is null or s.access_expires_at > now())
   );
 end;
 $$;
@@ -101,7 +105,8 @@ create table public.sales (
     first_name text not null default 'Pending'::text,
     last_name text not null default 'Pending'::text,
     email extensions.citext not null,
-    -- owner: everything incl. billing and staff; head: reports, settings, all deals; manager: day-to-day work
+    -- owner: everything incl. billing and staff; head: reports, settings, all deals; manager: day-to-day work;
+    -- integrator: technical account of an agency, settings only (stage 25)
     role text not null default 'manager',
     -- Kept for the Atomic CRM UI: owners and heads are administrators
     administrator boolean generated always as (role in ('owner', 'head')) stored,
@@ -109,7 +114,7 @@ create table public.sales (
     avatar jsonb,
     disabled boolean not null default false,
     secondary_emails jsonb not null default '[]'::jsonb,
-    constraint sales_role_check check (role in ('owner', 'head', 'manager')),
+    constraint sales_role_check check (role in ('owner', 'head', 'manager', 'integrator')),
     constraint sales_secondary_emails_is_array check (jsonb_typeof(secondary_emails) = 'array')
 );
 

@@ -46,7 +46,7 @@ test("a clinic signs up and records its first request", async ({
   await expect(
     page.getByRole("heading", { name: "Akhmetov Daulet" }),
   ).toBeVisible();
-  await expect(page.getByText("+7 701 555 12 34")).toBeVisible();
+  await expect(page.getByText("+7 701 555 12 34").first()).toBeVisible();
 
   // A request (deal) is opened from the patient card
   await page.getByRole("link", { name: "New request" }).click();

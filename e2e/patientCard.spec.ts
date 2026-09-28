@@ -125,7 +125,7 @@ test.describe("patient card", () => {
     // An X-ray in the gallery, opened in the lightbox
     await main.getByRole("tab", { name: "Files and X-rays" }).click();
     const files = page.getByTestId("patient-files-tab");
-    await files.getByLabel("Type").selectOption("periapical");
+    await files.getByLabel("Type", { exact: true }).selectOption("periapical");
     await files.getByTestId("patient-file-input").setInputFiles({
       name: "36.png",
       mimeType: "image/png",

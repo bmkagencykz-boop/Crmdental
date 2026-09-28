@@ -137,7 +137,7 @@ const FieldEditor = ({
           onDone(next, String(next ?? "") !== String(value ?? ""));
         }}
         onBlur={() => onDone(value, false)}
-        className="soft h-9 w-full rounded-xl border-0 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="soft h-9 w-full rounded-md border-0 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <option value="">{editor.emptyLabel ?? "—"}</option>
         {editor.choices.map((choice) => (

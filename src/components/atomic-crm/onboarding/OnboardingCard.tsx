@@ -68,9 +68,9 @@ const ContinueCard = ({
             })}
           </span>
         </div>
-        <div className="h-1.5 max-w-md overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 max-w-md overflow-hidden rounded-sm bg-muted">
           <div
-            className="h-full rounded-full bg-primary"
+            className="h-full rounded-sm bg-primary"
             style={{ width: `${percent}%` }}
           />
         </div>

@@ -3508,6 +3508,16 @@ export const englishCrmMessages = {
       author: "Booked by",
       card: "Patient card",
       note: "Visit comment",
+      kind: "Visit",
+      payment: "Payment",
+    },
+    markers: {
+      first: "First visit",
+      first_short: "1st",
+      repeat: "Repeat visit",
+      paid: "Prepaid or paid",
+      prepayment: "prepayment %{amount}",
+      paid_total: "paid %{amount}",
     },
   },
   treatment: {

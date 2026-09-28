@@ -45,7 +45,7 @@ import {
 } from "../tasks/calendarLayout";
 import { useClinicTimeZone } from "../tasks/useClinicTimeZone";
 import { SettingsGlyph } from "../layout/navGlyphs";
-import type { Patient, Sale } from "../types";
+import type { Deal, Patient, Sale } from "../types";
 import { doctorColor, NEUTRAL_COLOR } from "./doctorColors";
 import { ScheduleGrid, type GridColumn, type VisitInfo } from "./ScheduleGrid";
 import {
@@ -62,6 +62,7 @@ import {
   type ScheduleView,
 } from "./scheduleLayout";
 import { VISIT_STATUSES, type Visit } from "./types";
+import { COUNTED_STATUSES, firstVisitIds } from "./visitMarkers";
 import {
   useChairs,
   useDoctorExceptions,
@@ -183,6 +184,42 @@ export const SchedulePage = () => {
     () => new Map(patientRows.map((p) => [String(p.id), p])),
     [patientRows],
   );
+  // «1В»: the first visit of a patient who never came before
+  const { data: earlierVisits = [] } = useGetList<Visit>(
+    "visits",
+    {
+      pagination: { page: 1, perPage: 1000 },
+      sort: { field: "starts_at", order: "DESC" },
+      filter: {
+        "patient_id@in": `(${patientIds.join(",")})`,
+        "starts_at@lt": from.toISOString(),
+        "status@in": `(${COUNTED_STATUSES.join(",")})`,
+      },
+    },
+    { enabled: patientIds.length > 0 },
+  );
+  const firstVisits = useMemo(
+    () => firstVisitIds(visits, earlierVisits),
+    [visits, earlierVisits],
+  );
+  // «$»: the deal of the visit has a prepayment or a payment
+  const dealIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          visits
+            .map((visit) => visit.deal_id)
+            .filter((id) => id != null)
+            .map(String),
+        ),
+      ),
+    [visits],
+  );
+  const { data: dealRows = [] } = useGetMany<Deal>(
+    "deals",
+    { ids: dealIds },
+    { enabled: dealIds.length > 0 },
+  );
 
   const hoursOf = (resourceId: Identifier | null, day: DayKey) =>
     groupBy === "doctor" && resourceId != null
@@ -289,6 +326,9 @@ export const SchedulePage = () => {
       doctor: doctor?.name,
       chair: findById(chairs, visit.chair_id)?.name,
       author: author ? `${author.first_name} ${author.last_name}` : undefined,
+      firstVisit: firstVisits.has(String(visit.id)),
+      prepayment: findById(dealRows, visit.deal_id)?.prepayment_amount ?? 0,
+      paid: findById(dealRows, visit.deal_id)?.paid_amount ?? 0,
       // The doctor's color, whatever the columns
       color: doctor ? doctorColor(doctor, doctors) : column.color,
     };
@@ -451,10 +491,10 @@ export const SchedulePage = () => {
               colorOf={(doctor) => doctorColor(doctor, doctors)}
             />
           ) : null}
-          <div className="flex h-9 items-center rounded-full border border-border bg-card">
+          <div className="flex h-9 items-center rounded-md border border-border bg-card">
             <button
               type="button"
-              className="flex h-full w-9 items-center justify-center rounded-l-full text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex h-full w-9 items-center justify-center rounded-l-md text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() =>
                 update({ day: addDays(anchor, view === "day" ? -1 : -7) })
               }
@@ -484,7 +524,7 @@ export const SchedulePage = () => {
             </label>
             <button
               type="button"
-              className="flex h-full w-9 items-center justify-center rounded-r-full text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex h-full w-9 items-center justify-center rounded-r-md text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() =>
                 update({ day: addDays(anchor, view === "day" ? 1 : 7) })
               }
@@ -495,7 +535,7 @@ export const SchedulePage = () => {
           </div>
           <Button
             variant="outline"
-            className="h-9 rounded-full"
+            className="h-9"
             disabled={anchor === today}
             onClick={() => update({ day: null })}
           >
@@ -504,7 +544,7 @@ export const SchedulePage = () => {
           <Button
             asChild
             variant="outline"
-            className="size-9 rounded-full p-0"
+            className="size-9 p-0"
             title={translate("schedule.toolbar.settings")}
           >
             <Link
@@ -515,7 +555,7 @@ export const SchedulePage = () => {
             </Link>
           </Button>
           <Button
-            className="h-9 rounded-full px-5 font-semibold"
+            className="h-9 px-5 font-semibold"
             disabled={readOnly}
             onClick={newVisit}
           >
@@ -674,7 +714,7 @@ const DoctorFilter = ({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="h-9 rounded-full px-4 font-normal">
+        <Button variant="outline" className="h-9 px-4 font-normal">
           {label}
         </Button>
       </PopoverTrigger>

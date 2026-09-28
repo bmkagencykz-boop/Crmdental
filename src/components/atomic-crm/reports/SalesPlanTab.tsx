@@ -289,7 +289,7 @@ export const PlanBar = ({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-full bg-primary/15",
+        "relative w-full overflow-hidden rounded-sm bg-primary/15",
         compact ? "my-1 h-1.5" : "h-2",
       )}
       role="progressbar"
@@ -298,7 +298,7 @@ export const PlanBar = ({
       aria-valuenow={Math.round((row.progress ?? 0) * 100)}
     >
       <div
-        className="h-full rounded-full bg-primary transition-all"
+        className="h-full rounded-sm bg-primary transition-all"
         style={{ width: `${share * 100}%` }}
       />
       {expected != null && expected > share ? (

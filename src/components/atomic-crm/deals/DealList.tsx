@@ -196,7 +196,7 @@ const DealDialogs = ({
       {fab && canCreate ? (
         <Link
           to="/deals/create"
-          className="fixed right-8 bottom-8 z-20 flex size-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_14px_40px_-10px_rgba(239,59,110,0.6)] transition-transform hover:scale-105"
+          className="fixed right-8 bottom-8 z-20 flex size-14 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-[0_14px_40px_-10px_rgba(239,59,110,0.6)] transition-transform hover:scale-105"
           aria-label={translate("resources.deals.action.new")}
         >
           <Plus className="size-7" strokeWidth={2.2} />

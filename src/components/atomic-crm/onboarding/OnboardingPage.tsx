@@ -248,9 +248,9 @@ const StepList = ({
             {translate("onboarding.progress", { done: resolved, total })}
           </span>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 overflow-hidden rounded-sm bg-muted">
           <div
-            className="h-full rounded-full bg-primary transition-all"
+            className="h-full rounded-sm bg-primary transition-all"
             style={{ width: `${Math.round((resolved / total) * 100)}%` }}
           />
         </div>

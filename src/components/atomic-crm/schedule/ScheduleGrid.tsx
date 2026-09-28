@@ -8,7 +8,9 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+import { formatMoney } from "../deals/kanbanFormat";
 import { patientDisplayName } from "../patients/parsePatientText";
+import { useConfigurationContext } from "../root/ConfigurationContext";
 import { minuteOfDay, type DayKey } from "../tasks/calendarLayout";
 import type { Patient } from "../types";
 import { textOn } from "./doctorColors";
@@ -59,6 +61,11 @@ export type VisitInfo = {
   doctor?: string;
   chair?: string;
   author?: string;
+  /** «1В»: the patient's first visit */
+  firstVisit?: boolean;
+  /** «$»: prepayment and payments of the visit's deal, in tenge */
+  prepayment?: number;
+  paid?: number;
   color: string;
 };
 
@@ -436,6 +443,24 @@ const VisitBlock = ({
               {rows >= 2 ? (
                 <span className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-5.5 text-[11.5px] leading-tight text-muted-foreground tabular-nums">
                   <span className="shrink-0">{time}</span>
+                  {info.firstVisit ? (
+                    <span
+                      className="shrink-0 rounded-sm border border-destructive px-0.5 text-[9.5px] leading-[13px] font-bold text-destructive"
+                      title={translate("schedule.markers.first")}
+                      data-testid="visit-first"
+                    >
+                      {translate("schedule.markers.first_short")}
+                    </span>
+                  ) : null}
+                  {(info.paid ?? 0) > 0 || (info.prepayment ?? 0) > 0 ? (
+                    <span
+                      className="shrink-0 text-[12.5px] font-extrabold text-[#1F9D55] dark:text-[#3FCF7F]"
+                      title={translate("schedule.markers.paid")}
+                      data-testid="visit-paid"
+                    >
+                      ₸
+                    </span>
+                  ) : null}
                   {visit.source === "mis" ? (
                     <span className="rounded-sm border border-border px-1 text-[9.5px] font-bold tracking-wide">
                       {translate("schedule.mis.badge")}
@@ -502,6 +527,7 @@ const VisitHover = ({
   time: string;
 }) => {
   const translate = useTranslate();
+  const { currency } = useConfigurationContext();
   const phone =
     info.patient?.phones?.[0] ?? info.patient?.phone_jsonb?.[0]?.number;
   const rows: [string, ReactNode][] = [
@@ -517,6 +543,31 @@ const VisitHover = ({
         <StatusGlyph status={visit.status} className="size-3.5" />
         {translate(`schedule.statuses.${visit.status}`)}
       </span>,
+    ],
+    [
+      translate("schedule.hover.kind"),
+      translate(
+        info.firstVisit ? "schedule.markers.first" : "schedule.markers.repeat",
+      ),
+    ],
+    [
+      translate("schedule.hover.payment"),
+      (info.paid ?? 0) > 0 || (info.prepayment ?? 0) > 0
+        ? [
+            (info.prepayment ?? 0) > 0
+              ? translate("schedule.markers.prepayment", {
+                  amount: formatMoney(info.prepayment ?? 0, currency),
+                })
+              : null,
+            (info.paid ?? 0) > 0
+              ? translate("schedule.markers.paid_total", {
+                  amount: formatMoney(info.paid ?? 0, currency),
+                })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(", ")
+        : null,
     ],
     [
       translate("schedule.hover.author"),

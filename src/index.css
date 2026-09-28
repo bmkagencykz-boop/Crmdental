@@ -67,7 +67,7 @@
  */
 :root {
   color-scheme: light;
-  --radius: 0.5rem;
+  --radius: 0.3125rem;
   --background: #f3f0f1;
   --foreground: #1a1517;
   --card: #ffffff;

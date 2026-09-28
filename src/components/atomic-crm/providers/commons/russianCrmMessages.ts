@@ -3528,6 +3528,16 @@ export const russianCrmMessages: CrmMessages = {
       author: "Добавил(а)",
       card: "Номер карточки",
       note: "Комментарий визита",
+      kind: "Визит",
+      payment: "Оплата",
+    },
+    markers: {
+      first: "Первичный визит",
+      first_short: "1В",
+      repeat: "Повторный визит",
+      paid: "Внесена предоплата или оплата",
+      prepayment: "предоплата %{amount}",
+      paid_total: "оплачено %{amount}",
     },
   },
   treatment: {

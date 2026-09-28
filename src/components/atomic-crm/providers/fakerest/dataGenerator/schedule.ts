@@ -346,7 +346,8 @@ export const generateSchedule = (db: Db) => {
     "Придёт с ребёнком",
     "Оплата по QR",
   ];
-  const fillDays = [-2, -1, 0, 1, 2, 3].map((n) => addDays(today, n));
+  const regulars = db.patients.slice(0, 60);
+  const fillDays = Array.from({ length: 18 }, (_, i) => addDays(today, i - 14));
   fillDays.forEach((d) => {
     db.doctors.forEach((doctor) => {
       const hours = doctorHoursOn(doctor, d, db.doctor_exceptions, clinic);
@@ -374,7 +375,8 @@ export const generateSchedule = (db: Db) => {
           minute += 30;
           continue;
         }
-        const patient = random.arrayElement(db.patients);
+        // A few dozen regulars: most come back, some are new
+        const patient = random.arrayElement(regulars);
         const starts = zonedMoment(d, minute, timeZone);
         const past = d < today || (d === today && slot.end <= nowMinute);
         const current = d === today && !past && minute <= nowMinute;

@@ -57,35 +57,45 @@ describe("buildServiceRows", () => {
     const rows = buildServiceRows(DEFAULTS);
     const byKey = Object.fromEntries(rows.map((row) => [row.key, row]));
     expect(byKey.implants).toMatchObject({ checked: true, serviceId: 1 });
+    // Another name of the same service
     expect(byKey.hygiene).toMatchObject({
       checked: true,
       serviceId: 4,
       name: "Гигиена",
     });
-    expect(byKey.braces).toMatchObject({ checked: true, serviceId: 2 });
     expect(byKey.children).toMatchObject({ checked: true, serviceId: 7 });
     expect(byKey.consultation).toMatchObject({
       checked: false,
       serviceId: null,
       name: "Консультация",
     });
+    // Broader services are not taken for a specific one
+    expect(byKey.braces).toMatchObject({ checked: false, serviceId: null });
+    expect(byKey.caries).toMatchObject({ checked: false, serviceId: null });
     expect(byKey.veneers.checked).toBe(false);
     // What no preset matches stays as the clinic's own service
     const own = rows.filter((row) => !row.preset);
-    expect(own.map((row) => row.name)).toEqual(["Другое"]);
-    expect(own[0]).toMatchObject({ checked: true, key: "service-8" });
+    expect(own.map((row) => row.name)).toEqual([
+      "Ортодонтия",
+      "Терапия",
+      "Протезирование",
+      "Хирургия",
+      "Другое",
+    ]);
+    expect(own.every((row) => row.checked)).toBe(true);
+    expect(own[0].key).toBe("service-2");
   });
 
   it("prefers an exact name to an alias and matches a service once", () => {
     const rows = buildServiceRows([
-      service(1, "Хирургия"),
+      service(1, "Удаление зуба"),
       service(2, "удаление"),
     ]);
     const extraction = rows.find((row) => row.key === "extraction")!;
     expect(extraction.serviceId).toBe(2);
-    // «Хирургия» is then free: it stays the clinic's own service
+    // «Удаление зуба» is then free: it stays the clinic's own service
     expect(rows.filter((row) => !row.preset).map((row) => row.name)).toEqual([
-      "Хирургия",
+      "Удаление зуба",
     ]);
   });
 

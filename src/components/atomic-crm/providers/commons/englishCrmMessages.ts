@@ -2479,7 +2479,7 @@ export const englishCrmMessages = {
       },
       done: {
         title: "Done",
-        hint: "Here is what is set up. Anything can be changed in Settings.",
+        hint: "Check the summary and start working.",
       },
     },
     clinic: {
@@ -2584,7 +2584,7 @@ export const englishCrmMessages = {
     },
     done: {
       title: "The clinic is ready to work!",
-      text: "Here is what is set up. Open any section to change it.",
+      text: "Open any section to change it — everything stays in Settings.",
       open_section: "Open",
       open_pipeline: "Open the pipeline",
       to_dashboard: "Go to the dashboard",

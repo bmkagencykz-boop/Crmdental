@@ -86,7 +86,7 @@ export const TeamStep = ({ isOwner }: { isOwner: boolean }) => {
       {isOwner ? (
         <form
           onSubmit={submit}
-          className="grid max-w-3xl grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_10rem_auto]"
+          className="grid max-w-3xl grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_12rem_auto]"
         >
           {field("first_name")}
           {field("last_name")}

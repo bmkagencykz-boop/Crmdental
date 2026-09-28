@@ -5,8 +5,9 @@ import type { Service } from "../types";
 /**
  * Step «Услуги и цены» of the setup wizard (stage 24): common dental
  * services to tick, each with an optional price. A preset matches an
- * existing service of the clinic by its name or an alias (the default
- * services of a new clinic are broader: «Гигиена», «Ортодонтия»…).
+ * existing service of the clinic by its name or an alias of the same
+ * service («Гигиена» is «Профгигиена»); broader default services of a new
+ * clinic («Терапия», «Ортодонтия»…) stay the clinic's own services.
  */
 export type ServicePreset = {
   key: string;
@@ -26,21 +27,21 @@ export const SERVICE_PRESETS: ServicePreset[] = [
     name: "Профгигиена",
     aliases: ["гигиена", "профессиональная гигиена"],
   },
-  { key: "caries", name: "Лечение кариеса", aliases: ["терапия"] },
+  { key: "caries", name: "Лечение кариеса", aliases: ["кариес"] },
   { key: "canals", name: "Лечение каналов", aliases: ["эндодонтия"] },
   {
     key: "extraction",
     name: "Удаление",
-    aliases: ["удаление зуба", "хирургия"],
+    aliases: ["удаление зуба", "удаление зубов"],
   },
   { key: "implants", name: "Имплантация" },
   { key: "all_on_4", name: "All-on-4", aliases: ["all on 4", "все на 4"] },
-  { key: "crown", name: "Коронка", aliases: ["коронки", "протезирование"] },
+  { key: "crown", name: "Коронка", aliases: ["коронки"] },
   { key: "veneers", name: "Виниры" },
   {
     key: "braces",
     name: "Брекеты / элайнеры",
-    aliases: ["брекеты", "элайнеры", "ортодонтия"],
+    aliases: ["брекеты", "элайнеры", "брекеты/элайнеры"],
   },
   { key: "whitening", name: "Отбеливание" },
   {

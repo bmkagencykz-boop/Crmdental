@@ -2497,7 +2497,7 @@ export const russianCrmMessages: CrmMessages = {
       },
       done: {
         title: "Готово",
-        hint: "Вот что настроено. Всё можно поменять в Настройках.",
+        hint: "Проверьте итог и начинайте работать.",
       },
     },
     clinic: {
@@ -2603,7 +2603,7 @@ export const russianCrmMessages: CrmMessages = {
     },
     done: {
       title: "Клиника готова к работе!",
-      text: "Вот что настроено. Откройте любой раздел, чтобы поменять.",
+      text: "Откройте любой раздел, чтобы поменять — всё остаётся в Настройках.",
       open_section: "Открыть",
       open_pipeline: "Открыть воронку",
       to_dashboard: "На рабочий стол",

@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
 import {
   useCanAccess,
   useDataProvider,
@@ -208,7 +207,6 @@ const MailingCard = ({ mailing }: { mailing: MailingSummary }) => {
                 }
               }}
             >
-              <X className="size-4" />
               {translate("mailings.actions.cancel")}
             </Button>
           ) : null}

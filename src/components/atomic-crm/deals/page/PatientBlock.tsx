@@ -1,8 +1,8 @@
-import { Instagram, MessageCircle, Phone, Send } from "lucide-react";
 import { useGetOne, useTranslate } from "ra-core";
 import { Link } from "react-router";
 
 import { DuplicateWarning } from "../../duplicates/DuplicateWarning";
+import { formatPhone } from "../../misc/formatPhone";
 import { patientDisplayName } from "../../patients/parsePatientText";
 import type { Deal, Patient } from "../../types";
 
@@ -29,7 +29,7 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
   return (
     <div className="flex flex-col gap-3 border-t border-border px-6 py-5">
       <div className="flex items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-rose text-sm font-bold text-[#1A1517]">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
           {initials(name)}
         </span>
         <div className="min-w-0">
@@ -41,19 +41,13 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
           </Link>
           <div className="mt-1 flex flex-wrap gap-1">
             {patient.whatsapp ? (
-              <Badge icon={<MessageCircle className="size-3" />}>
-                WhatsApp {patient.whatsapp}
-              </Badge>
+              <Badge>WhatsApp {formatPhone(patient.whatsapp)}</Badge>
             ) : null}
             {patient.instagram ? (
-              <Badge icon={<Instagram className="size-3" />}>
-                {patient.instagram}
-              </Badge>
+              <Badge>Instagram @{patient.instagram}</Badge>
             ) : null}
             {patient.telegram ? (
-              <Badge icon={<Send className="size-3" />}>
-                {patient.telegram}
-              </Badge>
+              <Badge>Telegram @{patient.telegram}</Badge>
             ) : null}
           </div>
         </div>
@@ -65,11 +59,10 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
             <dt className="text-muted-foreground">
               {translate("resources.patients.fields.phone_number")}
             </dt>
-            <dd className="flex items-center gap-1.5">
-              <Phone className="size-3.5 text-muted-foreground" />
+            <dd>
               <a
                 href={`tel:${phone}`}
-                className="text-brand-link hover:underline"
+                className="tabular-nums text-brand-link hover:underline"
               >
                 {phone}
               </a>
@@ -95,15 +88,8 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
   );
 };
 
-const Badge = ({
-  icon,
-  children,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) => (
-  <span className="inline-flex items-center gap-1 rounded-md bg-brand-blush px-2 py-0.5 text-[11px] font-semibold text-[#1A1517]">
-    {icon}
+const Badge = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
     {children}
   </span>
 );

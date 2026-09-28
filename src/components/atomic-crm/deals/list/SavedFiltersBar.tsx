@@ -1,4 +1,4 @@
-import { Building2, User, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   useCreate,
   useDelete,
@@ -113,13 +113,6 @@ export const SavedFiltersBar = () => {
               ? "deal_list.saved.clinic"
               : "deal_list.saved.personal",
           )}
-          icon={
-            filter.sales_id == null ? (
-              <Building2 className="size-3" />
-            ) : (
-              <User className="size-3" />
-            )
-          }
           onRemove={
             canDelete(filter)
               ? () =>
@@ -168,7 +161,6 @@ const Chip = ({
   active,
   onClick,
   children,
-  icon,
   title,
   onRemove,
   removeLabel,
@@ -176,14 +168,13 @@ const Chip = ({
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-  icon?: React.ReactNode;
   title?: string;
   onRemove?: () => void;
   removeLabel?: string;
 }) => (
   <span
     className={cn(
-      "group inline-flex h-7 items-center rounded-md border text-xs font-medium transition-colors",
+      "group inline-flex h-7 items-center rounded-sm border text-xs font-medium transition-colors",
       active
         ? "border-primary bg-primary text-primary-foreground"
         : "border-border bg-card text-foreground hover:border-primary/50",
@@ -194,9 +185,8 @@ const Chip = ({
       onClick={onClick}
       aria-pressed={active}
       title={title}
-      className="inline-flex h-full items-center gap-1 px-2.5"
+      className="inline-flex h-full items-center px-2.5"
     >
-      {icon}
       {children}
     </button>
     {onRemove ? (

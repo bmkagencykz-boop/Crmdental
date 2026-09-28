@@ -1,4 +1,3 @@
-import { Instagram, MessageCircle, Phone, Send } from "lucide-react";
 import { CanAccess, useRecordContext, useTranslate } from "ra-core";
 import type { ReactNode } from "react";
 import { DeleteButton } from "@/components/admin";
@@ -24,31 +23,40 @@ export const PatientAside = () => {
   if (!record) return null;
 
   return (
-    <aside className="glass flex h-fit flex-col gap-6 rounded-lg p-6 text-sm">
+    <aside className="glass flex h-fit flex-col gap-5 rounded-md p-4 text-sm">
       <div className="flex gap-2">
         <EditButton label="resources.patients.action.edit" />
       </div>
 
       <Section title={translate("crm.patients.sections.contacts")}>
-        {record.phones?.map((phone) => (
-          <Row key={phone} icon={<Phone className="size-4" />}>
-            <a href={`tel:${phone}`} className="tabular-nums hover:underline">
-              {formatPhone(phone)}
-            </a>
-          </Row>
-        ))}
-        {record.whatsapp ? (
-          <Row icon={<MessageCircle className="size-4" />}>
-            WhatsApp ·{" "}
-            <span className="tabular-nums">{formatPhone(record.whatsapp)}</span>
-          </Row>
-        ) : null}
-        {record.instagram ? (
-          <Row icon={<Instagram className="size-4" />}>@{record.instagram}</Row>
-        ) : null}
-        {record.telegram ? (
-          <Row icon={<Send className="size-4" />}>@{record.telegram}</Row>
-        ) : null}
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+          {record.phones?.map((phone) => (
+            <Term
+              key={phone}
+              label={translate("resources.patients.fields.phone_number")}
+            >
+              <a
+                href={`tel:${phone}`}
+                className="tabular-nums hover:underline"
+              >
+                {formatPhone(phone)}
+              </a>
+            </Term>
+          ))}
+          {record.whatsapp ? (
+            <Term label="WhatsApp">
+              <span className="tabular-nums">
+                {formatPhone(record.whatsapp)}
+              </span>
+            </Term>
+          ) : null}
+          {record.instagram ? (
+            <Term label="Instagram">@{record.instagram}</Term>
+          ) : null}
+          {record.telegram ? (
+            <Term label="Telegram">@{record.telegram}</Term>
+          ) : null}
+        </dl>
       </Section>
 
       <Section title={translate("crm.patients.sections.clinic")}>
@@ -111,13 +119,6 @@ const Section = ({
     </h4>
     {children}
   </section>
-);
-
-const Row = ({ icon, children }: { icon: ReactNode; children: ReactNode }) => (
-  <p className="flex items-center gap-2.5">
-    <span className="text-muted-foreground">{icon}</span>
-    <span className="min-w-0 truncate">{children}</span>
-  </p>
 );
 
 const Term = ({ label, children }: { label: string; children: ReactNode }) => (

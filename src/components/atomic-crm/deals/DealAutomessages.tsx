@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
 import { useGetList, useNotify, useTranslate, useUpdate } from "ra-core";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -141,11 +140,10 @@ const AutomessageItem = ({ row, name }: { row: Automessage; name: string }) => {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 shrink-0 gap-1 px-2 text-xs"
+          className="h-7 shrink-0 px-2 text-xs"
           disabled={isPending}
           onClick={cancel}
         >
-          <X className="size-3.5" />
           {translate("automessages.deal.cancel")}
         </Button>
       ) : null}

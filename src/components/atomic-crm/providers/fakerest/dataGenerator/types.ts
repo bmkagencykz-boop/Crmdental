@@ -59,6 +59,12 @@ import type {
   MisSyncLogEntry,
 } from "../../../mis/types";
 import type {
+  Chair,
+  DoctorException,
+  ScheduleSettings,
+  Visit,
+} from "../../../schedule/types";
+import type {
   Salesbot,
   SalesbotLog,
   SalesbotSession,
@@ -129,4 +135,9 @@ export interface Db {
   mis_sync_log: MisSyncLogEntry[];
   // Marketplace: developer apps (stage 25)
   developer_apps: DeveloperApp[];
+  // Schedule (stage 28)
+  chairs: Chair[];
+  doctor_exceptions: DoctorException[];
+  schedule_settings: Array<Omit<ScheduleSettings, "mis_kind"> & { id: number }>;
+  visits: Visit[];
 }

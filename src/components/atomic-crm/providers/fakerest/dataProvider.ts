@@ -117,6 +117,7 @@ import { createOnboardingDemo } from "./onboarding";
 import { createMisDemo } from "./misConnectors";
 import { createSalesbotDemo } from "./salesbot";
 import { createMarketplaceDemo } from "./marketplace";
+import { createScheduleDemo } from "./schedule";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -230,6 +231,7 @@ export const createDataProvider = ({
       "response_overdue",
       "task_overdue",
       "bot_handoff",
+      "visit_reschedule",
     ],
     browser_enabled: false,
     telegram_enabled: true,
@@ -303,6 +305,13 @@ export const createDataProvider = ({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
+  });
+  // Schedule (stage 28)
+  const scheduleDemo = createScheduleDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -576,7 +585,9 @@ export const createDataProvider = ({
     if (attachment) await listDealFile(deal, attachment, salesId, data.id);
     // Same as the message trigger of the digital pipeline
     await pipelineDemo.onMessage(data);
-    // Same as the message trigger of the salesbots
+    // Same as the message triggers of the schedule (confirmation replies,
+    // before the salesbots) and of the salesbots
+    await scheduleDemo.onMessage(data);
     await salesbotDemo.onMessage(data);
     // Same as private.handle_automessage_sent
     if (automessageId != null) {
@@ -774,6 +785,7 @@ export const createDataProvider = ({
     ...onboardingDemo.methods,
     ...misDemo.methods,
     ...marketplaceDemo.methods,
+    ...scheduleDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -2270,6 +2282,7 @@ export const createDataProvider = ({
       // After the rules above: the digital pipeline sees the saved deal
       ...pipelineDemo.callbacks,
       ...salesbotDemo.callbacks,
+      ...scheduleDemo.callbacks,
     ],
   ) as CrmDataProvider;
 

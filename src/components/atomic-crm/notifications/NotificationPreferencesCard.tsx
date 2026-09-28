@@ -21,6 +21,7 @@ const KINDS: NotificationKind[] = [
   "response_overdue",
   "task_overdue",
   "bot_handoff",
+  "visit_reschedule",
 ];
 
 /** Username of the platform notification bot (without @), for the deep link */

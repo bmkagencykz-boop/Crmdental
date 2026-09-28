@@ -1,3 +1,4 @@
+import type { WeeklyHours } from "./schedule/types";
 import type { Identifier, RaRecord } from "ra-core";
 import type { ComponentType } from "react";
 
@@ -172,6 +173,9 @@ export type Doctor = {
   specialty?: string | null;
   is_active: boolean;
   position: number;
+  /** Weekly hours and default visit duration (schedule, stage 28) */
+  working_hours?: WeeklyHours | null;
+  visit_minutes?: number | null;
 } & Pick<RaRecord, "id">;
 
 /** Custom fields (stage 19), «Дополнительные поля» of deals and patients */
@@ -726,7 +730,8 @@ export type NotificationKind =
   | "patient_message"
   | "task_overdue"
   | "response_overdue"
-  | "bot_handoff";
+  | "bot_handoff"
+  | "visit_reschedule";
 
 export type CrmNotification = {
   organization_id?: Identifier;

@@ -1364,6 +1364,7 @@ export const russianCrmMessages: CrmMessages = {
       task_overdue: "Задача просрочена",
       response_overdue: "Пациент ждёт ответа",
       bot_handoff: "Бот передал диалог",
+      visit_reschedule: "Пациент просит перенести запись",
     },
     kind_options: {
       lead_assigned: "Мне назначили сделку",
@@ -1371,6 +1372,7 @@ export const russianCrmMessages: CrmMessages = {
       task_overdue: "Просроченные задачи",
       response_overdue: "Пациент ждёт ответа",
       bot_handoff: "Бот передал диалог",
+      visit_reschedule: "Просьбы перенести запись",
     },
     browser: {
       enable: "Включить уведомления в браузере",

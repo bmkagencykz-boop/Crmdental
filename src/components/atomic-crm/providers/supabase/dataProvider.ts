@@ -56,6 +56,7 @@ import { getOnboardingMethods } from "./onboardingMethods";
 import { getMisMethods } from "./misMethods";
 import { getSalesbotMethods } from "./salesbotMethods";
 import { getMarketplaceMethods } from "./marketplaceMethods";
+import { getScheduleMethods } from "./scheduleMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -119,6 +120,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getSalesbotMethods(),
     // Marketplace: developer apps, integrator access (stage 25)
     ...getMarketplaceMethods(),
+    // Schedule (stage 28)
+    ...getScheduleMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

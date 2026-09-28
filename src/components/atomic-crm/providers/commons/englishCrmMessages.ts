@@ -1357,6 +1357,7 @@ export const englishCrmMessages = {
       task_overdue: "Task overdue",
       response_overdue: "Patient is waiting for an answer",
       bot_handoff: "The bot handed the conversation over",
+      visit_reschedule: "The patient asks to reschedule",
     },
     kind_options: {
       lead_assigned: "Deals assigned to me",
@@ -1364,6 +1365,7 @@ export const englishCrmMessages = {
       task_overdue: "Overdue tasks",
       response_overdue: "Patients waiting for an answer",
       bot_handoff: "Conversations handed over by a bot",
+      visit_reschedule: "Requests to reschedule a visit",
     },
     browser: {
       enable: "Enable browser notifications",

@@ -82,6 +82,9 @@ import type {
 import type {
   TreatmentPlan,
   TreatmentPlanItem,
+  TreatmentStage,
+  TreatmentStageTemplate,
+  PlanDictionaryItem,
 } from "../../../treatment/types";
 
 export interface Db {
@@ -159,6 +162,11 @@ export interface Db {
   // Treatment plans with an estimate (stage 29)
   treatment_plans: TreatmentPlan[];
   treatment_plan_items: TreatmentPlanItem[];
+  // The plan editor (stage 34): stages, templates, dictionaries
+  treatment_stages: TreatmentStage[];
+  treatment_stage_templates: TreatmentStageTemplate[];
+  treatment_plan_types: PlanDictionaryItem[];
+  treatment_directions: PlanDictionaryItem[];
   // Marketing analytics (stage 32)
   ad_spend: AdSpend[];
   // Branches (stage 33)

@@ -13,7 +13,7 @@ import type { CrmDataProvider } from "../providers/types";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal } from "../types";
 import { estimateFileName } from "./format";
-import type { TreatmentPlan, TreatmentPlanItem } from "./types";
+import type { TreatmentPlan, TreatmentPlanItem, TreatmentStage } from "./types";
 
 const patientName = (deal: Deal) =>
   [deal.patient_last_name, deal.patient_first_name]
@@ -41,10 +41,13 @@ export const EstimateActions = ({
   deal,
   plan,
   items,
+  stages = [],
 }: {
   deal: Deal;
   plan: TreatmentPlan;
   items: TreatmentPlanItem[];
+  /** The stages of the plan (stage 34): names, doctors, deadlines */
+  stages?: TreatmentStage[];
 }) => {
   const translate = useTranslate();
   const notify = useNotify();
@@ -79,6 +82,10 @@ export const EstimateActions = ({
         patient: { name: patient, phone: deal.patient_phone },
         plan,
         items,
+        stages: stages.map((stage) => ({
+          ...stage,
+          doctor: findById(doctors, stage.doctor_id)?.name ?? null,
+        })),
         doctor: findById(doctors, plan.doctor_id)?.name ?? null,
         date: new Date(),
       },
@@ -145,7 +152,7 @@ export const EstimateActions = ({
       </Button>
       {open ? (
         <div
-          className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card/60 p-2"
+          className="flex flex-wrap items-center gap-2 rounded-2xl bg-muted p-2"
           role="group"
           aria-label={translate("treatment.pdf.button")}
         >
@@ -186,7 +193,7 @@ export const EstimateActions = ({
             value={caption}
             onChange={(event) => setCaption(event.target.value)}
             aria-label={translate("treatment.pdf.caption_label")}
-            className="field h-8 w-48 rounded-md border border-input px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-8 w-48 rounded-full bg-pill px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <Button
             size="sm"

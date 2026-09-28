@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 
 import { formatTenge } from "../onboarding/servicePresets";
 import { formatDate } from "./format";
-import { lineTotal, planTotals } from "./planMath";
+import { lineTotal, planTotals, type StageLike } from "./planMath";
 import type { TreatmentPlan, TreatmentPlanItem } from "./types";
 
 /**
@@ -15,6 +15,15 @@ export type EstimateFonts = {
   /** TrueType fonts, base64 */
   regular: string;
   bold: string;
+};
+
+/** A stage of the estimate (stage 34): its name, doctor and deadline */
+export type EstimateStage = StageLike & {
+  name: string;
+  /** The name of the doctor of the stage */
+  doctor?: string | null;
+  /** YYYY-MM-DD */
+  deadline?: string | null;
 };
 
 export type EstimateData = {
@@ -30,6 +39,8 @@ export type EstimateData = {
     "id" | "name" | "discount_percent" | "discount_amount" | "note"
   >;
   items: TreatmentPlanItem[];
+  /** The stages of the plan (stage 34); the stage numbers of the items otherwise */
+  stages?: EstimateStage[];
   doctor?: string | null;
   date: Date;
   /** «Смета действительна N дней» */
@@ -175,15 +186,36 @@ export const buildEstimatePdf = (
   };
 
   header();
-  const totals = planTotals(data.plan, data.items);
+  const totals = planTotals(data.plan, data.items, data.stages ?? []);
   let number = 0;
   for (const stage of totals.stages) {
-    ensureSpace(12);
+    // A cancelled stage is not a part of the estimate
+    if (stage.cancelled) continue;
+    const info = stage.stage as EstimateStage | undefined;
+    const meta = [
+      info?.doctor,
+      info?.deadline
+        ? translate("plan_editor.pdf.deadline", {
+            date: formatDate(new Date(`${info.deadline}T00:00:00`)),
+          })
+        : null,
+    ].filter(Boolean) as string[];
+    ensureSpace(meta.length ? 16 : 12);
     font(9, true);
-    doc.text(translate("treatment.stage", { n: stage.stage_no }), left, y);
+    const title = translate("treatment.stage", { n: stage.stage_no });
+    doc.text(
+      info?.name && info.name !== title ? `${title}. ${info.name}` : title,
+      left,
+      y,
+    );
     font(9, false, MUTED);
-    doc.text(money(stage.subtotal), right, y, { align: "right" });
+    doc.text(money(stage.total), right, y, { align: "right" });
     y += 5;
+    if (meta.length) {
+      font(8, false, MUTED);
+      doc.text(meta.join(" · "), left, y - 0.5);
+      y += 4.5;
+    }
     for (const item of stage.items) {
       number++;
       font(9, false);
@@ -209,6 +241,19 @@ export const buildEstimatePdf = (
       y += height;
       rule(y - 3.3, 230);
     }
+    if (stage.discount > 0) {
+      ensureSpace(6);
+      font(8.5, false, MUTED);
+      doc.text(
+        translate("plan_editor.pdf.stage_discount", {
+          percent: percent(Number(info?.discount_percent ?? 0)),
+        }),
+        columnX(1),
+        y,
+      );
+      doc.text(`− ${money(stage.discount)}`, right, y, { align: "right" });
+      y += 5;
+    }
     y += 2;
   }
 
@@ -222,11 +267,11 @@ export const buildEstimatePdf = (
     doc.text(value, right, y, { align: "right" });
     y += bold ? 7 : 5;
   };
-  totalLine(translate("treatment.totals.gross"), money(totals.gross));
-  if (totals.itemsDiscount > 0) {
+  totalLine(translate("plan_editor.totals.gross"), money(totals.gross));
+  if (totals.stagesDiscount > 0) {
     totalLine(
-      translate("treatment.totals.items_discount"),
-      `− ${money(totals.itemsDiscount)}`,
+      translate("plan_editor.totals.stages_discount"),
+      `− ${money(totals.stagesDiscount)}`,
     );
   }
   if (totals.planDiscount > 0) {
@@ -239,14 +284,18 @@ export const buildEstimatePdf = (
         : null,
     ].filter(Boolean);
     totalLine(
-      `${translate("treatment.totals.plan_discount")} (${parts.join(" + ")})`,
+      `${translate("plan_editor.totals.extra_discount")} (${parts.join(" + ")})`,
       `− ${money(totals.planDiscount)}`,
     );
   }
   y += 1;
   doc.setDrawColor(150);
   doc.line(right - 80, y - 4, right, y - 4);
-  totalLine(translate("treatment.totals.total"), money(totals.total), true);
+  totalLine(
+    translate("plan_editor.totals.total_with_discount"),
+    money(totals.total),
+    true,
+  );
 
   // Note, validity, signatures
   y += 2;

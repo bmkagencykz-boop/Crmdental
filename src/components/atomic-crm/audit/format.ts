@@ -111,7 +111,13 @@ const LIST_REFERENCES: Record<
 
 /** Entity types of the filter, and the logged entities they cover */
 export const AUDIT_ENTITY_GROUPS = {
-  deal: ["deal", "file", "treatment_plan", "treatment_plan_item"],
+  deal: [
+    "deal",
+    "file",
+    "treatment_plan",
+    "treatment_plan_item",
+    "treatment_stage",
+  ],
   patient: ["patient"],
   payment: ["payment", "account_operation", "cash_shift"],
   task: ["task"],
@@ -134,6 +140,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "service",
     "ad_spend",
     "branch",
+    "treatment_stage_template",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -314,27 +321,40 @@ export const describeAuditChanges = (
             : entity === "account_operation" &&
                 ["kind", "method", "account", "parts"].includes(field)
               ? operationChange(field, translate)
-              : entity === "treatment_plan" && field === "status"
+              : entity === "treatment_stage" && field === "status"
                 ? {
-                    label: translate("treatment.audit.fields.status"),
+                    label: translate("plan_editor.stages.fields.status"),
                     format: (value: unknown) =>
                       value == null
                         ? EMPTY
-                        : translate(`treatment.statuses.${value}`, {
+                        : translate(`plan_editor.stages.statuses.${value}`, {
                             _: String(value),
                           }),
                   }
-                : null);
+                : entity === "treatment_plan" && field === "status"
+                  ? {
+                      label: translate("treatment.audit.fields.status"),
+                      format: (value: unknown) =>
+                        value == null
+                          ? EMPTY
+                          : translate(`treatment.statuses.${value}`, {
+                              _: String(value),
+                            }),
+                    }
+                  : null);
       // Fields of the treatment plans and the patient card (stage 29)
       const label =
         special?.label ??
         translate(`audit.fields.${field}`, {
           _: translate(`treatment.audit.fields.${field}`, {
-            // Ad spend (stage 32), branches (stage 33)
-            _: translate(`marketing.audit.fields.${field}`, {
-              _: translate(`branches.audit.fields.${field}`, {
-                // The cash desk (stage 36)
-                _: translate(`payments.audit.fields.${field}`, { _: field }),
+            // The plan editor (stage 34)
+            _: translate(`plan_editor.audit.fields.${field}`, {
+              // Ad spend (stage 32), branches (stage 33)
+              _: translate(`marketing.audit.fields.${field}`, {
+                _: translate(`branches.audit.fields.${field}`, {
+                  // The cash desk (stage 36)
+                  _: translate(`payments.audit.fields.${field}`, { _: field }),
+                }),
               }),
             }),
           }),
@@ -437,11 +457,13 @@ export const auditEntityLabel = (
                 ? translate(`payments.audit.${entry.entity}`)
                 : SCHEDULE_ENTITIES.includes(entry.entity)
                   ? translate(`schedule.audit.${entry.entity}`)
-                  : TREATMENT_ENTITIES.includes(entry.entity)
-                    ? translate(`treatment.audit.${entry.entity}`)
-                    : translate(`audit.entities.${entry.entity}`, {
-                        _: entry.entity,
-                      });
+                  : PLAN_EDITOR_ENTITIES.includes(entry.entity)
+                    ? translate(`plan_editor.audit.${entry.entity}`)
+                    : TREATMENT_ENTITIES.includes(entry.entity)
+                      ? translate(`treatment.audit.${entry.entity}`)
+                      : translate(`audit.entities.${entry.entity}`, {
+                          _: entry.entity,
+                        });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -495,6 +517,8 @@ export const auditEntityLabel = (
     case "salesbot":
     case "treatment_plan":
     case "treatment_plan_item":
+    case "treatment_stage":
+    case "treatment_stage_template":
     case "service":
       name = changedName(entry) ?? ref;
       break;
@@ -514,6 +538,7 @@ export const auditEntityLabel = (
     "file",
     "custom_field",
     ...TREATMENT_ENTITIES,
+    ...PLAN_EDITOR_ENTITIES,
   ].includes(entry.entity)
     ? `«${name}»`
     : name;
@@ -528,6 +553,12 @@ const TREATMENT_ENTITIES: string[] = [
   "treatment_plan",
   "treatment_plan_item",
   "service",
+];
+
+/** Entities of stage 34, labelled in the plan_editor namespace */
+const PLAN_EDITOR_ENTITIES: string[] = [
+  "treatment_stage",
+  "treatment_stage_template",
 ];
 
 /** The deal page, else the patient page */

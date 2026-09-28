@@ -54,6 +54,7 @@ import {
 import { i18nProvider as defaulti18nProvider } from "../providers/commons/i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
 import { SearchPage } from "../search/SearchPage";
+import { PlanPage } from "../treatment/PlanPage";
 
 const defaultStore = localStorageStore(undefined, "CRM");
 
@@ -237,6 +238,7 @@ const DesktopAdmin = (
         />
         <Route path={IntegrationsPage.path} element={<IntegrationsPage />} />
         <Route path={SearchPage.path} element={<SearchPage />} />
+        <Route path={PlanPage.path} element={<PlanPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />

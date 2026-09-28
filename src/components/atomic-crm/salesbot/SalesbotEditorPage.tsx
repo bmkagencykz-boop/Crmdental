@@ -132,7 +132,7 @@ const Editor = ({ bot }: { bot: Salesbot }) => {
 
   return (
     <div
-      className="flex h-[calc(100vh-7.5rem)] min-h-[36rem] flex-col gap-4"
+      className="flex h-[calc(100vh-6.5rem)] min-h-[36rem] flex-col gap-4"
       data-testid="salesbot-editor"
     >
       <header className="flex flex-wrap items-center gap-3">

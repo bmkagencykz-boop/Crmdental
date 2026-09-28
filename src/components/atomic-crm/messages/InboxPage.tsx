@@ -55,7 +55,7 @@ export const InboxPage = () => {
   const selected = deals.find((deal) => deal.id === selectedId);
 
   return (
-    <div className="grid h-[calc(100vh-11rem)] min-h-[32rem] grid-cols-[22rem_1fr] gap-5">
+    <div className="grid h-[calc(100vh-6rem)] min-h-[32rem] grid-cols-[22rem_1fr] gap-5">
       <section className="glass flex min-h-0 flex-col rounded-lg p-3">
         <div className="flex flex-col gap-2 p-2">
           <Input

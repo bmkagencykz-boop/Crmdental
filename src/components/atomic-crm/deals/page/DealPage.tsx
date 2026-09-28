@@ -52,7 +52,7 @@ const DealPageContent = () => {
   if (!deal) return null;
 
   return (
-    <div className="grid h-[calc(100vh-7.5rem)] min-h-[36rem] grid-cols-[27rem_1fr] gap-5">
+    <div className="grid h-[calc(100vh-6.5rem)] min-h-[36rem] grid-cols-[27rem_1fr] gap-5">
       <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
         <UnsortedBanner deal={deal} />
         <DealHeader deal={deal} />

@@ -130,7 +130,7 @@ create table public.stage_triggers (
         'idle', 'payment_added', 'appointment_set', 'visit_passed')),
     constraint stage_triggers_delay_check check (delay_minutes >= 0 and (event <> 'idle' or delay_minutes > 0)),
     constraint stage_triggers_action_check check (action in ('move_stage', 'set_responsible', 'add_tag', 'remove_tag',
-        'create_task', 'send_template', 'send_webhook', 'set_field')),
+        'create_task', 'send_template', 'send_webhook', 'set_field', 'start_salesbot')),
     constraint stage_triggers_move_check check (action <> 'move_stage' or (target_stage_id is not null and target_stage_id <> stage_id)),
     constraint stage_triggers_tag_check check (action not in ('add_tag', 'remove_tag') or tag_id is not null),
     constraint stage_triggers_task_check check (action <> 'create_task' or (
@@ -753,6 +753,14 @@ begin
       raise exception 'Вебхук выключен' using errcode = '22023';
     end if;
     return jsonb_build_object('webhook_id', trigger_row.webhook_id);
+
+  when 'start_salesbot' then
+    -- «Запустить салесбот» (26_salesbot.sql): replaces the bot of the deal
+    new_id := private.salesbot_start(trigger_row.salesbot_id, deal.id, 'pipeline');
+    if new_id is null then
+      raise exception 'Бот не запущен' using errcode = '22023';
+    end if;
+    return jsonb_build_object('salesbot_id', trigger_row.salesbot_id, 'session_id', new_id);
 
   when 'set_field' then
     old_value := to_jsonb(deal) -> trigger_row.field_name;

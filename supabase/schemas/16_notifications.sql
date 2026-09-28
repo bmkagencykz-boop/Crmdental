@@ -76,7 +76,7 @@ create table public.notifications (
     telegram_claimed_at timestamp with time zone,
     telegram_sent_at timestamp with time zone,
     constraint notifications_kind_check
-        check (kind in ('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue')),
+        check (kind in ('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff')),
     constraint notifications_telegram_status_check
         check (telegram_status in ('sending', 'sent', 'skipped', 'failed'))
 );
@@ -86,7 +86,7 @@ create table public.notifications (
 create table public.notification_preferences (
     sales_id bigint primary key,
     organization_id bigint not null,
-    kinds text[] not null default array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue'],
+    kinds text[] not null default array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff'],
     browser_enabled boolean not null default false,
     telegram_enabled boolean not null default true,
     -- Linked with /start <code> sent to the platform bot
@@ -97,7 +97,7 @@ create table public.notification_preferences (
     telegram_link_expires_at timestamp with time zone,
     updated_at timestamp with time zone not null default now(),
     constraint notification_preferences_kinds_check
-        check (kinds <@ array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue'])
+        check (kinds <@ array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff'])
 );
 
 -- response_overdue already sent: level 1 at the limit, level 2 at 3x the
@@ -702,7 +702,7 @@ begin
   end if;
   select * into prefs from public.notification_preferences p where p.sales_id = me;
   return jsonb_build_object(
-    'kinds', to_jsonb(coalesce(prefs.kinds, array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue'])),
+    'kinds', to_jsonb(coalesce(prefs.kinds, array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff'])),
     'browser_enabled', coalesce(prefs.browser_enabled, false),
     'telegram_enabled', coalesce(prefs.telegram_enabled, true),
     'telegram_linked', prefs.telegram_chat_id is not null,

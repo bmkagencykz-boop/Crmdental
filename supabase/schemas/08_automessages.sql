@@ -232,12 +232,15 @@ CREATE OR REPLACE FUNCTION "private"."cancel_automessages"("org_id" bigint, "tar
 declare
   cancelled integer;
 begin
+  -- The messages of a salesbot (26_salesbot.sql) belong to its conversation:
+  -- leaving the stage does not cancel them, stopping the bot does
   update public.automessages a
   set status = 'cancelled', error = reason, processed_at = now()
   where a.organization_id = org_id
     and a.deal_id = target_deal_id
     and a.status = any(statuses)
-    and (only_timing is null or a.timing = only_timing);
+    and (only_timing is null or a.timing = only_timing)
+    and a.salesbot_session_id is null;
   get diagnostics cancelled = row_count;
   return cancelled;
 end;
@@ -368,23 +371,31 @@ begin
     select r.* into job_rule from public.automessage_rules r
     where r.organization_id = job.organization_id and r.id = job.rule_id;
 
-    if job_deal.stage_id is distinct from job.stage_id or job_deal.archived_at is not null then
+    -- A message of a salesbot (stage 26) has its text and stays when the
+    -- deal changes stage (the bot moves it itself)
+    if (job.salesbot_session_id is null and job_deal.stage_id is distinct from job.stage_id)
+      or job_deal.archived_at is not null then
       update public.automessages a
       set status = 'cancelled', error = 'Сделка ушла с этапа', processed_at = now()
       where a.id = job.id;
       continue;
     end if;
     -- A row queued by a stage trigger (stage 20) has its template, no rule
-    if job.template_id is null and (job_rule.id is null or not job_rule.is_active) then
+    if job.salesbot_session_id is null and job.template_id is null
+      and (job_rule.id is null or not job_rule.is_active) then
       update public.automessages a
       set status = 'cancelled', error = 'Правило выключено или удалено', processed_at = now()
       where a.id = job.id;
       continue;
     end if;
 
-    select t.body into template_body from public.message_templates t
-    where t.organization_id = job.organization_id and t.id = coalesce(job.template_id, job_rule.template_id);
-    rendered := private.render_template(template_body, private.automessage_vars(job_deal));
+    if job.salesbot_session_id is not null then
+      rendered := job.text;
+    else
+      select t.body into template_body from public.message_templates t
+      where t.organization_id = job.organization_id and t.id = coalesce(job.template_id, job_rule.template_id);
+      rendered := private.render_template(template_body, private.automessage_vars(job_deal));
+    end if;
     if coalesce(rendered, '') = '' then
       update public.automessages a
       set status = 'failed', error = 'Пустой текст сообщения', processed_at = now()

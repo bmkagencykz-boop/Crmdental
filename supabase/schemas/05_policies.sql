@@ -7,8 +7,10 @@
 -- wrapped in sub-selects so Postgres evaluates them once per statement.
 --
 -- Deals, patients and tasks follow the access rights of the employee (stage
--- 30, private.access_scope): per action a scope — all, their own, their own
--- and the unassigned ones (deals), or none. The defaults are the rules of the
+-- 30, private.access_scope): per action a scope — all, their branches
+-- («Мой филиал», stage 33: their own, those of the branches they work in and
+-- those without a branch; deals and tasks), their own, their own and the
+-- unassigned ones (deals), or none. The defaults are the rules of the
 -- roles: owners and heads everything; managers see the deals the clinic
 -- setting allows (all, their own, their own and unassigned), all patients
 -- and tasks, and delete no deal. Rows that belong to a deal (notes, tasks,
@@ -183,36 +185,10 @@ create policy "Rows of visible patients can be deleted" on public.patient_notes 
 -- Deals: the view, edit and delete scopes of the employee (a manager's
 -- default view and edit scope is the clinic setting manager_deal_visibility).
 -- private.deal_visible() is the same view rule for SECURITY DEFINER code.
-create policy "Visible deals can be read" on public.deals for select to authenticated
-    using (
-        organization_id = (select private.current_organization_id())
-        and (
-            (select private.access_scope('deals', 'view')) = 'all'
-            or ((select private.access_scope('deals', 'view')) in ('own', 'own_and_unassigned') and sales_id = (select private.current_sales_id()))
-            or ((select private.access_scope('deals', 'view')) = 'own_and_unassigned' and sales_id is null)
-        )
-    );
+-- The select, update and delete policies are declared in 33_branches.sql:
+-- the scope «Мой филиал» reads deals.branch_id, added there (stage 33).
 create policy "Employees with the create right can insert" on public.deals for insert to authenticated
     with check (organization_id = (select private.current_organization_id()) and (select private.access_scope('deals', 'create')) = 'all');
-create policy "Deals in the edit scope can be updated" on public.deals for update to authenticated
-    using (
-        organization_id = (select private.current_organization_id())
-        and (
-            (select private.access_scope('deals', 'edit')) = 'all'
-            or ((select private.access_scope('deals', 'edit')) in ('own', 'own_and_unassigned') and sales_id = (select private.current_sales_id()))
-            or ((select private.access_scope('deals', 'edit')) = 'own_and_unassigned' and sales_id is null)
-        )
-    )
-    with check (organization_id = (select private.current_organization_id()));
-create policy "Deals in the delete scope can be deleted" on public.deals for delete to authenticated
-    using (
-        organization_id = (select private.current_organization_id())
-        and (
-            (select private.access_scope('deals', 'delete')) = 'all'
-            or ((select private.access_scope('deals', 'delete')) in ('own', 'own_and_unassigned') and sales_id = (select private.current_sales_id()))
-            or ((select private.access_scope('deals', 'delete')) = 'own_and_unassigned' and sales_id is null)
-        )
-    );
 
 -- Rows of a deal: visible when the deal is (the sub-query applies the deals policy)
 create policy "Rows of visible deals can be read" on public.deal_notes for select to authenticated
@@ -240,30 +216,12 @@ create policy "Rows of visible deals can be read" on public.deal_events for sele
     using (organization_id = (select private.current_organization_id()) and exists (select 1 from public.deals d where d.organization_id = deal_events.organization_id and d.id = deal_events.deal_id));
 
 -- Tasks: of visible deals, within the scope of the action («own»: the
--- employee is the one who does the task)
-create policy "Tasks in the view scope can be read" on public.tasks for select to authenticated
-    using (
-        organization_id = (select private.current_organization_id())
-        and ((select private.access_scope('tasks', 'view')) = 'all' or ((select private.access_scope('tasks', 'view')) = 'own' and sales_id = (select private.current_sales_id())))
-        and exists (select 1 from public.deals d where d.organization_id = tasks.organization_id and d.id = tasks.deal_id)
-    );
+-- employee is the one who does the task). The select, update and delete
+-- policies are declared in 33_branches.sql (tasks.branch_id, stage 33).
 create policy "Tasks of visible deals can be inserted" on public.tasks for insert to authenticated
     with check (
         organization_id = (select private.current_organization_id())
         and (select private.access_scope('tasks', 'create')) = 'all'
-        and exists (select 1 from public.deals d where d.organization_id = tasks.organization_id and d.id = tasks.deal_id)
-    );
-create policy "Tasks in the edit scope can be updated" on public.tasks for update to authenticated
-    using (
-        organization_id = (select private.current_organization_id())
-        and ((select private.access_scope('tasks', 'edit')) = 'all' or ((select private.access_scope('tasks', 'edit')) = 'own' and sales_id = (select private.current_sales_id())))
-        and exists (select 1 from public.deals d where d.organization_id = tasks.organization_id and d.id = tasks.deal_id)
-    )
-    with check (organization_id = (select private.current_organization_id()));
-create policy "Tasks in the delete scope can be deleted" on public.tasks for delete to authenticated
-    using (
-        organization_id = (select private.current_organization_id())
-        and ((select private.access_scope('tasks', 'delete')) = 'all' or ((select private.access_scope('tasks', 'delete')) = 'own' and sales_id = (select private.current_sales_id())))
         and exists (select 1 from public.deals d where d.organization_id = tasks.organization_id and d.id = tasks.deal_id)
     );
 

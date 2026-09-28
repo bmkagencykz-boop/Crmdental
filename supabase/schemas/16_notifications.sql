@@ -250,8 +250,9 @@ CREATE OR REPLACE FUNCTION "private"."clinic_managers"("org_id" bigint) RETURNS 
 $$;
 
 -- Who hears about the patients of a deal: its responsible; for an unassigned
--- deal the "first to answer" list (everybody when the list is empty), else
--- the owner and heads
+-- deal the "first to answer" list (everybody when the list is empty; those
+-- of the deal's branch when some work there, stage 33), else the owner and
+-- heads
 CREATE OR REPLACE FUNCTION "private"."deal_audience"("deal" "public"."deals") RETURNS bigint[]
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -272,6 +273,7 @@ begin
     from public.sales s
     where s.organization_id = deal.organization_id and not s.disabled
       and (cardinality(settings.lead_distribution_sales_ids) = 0 or s.id = any(settings.lead_distribution_sales_ids));
+    chosen := private.branch_pool(deal.organization_id, deal.branch_id, chosen);
     if cardinality(chosen) > 0 then
       return chosen;
     end if;

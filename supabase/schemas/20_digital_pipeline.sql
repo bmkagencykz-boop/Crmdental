@@ -679,7 +679,7 @@ begin
     return jsonb_build_object('from_stage_id', deal.stage_id, 'to_stage_id', trigger_row.target_stage_id);
 
   when 'set_responsible' then
-    new_sales_id := coalesce(trigger_row.target_sales_id, private.next_responsible(org_id));
+    new_sales_id := coalesce(trigger_row.target_sales_id, private.next_responsible(org_id, deal.branch_id));
     if new_sales_id is null then
       raise exception 'Некому назначить: распределение по очереди не настроено' using errcode = '22023';
     end if;

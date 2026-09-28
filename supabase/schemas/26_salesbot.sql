@@ -561,7 +561,7 @@ begin
     return jsonb_build_object('from_stage_id', deal.stage_id, 'to_stage_id', target_id);
 
   when 'responsible' then
-    new_sales_id := coalesce((action ->> 'sales_id')::bigint, private.next_responsible(org_id));
+    new_sales_id := coalesce((action ->> 'sales_id')::bigint, private.next_responsible(org_id, deal.branch_id));
     if new_sales_id is null or not exists (
       select 1 from public.sales s where s.organization_id = org_id and s.id = new_sales_id and not s.disabled
     ) then

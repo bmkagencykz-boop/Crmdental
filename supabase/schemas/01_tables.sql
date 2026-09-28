@@ -91,6 +91,24 @@ begin
 end;
 $$;
 
+-- Branches the current user works in (stage 33, public.sales_branches): the
+-- scope «Мой филиал» ('branch') of the access rights. Declared here because
+-- the policies of 05_policies.sql use it; the tables are in 33_branches.sql.
+create or replace function private.current_branch_ids() returns bigint[]
+    language plpgsql stable security definer
+    set search_path to ''
+    as $$
+begin
+  return coalesce((
+    select array_agg(sb.branch_id order by sb.branch_id)
+    from public.sales s
+      join public.sales_branches sb on sb.organization_id = s.organization_id and sb.sales_id = s.id
+    where s.user_id = auth.uid() and not s.disabled
+      and (s.access_expires_at is null or s.access_expires_at > now())
+  ), '{}'::bigint[]);
+end;
+$$;
+
 --
 -- Organizations and staff
 --

@@ -476,8 +476,8 @@ $$;
 
 -- Reports «Деньги» → «Согласованные планы по позициям»: the services of the
 -- main plans agreed in the period, by sum (top 20). Same filters as the
--- other reports; owner and head only.
-CREATE OR REPLACE FUNCTION "public"."report_plan_services"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+-- other reports (the branch since stage 33); owner and head only.
+CREATE OR REPLACE FUNCTION "public"."report_plan_services"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -501,6 +501,7 @@ begin
         and (filter_sales_id is null or d.sales_id = filter_sales_id)
         and (filter_source_id is null or d.source_id = filter_source_id)
         and (filter_doctor_id is null or coalesce(p.doctor_id, d.doctor_id) = filter_doctor_id)
+        and (filter_branch_id is null or d.branch_id = filter_branch_id)
       group by i.service_id, coalesce(sv.name, i.name)
       order by amount desc, name
       limit 20
@@ -734,6 +735,6 @@ revoke all on function private.handle_deal_patient_plans() from public;
 
 revoke all on function public.duplicate_treatment_plan(bigint) from public, anon;
 grant execute on function public.duplicate_treatment_plan(bigint) to authenticated, service_role;
-revoke all on function public.report_plan_services(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) from public, anon;
-grant execute on function public.report_plan_services(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to authenticated;
-grant execute on function public.report_plan_services(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to service_role;
+revoke all on function public.report_plan_services(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) from public, anon;
+grant execute on function public.report_plan_services(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to authenticated;
+grant execute on function public.report_plan_services(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to service_role;

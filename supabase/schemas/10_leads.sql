@@ -83,7 +83,8 @@ create unique index telegram_bots_webhook_token_idx on public.telegram_bots usin
 -- yet (first touch). The same form sent again within 5 minutes is ignored.
 -- The UTM columns and private.utm_lead_source are declared in
 -- 32_marketing.sql (stage 32), loaded later: plpgsql resolves them when it
--- runs.
+-- runs. `branch` (stage 33, 33_branches.sql): the id or the name of a branch
+-- of the clinic (private.find_branch); a new deal goes to that branch.
 CREATE OR REPLACE FUNCTION "public"."ingest_lead"("token" "text", "lead" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -97,6 +98,8 @@ declare
   lead_comment text := nullif(btrim(lead ->> 'comment'), '');
   lead_referrer text := left(nullif(btrim(lead ->> 'referrer'), ''), 2000);
   lead_landing_page text := left(nullif(btrim(lead ->> 'landing_page'), ''), 2000);
+  lead_branch text := nullif(btrim(coalesce(lead ->> 'branch', lead ->> 'branch_id')), '');
+  found_branch_id bigint;
   utm jsonb;
   payload jsonb;
   hash text;
@@ -138,9 +141,11 @@ begin
     'name', lead_name, 'phone', lead_phone, 'source', lead_source,
     'service', lead_service, 'comment', lead_comment,
     'utm', case when utm <> '{}'::jsonb then utm end,
-    'referrer', lead_referrer, 'landing_page', lead_landing_page
+    'referrer', lead_referrer, 'landing_page', lead_landing_page,
+    'branch', lead_branch
   ));
   hash := md5(payload::text);
+  found_branch_id := private.find_branch(org_id, lead_branch);
 
   -- Forms are often submitted twice: the same request within 5 minutes is
   -- stored once (concurrent submissions of a phone wait for each other)
@@ -206,11 +211,11 @@ begin
   limit 1;
   if found_deal_id is null then
     insert into public.deals (organization_id, patient_id, source_id, service_id, unsorted_at,
-      utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page)
+      utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page, branch_id)
     values (org_id, found_patient_id, found_source.id, found_service_id,
       private.unsorted_intake(org_id, found_source.id),
       utm ->> 'utm_source', utm ->> 'utm_medium', utm ->> 'utm_campaign',
-      utm ->> 'utm_content', utm ->> 'utm_term', lead_referrer, lead_landing_page)
+      utm ->> 'utm_content', utm ->> 'utm_term', lead_referrer, lead_landing_page, found_branch_id)
     returning id into found_deal_id;
     created_deal := true;
   else
@@ -247,7 +252,8 @@ begin
     'Комментарий: ' || lead_comment,
     (select string_agg(u.key || ': ' || u.value, E'\n' order by u.key) from jsonb_each_text(utm) as u),
     'Страница: ' || lead_landing_page,
-    'Переход с: ' || lead_referrer
+    'Переход с: ' || lead_referrer,
+    'Филиал: ' || (select b.name from public.branches b where b.organization_id = org_id and b.id = found_branch_id)
   );
   insert into public.deal_notes (organization_id, deal_id, type, text, date)
   values (org_id, found_deal_id, 'lead', note_text, now())

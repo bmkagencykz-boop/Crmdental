@@ -106,7 +106,7 @@ end;
 $$;
 
 -- The deals RLS policy for SECURITY DEFINER code: may the current user see it
--- (the view scope of the access rights, stage 30)
+-- (the view scope of the access rights, stage 30; «Мой филиал», stage 33)
 CREATE OR REPLACE FUNCTION "private"."deal_visible"("deal" "public"."deals") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -119,8 +119,9 @@ begin
     and deal.organization_id = private.current_organization_id()
     and (
       scope = 'all'
-      or (scope in ('own', 'own_and_unassigned') and deal.sales_id = private.current_sales_id())
+      or (scope in ('branch', 'own', 'own_and_unassigned') and deal.sales_id = private.current_sales_id())
       or (scope = 'own_and_unassigned' and deal.sales_id is null)
+      or (scope = 'branch' and (deal.branch_id is null or deal.branch_id = any(private.current_branch_ids())))
     ),
     false);
 end;
@@ -161,7 +162,7 @@ begin
     raise exception 'Выберите этап в работе' using errcode = 'check_violation', hint = 'unsorted_stage_not_open';
   end if;
   if responsible is null then
-    responsible := coalesce(lead_row.sales_id, private.next_responsible(lead_row.organization_id));
+    responsible := coalesce(lead_row.sales_id, private.next_responsible(lead_row.organization_id, lead_row.branch_id));
   elsif not exists (
     select 1 from public.sales s
     where s.organization_id = lead_row.organization_id and s.id = responsible and not s.disabled

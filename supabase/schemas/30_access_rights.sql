@@ -7,6 +7,9 @@
 --
 --   scope               deals  patients  tasks   meaning
 --   all                   x       x        x     every row of the clinic
+--   branch                x                x     «Мой филиал» (stage 33): own rows, rows
+--                                                of the employee's branches and rows
+--                                                without a branch
 --   own_and_unassigned    x                      own rows and deals without a responsible
 --   own                   x       x        x     the employee is responsible
 --   none                  x       x        x     nothing
@@ -85,7 +88,10 @@ begin
     return array['all', 'none'];
   end if;
   if entity = 'deals' then
-    return array['all', 'own_and_unassigned', 'own', 'none'];
+    return array['all', 'branch', 'own_and_unassigned', 'own', 'none'];
+  end if;
+  if entity = 'tasks' then
+    return array['all', 'branch', 'own', 'none'];
   end if;
   return array['all', 'own', 'none'];
 end;
@@ -226,7 +232,8 @@ create or replace trigger audit_access_rights
 --
 
 -- The rights of the signed-in employee, for the interface:
--- { sales_id, role, rights: <matrix>, customized }
+-- { sales_id, role, rights: <matrix>, customized, branch_ids } (branch_ids:
+-- the branches the employee works in, the scope «Мой филиал», stage 33)
 CREATE OR REPLACE FUNCTION "public"."my_access_rights"() RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -249,7 +256,12 @@ begin
     'sales_id', me.id,
     'role', me.role,
     'rights', private.access_matrix(me.organization_id, me.role, overrides),
-    'customized', overrides is not null and me.role in ('head', 'manager')
+    'customized', overrides is not null and me.role in ('head', 'manager'),
+    'branch_ids', coalesce((
+      select jsonb_agg(sb.branch_id order by sb.branch_id)
+      from public.sales_branches sb
+      where sb.organization_id = me.organization_id and sb.sales_id = me.id
+    ), '[]'::jsonb)
   );
 end;
 $$;

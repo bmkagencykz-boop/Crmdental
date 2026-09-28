@@ -62,6 +62,9 @@ create unique index sales_phone_extension_idx on public.sales using btree (organ
 -- patient's most recently updated open deal or opens a new deal (stage 5
 -- distribution and task rules apply), and maps the employee by extension.
 -- A missed incoming call gives the responsible a task «Перезвонить».
+-- Stage 33: `line` is the clinic's number the call went through; a new deal
+-- goes to the branch with that phone number, else to the branch of the
+-- employee of the call when they work in one branch only.
 CREATE OR REPLACE FUNCTION "public"."ingest_call"("webhook_token" "text", "provider" "text", "call" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -77,6 +80,8 @@ declare
   call_started_at timestamp with time zone := nullif(btrim(call ->> 'started_at'), '')::timestamp with time zone;
   call_duration integer := greatest(coalesce(nullif(btrim(call ->> 'duration'), '')::numeric, 0), 0)::integer;
   call_record_url text := nullif(btrim(call ->> 'record_url'), '');
+  call_line text := private.normalize_phone(nullif(btrim(call ->> 'line'), ''));
+  call_branch_id bigint;
   employee_id bigint;
   call_source_id bigint;
   found_call public.calls;
@@ -191,10 +196,20 @@ begin
   order by d.updated_at desc, d.id desc
   limit 1;
   if found_deal_id is null then
+    call_branch_id := coalesce(
+      (select b.id from public.branches b
+       where b.organization_id = org_id and call_line is not null
+         and private.normalize_phone(b.phone) = call_line
+       order by b.is_active desc, b.position, b.id
+       limit 1),
+      (select min(sb.branch_id) from public.sales_branches sb
+       where sb.organization_id = org_id and sb.sales_id = employee_id
+       having count(*) = 1));
     -- An incoming call may open an unsorted lead (clinic setting)
-    insert into public.deals (organization_id, patient_id, source_id, sales_id, unsorted_at)
+    insert into public.deals (organization_id, patient_id, source_id, sales_id, unsorted_at, branch_id)
     values (org_id, found_patient_id, call_source_id, case when call_direction = 'out' then employee_id end,
-      case when call_direction = 'in' then private.unsorted_intake(org_id, call_source_id) end)
+      case when call_direction = 'in' then private.unsorted_intake(org_id, call_source_id) end,
+      call_branch_id)
     returning id into found_deal_id;
     created_deal := true;
   end if;

@@ -504,10 +504,12 @@ begin
     new.paid_amount := 0;
     new.stage_changed_at := now();
     -- A lead coming from outside (no user) is distributed by the clinic
-    -- rules; an unsorted one (18_unsorted_duplicates.sql) waits to be accepted
+    -- rules, among the employees of its branch (stage 33, set by the
+    -- deal_assign_branch trigger before this one); an unsorted one
+    -- (18_unsorted_duplicates.sql) waits to be accepted
     if new.sales_id is null and auth.uid() is null and new.unsorted_at is null
       and current_setting('crm.importing', true) is distinct from 'on' then
-      new.sales_id := private.next_responsible(new.organization_id);
+      new.sales_id := private.next_responsible(new.organization_id, new.branch_id);
     end if;
   else
     new.created_at := old.created_at;
@@ -728,7 +730,8 @@ $$;
 -- creates one, attaches the message to the patient's most recently updated
 -- open deal or opens a new deal, and ignores a message already received.
 -- telegram_bot messages (the clinic's own bot, public.ingest_telegram_message)
--- carry the bot's webhook token instead of the Wazzup24 one.
+-- carry the bot's webhook token instead of the Wazzup24 one. A new deal goes
+-- to the branch of the channel (messenger_channels.branch_id, stage 33).
 CREATE OR REPLACE FUNCTION "public"."ingest_message"("webhook_token" "text", "message" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -837,9 +840,10 @@ begin
   limit 1;
   if found_deal_id is null then
     -- A patient's message may open an unsorted lead (clinic setting)
-    insert into public.deals (organization_id, patient_id, source_id, unsorted_at)
+    insert into public.deals (organization_id, patient_id, source_id, unsorted_at, branch_id)
     values (org_id, found_patient_id, source_id,
-      case when msg_direction = 'in' then private.unsorted_intake(org_id, source_id) end)
+      case when msg_direction = 'in' then private.unsorted_intake(org_id, source_id) end,
+      (select c.branch_id from public.messenger_channels c where c.organization_id = org_id and c.id = new_channel_id))
     returning id into found_deal_id;
     created_deal := true;
   end if;
@@ -936,7 +940,8 @@ begin
     set first_response_at = new.sent_at
     where d.organization_id = new.organization_id and d.id = new.deal_id
       and d.first_response_at is null;
-    -- "First to answer takes the lead", among the chosen employees
+    -- "First to answer takes the lead", among the chosen employees (of the
+    -- deal's branch when some of them work there, stage 33)
     if new.sales_id is not null then
       update public.deals d
       set sales_id = new.sales_id
@@ -946,8 +951,10 @@ begin
           select 1 from public.organization_settings s
           where s.organization_id = new.organization_id
             and s.lead_distribution = 'first_response'
-            and (cardinality(s.lead_distribution_sales_ids) = 0
-              or new.sales_id = any(s.lead_distribution_sales_ids))
+            and new.sales_id = any(private.branch_pool(new.organization_id, d.branch_id,
+              case when cardinality(s.lead_distribution_sales_ids) = 0
+                then array(select sa.id from public.sales sa where sa.organization_id = new.organization_id and not sa.disabled)
+                else s.lead_distribution_sales_ids end))
         );
     end if;
   end if;
@@ -960,13 +967,16 @@ $$;
 --
 
 -- Round robin among the chosen active employees (organization_settings);
--- null when the clinic does not distribute this way
-CREATE OR REPLACE FUNCTION "private"."next_responsible"("org_id" bigint) RETURNS bigint
+-- null when the clinic does not distribute this way. A lead of a branch
+-- (stage 33) goes to the chosen employees of that branch, to all the chosen
+-- ones when none of them works there (private.branch_pool).
+CREATE OR REPLACE FUNCTION "private"."next_responsible"("org_id" bigint, "branch" bigint DEFAULT NULL::bigint) RETURNS bigint
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
   settings public.organization_settings;
+  pool bigint[];
   last_position bigint;
   chosen bigint;
 begin
@@ -976,12 +986,16 @@ begin
   if not found or settings.lead_distribution <> 'round_robin' then
     return null;
   end if;
+  pool := private.branch_pool(org_id, branch, array(
+    select s.id from public.sales s
+    where s.organization_id = org_id and not s.disabled and s.id = any(settings.lead_distribution_sales_ids)));
   select c.position into last_position
   from unnest(settings.lead_distribution_sales_ids) with ordinality as c(sales_id, position)
   where c.sales_id = settings.last_distributed_sales_id;
   select s.id into chosen
   from unnest(settings.lead_distribution_sales_ids) with ordinality as c(sales_id, position)
     join public.sales s on s.id = c.sales_id and s.organization_id = org_id and not s.disabled
+  where s.id = any(pool)
   order by c.position <= coalesce(last_position, 0), c.position
   limit 1;
   if chosen is not null then

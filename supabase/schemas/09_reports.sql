@@ -17,6 +17,11 @@
 -- 13_doctors.sql, loaded after this file: the functions that read them are
 -- plpgsql, resolved when they run.
 --
+-- Stage 33 adds the branch: a filter_branch_id parameter (last, optional) on
+-- every report — the deals of that branch (deals.branch_id, declared in
+-- 33_branches.sql); the speed report lists the employees of the branch and
+-- those with activity in it.
+--
 
 create index if not exists deals_created_at_idx on public.deals using btree (organization_id, created_at);
 create index if not exists deal_events_stage_idx on public.deal_events using btree (organization_id, to_stage_id) where to_stage_id is not null;
@@ -65,7 +70,7 @@ $$;
 -- current pipeline: the furthest open or won stage it entered, the key stages
 -- reached, when it first reached the "plan agreed" stage, and for a lost deal
 -- the stage it was lost from.
-CREATE OR REPLACE FUNCTION "private"."report_deal_progress"("filter_pipeline_id" bigint, "filter_sales_id" bigint, "filter_source_id" bigint, "filter_doctor_id" bigint) RETURNS TABLE("deal_id" bigint, "pipeline_id" bigint, "stage_id" bigint, "stage_kind" "text", "sales_id" bigint, "source_id" bigint, "service_id" bigint, "doctor_id" bigint, "lost_reason_id" bigint, "plan_amount" bigint, "paid_amount" bigint, "created_at" timestamp with time zone, "closed_at" timestamp with time zone, "first_response_at" timestamp with time zone, "archived_at" timestamp with time zone, "reached_position" integer, "reached_appointment" boolean, "reached_visit" boolean, "reached_plan" boolean, "agreed_at" timestamp with time zone, "lost_from_stage_id" bigint)
+CREATE OR REPLACE FUNCTION "private"."report_deal_progress"("filter_pipeline_id" bigint, "filter_sales_id" bigint, "filter_source_id" bigint, "filter_doctor_id" bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("deal_id" bigint, "pipeline_id" bigint, "stage_id" bigint, "stage_kind" "text", "sales_id" bigint, "source_id" bigint, "service_id" bigint, "doctor_id" bigint, "lost_reason_id" bigint, "plan_amount" bigint, "paid_amount" bigint, "created_at" timestamp with time zone, "closed_at" timestamp with time zone, "first_response_at" timestamp with time zone, "archived_at" timestamp with time zone, "reached_position" integer, "reached_appointment" boolean, "reached_visit" boolean, "reached_plan" boolean, "agreed_at" timestamp with time zone, "lost_from_stage_id" bigint)
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -81,6 +86,7 @@ begin
       and (filter_sales_id is null or d.sales_id = filter_sales_id)
       and (filter_source_id is null or d.source_id = filter_source_id)
       and (filter_doctor_id is null or d.doctor_id = filter_doctor_id)
+      and (filter_branch_id is null or d.branch_id = filter_branch_id)
   ),
   -- Open and won stages entered in the current pipeline, the current one included
   entries as (
@@ -138,7 +144,7 @@ $$;
 --     the default one); a won or lost stage counts the deals standing in it
 --   totals, by_source, by_sales, by_doctor: deals, reached appointment /
 --     visit / plan, paid (reached the plan and has a payment), won, lost
-CREATE OR REPLACE FUNCTION "public"."report_conversion"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."report_conversion"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -156,7 +162,7 @@ begin
 
   with cohort as (
     select *
-    from private.report_deal_progress(filter_pipeline_id, filter_sales_id, filter_source_id, filter_doctor_id) d
+    from private.report_deal_progress(filter_pipeline_id, filter_sales_id, filter_source_id, filter_doctor_id, filter_branch_id) d
     where (period_from is null or d.created_at >= period_from)
       and (period_to is null or d.created_at < period_to)
   ),
@@ -242,7 +248,7 @@ $$;
 --     created / done / due (already due in the period) / overdue (not done by
 --     their due date), messages sent, and now: open deals, open deals without
 --     an open task
-CREATE OR REPLACE FUNCTION "public"."report_speed"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."report_speed"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -253,7 +259,7 @@ begin
 
   with scope as (
     -- Tasks and messages belong to an employee whoever leads the deal
-    select * from private.report_deal_progress(filter_pipeline_id, null, filter_source_id, filter_doctor_id)
+    select * from private.report_deal_progress(filter_pipeline_id, null, filter_source_id, filter_doctor_id, filter_branch_id)
   ),
   cohort as (
     select * from scope d
@@ -276,7 +282,8 @@ begin
       ) as left_at,
       d.sales_id,
       d.source_id,
-      d.doctor_id
+      d.doctor_id,
+      d.branch_id
     from public.deal_events e
       join public.deals d on d.organization_id = e.organization_id and d.id = e.deal_id
     where e.organization_id = private.current_organization_id()
@@ -291,6 +298,7 @@ begin
       and (filter_sales_id is null or st.sales_id = filter_sales_id)
       and (filter_source_id is null or st.source_id = filter_source_id)
       and (filter_doctor_id is null or st.doctor_id = filter_doctor_id)
+      and (filter_branch_id is null or st.branch_id = filter_branch_id)
     group by st.stage_id
   ),
   staff as (
@@ -299,6 +307,10 @@ begin
       btrim(concat_ws(' ', sa.first_name, sa.last_name)) as name,
       sa.last_name,
       sa.disabled,
+      (filter_branch_id is null or exists (
+        select 1 from public.sales_branches sb
+        where sb.organization_id = sa.organization_id and sb.sales_id = sa.id and sb.branch_id = filter_branch_id
+      )) as in_branch,
       (select count(*) from cohort c where c.sales_id = sa.id) as deals,
       (select round(avg(a.seconds)) from answered a where a.sales_id = sa.id) as first_response_seconds,
       (select count(*) from public.tasks t join scope d on d.deal_id = t.deal_id
@@ -365,7 +377,7 @@ begin
         'open_deals', st.open_deals, 'deals_without_task', st.deals_without_task
       ) order by st.deals desc, st.last_name, st.id), '[]'::jsonb)
       from staff st
-      where not st.disabled
+      where (not st.disabled and st.in_branch)
         or st.deals + st.tasks_created + st.tasks_done + st.messages_sent + st.open_deals > 0
     )
   ) into report;
@@ -375,7 +387,7 @@ $$;
 
 -- Lost reasons: the deals lost in the period (closed in a lost stage), by
 -- reason and by the stage they were lost from, with their treatment plans
-CREATE OR REPLACE FUNCTION "public"."report_lost_reasons"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."report_lost_reasons"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -386,7 +398,7 @@ begin
 
   with lost as (
     select *
-    from private.report_deal_progress(filter_pipeline_id, filter_sales_id, filter_source_id, filter_doctor_id) d
+    from private.report_deal_progress(filter_pipeline_id, filter_sales_id, filter_source_id, filter_doctor_id, filter_branch_id) d
     where d.stage_kind = 'lost'
       and (period_from is null or d.closed_at >= period_from)
       and (period_to is null or d.closed_at < period_to)
@@ -429,7 +441,7 @@ $$;
 -- "plan agreed" stage or a later one), payments received in the period (dates
 -- in the clinic's time zone) and the prepayments among them, the average
 -- check (paid / paying deals), in total, by service, by employee and by doctor
-CREATE OR REPLACE FUNCTION "public"."report_money"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."report_money"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -474,7 +486,7 @@ begin
           and (first_day is null or p.paid_at >= first_day)
           and (after_last_day is null or p.paid_at < after_last_day)
       ), 0) as prepaid
-    from private.report_deal_progress(filter_pipeline_id, filter_sales_id, filter_source_id, filter_doctor_id) d
+    from private.report_deal_progress(filter_pipeline_id, filter_sales_id, filter_source_id, filter_doctor_id, filter_branch_id) d
   ),
   grouped as (
     select
@@ -546,19 +558,19 @@ grant execute on function private.report_check_access() to service_role;
 revoke all on function private.report_key_stages() from public;
 grant execute on function private.report_key_stages() to authenticated;
 grant execute on function private.report_key_stages() to service_role;
-revoke all on function private.report_deal_progress(bigint, bigint, bigint, bigint) from public;
-grant execute on function private.report_deal_progress(bigint, bigint, bigint, bigint) to authenticated;
-grant execute on function private.report_deal_progress(bigint, bigint, bigint, bigint) to service_role;
+revoke all on function private.report_deal_progress(bigint, bigint, bigint, bigint, bigint) from public;
+grant execute on function private.report_deal_progress(bigint, bigint, bigint, bigint, bigint) to authenticated;
+grant execute on function private.report_deal_progress(bigint, bigint, bigint, bigint, bigint) to service_role;
 
-revoke all on function public.report_conversion(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) from public, anon;
-grant execute on function public.report_conversion(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to authenticated;
-grant execute on function public.report_conversion(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to service_role;
-revoke all on function public.report_speed(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) from public, anon;
-grant execute on function public.report_speed(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to authenticated;
-grant execute on function public.report_speed(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to service_role;
-revoke all on function public.report_lost_reasons(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) from public, anon;
-grant execute on function public.report_lost_reasons(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to authenticated;
-grant execute on function public.report_lost_reasons(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to service_role;
-revoke all on function public.report_money(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) from public, anon;
-grant execute on function public.report_money(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to authenticated;
-grant execute on function public.report_money(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint) to service_role;
+revoke all on function public.report_conversion(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) from public, anon;
+grant execute on function public.report_conversion(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to authenticated;
+grant execute on function public.report_conversion(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to service_role;
+revoke all on function public.report_speed(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) from public, anon;
+grant execute on function public.report_speed(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to authenticated;
+grant execute on function public.report_speed(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to service_role;
+revoke all on function public.report_lost_reasons(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) from public, anon;
+grant execute on function public.report_lost_reasons(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to authenticated;
+grant execute on function public.report_lost_reasons(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to service_role;
+revoke all on function public.report_money(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) from public, anon;
+grant execute on function public.report_money(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to authenticated;
+grant execute on function public.report_money(timestamp with time zone, timestamp with time zone, bigint, bigint, bigint, bigint, bigint) to service_role;

@@ -5,12 +5,14 @@ import {
   changeDue,
   checkOperation,
   checkParts,
+  itemsAmount,
   methodAmount,
   normalizeOperation,
   operationDeltas,
   parseAmount,
   partsRemainder,
   patientCharged,
+  paymentRights,
   planDoneCharge,
   planPaid,
   shiftExpected,
@@ -267,5 +269,35 @@ describe("parseAmount", () => {
     expect(parseAmount("")).toBe(0);
     expect(parseAmount("abc")).toBe(0);
     expect(parseAmount(300)).toBe(300);
+  });
+});
+
+describe("paymentRights", () => {
+  it("cashiers accept, seniors refund, the owner corrects", () => {
+    expect(paymentRights("manager")).toEqual({
+      canAccept: true,
+      canRefund: false,
+      canEdit: false,
+      canCorrect: false,
+      seesAll: false,
+    });
+    expect(paymentRights("manager", "all").seesAll).toBe(true);
+    expect(paymentRights("head").canRefund).toBe(true);
+    expect(paymentRights("head").canCorrect).toBe(false);
+    expect(paymentRights("owner").canCorrect).toBe(true);
+    expect(paymentRights("integrator").canAccept).toBe(false);
+  });
+});
+
+describe("itemsAmount", () => {
+  it("proposes the chosen items with the plan discount", () => {
+    const plan = { id: 1, discount_percent: 10, discount_amount: 0 };
+    const items = [
+      { id: 1, plan_id: 1, quantity: 1, unit_price: 200000, discount_percent: 0, done: false },
+      { id: 2, plan_id: 1, quantity: 2, unit_price: 50000, discount_percent: 0, done: false },
+    ];
+    expect(itemsAmount(plan, items, [])).toBe(0);
+    expect(itemsAmount(plan, items, [2])).toBe(90000);
+    expect(itemsAmount(plan, items, [1, 2])).toBe(270000);
   });
 });

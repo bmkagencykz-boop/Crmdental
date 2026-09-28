@@ -3,6 +3,7 @@ import { TasksPage } from "../tasks/TasksPage";
 import { SchedulePage } from "../schedule/SchedulePage";
 import { AuditPage } from "../audit/AuditPage";
 import { ReportsPage } from "../reports/ReportsPage";
+import { CashDeskPage } from "../payments/CashDeskPage";
 import { MailingsPage } from "../mailings/MailingsPage";
 import type {
   CoreAdminProps,
@@ -223,6 +224,7 @@ const DesktopAdmin = (
         <Route path={SchedulePage.path} element={<SchedulePage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
         <Route path={ReportsPage.path} element={<ReportsPage />} />
+        <Route path={CashDeskPage.path} element={<CashDeskPage />} />
         <Route path={AuditPage.path} element={<AuditPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />
@@ -239,6 +241,11 @@ const DesktopAdmin = (
       <Resource name="patient_notes" />
       <Resource name="deal_notes" />
       <Resource name="deal_payments" />
+      <Resource name="account_operations" />
+      <Resource name="account_operations_summary" />
+      <Resource name="patient_accounts" />
+      <Resource name="treatment_plan_payments" />
+      <Resource name="cash_shifts" />
       <Resource name="deal_events" />
       <Resource name="tasks" />
       <Resource name="calls" />

@@ -321,7 +321,7 @@ export const generatePayments = (db: Db) => {
   });
   db.cash_shifts.push(yesterdayShift, todayShift);
 
-  // A few debtors: treatment done, not paid in full
+  // A few debtors: treatment in progress, the next stage done, not paid
   const debt = (patientId: Identifier) => {
     const charged = patientCharged({
       patientId,
@@ -335,15 +335,34 @@ export const generatePayments = (db: Db) => {
       .reduce((sum, op) => sum + operationDeltas(op).paid, 0);
     return charged - paid;
   };
-  const debtors = () =>
-    db.patients.filter((patient) => debt(patient.id) > 0).length;
+  const candidates = new Set(
+    [
+      ...db.treatment_plans.map((plan) => plan.patient_id),
+      ...db.visits
+        .filter((visit) => visit.status === "completed")
+        .map((visit) => visit.patient_id),
+    ].map(String),
+  );
+  const debtors = new Set(
+    [...candidates].filter((id) => debt(id) > 0).map(String),
+  );
+  // Plans in treatment first, then agreed ones (one stays agreed)
+  const rank = (status: string) => (status === "in_progress" ? 0 : 1);
   const plans = db.treatment_plans
-    .filter((plan) => ["agreed", "in_progress"].includes(plan.status))
-    .sort((a, b) => Number(a.id) - Number(b.id));
+    .filter((plan) => ["in_progress", "agreed"].includes(plan.status))
+    .sort(
+      (a, b) =>
+        rank(a.status) - rank(b.status) || Number(a.id) - Number(b.id),
+    );
+  let agreedLeft = plans.filter((plan) => plan.status === "agreed").length;
   for (const plan of plans) {
-    if (debtors() >= 4) break;
-    if (debt(plan.patient_id) > 0) continue;
-    // One more stage done, not paid yet
+    if (debtors.size >= 4) break;
+    if (debtors.has(String(plan.patient_id))) continue;
+    if (plan.status === "agreed") {
+      if (agreedLeft <= 1) continue;
+      agreedLeft--;
+      plan.status = "in_progress";
+    }
     const items = db.treatment_plan_items
       .filter((item) => same(item.plan_id, plan.id) && !item.done)
       .sort((a, b) => a.stage_no - b.stage_no || a.position - b.position);
@@ -352,6 +371,8 @@ export const generatePayments = (db: Db) => {
       item.done = true;
       item.done_at = at(3, 12).toISOString();
     }
-    if (items.length) plan.status = "in_progress";
+    // All items done: the plan is completed (like the database)
+    if (items.every((item) => item.done)) plan.status = "completed";
+    if (debt(plan.patient_id) > 0) debtors.add(String(plan.patient_id));
   }
 };

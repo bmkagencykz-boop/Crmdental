@@ -47,6 +47,11 @@ const MONEY_FIELDS = new Set([
   "unit_price",
   "discount_amount",
   "price",
+  // The cash desk (stage 36)
+  "opening_cash",
+  "expected_cash",
+  "counted_cash",
+  "cash_received",
 ]);
 const DATE_TIME_FIELDS = new Set([
   "due_date",
@@ -57,6 +62,8 @@ const DATE_TIME_FIELDS = new Set([
   "unsorted_at",
   "scheduled_at",
   "revoked_at",
+  "occurred_at",
+  "closed_at",
 ]);
 const DATE_FIELDS = new Set(["paid_at", "month"]);
 const BOOLEAN_FIELDS = new Set([
@@ -106,7 +113,7 @@ const LIST_REFERENCES: Record<
 export const AUDIT_ENTITY_GROUPS = {
   deal: ["deal", "file", "treatment_plan", "treatment_plan_item"],
   patient: ["patient"],
-  payment: ["payment"],
+  payment: ["payment", "account_operation", "cash_shift"],
   task: ["task"],
   employee: ["employee", "access_rights"],
   settings: [
@@ -304,7 +311,10 @@ export const describeAuditChanges = (
           ? accessRightsChange(field, translate)
           : entity === "custom_field"
             ? definitionChange(field, translate)
-            : entity === "treatment_plan" && field === "status"
+            : entity === "account_operation" &&
+                ["kind", "method", "account", "parts"].includes(field)
+              ? operationChange(field, translate)
+              : entity === "treatment_plan" && field === "status"
               ? {
                   label: translate("treatment.audit.fields.status"),
                   format: (value: unknown) =>
@@ -322,7 +332,10 @@ export const describeAuditChanges = (
           _: translate(`treatment.audit.fields.${field}`, {
             // Ad spend (stage 32), branches (stage 33)
             _: translate(`marketing.audit.fields.${field}`, {
-              _: translate(`branches.audit.fields.${field}`, { _: field }),
+              _: translate(`branches.audit.fields.${field}`, {
+                // The cash desk (stage 36)
+                _: translate(`payments.audit.fields.${field}`, { _: field }),
+              }),
             }),
           }),
         });
@@ -336,6 +349,27 @@ export const describeAuditChanges = (
         return `${label}: ${format(before)}`;
       return `${label}: ${format(before)} → ${format(after)}`;
     });
+
+/** Fields of an account operation (stage 36): its kind, method, parts */
+const operationChange = (field: string, translate: Translate) => ({
+  label: translate(`payments.audit.fields.${field}`),
+  format: (value: unknown) => {
+    if (value == null) return EMPTY;
+    if (field === "parts") {
+      return Array.isArray(value)
+        ? value
+            .map(
+              (part: { method?: string; amount?: number }) =>
+                `${translate(`payments.methods.${part.method}`, { _: String(part.method) })} ${formatMoney(Number(part.amount ?? 0), "KZT")}`,
+            )
+            .join(" + ")
+        : EMPTY;
+    }
+    const namespace =
+      field === "kind" ? "kinds" : field === "method" ? "methods" : "accounts";
+    return translate(`payments.${namespace}.${value}`, { _: String(value) });
+  },
+});
 
 export const auditSummary = (
   entry: Pick<AuditLogEntry, "action" | "changes"> &
@@ -399,6 +433,8 @@ export const auditEntityLabel = (
             ? translate("marketing.audit.entity")
             : entry.entity === "branch"
               ? translate("branches.audit.entity")
+              : PAYMENT_ENTITIES.includes(entry.entity)
+                ? translate(`payments.audit.${entry.entity}`)
               : SCHEDULE_ENTITIES.includes(entry.entity)
                 ? translate(`schedule.audit.${entry.entity}`)
                 : TREATMENT_ENTITIES.includes(entry.entity)
@@ -417,6 +453,9 @@ export const auditEntityLabel = (
         entry.deal_name ??
         (entry.entity === "deal" ? changedName(entry) : undefined) ??
         (entry.deal_id != null ? `#${entry.deal_id}` : undefined);
+      break;
+    case "account_operation":
+      name = entry.patient_name ?? undefined;
       break;
     case "patient":
       name =
@@ -480,6 +519,9 @@ export const auditEntityLabel = (
     : name;
   return `${kind} ${quoted}`;
 };
+
+/** Entities of the cash desk (stage 36), labelled in its namespace */
+const PAYMENT_ENTITIES = ["account_operation", "cash_shift"];
 
 /** Entities of stage 29, labelled in the treatment namespace */
 const TREATMENT_ENTITIES: string[] = [

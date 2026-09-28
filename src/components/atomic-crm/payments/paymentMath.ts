@@ -428,3 +428,48 @@ export const daysSince = (at: string | null | undefined, now = new Date()) =>
         Math.floor((now.getTime() - new Date(at).getTime()) / 86_400_000),
       )
     : null;
+
+/**
+ * What an employee may do with the money (the database enforces the same):
+ * whoever works with the patients (owner, head, manager — not the
+ * integrator) accepts payments and deposits; refunds, changes and
+ * cancellations: owner and head; corrections: the owner. The cash desk of
+ * the whole clinic, every shift and the reports: owner, head and employees
+ * with the «Отчёты» right; a cashier without it sees their own operations.
+ */
+export const paymentRights = (
+  role: string | null | undefined,
+  reportsView?: string | null,
+) => {
+  const staff = role === "owner" || role === "head" || role === "manager";
+  const senior = role === "owner" || role === "head";
+  return {
+    canAccept: staff,
+    canRefund: senior,
+    canEdit: senior,
+    canCorrect: role === "owner",
+    seesAll: senior || (role === "manager" && reportsView === "all"),
+  };
+};
+
+/**
+ * The amount of chosen plan items, with the plan discount pro rata (like
+ * the done items of the account): what «Оплатить позиции» proposes
+ */
+export const itemsAmount = (
+  plan: Pick<TreatmentPlan, "id" | "discount_percent" | "discount_amount">,
+  items: (ItemLike & { id: Identifier })[],
+  ids: Identifier[],
+) => {
+  const own = items.filter((item) => same(item.plan_id, plan.id));
+  const subtotal = own.reduce((sum, item) => sum + itemTotal(item), 0);
+  const chosen = own
+    .filter((item) => ids.some((id) => same(id, item.id)))
+    .reduce((sum, item) => sum + itemTotal(item), 0);
+  return planDoneCharge(
+    subtotal,
+    chosen,
+    Number(plan.discount_percent),
+    Number(plan.discount_amount),
+  );
+};

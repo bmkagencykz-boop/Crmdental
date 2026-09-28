@@ -86,6 +86,16 @@ export const ReportsGlyph = glyph(
   </>,
 );
 
+/** Касса: a cash drawer with a receipt coming out */
+export const CashGlyph = glyph(
+  <>
+    <path d="M7.5 9V3.5h9V9" />
+    <path d="M10 6h4" />
+    <rect x="3.5" y="9" width="17" height="11.5" />
+    <path d="M3.5 14.5h17M10.5 17.5h3" />
+  </>,
+);
+
 /** Рассылки: an envelope */
 export const MailingsGlyph = glyph(
   <>

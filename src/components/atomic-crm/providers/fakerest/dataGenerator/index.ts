@@ -13,6 +13,7 @@ import { generateDigitalPipeline } from "./digitalPipeline";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import { generateUnsorted } from "./unsorted";
+import { generateMarketplace } from "./marketplace";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -34,6 +35,7 @@ export default (): Db => {
   generateListsPlans(db);
   generateDigitalPipeline(db);
   generateOnboarding(db);
+  generateMarketplace(db);
   db.configuration = [
     {
       id: 1,

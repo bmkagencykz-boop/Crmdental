@@ -2,6 +2,7 @@ import {
   ChartColumn,
   FileText,
   Megaphone,
+  Plug,
   Settings,
   User,
   Users,
@@ -40,6 +41,12 @@ export const Sidebar = () => {
     icon: Megaphone,
     label: translate("mailings.title"),
   };
+  const integrations: NavItem = {
+    to: "/integrations",
+    match: "/integrations",
+    icon: Plug,
+    label: translate("market.nav"),
+  };
   const settings: NavItem = {
     to: "/settings",
     match: "/settings",
@@ -63,9 +70,16 @@ export const Sidebar = () => {
         <LogoMark />
       </Link>
       <nav className="mt-9 flex flex-1 flex-col items-center gap-3">
-        {items.map((item) => (
-          <SidebarLink key={item.to} item={item} active={isActive(item)} />
-        ))}
+        {items.map((item) =>
+          item.resource ? (
+            // The integrator (stage 25) only sees Сделки, Интеграции, Настройки
+            <CanAccess key={item.to} resource={item.resource} action="menu">
+              <SidebarLink item={item} active={isActive(item)} />
+            </CanAccess>
+          ) : (
+            <SidebarLink key={item.to} item={item} active={isActive(item)} />
+          ),
+        )}
       </nav>
       <div className="flex flex-col items-center gap-3">
         <CanAccess resource="reports" action="list">
@@ -76,6 +90,9 @@ export const Sidebar = () => {
         </CanAccess>
         <CanAccess resource="sales" action="list">
           <SidebarLink item={sales} active={isActive(sales)} />
+        </CanAccess>
+        <CanAccess resource="integrations" action="list">
+          <SidebarLink item={integrations} active={isActive(integrations)} />
         </CanAccess>
         {/* Everyone: managers keep their quick replies there */}
         <SidebarLink item={settings} active={isActive(settings)} />

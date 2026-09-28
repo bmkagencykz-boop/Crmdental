@@ -140,7 +140,28 @@ export const SettingsPage = () => {
     resource: "configuration",
     action: "edit",
   });
-  const sections = isAdmin ? SECTIONS : EVERYONE_SECTIONS;
+  // The integrator (stage 25) configures, but neither imports data, merges
+  // patients nor edits the clinic profile
+  const { canAccess: canImport } = useCanAccess({
+    resource: "import",
+    action: "create",
+  });
+  const { canAccess: canMerge } = useCanAccess({
+    resource: "duplicates",
+    action: "merge",
+  });
+  const { canAccess: canEditClinic } = useCanAccess({
+    resource: "organization",
+    action: "edit",
+  });
+  const hidden: Section[] = [
+    ...(canImport ? [] : (["import"] as const)),
+    ...(canMerge ? [] : (["duplicates"] as const)),
+    ...(canEditClinic ? [] : (["clinic"] as const)),
+  ];
+  const sections = isAdmin
+    ? SECTIONS.filter((id) => !hidden.includes(id))
+    : EVERYONE_SECTIONS;
   const [chosen, setSection] = useState<Section>(
     isSection(requested) ? requested : "pipelines",
   );
@@ -219,6 +240,14 @@ export const SettingsPage = () => {
             {translate("crm.settings.search_empty")}
           </p>
         ) : null}
+        <CanAccess resource="integrations" action="list">
+          <Link
+            to="/integrations"
+            className="flex items-center gap-2 rounded-md px-4 py-2 text-left text-sm font-semibold text-muted-foreground no-underline transition-all hover:bg-[var(--surface-strong)] hover:text-foreground lg:mt-2 lg:border-t lg:pt-3"
+          >
+            {translate("market.settings_link")}
+          </Link>
+        </CanAccess>
         <CanAccess resource="audit_log" action="list">
           <Link
             to="/audit"

@@ -14,6 +14,7 @@ import { SIDEBAR_WIDTH, useNavItems } from "./navigation";
 import { ChangelogMenuItem, ProfileMenu, Sidebar } from "./Sidebar";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { OnboardingMenuItem } from "../onboarding/OnboardingCard";
+import { IntegratorBanner } from "../integrations/IntegratorBanner";
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
@@ -40,6 +41,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
           </div>
         </div>
         <main className="px-8 pt-2 pb-12" id="main-content">
+          <IntegratorBanner />
           <PageTitle />
           <ErrorBoundary FallbackComponent={Error}>
             <Suspense
@@ -95,6 +97,7 @@ const PageTitle = () => {
     { match: "/reports", label: translate("reports.title") },
     { match: "/audit", label: translate("audit.title") },
     { match: "/mailings", label: translate("mailings.title") },
+    { match: "/integrations", label: translate("market.title") },
   ];
   // The deal page has its own header
   if (matchPath("/deals/:id/show", location.pathname)) return null;

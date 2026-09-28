@@ -1,7 +1,9 @@
 /**
  * Public REST API of a clinic (edge function api): routing, query
  * validation and error mapping. The work itself is done by the public.api_*
- * functions of the database (supabase/schemas/20_digital_pipeline.sql).
+ * functions of the database (supabase/schemas/20_digital_pipeline.sql and,
+ * for the configuration of the clinic, 25_marketplace.sql). Each function
+ * checks the scope of the key it needs (deals:read, pipelines:write...).
  * No Deno import here so that it can be unit tested.
  */
 
@@ -13,18 +15,44 @@ export type ApiRoute =
   | "add_deal_note"
   | "list_patients"
   | "create_patient"
-  | "list_pipelines";
+  | "list_pipelines"
+  // Stage 25: configuration of the clinic, tasks, messages
+  | "get_account"
+  | "create_pipeline"
+  | "update_pipeline"
+  | "list_stages"
+  | "create_stage"
+  | "update_stage"
+  | "list_stage_triggers"
+  | "create_stage_trigger"
+  | "update_stage_trigger"
+  | "delete_stage_trigger"
+  | "list_custom_fields"
+  | "create_custom_field"
+  | "list_tasks"
+  | "create_task"
+  | "list_messages"
+  | "send_message";
 
 export type RouteMatch =
   | { route: ApiRoute; id?: number }
   | { error: "not_found" | "method_not_allowed" };
 
-/** Routes that change data (a read key gets 403 from the database) */
+/** Routes with a JSON body (a key without the scope gets 403 from the database) */
 export const WRITE_ROUTES: ApiRoute[] = [
   "create_deal",
   "update_deal",
   "add_deal_note",
   "create_patient",
+  "create_pipeline",
+  "update_pipeline",
+  "create_stage",
+  "update_stage",
+  "create_stage_trigger",
+  "update_stage_trigger",
+  "create_custom_field",
+  "create_task",
+  "send_message",
 ];
 
 /**
@@ -67,8 +95,33 @@ export const matchApiRoute = (method: string, pathname: string): RouteMatch => {
   if (resource === "patients" && id == null) {
     return pick({ GET: "list_patients", POST: "create_patient" });
   }
-  if (resource === "pipelines" && id == null) {
-    return pick({ GET: "list_pipelines" });
+  if (sub != null) return { error: "not_found" };
+  if (resource === "pipelines") {
+    return id == null
+      ? pick({ GET: "list_pipelines", POST: "create_pipeline" })
+      : pick({ PATCH: "update_pipeline" });
+  }
+  if (resource === "stages") {
+    return id == null
+      ? pick({ GET: "list_stages", POST: "create_stage" })
+      : pick({ PATCH: "update_stage" });
+  }
+  if (resource === "stage_triggers") {
+    return id == null
+      ? pick({ GET: "list_stage_triggers", POST: "create_stage_trigger" })
+      : pick({ PATCH: "update_stage_trigger", DELETE: "delete_stage_trigger" });
+  }
+  if (resource === "custom_fields" && id == null) {
+    return pick({ GET: "list_custom_fields", POST: "create_custom_field" });
+  }
+  if (resource === "tasks" && id == null) {
+    return pick({ GET: "list_tasks", POST: "create_task" });
+  }
+  if (resource === "messages" && id == null) {
+    return pick({ GET: "list_messages", POST: "send_message" });
+  }
+  if (resource === "account" && id == null) {
+    return pick({ GET: "get_account" });
   }
   return { error: "not_found" };
 };
@@ -90,9 +143,13 @@ const INTEGER_PARAMS = [
   "pipeline_id",
   "stage_id",
   "patient_id",
+  "deal_id",
 ];
 const DATE_PARAMS = ["updated_since", "created_since"];
 const TEXT_PARAMS = ["phone", "q"];
+const BOOLEAN_PARAMS = ["done"];
+/** Parameters with a fixed set of values */
+const ENUM_PARAMS: Record<string, string[]> = { entity: ["deal", "patient"] };
 
 const LIST_PARAMS: Partial<Record<ApiRoute, string[]>> = {
   list_deals: [
@@ -104,6 +161,11 @@ const LIST_PARAMS: Partial<Record<ApiRoute, string[]>> = {
     "updated_since",
   ],
   list_patients: ["page", "per_page", "phone", "q", "created_since"],
+  list_stages: ["pipeline_id"],
+  list_stage_triggers: ["pipeline_id", "stage_id"],
+  list_custom_fields: ["entity"],
+  list_tasks: ["page", "per_page", "deal_id", "done"],
+  list_messages: ["page", "per_page", "deal_id"],
 };
 
 /**
@@ -129,6 +191,18 @@ export const listParams = (route: ApiRoute, search: URLSearchParams) => {
       params[name] = new Date(raw).toISOString();
     } else if (TEXT_PARAMS.includes(name)) {
       params[name] = raw.slice(0, 200);
+    } else if (BOOLEAN_PARAMS.includes(name)) {
+      if (raw !== "true" && raw !== "false") {
+        throw new ApiInputError(`${name}: ожидается true или false`);
+      }
+      params[name] = raw;
+    } else if (ENUM_PARAMS[name]) {
+      if (!ENUM_PARAMS[name].includes(raw)) {
+        throw new ApiInputError(
+          `${name}: одно из значений ${ENUM_PARAMS[name].join(", ")}`,
+        );
+      }
+      params[name] = raw;
     }
   }
   return params;
@@ -163,6 +237,11 @@ export const rpcCall = (
   switch (route) {
     case "list_deals":
     case "list_patients":
+    case "list_stages":
+    case "list_stage_triggers":
+    case "list_custom_fields":
+    case "list_tasks":
+    case "list_messages":
       return {
         fn: `api_${route}`,
         args: { api_key: apiKey, params: listParams(route, query) },
@@ -177,18 +256,60 @@ export const rpcCall = (
       };
     case "create_deal":
     case "create_patient":
+    case "create_pipeline":
+    case "create_stage":
+    case "create_stage_trigger":
+    case "create_custom_field":
+    case "create_task":
+    case "send_message":
       return {
         fn: `api_${route}`,
         args: { api_key: apiKey, body: body ?? {} },
       };
+    case "update_pipeline":
+      return {
+        fn: "api_update_pipeline",
+        args: { api_key: apiKey, pipeline_id: id, body: body ?? {} },
+      };
+    case "update_stage":
+      return {
+        fn: "api_update_stage",
+        args: { api_key: apiKey, stage_id: id, body: body ?? {} },
+      };
+    case "update_stage_trigger":
+      return {
+        fn: "api_update_stage_trigger",
+        args: { api_key: apiKey, trigger_id: id, body: body ?? {} },
+      };
+    case "delete_stage_trigger":
+      return {
+        fn: "api_delete_stage_trigger",
+        args: { api_key: apiKey, trigger_id: id },
+      };
     case "list_pipelines":
-      return { fn: "api_list_pipelines", args: { api_key: apiKey } };
+    case "get_account":
+      return { fn: `api_${route}`, args: { api_key: apiKey } };
   }
 };
 
-/** 201 for what was created (an existing patient found by phone: 200) */
+/** Routes that create something (201) */
+const CREATE_ROUTES: ApiRoute[] = [
+  "create_deal",
+  "add_deal_note",
+  "create_pipeline",
+  "create_stage",
+  "create_stage_trigger",
+  "create_custom_field",
+  "create_task",
+];
+
+/**
+ * 201 for what was created (an existing patient found by phone: 200), 202
+ * for a message put in the sending queue
+ */
 export const successStatus = (route: ApiRoute, data: unknown) => {
-  if (route === "create_deal" || route === "add_deal_note") return 201;
+  if (CREATE_ROUTES.includes(route)) return 201;
+  if (route === "send_message") return 202;
   if (route === "create_patient") {
     return (data as { created?: boolean } | null)?.created === false
       ? 200
@@ -208,13 +329,22 @@ export type ApiError = { status: number; code: string; message: string };
 export const mapDbError = (error: {
   code?: string;
   message?: string;
+  hint?: string;
 }): ApiError => {
   const message = error.message ?? "";
   switch (error.code) {
     case "PT401":
       return { status: 401, code: "invalid_key", message };
     case "PT403":
-      return { status: 403, code: "read_only_key", message };
+      // A key without the scope of the method (stage 25), or a read key of stage 20
+      return {
+        status: 403,
+        code:
+          error.hint === "insufficient_scope"
+            ? "insufficient_scope"
+            : "read_only_key",
+        message,
+      };
     case "PT404":
       return { status: 404, code: "not_found", message };
     case "PT429":
@@ -249,5 +379,5 @@ export const apiHeaders = {
   "Content-Type": "application/json; charset=utf-8",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };

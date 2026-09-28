@@ -40,7 +40,8 @@ Deno.serve(async (req: Request) =>
           return createErrorResponse(405, "Method Not Allowed");
         }
         const sale = user ? await getUserSale(user) : null;
-        if (!sale || sale.disabled)
+        // The integrator (stage 25) only reads the deals
+        if (!sale || sale.disabled || sale.role === "integrator")
           return createErrorResponse(403, "Forbidden");
 
         const { deal_id, text, automessage_id, file } = await req

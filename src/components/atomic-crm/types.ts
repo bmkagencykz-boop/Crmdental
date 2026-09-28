@@ -26,14 +26,19 @@ export type SalesFormData = {
   role: AssignableSaleRole;
   disabled: boolean;
   phone_extension?: string | null;
+  /** Integrator only (stage 25): end of the access, «доступ к переписке» */
+  access_expires_at?: string | null;
+  can_read_messages?: boolean;
 };
 
 /**
  * owner: the person who signed the clinic up (everything, billing, staff)
  * head: reports, settings, all deals
  * manager: day-to-day work (administrators and curators of the clinic)
+ * integrator: technical account of an agency that sets the clinic up
+ *   (settings and integrations; deals read-only), stage 25
  */
-export type SaleRole = "owner" | "head" | "manager";
+export type SaleRole = "owner" | "head" | "manager" | "integrator";
 export type AssignableSaleRole = Exclude<SaleRole, "owner">;
 
 export type Sale = {
@@ -57,6 +62,11 @@ export type Sale = {
 
   /** Internal number in the clinic's PBX: maps calls to the employee */
   phone_extension?: string | null;
+
+  /** Integrator (stage 25): the account behaves as disabled after this date */
+  access_expires_at?: string | null;
+  /** Integrator (stage 25): «доступ к переписке» given by the owner */
+  can_read_messages?: boolean;
 
   /**
    * This is used by the fake rest provider to store the password
@@ -676,6 +686,8 @@ export type IntegrationKind =
   | "dentalpro"
   | "medelement"
   | "1c_medicine"
+  | "dentist_plus"
+  | "macdent"
   | "other";
 
 export type IntegrationStatus = {

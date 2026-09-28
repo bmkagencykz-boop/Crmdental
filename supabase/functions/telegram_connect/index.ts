@@ -46,7 +46,11 @@ Deno.serve(async (req: Request) =>
           return createErrorResponse(405, "Method Not Allowed");
         }
         const sale = user ? await getUserSale(user) : null;
-        if (!sale || sale.disabled || !["owner", "head"].includes(sale.role)) {
+        if (
+          !sale ||
+          sale.disabled ||
+          !["owner", "head", "integrator"].includes(sale.role)
+        ) {
           return createErrorResponse(403, "Forbidden");
         }
         const organizationId = sale.organization_id;

@@ -34,6 +34,7 @@ import { SettingsPage } from "../settings/SettingsPage";
 import { ImportPage } from "../import/ImportPage";
 import { ApiDocsPage } from "../pipeline-automation/ApiDocsPage";
 import { OnboardingPage } from "../onboarding/OnboardingPage";
+import { IntegrationsPage } from "../integrations/IntegrationsPage";
 import {
   CONFIGURATION_STORE_KEY,
   type ConfigurationContextValue,
@@ -222,6 +223,7 @@ const DesktopAdmin = (
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />
         <Route path={ApiDocsPage.path} element={<ApiDocsPage />} />
+        <Route path={IntegrationsPage.path} element={<IntegrationsPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />
@@ -254,6 +256,7 @@ const DesktopAdmin = (
       <Resource name="stage_trigger_runs" />
       <Resource name="webhooks" />
       <Resource name="webhook_deliveries" />
+      <Resource name="developer_apps" />
     </Admin>
   );
 };

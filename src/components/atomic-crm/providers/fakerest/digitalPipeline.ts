@@ -81,7 +81,13 @@ export const createDigitalPipelineDemo = ({
     const me = (await all<Sale>("sales")).find((sale) =>
       same(sale.id, salesId),
     );
-    if (me && me.role !== "owner" && me.role !== "head") {
+    // The integrator (stage 25) configures the webhooks and the keys too
+    if (
+      me &&
+      me.role !== "owner" &&
+      me.role !== "head" &&
+      me.role !== "integrator"
+    ) {
       throw new Error("api.errors.forbidden");
     }
   };

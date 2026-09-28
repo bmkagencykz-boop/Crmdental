@@ -113,6 +113,7 @@ import { createListPlanDemo } from "./listsPlans";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 import { createDigitalPipelineDemo } from "./digitalPipeline";
 import { createOnboardingDemo } from "./onboarding";
+import { createMarketplaceDemo } from "./marketplace";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -270,6 +271,12 @@ export const createDataProvider = ({
   });
   // Setup wizard (stage 24)
   const onboardingDemo = createOnboardingDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+  });
+  // Marketplace: developer apps and the integrator (stage 25)
+  const marketplaceDemo = createMarketplaceDemo({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
@@ -726,6 +733,7 @@ export const createDataProvider = ({
     ...listPlanDemo.methods,
     ...pipelineDemo.methods,
     ...onboardingDemo.methods,
+    ...marketplaceDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1583,7 +1591,7 @@ export const createDataProvider = ({
     const role = (await all<Sale>("sales")).find(
       (sale) => sale.id === salesId,
     )?.role;
-    if (role !== "owner" && role !== "head") {
+    if (role !== "owner" && role !== "head" && role !== "integrator") {
       throw new Error("Поля настраивают владелец и руководитель клиники");
     }
     if (rightsOnly) return;
@@ -1620,6 +1628,8 @@ export const createDataProvider = ({
   const dataProvider = withLifecycleCallbacks(
     withSupabaseFilterAdapter(custom as DataProvider),
     [
+      // First: the integrator only reads the deals (stage 25)
+      ...marketplaceDemo.callbacks,
       ...mailingDemo.callbacks,
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,

@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import {
+  useCanAccess,
   useDataProvider,
   useGetList,
   useGetMany,
@@ -80,6 +81,11 @@ export const BulkActions = ({
 }) => {
   const translate = useTranslate();
   const isAdmin = useIsAdmin();
+  // The integrator (stage 25) only reads the deals
+  const { canAccess: canEdit } = useCanAccess({
+    resource: "deals",
+    action: "edit",
+  });
   const { selectedIds, onUnselectItems, total, data, filterValues, sort } =
     useListContext<Deal>();
   const [action, setAction] = useState<BulkActionId | null>(null);
@@ -90,7 +96,7 @@ export const BulkActions = ({
   const pageSelected =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
-  if (!count) return null;
+  if (!count || canEdit === false) return null;
 
   const clear = () => {
     setAllMatching(false);

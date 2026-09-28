@@ -1,3 +1,4 @@
+import type { DeveloperApp } from "../../../integrations/types";
 import type {
   AuditLogEntry,
   Call,
@@ -106,4 +107,6 @@ export interface Db {
   api_keys: ApiKey[];
   // Setup wizard (stage 24)
   onboarding_progress: Array<OnboardingProgress & { id: number }>;
+  // Marketplace: developer apps (stage 25)
+  developer_apps: DeveloperApp[];
 }

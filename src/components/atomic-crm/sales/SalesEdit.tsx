@@ -17,6 +17,7 @@ import type { CrmDataProvider } from "../providers/types";
 import type { Sale, SalesFormData } from "../types";
 import { getSalesErrorNotification } from "./salesErrorNotification";
 import { SalesInputs } from "./SalesInputs";
+import { toAccessExpiry } from "./roleLabel";
 
 function EditToolbar() {
   return (
@@ -45,8 +46,27 @@ export function SalesEdit() {
           }),
         );
       }
-      const { phone_extension, ...fields } = data;
+      const {
+        phone_extension,
+        access_expires_at,
+        can_read_messages,
+        ...fields
+      } = data;
       const sale = await dataProvider.salesUpdate(record.id, fields);
+      // The access of an integrator (stage 25) has its own function (owner)
+      const expiry = toAccessExpiry(access_expires_at);
+      if (
+        (data.role ?? record.role) === "integrator" &&
+        (expiry?.slice(0, 10) !==
+          (record.access_expires_at ?? null)?.slice(0, 10) ||
+          !!can_read_messages !== !!record.can_read_messages)
+      ) {
+        await dataProvider.setIntegratorAccess(
+          record.id,
+          expiry,
+          !!can_read_messages,
+        );
+      }
       // The internal number of the PBX has its own function (owner and head)
       if (
         phone_extension !== undefined &&

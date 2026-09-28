@@ -45,16 +45,22 @@ test("a new clinic is set up with the setup wizard", async ({ page }) => {
   await expect(
     page.getByRole("checkbox", { name: "Консультация" }),
   ).toBeChecked();
-  const consultationPrice = page.getByLabel("Price: Консультация");
+  const consultationPrice = page.getByLabel("Price: Консультация", {
+    exact: true,
+  });
   await consultationPrice.fill("5000");
   await consultationPrice.press("Enter");
-  await expect(page.getByLabel("Price: Консультация")).toHaveValue("5 000");
+  await expect(
+    page.getByLabel("Price: Консультация", { exact: true }),
+  ).toHaveValue("5 000");
   await page.getByRole("checkbox", { name: "Виниры" }).click();
   await expect(page.getByRole("checkbox", { name: "Виниры" })).toBeChecked();
-  const veneersPrice = page.getByLabel("Price: Виниры");
+  const veneersPrice = page.getByLabel("Price: Виниры", { exact: true });
   await veneersPrice.fill("90000");
   await veneersPrice.press("Enter");
-  await expect(page.getByLabel("Price: Виниры")).toHaveValue("90 000");
+  await expect(page.getByLabel("Price: Виниры", { exact: true })).toHaveValue(
+    "90 000",
+  );
   await page.getByRole("button", { name: "Next" }).click();
 
   // 3. Doctors and 4. Team are skipped
@@ -108,8 +114,12 @@ test("a new clinic is set up with the setup wizard", async ({ page }) => {
 
   // The services got their prices (the price list page, stage 35)
   await page.goto("/#/price-list");
-  await expect(page.getByLabel("Price: Консультация")).toHaveValue("5 000");
-  await expect(page.getByLabel("Price: Виниры")).toHaveValue("90 000");
+  await expect(
+    page.getByLabel("Price: Консультация", { exact: true }),
+  ).toHaveValue("5 000");
+  await expect(page.getByLabel("Price: Виниры", { exact: true })).toHaveValue(
+    "90 000",
+  );
 
   // The quick replies got the address and the consultation price
   await page.goto("/#/settings?section=quick_replies");

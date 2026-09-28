@@ -53,7 +53,7 @@ test.describe("price list", () => {
     const tree = page.getByRole("navigation", { name: "Price list sections" });
     await expect(tree.getByRole("button", { name: /^Терапия/ })).toBeVisible();
     await expect(
-      page.getByLabel("Price: Лечение поверхностного кариеса"),
+      page.getByLabel("Price: Лечение поверхностного кариеса", { exact: true }),
     ).toHaveValue("25 000");
 
     // A subsection: its services only
@@ -75,10 +75,10 @@ test.describe("price list", () => {
     await bulk.getByLabel("Change the price by").fill("+10");
     await bulk.getByRole("button", { name: "Change price" }).click();
     await expect(
-      page.getByLabel("Price: Лечение поверхностного кариеса"),
+      page.getByLabel("Price: Лечение поверхностного кариеса", { exact: true }),
     ).toHaveValue("27 500");
     await expect(
-      page.getByLabel("Price: Лечение среднего кариеса"),
+      page.getByLabel("Price: Лечение среднего кариеса", { exact: true }),
     ).toHaveValue("35 200");
 
     // The cost price (owner) and the history of the price
@@ -105,9 +105,9 @@ test.describe("price list", () => {
     await page.getByLabel("New service").fill("Микропротезирование");
     await page.getByLabel("Price, ₸").last().fill("70000");
     await page.getByRole("button", { name: "Add service" }).click();
-    await expect(page.getByLabel("Price: Микропротезирование")).toHaveValue(
-      "70 000",
-    );
+    await expect(
+      page.getByLabel("Price: Микропротезирование", { exact: true }),
+    ).toHaveValue("70 000");
 
     // An unused service is deleted
     await page.getByLabel("Select: Микропротезирование").check();
@@ -116,7 +116,9 @@ test.describe("price list", () => {
       .getByRole("dialog")
       .getByRole("button", { name: "Delete" })
       .click();
-    await expect(page.getByLabel("Price: Микропротезирование")).toHaveCount(0);
+    await expect(
+      page.getByLabel("Price: Микропротезирование", { exact: true }),
+    ).toHaveCount(0);
 
     // Settings → Price list: the discount limit and the link
     await page.goto("/#/settings?section=services");
@@ -156,7 +158,9 @@ test.describe("price list", () => {
     await expect(page.getByText("180 000").first()).toBeVisible();
     await expect(page.getByText("72 000")).toHaveCount(0);
     await expect(page.getByText("Cost, ₸")).toHaveCount(0);
-    await expect(page.getByLabel("Price: Имплант Osstem")).toHaveCount(0);
+    await expect(
+      page.getByLabel("Price: Имплант Osstem", { exact: true }),
+    ).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Add service" })).toHaveCount(
       0,
     );

@@ -39,9 +39,9 @@ test.describe("treatment plans", () => {
     await page.getByLabel("New service").fill("Имплант Osstem");
     await page.getByLabel("Price, ₸").last().fill("180000");
     await page.getByRole("button", { name: "Add service" }).click();
-    await expect(page.getByLabel("Price: Имплант Osstem")).toHaveValue(
-      "180 000",
-    );
+    await expect(
+      page.getByLabel("Price: Имплант Osstem", { exact: true }),
+    ).toHaveValue("180 000");
 
     // The deal: tab «Treatment plan», a new plan
     await page.goto(`/#/deals/${deal.id}/show`);
@@ -124,7 +124,9 @@ test.describe("treatment plans", () => {
     await editor
       .getByRole("option", { name: /Custom item: «Коронка циркониевая»/ })
       .click();
-    const price = editor.getByLabel("Price: Коронка циркониевая");
+    const price = editor.getByLabel("Price: Коронка циркониевая", {
+      exact: true,
+    });
     await price.fill("120000");
     await price.press("Enter");
     await expect(editor.getByLabel("Total")).toContainText(/120\s000/);

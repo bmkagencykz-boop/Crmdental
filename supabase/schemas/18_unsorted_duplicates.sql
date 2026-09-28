@@ -573,7 +573,12 @@ begin
       first_seen = least(keep_row.first_seen, merge_row.first_seen),
       last_seen = greatest(keep_row.last_seen, merge_row.last_seen),
       messaging_opt_out = keep_row.messaging_opt_out or merge_row.messaging_opt_out,
-      messaging_opt_out_at = coalesce(keep_row.messaging_opt_out_at, merge_row.messaging_opt_out_at)
+      messaging_opt_out_at = coalesce(keep_row.messaging_opt_out_at, merge_row.messaging_opt_out_at),
+      -- The light patient card (stage 29): nothing medical is lost
+      allergies = private.merge_note_text(keep_row.allergies, merge_row.allergies),
+      contraindications = private.merge_note_text(keep_row.contraindications, merge_row.contraindications),
+      chronic_diseases = private.merge_note_text(keep_row.chronic_diseases, merge_row.chronic_diseases),
+      preferred_doctor_id = coalesce(keep_row.preferred_doctor_id, merge_row.preferred_doctor_id)
   where p.organization_id = org_id and p.id = keep_id;
 
   select * into actor from private.audit_actor(org_id);

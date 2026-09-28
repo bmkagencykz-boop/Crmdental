@@ -1,6 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import type { MisAppointment, MisDoctor, MisSyncLogEntry } from "../../mis/types";
+import type {
+  MisAppointment,
+  MisDoctor,
+  MisSyncLogEntry,
+} from "../../mis/types";
 import type { Deal, Stage } from "../../types";
 import type { CrmDataProvider } from "../types";
 import type { createDataProvider as CreateDataProvider } from "./dataProvider";
@@ -80,7 +84,9 @@ describe("MIS connectors in the demo", () => {
       "deal_payments",
     );
     expect(
-      payments.filter((payment) => payment.comment?.startsWith("Оплата из МИС")),
+      payments.filter((payment) =>
+        payment.comment?.startsWith("Оплата из МИС"),
+      ),
     ).toHaveLength(1);
     const log = await list<MisSyncLogEntry>(dataProvider, "mis_sync_log", {
       kind: "dentist_plus",
@@ -116,7 +122,9 @@ describe("MIS connectors in the demo", () => {
     expect(await dataProvider.testMisConnection("macdent")).toMatchObject({
       ok: true,
     });
-    expect(await dataProvider.syncMisNow("macdent")).toMatchObject({ ok: true });
+    expect(await dataProvider.syncMisNow("macdent")).toMatchObject({
+      ok: true,
+    });
     const log = await list<MisSyncLogEntry>(dataProvider, "mis_sync_log", {
       kind: "macdent",
     });

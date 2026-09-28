@@ -21,6 +21,7 @@ import { generateTreatmentPlans } from "./treatmentPlans";
 import { generateMarketing } from "./marketing";
 import { generateAccessRights } from "./accessRights";
 import { generateBranches } from "./branches";
+import { generatePayments } from "./payments";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -53,6 +54,8 @@ export default (): Db => {
   generateTreatmentPlans(db);
   // Branches (stage 33): after the deals, the tasks and the visits
   generateBranches(db);
+  // Payments, deposits and the cash desk (stage 36): after the branches
+  generatePayments(db);
   db.configuration = [
     {
       id: 1,

@@ -623,6 +623,8 @@ export const createDigitalPipelineDemo = ({
       resource: "deal_payments",
       afterCreate: async (result) => {
         const payment = result.data as DealPayment;
+        // A refund (negative payment, stage 36) is no «payment added»
+        if (!(Number(payment.amount) > 0)) return result;
         const deal = await getDeal(payment.deal_id);
         await enqueueWebhook("payment.added", {
           payment_id: payment.id,

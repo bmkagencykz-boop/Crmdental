@@ -1,6 +1,10 @@
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
 import type { Identifier } from "ra-core";
+import type {
+  AccountOperation,
+  CashShift,
+} from "../../../payments/types";
 import type { DeveloperApp } from "../../../integrations/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
@@ -158,4 +162,7 @@ export interface Db {
   // Branches (stage 33)
   branches: Branch[];
   sales_branches: SalesBranch[];
+  // Payments, deposits and the cash desk (stage 36)
+  account_operations: AccountOperation[];
+  cash_shifts: CashShift[];
 }

@@ -123,6 +123,7 @@ import { createSearchDemo } from "./search";
 import { createMarketingDemo } from "./marketing";
 import { createAccessRightsDemo } from "./accessRights";
 import { createBranchesDemo } from "./branches";
+import { createPaymentsDemo } from "./payments";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -360,6 +361,17 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     logAudit: (row) => logAudit(row),
     myBranchIds: () => branchesDemo.myBranchIds(),
+  });
+  // Payments, deposits and the cash desk (stage 36)
+  const paymentsDemo = createPaymentsDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+    logAudit: (row) => logAudit(row),
+    reportsAllowed: async () =>
+      (await accessDemo.methods.getMyAccessRights())?.rights.reports.view ===
+      "all",
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -833,6 +845,7 @@ export const createDataProvider = ({
     ...mailingDemo.views,
     ...unsortedDemo.views,
     ...treatmentDemo.views,
+    ...paymentsDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -855,6 +868,7 @@ export const createDataProvider = ({
     ...marketingDemo.methods,
     ...accessDemo.methods,
     ...branchesDemo.methods,
+    ...paymentsDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1700,6 +1714,8 @@ export const createDataProvider = ({
     action: "create" | "delete",
     payment: DealPayment,
   ) => {
+    // Written by the cash desk: logged as the account operation (stage 36)
+    if (paymentsDemo.isLedgerWriting()) return;
     const { data: deal } = await baseDataProvider.getOne<Deal>("deals", {
       id: payment.deal_id,
     });
@@ -1785,6 +1801,8 @@ export const createDataProvider = ({
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,
       ...treatmentDemo.callbacks,
+      // Payments (stage 36): the ledger and the deal payments in sync
+      ...paymentsDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {
@@ -2194,8 +2212,9 @@ export const createDataProvider = ({
       {
         resource: "deal_payments",
         beforeCreate: async (params) => {
-          if (!(Number(params.data.amount) > 0)) {
-            throw new Error("Сумма оплаты должна быть больше нуля");
+          // A refund of the cash desk (stage 36) is a negative payment
+          if (!Number(params.data.amount)) {
+            throw new Error("Сумма оплаты не может быть нулевой");
           }
           return {
             ...params,

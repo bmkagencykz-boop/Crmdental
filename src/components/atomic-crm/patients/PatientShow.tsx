@@ -28,6 +28,7 @@ import { PatientVisits } from "../schedule/PatientVisits";
 import { PatientFiles } from "../files/PatientFiles";
 import { patientDisplayName } from "./parsePatientText";
 import { PatientMedical, PatientPlans } from "../treatment/PatientTreatment";
+import { PatientAccountBlock } from "../payments/PatientAccountBlock";
 
 /**
  * Patient history (spec §3): every request (deal), notes and calls, with
@@ -60,6 +61,8 @@ const PatientShowContent = () => {
           <Panel title={translate("treatment.patient.medical")}>
             <PatientMedical patient={record} />
           </Panel>
+          {/* «Счёт» (stage 36): not for the integrator (no money) */}
+          {canSeePlans ? <PatientAccountBlock patientId={record.id} /> : null}
           <Panel
             title={translate("crm.patients.sections.requests")}
             action={

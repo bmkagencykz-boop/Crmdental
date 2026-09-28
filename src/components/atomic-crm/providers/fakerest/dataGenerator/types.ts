@@ -6,6 +6,7 @@ import type {
   ServiceCategory,
   ServiceCost,
 } from "../../../price-list/types";
+import type { AccountOperation, CashShift } from "../../../payments/types";
 import type { DeveloperApp } from "../../../integrations/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
@@ -167,4 +168,7 @@ export interface Db {
   service_categories: ServiceCategory[];
   service_costs: ServiceCost[];
   service_price_history: PriceHistoryRow[];
+  // Payments, deposits and the cash desk (stage 36)
+  account_operations: AccountOperation[];
+  cash_shifts: CashShift[];
 }

@@ -1,4 +1,5 @@
 import {
+  CashGlyph,
   IntegrationsGlyph,
   MailingsGlyph,
   PriceListGlyph,
@@ -26,6 +27,13 @@ export const Sidebar = () => {
     match: "/sales/*",
     icon: TeamGlyph,
     label: translate("resources.sales.name", { smart_count: 2 }),
+  };
+  // «Касса» (stage 36): payments, deposits, shifts, debtors
+  const cash: NavItem = {
+    to: "/cash",
+    match: "/cash",
+    icon: CashGlyph,
+    label: translate("payments.nav"),
   };
   const reports: NavItem = {
     to: "/reports",
@@ -68,6 +76,9 @@ export const Sidebar = () => {
     >
       <BackButton />
       <div className="mt-3 flex flex-col items-center gap-3">
+        <CanAccess resource="cash_desk" action="list">
+          <SidebarLink item={cash} active={isActive(cash)} />
+        </CanAccess>
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />
         </CanAccess>

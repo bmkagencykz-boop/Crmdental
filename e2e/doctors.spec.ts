@@ -60,10 +60,13 @@ test.describe("doctors", () => {
     await expect(main).toContainText("5 000");
 
     await main.getByRole("tab", { name: "Payments" }).click();
-    await main.getByRole("radio", { name: "Prepayment" }).click();
-    await main.getByLabel("Amount, ₸").fill("20000");
-    await main.getByRole("button", { name: "Add payment" }).click();
-    await expect(page.getByText("Payment added")).toBeVisible();
+    // The payment dialog of the cash desk (stage 36)
+    await main.getByRole("button", { name: "Accept payment" }).click();
+    const payment = page.getByRole("dialog");
+    await payment.getByLabel("Amount", { exact: true }).fill("20000");
+    await payment.getByRole("checkbox", { name: "Prepayment" }).click();
+    await payment.getByRole("button", { name: /^Accept 20/ }).click();
+    await payment.getByRole("button", { name: "Done" }).click();
     await expect(
       main
         .getByRole("listitem")

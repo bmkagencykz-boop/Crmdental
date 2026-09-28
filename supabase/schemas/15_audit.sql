@@ -184,6 +184,10 @@ begin
     from public.deals d
     where d.organization_id = org_id and d.id = row_deal_id;
   end if;
+  -- Rows of a patient without a deal (account operations, stage 36)
+  if row_patient_id is null and entity_name = 'account_operation' then
+    row_patient_id := (row_data ->> 'patient_id')::bigint;
+  end if;
 
   select * into actor from private.audit_actor(org_id);
   if pg_trigger_depth() > 1 then
@@ -343,9 +347,13 @@ create or replace trigger audit_patient
     after insert or update or delete on public.patients
     for each row execute function private.audit_row('patient', 'last_name,first_name,middle_name,phones,sales_id,tags,custom_values');
 
+-- A deal payment written by the cash desk (stage 36) is logged as the
+-- account operation
 create or replace trigger audit_deal_payment
     after insert or update or delete on public.deal_payments
-    for each row execute function private.audit_row('payment', 'amount,paid_at,comment');
+    for each row
+    when (coalesce(current_setting('crm.ledger_sync', true), '') <> 'ledger')
+    execute function private.audit_row('payment', 'amount,paid_at,comment');
 
 create or replace trigger audit_task
     after insert or update or delete on public.tasks

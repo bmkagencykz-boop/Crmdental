@@ -3,6 +3,7 @@ import { generateAuditLog } from "./audit";
 import { generateClinic } from "./clinic";
 import { generateDictionaries } from "./dictionaries";
 import { generateNotifications } from "./notifications";
+import { generateOnboarding } from "./onboarding";
 import { generateMailings } from "./mailings";
 import { generateListsPlans } from "./plans";
 import { generateDoctors } from "./doctors";
@@ -32,6 +33,7 @@ export default (): Db => {
   generateUnsorted(db);
   generateListsPlans(db);
   generateDigitalPipeline(db);
+  generateOnboarding(db);
   db.configuration = [
     {
       id: 1,

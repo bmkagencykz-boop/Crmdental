@@ -167,3 +167,7 @@ begin
   values (other_org_id, 'Другой', 'Пациент', '[{"number":"+77009998877","type":"Mobile"}]');
 end;
 $$;
+
+-- The demo clinics count as set up: they open on the dashboard, the setup
+-- wizard (stage 24) stays reachable from the user menu
+update public.onboarding_progress set completed_at = now() where completed_at is null;

@@ -102,6 +102,20 @@ async function createSales({
 
   testOrganizationId ??= data.organization_id;
 
+  if (isFirstUser) {
+    // The test clinic counts as set up: its owner lands on the dashboard,
+    // not on the setup wizard (e2e/onboardingWizard.spec.ts covers it)
+    const { error: onboardingError } = await adminSupabase
+      .from("onboarding_progress")
+      .update({ completed_at: new Date().toISOString() })
+      .eq("organization_id", data.organization_id);
+    if (onboardingError) {
+      throw new Error(
+        `Failed to mark the clinic set up: ${onboardingError.message}`,
+      );
+    }
+  }
+
   return data;
 }
 

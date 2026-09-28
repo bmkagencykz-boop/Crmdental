@@ -2438,6 +2438,177 @@ export const englishCrmMessages = {
       webhook_off: "The webhook is off",
     },
   },
+  onboarding: {
+    title: "Setup wizard",
+    subtitle: "Let's set up the CRM for your clinic — about 5 minutes",
+    later: "Set up later",
+    close: "Close",
+    progress: "%{done} of %{total}",
+    optional: "optional",
+    save_error: "Could not save. Please try again.",
+    status: {
+      done: "Done",
+      skipped: "Skipped",
+      current: "Now",
+      todo: "To do",
+    },
+    actions: {
+      back: "Back",
+      skip: "Skip",
+      next: "Next",
+    },
+    steps: {
+      clinic: {
+        title: "Clinic",
+        hint: "The name and contacts go into message templates and quick replies.",
+      },
+      services: {
+        title: "Services and prices",
+        hint: "Tick what your clinic does. Prices are optional.",
+      },
+      doctors: {
+        title: "Doctors",
+        hint: "Doctors are chosen in deals and show up in reports. They are not CRM users.",
+      },
+      team: {
+        title: "Team",
+        hint: "Invite administrators and the head: each gets an email to sign in.",
+      },
+      pipeline: {
+        title: "Pipeline",
+        hint: "The stages a patient goes through. Keep them or adjust quickly.",
+      },
+      channels: {
+        title: "Channels",
+        hint: "Where requests come from. Every channel is optional and can be connected later.",
+      },
+      import: {
+        title: "Import",
+        hint: "Bring your patients and deals from Excel or amoCRM.",
+      },
+      done: {
+        title: "Done",
+        hint: "Check the summary and start working.",
+      },
+    },
+    clinic: {
+      name: "Clinic name",
+      city: "City",
+      city_placeholder: "Almaty",
+      timezone: "Time zone",
+      phone: "Clinic phone",
+      address: "Address",
+      address_placeholder: "10 Abay Ave, 2nd floor",
+      address_help:
+        "Goes into the «Адрес и парковка» quick reply instead of the placeholder.",
+      name_required: "Enter the clinic name",
+      saved: "Clinic saved",
+    },
+    timezones: {
+      almaty: "Almaty, Astana (Asia/Almaty)",
+      qostanay: "Kostanay (Asia/Qostanay)",
+      qyzylorda: "Kyzylorda (Asia/Qyzylorda)",
+      aqtobe: "Aktobe (Asia/Aqtobe)",
+      aqtau: "Aktau (Asia/Aqtau)",
+      atyrau: "Atyrau (Asia/Atyrau)",
+      oral: "Oral (Asia/Oral)",
+      tashkent: "Tashkent (Asia/Tashkent)",
+      bishkek: "Bishkek (Asia/Bishkek)",
+      moscow: "Moscow (Europe/Moscow)",
+    },
+    services: {
+      presets: "Popular services",
+      own: "Your services",
+      price_for: "Price: %{name}",
+      price_placeholder: "Price, ₸",
+      consultation_hint:
+        "The consultation price goes into the «Стоимость консультации» quick reply.",
+      new_service: "Another service",
+      add: "Add",
+    },
+    doctors: {
+      later: "The list can be completed later in Settings → Doctors.",
+    },
+    team: {
+      first_name: "First name",
+      last_name: "Last name",
+      email: "Email",
+      role: "Role",
+      invite: "Invite",
+      invited: "Invitation sent to %{email}",
+      members: "Already in the team",
+      owner_only: "Only the clinic owner invites employees.",
+      email_hint: "The employee gets an email with a link to set a password.",
+    },
+    pipeline: {
+      stages: "Stages of the main pipeline",
+      stage_name: "Stage name",
+      won: "success",
+      lost: "refusal",
+      automations: "Recommended automations",
+      reminder: "Reminder to the patient a day before the visit",
+      reminder_hint:
+        "Sent by itself through the connected messenger when a visit is booked.",
+      reminder_missing: "The reminder was removed in Settings → Auto messages.",
+      unsorted: "«Неразобранное»: new requests wait to be accepted",
+      unsorted_hint:
+        "Requests from messengers, the website and calls go to a separate column first.",
+      round_robin: "Give new requests out in turn",
+      round_robin_hint: "Round robin among the invited employees.",
+      round_robin_none:
+        "Invite employees at the «Team» step first — then turn this on.",
+      saved: "Saved",
+    },
+    channels: {
+      set_up: "Set up",
+      collapse: "Collapse",
+      later_hint:
+        "Skip for now — every channel stays in Settings, with the same instructions.",
+      status: {
+        connected: "Connected",
+        not_connected: "Not connected",
+        ready: "Address ready",
+      },
+      wazzup: {
+        title: "WhatsApp, Instagram, Telegram",
+        hint: "Through Wazzup24: paste the API key of your Wazzup24 account.",
+      },
+      website: {
+        title: "Website form",
+        hint: "The address for requests and a ready-made form for your website, Tilda or 2GIS.",
+      },
+      telegram_bot: {
+        title: "Telegram bot",
+        hint: "The clinic's own bot from @BotFather: paste its token.",
+      },
+      telephony: {
+        title: "Telephony",
+        hint: "Pick your PBX and paste the address into it.",
+      },
+    },
+    import: {
+      text: "Patients and deals come from an Excel or CSV file, or from an amoCRM export. The import wizard matches the columns for you.",
+      open: "Open the import wizard",
+      later: "You can import later: Patients → Import or Settings → Import.",
+    },
+    done: {
+      title: "The clinic is ready to work!",
+      text: "Open any section to change it — everything stays in Settings.",
+      open_section: "Open",
+      open_pipeline: "Open the pipeline",
+      to_dashboard: "Go to the dashboard",
+    },
+    card: {
+      title: "Continue setup",
+      text: "%{done} of %{total} steps are set up",
+      continue: "Continue setup",
+      dismiss: "Hide",
+      dismiss_title: "Hide the setup card?",
+      dismiss_confirm:
+        "The card will not show again. The setup wizard stays in the profile menu.",
+    },
+    menu: "Setup wizard",
+  },
 } as const;
 
 type MessageSchema<T> = {

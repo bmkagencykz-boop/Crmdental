@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
-import type { DictionaryItem, LeadSource } from "../types";
+import { formatTenge, parsePrice } from "../onboarding/servicePresets";
+import type { DictionaryItem, LeadSource, Service } from "../types";
 import { moveItem, useDictionaryMutations } from "./useDictionaryMutations";
 
-type Item = DictionaryItem & Partial<Pick<LeadSource, "is_system">>;
+type Item = DictionaryItem &
+  Partial<Pick<LeadSource, "is_system">> &
+  Pick<Service, "price">;
 
 /**
  * Editable list of a clinic dictionary (services, lead sources, lost
@@ -77,6 +80,23 @@ export const DictionaryEditor = ({
             }}
             className={item.is_archived ? "text-muted-foreground" : undefined}
           />
+          {resource === "services" ? (
+            // Optional price in tenge (setup wizard, stage 24)
+            <Input
+              defaultValue={item.price != null ? formatTenge(item.price) : ""}
+              key={`${item.id}-price-${item.price ?? ""}`}
+              inputMode="numeric"
+              placeholder={translate("onboarding.services.price_placeholder")}
+              aria-label={translate("onboarding.services.price_for", {
+                name: item.name,
+              })}
+              className="w-32 shrink-0 text-right tabular-nums"
+              onBlur={(event) => {
+                const price = parsePrice(event.target.value);
+                if (price !== (item.price ?? null)) update(item, { price });
+              }}
+            />
+          ) : null}
           <label className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
             <Switch
               checked={!item.is_archived}

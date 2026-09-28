@@ -19,6 +19,12 @@ test("a clinic signs up and records its first request", async ({
   await page.getByLabel("Password").fill("password");
   await page.getByRole("button", { name: "Create account" }).click();
 
+  // A new clinic lands on the setup wizard (e2e/onboardingWizard.spec.ts)
+  await expect(
+    page.getByRole("heading", { name: "Setup wizard" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Set up later" }).click();
+
   await expect(page.getByText("Open deals")).toBeVisible();
 
   // The new clinic starts with the default pipeline

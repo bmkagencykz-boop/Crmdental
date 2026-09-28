@@ -13,9 +13,14 @@ import { TelegramBotSettings } from "./TelegramBotSettings";
 /**
  * Wazzup24 connection (spec §8): the owner pastes the API key from the
  * Wazzup24 account; the CRM imports the channels (WhatsApp numbers,
- * Instagram and Telegram accounts) and registers its webhook.
+ * Instagram and Telegram accounts) and registers its webhook. The setup
+ * wizard shows the clinic's Telegram bot on its own (withTelegramBot=false).
  */
-export const MessengerSettings = () => {
+export const MessengerSettings = ({
+  withTelegramBot = true,
+}: {
+  withTelegramBot?: boolean;
+}) => {
   const translate = useTranslate();
   const notify = useNotify();
   const dataProvider = useDataProvider<CrmDataProvider>();
@@ -138,7 +143,9 @@ export const MessengerSettings = () => {
         </div>
       ) : null}
 
-      <TelegramBotSettings onChange={() => refetch()} />
+      {withTelegramBot ? (
+        <TelegramBotSettings onChange={() => refetch()} />
+      ) : null}
     </div>
   );
 };

@@ -4,9 +4,11 @@ import { HotPatients } from "./HotPatients";
 import { MonthPlanWidget } from "./MonthPlanWidget";
 import { TasksList } from "./TasksList";
 import { WaitingDeals } from "../notifications/WaitingDeals";
+import { OnboardingDashboardCard } from "../onboarding/OnboardingCard";
 
 export const Dashboard = () => (
   <>
+    <OnboardingDashboardCard />
     <DashboardSummary />
     <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
       <div className="md:col-span-4">

@@ -33,6 +33,7 @@ import { ProfilePage } from "../settings/ProfilePage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { ImportPage } from "../import/ImportPage";
 import { ApiDocsPage } from "../pipeline-automation/ApiDocsPage";
+import { OnboardingPage } from "../onboarding/OnboardingPage";
 import {
   CONFIGURATION_STORE_KEY,
   type ConfigurationContextValue,
@@ -207,6 +208,7 @@ const DesktopAdmin = (
           element={<ForgotPasswordPage />}
         />
         <Route path={OAuthConsentPage.path} element={<OAuthConsentPage />} />
+        <Route path={OnboardingPage.path} element={<OnboardingPage />} />
       </CustomRoutes>
 
       <CustomRoutes>

@@ -221,7 +221,10 @@ select tests.assert(
   'a move of the bot has no author in the deal log');
 
 -- The dispatcher sends the text of the bot, even though the stage changed;
--- the bot message is not the clinic's answer (response time)
+-- the bot message is not the clinic's answer (response time). At night the
+-- messages wait for the end of the quiet hours: the test runs as in daytime.
+update public.automessages set send_at = now() - interval '1 minute'
+where deal_id = current_setting('t.d1')::bigint and status = 'pending' and send_at > now();
 select tests.assert((select count(*) from public.claim_automessages() c where c.deal_id = current_setting('t.d1')::bigint) = 3,
   'the dispatcher takes the three bot messages');
 insert into public.messages (organization_id, patient_id, deal_id, transport, chat_id, direction, status, text, automessage_id)

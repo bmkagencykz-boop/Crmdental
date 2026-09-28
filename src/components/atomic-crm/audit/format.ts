@@ -312,6 +312,14 @@ const changedName = (entry: AuditLogEntry, field = "name") => {
   return (pair[1] ?? pair[0]) as string | undefined;
 };
 
+/** Entities of the schedule (stage 28), labels in the «schedule» namespace */
+const SCHEDULE_ENTITIES = [
+  "visit",
+  "chair",
+  "doctor_exception",
+  "schedule_settings",
+];
+
 /**
  * What was changed: «Сделка «Имплантация»», «Пациент Ахметов Даулет»,
  * «Этап «Записан»»...
@@ -326,15 +334,18 @@ export const auditEntityLabel = (
       ? translate("custom_fields.audit.entity")
       : entry.entity === "mis_connection"
         ? translate("mis_connectors.audit.entity")
-        : translate(`audit.entities.${entry.entity}`, {
-            _: entry.entity,
-          });
+        : SCHEDULE_ENTITIES.includes(entry.entity)
+          ? translate(`schedule.audit.${entry.entity}`)
+          : translate(`audit.entities.${entry.entity}`, {
+              _: entry.entity,
+            });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
     case "deal":
     case "payment":
     case "task":
+    case "visit":
       name =
         entry.deal_name ??
         (entry.entity === "deal" ? changedName(entry) : undefined) ??

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  CalendarDays,
   Columns3,
   LayoutGrid,
   ListChecks,
@@ -89,6 +90,13 @@ export const useNavItems = (): NavItem[] => {
       icon: ListChecks,
       label: translate("resources.tasks.name", { smart_count: 2 }),
       resource: "tasks",
+    },
+    {
+      to: "/schedule",
+      match: "/schedule",
+      icon: CalendarDays,
+      label: translate("schedule.nav"),
+      resource: "visits",
     },
     {
       to: "/patients",

@@ -174,11 +174,7 @@ export const visitMinutes = (
 };
 
 /** Minutes of a slot at a height of a column (click, drop) */
-export const slotAt = (
-  offsetY: number,
-  slotHeight: number,
-  range: GridRange,
-) =>
+export const slotAt = (offsetY: number, slotHeight: number, range: GridRange) =>
   range.start +
   Math.min(
     Math.max(Math.floor(offsetY / slotHeight), 0),
@@ -201,14 +197,22 @@ export type Column = {
  * some visit has none.
  */
 export const columnsFor = (
-  items: { id: Identifier; name: string; is_active: boolean; position: number }[],
+  items: {
+    id: Identifier;
+    name: string;
+    is_active: boolean;
+    position: number;
+  }[],
   visits: Visit[],
   groupBy: GroupBy,
   noneLabel: string,
 ): Column[] => {
   const field = groupBy === "doctor" ? "doctor_id" : "chair_id";
   const used = new Set(
-    visits.map((visit) => visit[field]).filter((id) => id != null).map(String),
+    visits
+      .map((visit) => visit[field])
+      .filter((id) => id != null)
+      .map(String),
   );
   const columns: Column[] = [...items]
     .sort((a, b) => a.position - b.position || Number(a.id) - Number(b.id))
@@ -249,7 +253,13 @@ export const layoutIntervals = <T>(
   items: { item: T; start: number; end: number }[],
 ): Block<T>[] => {
   const placed: Block<T>[] = items
-    .map(({ item, start, end }) => ({ item, start, end, column: 0, columns: 1 }))
+    .map(({ item, start, end }) => ({
+      item,
+      start,
+      end,
+      column: 0,
+      columns: 1,
+    }))
     .sort((a, b) => a.start - b.start || b.end - a.end);
   let group: Block<T>[] = [];
   let groupEnd = -1;
@@ -316,7 +326,13 @@ export const findConflict = (
   },
   visits: Pick<
     Visit,
-    "id" | "starts_at" | "ends_at" | "doctor_id" | "chair_id" | "status" | "source"
+    | "id"
+    | "starts_at"
+    | "ends_at"
+    | "doctor_id"
+    | "chair_id"
+    | "status"
+    | "source"
   >[],
 ): { visit: (typeof visits)[number]; resource: "doctor" | "chair" } | null => {
   const range = {
@@ -434,8 +450,7 @@ export const isUnconfirmedTomorrow = (
   timeZone?: string | null,
 ) =>
   visit.status === "scheduled" &&
-  dayKeyOf(visit.starts_at, timeZone) ===
-    addDays(dayKeyOf(now, timeZone), 1);
+  dayKeyOf(visit.starts_at, timeZone) === addDays(dayKeyOf(now, timeZone), 1);
 
 /** Visits counted by status */
 export const countByStatus = (visits: Pick<Visit, "status">[]) =>

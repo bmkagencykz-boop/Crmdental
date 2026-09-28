@@ -1,8 +1,4 @@
-import type {
-  DataProvider,
-  Identifier,
-  ResourceCallbacks,
-} from "ra-core";
+import type { DataProvider, Identifier, ResourceCallbacks } from "ra-core";
 
 import { DEFAULT_TIME_ZONE } from "../commons/automessages";
 import {
@@ -99,7 +95,8 @@ export const createScheduleDemo = ({
     return `${get("day")}.${get("month")} ${get("hour")}:${get("minute")}`;
   };
 
-  const stored = async () => (await all<StoredSettings>("schedule_settings"))[0];
+  const stored = async () =>
+    (await all<StoredSettings>("schedule_settings"))[0];
   const misKind = async () =>
     (await all<MisConnection>("mis_connections")).find(
       (connection) =>
@@ -219,7 +216,13 @@ export const createScheduleDemo = ({
       const breaks = (range.breaks ?? []).map((pause) => {
         const from = parseHm(pause.start);
         const to = parseHm(pause.end);
-        if (from == null || to == null || to <= from || from < start || to > end) {
+        if (
+          from == null ||
+          to == null ||
+          to <= from ||
+          from < start ||
+          to > end
+        ) {
           throw error("Перерыв вне рабочего дня", "22023");
         }
         return { start: pause.start, end: pause.end };
@@ -421,7 +424,8 @@ export const createScheduleDemo = ({
     const text = entry.task?.trim();
     if (text && deal) {
       const open = (await all<Task>("tasks")).some(
-        (task) => same(task.deal_id, deal!.id) && !task.done_date && task.text === text,
+        (task) =>
+          same(task.deal_id, deal!.id) && !task.done_date && task.text === text,
       );
       if (!open) {
         await getDataProvider().create("tasks", {
@@ -519,7 +523,8 @@ export const createScheduleDemo = ({
           ...params.data,
           source: "crm" as const,
           external_id: null,
-          created_by: params.data.created_by ?? (await currentSalesId()) ?? null,
+          created_by:
+            params.data.created_by ?? (await currentSalesId()) ?? null,
           created_at: now,
           updated_at: now,
           status_changed_at: now,
@@ -651,7 +656,11 @@ export const createScheduleDemo = ({
     if (!deal) return null;
     const text = `Перенести запись ${await timeLabel(visit.starts_at)}`;
     const tasks = await all<Task>("tasks");
-    if (tasks.some((t) => same(t.deal_id, deal.id) && !t.done_date && t.text === text)) {
+    if (
+      tasks.some(
+        (t) => same(t.deal_id, deal.id) && !t.done_date && t.text === text,
+      )
+    ) {
       return kind;
     }
     const { data: task } = await baseDataProvider.create<Task>("tasks", {
@@ -669,7 +678,9 @@ export const createScheduleDemo = ({
       deal.sales_id != null
         ? [deal.sales_id]
         : staff
-            .filter((s) => ["owner", "head"].includes(s.role ?? "") && !s.disabled)
+            .filter(
+              (s) => ["owner", "head"].includes(s.role ?? "") && !s.disabled,
+            )
             .map((s) => s.id);
     const patient = (await all<Patient>("patients")).find((p) =>
       same(p.id, deal.patient_id),

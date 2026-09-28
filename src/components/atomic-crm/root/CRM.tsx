@@ -1,5 +1,6 @@
 import { InboxPage } from "../messages/InboxPage";
 import { TasksPage } from "../tasks/TasksPage";
+import { SchedulePage } from "../schedule/SchedulePage";
 import { AuditPage } from "../audit/AuditPage";
 import { ReportsPage } from "../reports/ReportsPage";
 import { MailingsPage } from "../mailings/MailingsPage";
@@ -218,6 +219,7 @@ const DesktopAdmin = (
         <Route path={SettingsPage.path} element={<SettingsPage />} />
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         <Route path={TasksPage.path} element={<TasksPage />} />
+        <Route path={SchedulePage.path} element={<SchedulePage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
         <Route path={ReportsPage.path} element={<ReportsPage />} />
         <Route path={AuditPage.path} element={<AuditPage />} />

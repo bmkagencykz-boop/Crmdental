@@ -89,12 +89,14 @@ describe("the schedule of the demo", () => {
     // No two active CRM visits collide
     db.visits
       .filter((visit) => visit.source === "crm" && isActiveStatus(visit.status))
-      .forEach((visit) =>
-        expect(findConflict(visit, db.visits)).toBeNull(),
-      );
+      .forEach((visit) => expect(findConflict(visit, db.visits)).toBeNull());
     // Booked deals point at their visit
     db.visits
-      .filter((visit) => visit.source === "crm" && ["scheduled", "confirmed"].includes(visit.status))
+      .filter(
+        (visit) =>
+          visit.source === "crm" &&
+          ["scheduled", "confirmed"].includes(visit.status),
+      )
       .forEach((visit) => {
         const deal = db.deals.find((d) => d.id === visit.deal_id)!;
         expect(deal.appointment_at).toBe(visit.starts_at);
@@ -209,7 +211,10 @@ describe("the schedule of the demo", () => {
       }),
     ).rejects.toThrow();
     await expect(
-      dataProvider.saveScheduleSettings({ hours_start: "20:00", hours_end: "08:00" }),
+      dataProvider.saveScheduleSettings({
+        hours_start: "20:00",
+        hours_end: "08:00",
+      }),
     ).rejects.toThrow();
     const saved = await dataProvider.saveScheduleSettings({
       hours_start: "08:00",
@@ -218,7 +223,9 @@ describe("the schedule of the demo", () => {
     expect(saved.hours_start).toBe("08:00");
     expect(saved.confirm_keywords).toEqual(["1", "да"]);
     await expect(
-      dataProvider.saveDoctorHours(1, { "1": { start: "18:00", end: "09:00" } }),
+      dataProvider.saveDoctorHours(1, {
+        "1": { start: "18:00", end: "09:00" },
+      }),
     ).rejects.toThrow();
   });
 
@@ -245,7 +252,7 @@ describe("the schedule of the demo", () => {
       direction: "in",
       text: "Да, подтверждаю",
     } as unknown as Message;
-    const all = async <T,>(resource: string) =>
+    const all = async <T>(resource: string) =>
       (await list<T>(dataProvider, resource)) as T[];
     const demo = createDemo({
       baseDataProvider: dataProvider,

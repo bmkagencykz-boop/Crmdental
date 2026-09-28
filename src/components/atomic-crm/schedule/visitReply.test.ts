@@ -38,7 +38,11 @@ describe("parseVisitReply", () => {
 
   it("whole words only, short messages only", () => {
     expect(parse("дайте адрес")).toBeNull();
-    expect(parse("Подскажите, пожалуйста, да или нет, можно ли будет прийти с ребёнком")).toBeNull();
+    expect(
+      parse(
+        "Подскажите, пожалуйста, да или нет, можно ли будет прийти с ребёнком",
+      ),
+    ).toBeNull();
     expect(parse("")).toBeNull();
     expect(parse("👍")).toBeNull();
   });

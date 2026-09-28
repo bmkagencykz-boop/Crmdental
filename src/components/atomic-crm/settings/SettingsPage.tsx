@@ -39,6 +39,7 @@ import { DuplicatesSettings } from "../duplicates/DuplicatesSettings";
 import { DigitalPipelineSettings } from "../pipeline-automation/DigitalPipelineSettings";
 import { ApiSettings } from "../pipeline-automation/ApiSettings";
 import { SalesbotSettings } from "../salesbot/SalesbotSettings";
+import { ChairsEditor, ScheduleSettings } from "../schedule/ScheduleSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -48,6 +49,7 @@ const SECTIONS = [
   "sources",
   "lost_reasons",
   "doctors",
+  "chairs",
   "custom_fields",
   "messengers",
   "leads",
@@ -65,6 +67,7 @@ const SECTIONS = [
   "duplicates",
   "import",
   "mis",
+  "schedule",
 ] as const;
 type Section = (typeof SECTIONS)[number];
 
@@ -78,6 +81,7 @@ const GROUPS: { id: string; sections: Section[] }[] = [
       "salesbots",
       "automations",
       "automessages",
+      "schedule",
       "distribution",
       "unsorted",
       "response",
@@ -94,6 +98,7 @@ const GROUPS: { id: string; sections: Section[] }[] = [
       "sources",
       "lost_reasons",
       "doctors",
+      "chairs",
       "custom_fields",
     ],
   },
@@ -108,29 +113,31 @@ const isSection = (value: string | null): value is Section =>
 
 /** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
-  section === "salesbots"
-    ? `salesbot.${kind === "title" ? "section" : "hint"}`
-    : section === "custom_fields"
-      ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
-      : section === "pipeline_automation" || section === "api"
-        ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-        : section === "quick_replies"
-          ? `quick_replies.${kind}`
-          : section === "automessages" ||
-              section === "recalls" ||
-              section === "doctors" ||
-              section === "unsorted" ||
-              section === "duplicates"
-            ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-            : section === "leads"
-              ? `leads.${kind === "title" ? "section" : "hint"}`
-              : section === "import" || section === "mis"
-                ? `${section}.${kind}`
-                : section === "telephony"
-                  ? `telephony.${kind === "title" ? "section" : "hint"}`
-                  : section === "response"
-                    ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-                    : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+  section === "schedule" || section === "chairs"
+    ? `schedule.settings.sections.${section}.${kind}`
+    : section === "salesbots"
+      ? `salesbot.${kind === "title" ? "section" : "hint"}`
+      : section === "custom_fields"
+        ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
+        : section === "pipeline_automation" || section === "api"
+          ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+          : section === "quick_replies"
+            ? `quick_replies.${kind}`
+            : section === "automessages" ||
+                section === "recalls" ||
+                section === "doctors" ||
+                section === "unsorted" ||
+                section === "duplicates"
+              ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+              : section === "leads"
+                ? `leads.${kind === "title" ? "section" : "hint"}`
+                : section === "import" || section === "mis"
+                  ? `${section}.${kind}`
+                  : section === "telephony"
+                    ? `telephony.${kind === "title" ? "section" : "hint"}`
+                    : section === "response"
+                      ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+                      : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -281,6 +288,8 @@ export const SettingsPage = () => {
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
         {section === "doctors" ? <DoctorsEditor /> : null}
+        {section === "chairs" ? <ChairsEditor /> : null}
+        {section === "schedule" ? <ScheduleSettings /> : null}
         {section === "custom_fields" ? <CustomFieldsEditor /> : null}
         {section === "messengers" ? <MessengerSettings /> : null}
         {section === "leads" ? <LeadSettings /> : null}

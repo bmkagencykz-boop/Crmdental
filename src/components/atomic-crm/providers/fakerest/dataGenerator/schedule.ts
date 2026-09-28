@@ -138,7 +138,9 @@ export const generateSchedule = (db: Db) => {
   const clinic = clinicHours(db.schedule_settings[0]);
 
   // The therapist takes a day off in two days (on a weekday)
-  const offDay = [2, 3, 4].map((n) => addDays(today, n)).find((d) => weekdayOf(d) < 5);
+  const offDay = [2, 3, 4]
+    .map((n) => addDays(today, n))
+    .find((d) => weekdayOf(d) < 5);
   db.doctor_exceptions = offDay
     ? [
         {

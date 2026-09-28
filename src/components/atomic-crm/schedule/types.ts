@@ -82,9 +82,7 @@ export type ScheduleSettings = {
   mis_kind: string | null;
 };
 
-export type ScheduleSettingsPatch = Partial<
-  Omit<ScheduleSettings, "mis_kind">
->;
+export type ScheduleSettingsPatch = Partial<Omit<ScheduleSettings, "mis_kind">>;
 
 /** Busy time of the visits the employee does not see */
 export type BusySlot = {

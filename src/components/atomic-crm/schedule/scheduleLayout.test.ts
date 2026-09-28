@@ -76,7 +76,12 @@ describe("time helpers", () => {
 
 describe("the grid", () => {
   it("15-minute rows over the clinic hours", () => {
-    const range = gridRange(clinicHours({ hours_start: "09:00", hours_end: "21:00" }), [], [DAY], TZ);
+    const range = gridRange(
+      clinicHours({ hours_start: "09:00", hours_end: "21:00" }),
+      [],
+      [DAY],
+      TZ,
+    );
     expect(range).toEqual({ start: 540, end: 1260 });
     expect(slotCount(range)).toBe(48);
     expect(slotAt(0, 20, range)).toBe(540);
@@ -88,7 +93,9 @@ describe("the grid", () => {
     const early = visit("07:40", 30);
     expect(gridRange(clinicHours(), [early], [DAY], TZ).start).toBe(7 * 60);
     // a visit of another day does not count
-    expect(gridRange(clinicHours(), [early], ["2026-09-29"], TZ).start).toBe(9 * 60);
+    expect(gridRange(clinicHours(), [early], ["2026-09-29"], TZ).start).toBe(
+      9 * 60,
+    );
   });
 
   it("columns: active doctors in order, inactive ones with visits, «none»", () => {
@@ -137,10 +144,18 @@ describe("the grid", () => {
     const now = new Date("2026-09-27T12:00:00+05:00");
     expect(isUnconfirmedTomorrow(visit("10:00", 30), now, TZ)).toBe(true);
     expect(
-      isUnconfirmedTomorrow(visit("10:00", 30, { status: "confirmed" }), now, TZ),
+      isUnconfirmedTomorrow(
+        visit("10:00", 30, { status: "confirmed" }),
+        now,
+        TZ,
+      ),
     ).toBe(false);
     expect(
-      isUnconfirmedTomorrow(visit("10:00", 30), new Date("2026-09-28T08:00:00+05:00"), TZ),
+      isUnconfirmedTomorrow(
+        visit("10:00", 30),
+        new Date("2026-09-28T08:00:00+05:00"),
+        TZ,
+      ),
     ).toBe(false);
   });
 
@@ -160,29 +175,48 @@ describe("hours of a doctor", () => {
   const doctor = {
     id: 1,
     working_hours: {
-      "1": { start: "09:00", end: "18:00", breaks: [{ start: "13:00", end: "14:00" }] },
+      "1": {
+        start: "09:00",
+        end: "18:00",
+        breaks: [{ start: "13:00", end: "14:00" }],
+      },
       "3": { start: "12:00", end: "20:00" },
     },
   };
 
   it("reads the weekly template, a missing weekday is off", () => {
     expect(weekDayOf(DAY)).toBe("1");
-    expect(doctorHoursOn(doctor, DAY, [], clinic)).toMatchObject({ start: 540, end: 1080 });
+    expect(doctorHoursOn(doctor, DAY, [], clinic)).toMatchObject({
+      start: 540,
+      end: 1080,
+    });
     expect(doctorHoursOn(doctor, "2026-09-29", [], clinic)).toBeNull();
-    expect(doctorHoursOn(doctor, "2026-09-30", [], clinic)).toMatchObject({ start: 720 });
+    expect(doctorHoursOn(doctor, "2026-09-30", [], clinic)).toMatchObject({
+      start: 720,
+    });
   });
 
   it("an exception wins: a day off or custom hours", () => {
     const exceptions: DoctorException[] = [
       { id: 1, doctor_id: 1, day: DAY, start_time: null, end_time: null },
-      { id: 2, doctor_id: 1, day: "2026-09-29", start_time: "10:00:00", end_time: "14:00:00" },
+      {
+        id: 2,
+        doctor_id: 1,
+        day: "2026-09-29",
+        start_time: "10:00:00",
+        end_time: "14:00:00",
+      },
     ];
     expect(doctorHoursOn(doctor, DAY, exceptions, clinic)).toBeNull();
-    expect(doctorHoursOn(doctor, "2026-09-29", exceptions, clinic)).toMatchObject({ start: 600, end: 840 });
+    expect(
+      doctorHoursOn(doctor, "2026-09-29", exceptions, clinic),
+    ).toMatchObject({ start: 600, end: 840 });
   });
 
   it("without template the clinic hours apply", () => {
-    expect(doctorHoursOn({ id: 2, working_hours: {} }, DAY, [], clinic)).toEqual(clinic);
+    expect(
+      doctorHoursOn({ id: 2, working_hours: {} }, DAY, [], clinic),
+    ).toEqual(clinic);
   });
 
   it("warns outside the hours, in a break, on a day off", () => {
@@ -202,16 +236,27 @@ describe("moves and free slots", () => {
     const cancelled = visit("12:00", 30, { status: "cancelled" });
     const all = [a, b, cancelled];
     const moved = { ...b, ...moveVisit(b, DAY, 600, TZ) };
-    expect(findConflict({ ...moved, doctor_id: 1, chair_id: 2 }, all)).toMatchObject({
+    expect(
+      findConflict({ ...moved, doctor_id: 1, chair_id: 2 }, all),
+    ).toMatchObject({
       resource: "doctor",
     });
-    expect(findConflict({ ...moved, doctor_id: 2, chair_id: 1 }, all)).toMatchObject({
+    expect(
+      findConflict({ ...moved, doctor_id: 2, chair_id: 1 }, all),
+    ).toMatchObject({
       resource: "chair",
     });
     // back to back, itself, a cancelled visit: free
-    expect(findConflict({ ...b, ...moveVisit(b, DAY, 630, TZ), chair_id: 1, doctor_id: 1 }, all)).toBeNull();
+    expect(
+      findConflict(
+        { ...b, ...moveVisit(b, DAY, 630, TZ), chair_id: 1, doctor_id: 1 },
+        all,
+      ),
+    ).toBeNull();
     expect(findConflict(b, all)).toBeNull();
-    expect(findConflict({ ...b, ...moveVisit(b, DAY, 720, TZ), doctor_id: 1 }, all)).toBeNull();
+    expect(
+      findConflict({ ...b, ...moveVisit(b, DAY, 720, TZ), doctor_id: 1 }, all),
+    ).toBeNull();
   });
 
   it("moves a visit keeping its duration, in the clinic time zone", () => {
@@ -222,9 +267,17 @@ describe("moves and free slots", () => {
   });
 
   it("lists the free starts inside the hours, outside breaks and visits", () => {
-    const hours = { start: 540, end: 720, breaks: [{ start: "10:00", end: "10:30" }] };
+    const hours = {
+      start: 540,
+      end: 720,
+      breaks: [{ start: "10:00", end: "10:30" }],
+    };
     const busy = busyIntervals(
-      [visit("09:00", 30), visit("11:00", 30, { status: "cancelled" }), visit("11:15", 30, { doctor_id: 9 })],
+      [
+        visit("09:00", 30),
+        visit("11:00", 30, { status: "cancelled" }),
+        visit("11:15", 30, { doctor_id: 9 }),
+      ],
       DAY,
       (v) => v.doctor_id === 1,
       TZ,
@@ -233,8 +286,12 @@ describe("moves and free slots", () => {
     expect(findFreeSlots({ hours, busy, duration: 30 })).toEqual([
       570, 630, 645, 660, 675, 690,
     ]);
-    expect(findFreeSlots({ hours, busy, duration: 60, nowMinute: 640 })).toEqual([645, 660]);
-    expect(findFreeSlots({ hours, busy, duration: 30, limit: 2 })).toEqual([570, 630]);
+    expect(
+      findFreeSlots({ hours, busy, duration: 60, nowMinute: 640 }),
+    ).toEqual([645, 660]);
+    expect(findFreeSlots({ hours, busy, duration: 30, limit: 2 })).toEqual([
+      570, 630,
+    ]);
     expect(findFreeSlots({ hours: null, busy, duration: 30 })).toEqual([]);
   });
 });

@@ -112,6 +112,7 @@ import { unsortedIntake } from "../../unsorted/unsorted";
 import { createListPlanDemo } from "./listsPlans";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 import { createDigitalPipelineDemo } from "./digitalPipeline";
+import { createOnboardingDemo } from "./onboarding";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -266,6 +267,12 @@ export const createDataProvider = ({
     all,
     currentSalesId: () => currentSalesId(),
     getDataProvider: () => dataProvider,
+  });
+  // Setup wizard (stage 24)
+  const onboardingDemo = createOnboardingDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -718,6 +725,7 @@ export const createDataProvider = ({
     ...unsortedDemo.methods,
     ...listPlanDemo.methods,
     ...pipelineDemo.methods,
+    ...onboardingDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1614,6 +1622,7 @@ export const createDataProvider = ({
     [
       ...mailingDemo.callbacks,
       ...listPlanDemo.callbacks,
+      ...onboardingDemo.callbacks,
       {
         resource: "configuration",
         beforeUpdate: async (params) => {

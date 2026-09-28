@@ -13,6 +13,7 @@ import { useConfigurationLoader } from "../root/useConfigurationLoader";
 import { SIDEBAR_WIDTH, useNavItems } from "./navigation";
 import { ChangelogMenuItem, ProfileMenu, Sidebar } from "./Sidebar";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { OnboardingMenuItem } from "../onboarding/OnboardingCard";
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
@@ -33,6 +34,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             <ThemeToggle />
             <UserMenu>
               <ProfileMenu />
+              <OnboardingMenuItem />
               <ChangelogMenuItem />
             </UserMenu>
           </div>

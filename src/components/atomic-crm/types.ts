@@ -139,7 +139,10 @@ export type DictionaryItem = {
   is_archived: boolean;
 } & Pick<RaRecord, "id">;
 
-export type Service = DictionaryItem;
+export type Service = DictionaryItem & {
+  /** Optional price in tenge (setup wizard, stage 24) */
+  price?: number | null;
+};
 export type LostReason = DictionaryItem & {
   /** System value: 'spam' is «Спам / не целевое» (stage 18) */
   code?: string | null;
@@ -431,6 +434,46 @@ export type OrganizationSettings = {
   unsorted_enabled?: boolean;
   /** Only the leads of these sources (empty: every source) */
   unsorted_source_ids?: Identifier[];
+  /** Contacts of the clinic (setup wizard, stage 24) */
+  clinic_city?: string | null;
+  clinic_phone?: string | null;
+  clinic_address?: string | null;
+};
+
+/** Status of a step of the setup wizard (stage 24) */
+export type OnboardingStepStatus = "done" | "skipped";
+
+/** Progress of the setup wizard of the clinic (public.onboarding_progress) */
+export type OnboardingProgress = {
+  organization_id: Identifier;
+  steps: Partial<
+    Record<
+      | "clinic"
+      | "services"
+      | "doctors"
+      | "team"
+      | "pipeline"
+      | "channels"
+      | "import",
+      OnboardingStepStatus
+    >
+  >;
+  /** «Настроить позже»: no more automatic opening, a dashboard card instead */
+  postponed_at?: string | null;
+  /** The dashboard card was hidden for good */
+  dismissed_at?: string | null;
+  /** Finished with «Готово» */
+  completed_at?: string | null;
+  updated_at?: string;
+};
+
+/** Step «Клиника» of the setup wizard (public.save_clinic_profile) */
+export type ClinicProfile = {
+  name: string;
+  city: string;
+  timezone: string;
+  phone: string;
+  address: string;
 };
 
 /** A task created on its own when a deal is created or enters a stage */

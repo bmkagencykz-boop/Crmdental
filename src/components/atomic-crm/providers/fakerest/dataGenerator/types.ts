@@ -13,6 +13,7 @@ import type {
   Message,
   MessengerChannel,
   Organization,
+  OnboardingProgress,
   OrganizationSettings,
   Patient,
   PatientNote,
@@ -103,4 +104,6 @@ export interface Db {
   webhooks: Webhook[];
   webhook_deliveries: WebhookDelivery[];
   api_keys: ApiKey[];
+  // Setup wizard (stage 24)
+  onboarding_progress: Array<OnboardingProgress & { id: number }>;
 }

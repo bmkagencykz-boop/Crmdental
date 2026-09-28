@@ -39,19 +39,25 @@ test.describe("branches", () => {
   }) => {
     await login("owner@smile.kz");
     await page.goto("/#/deals");
-    await expect(page.getByRole("combobox", { name: "Branch" })).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", { name: "Branch", exact: true }),
+    ).toHaveCount(0);
 
     await page.goto("/#/settings?section=branches");
     await page.getByLabel("New branch").fill("Dostyk");
     await page.getByRole("button", { name: "Add a branch" }).click();
     await expect(page.locator("[data-branch-id]")).toHaveCount(1);
     // One branch: still no switcher
-    await expect(page.getByRole("combobox", { name: "Branch" })).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", { name: "Branch", exact: true }),
+    ).toHaveCount(0);
 
     await page.getByLabel("New branch").fill("Abaya");
     await page.getByRole("button", { name: "Add a branch" }).click();
     await expect(page.locator("[data-branch-id]")).toHaveCount(2);
-    const switcher = page.getByRole("combobox", { name: "Branch" }).first();
+    const switcher = page
+      .getByRole("combobox", { name: "Branch", exact: true })
+      .first();
     await expect(switcher).toBeVisible();
     await expect(switcher).toContainText("All branches");
   });
@@ -118,7 +124,7 @@ test.describe("branches", () => {
     await expect(page.getByText("Akhmetov Daulet").first()).toBeVisible();
     await expect(page.getByText("Karimova Madina").first()).toBeVisible();
     await page
-      .getByRole("combobox", { name: "Branch" })
+      .getByRole("combobox", { name: "Branch", exact: true })
       .first()
       .selectOption({ label: "Abaya" });
     await expect(page.getByText("Karimova Madina").first()).toBeVisible();
@@ -126,7 +132,9 @@ test.describe("branches", () => {
 
     // The deal page shows the branch
     await page.goto(`/#/deals/${onAbaya.id}/show`);
-    await expect(page.getByText("Abaya").first()).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText("Abaya").first(),
+    ).toBeVisible();
 
     // «My branch»: the manager of Dostyk sees the deals of Dostyk only
     await adminSupabase.from("access_rights").insert({

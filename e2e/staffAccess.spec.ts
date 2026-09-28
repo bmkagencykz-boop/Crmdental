@@ -93,8 +93,9 @@ test.describe("staff access", () => {
     await ownerPage
       .getByRole("link", { name: "Settings", exact: true })
       .click();
+    // «Access» is a part of «Access rights»: the clinic rules come first
     await ownerPage
-      .getByRole("button", { name: "Access", exact: true })
+      .getByRole("button", { name: "Access rights", exact: true })
       .click();
     await ownerPage.getByRole("radio", { name: "Only their own" }).click();
     await expect(ownerPage.getByText("Configuration saved")).toBeVisible();

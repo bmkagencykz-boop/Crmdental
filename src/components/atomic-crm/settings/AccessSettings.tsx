@@ -37,7 +37,7 @@ export const AccessSettings = () => {
   if (!settings) return null;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5">
       <Choice
         title={translate("crm.settings.access.visibility")}
         value={settings.manager_deal_visibility}
@@ -73,8 +73,8 @@ export const Choice = <T extends string>({
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
 }) => (
-  <fieldset className="flex flex-col gap-3">
-    <legend className="mb-3 text-sm font-semibold">{title}</legend>
+  <fieldset className="flex flex-col gap-2">
+    <legend className="mb-2 text-sm text-muted-foreground">{title}</legend>
     <div className="flex flex-wrap gap-2" role="radiogroup">
       {options.map((option) => (
         <button
@@ -84,10 +84,10 @@ export const Choice = <T extends string>({
           aria-checked={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "rounded-md px-4 py-2 text-sm font-medium transition-all",
+            "h-8 rounded-md border px-3 text-sm font-medium transition-colors",
             value === option.value
-              ? "bg-primary text-primary-foreground shadow-soft"
-              : "soft hover:bg-card",
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-input bg-card hover:bg-[var(--surface-strong)]",
           )}
         >
           {option.label}

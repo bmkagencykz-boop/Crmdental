@@ -62,7 +62,6 @@ const SECTIONS = [
   "quick_replies",
   "recalls",
   "api",
-  "access",
   "access_rights",
   "clinic",
   "duplicates",
@@ -106,7 +105,7 @@ const GROUPS: { id: string; sections: Section[] }[] = [
   { id: "patients", sections: ["recalls", "duplicates", "import"] },
   {
     id: "clinic",
-    sections: ["clinic", "access", "access_rights", "api", "mis"],
+    sections: ["clinic", "access_rights", "api", "mis"],
   },
 ];
 // Every employee manages their own quick replies; the rest is for the owner
@@ -114,6 +113,9 @@ const GROUPS: { id: string; sections: Section[] }[] = [
 const EVERYONE_SECTIONS: Section[] = ["quick_replies"];
 const isSection = (value: string | null): value is Section =>
   SECTIONS.includes(value as Section);
+/** «Доступ» became a part of «Права доступа»: old links still open it */
+const requestedSection = (value: string | null) =>
+  value === "access" ? "access_rights" : value;
 
 /** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
@@ -155,7 +157,7 @@ const sectionLabel = (section: Section, kind: "title" | "hint") =>
 export const SettingsPage = () => {
   const translate = useTranslate();
   const [searchParams] = useSearchParams();
-  const requested = searchParams.get("section");
+  const requested = requestedSection(searchParams.get("section"));
   const { canAccess: isAdmin, isPending } = useCanAccess({
     resource: "configuration",
     action: "edit",
@@ -174,13 +176,13 @@ export const SettingsPage = () => {
     resource: "organization",
     action: "edit",
   });
-  // Access rights (stage 30): the owner edits them, the head reads them
+  // Access rights (stage 30): the owner edits them, the head reads them;
+  // the clinic-wide rules above the matrix are for everybody who configures
   const { canAccess: canSeeRights } = useCanAccess({
     resource: "access_rights",
     action: "list",
   });
   const hidden: Section[] = [
-    ...(canSeeRights ? [] : (["access_rights"] as const)),
     ...(canImport ? [] : (["import"] as const)),
     ...(canMerge ? [] : (["duplicates"] as const)),
     ...(canEditClinic ? [] : (["clinic"] as const)),
@@ -314,8 +316,18 @@ export const SettingsPage = () => {
         {section === "quick_replies" ? <QuickRepliesEditor /> : null}
         {section === "recalls" ? <RecallRulesSettings /> : null}
         {section === "api" ? <ApiSettings /> : null}
-        {section === "access" ? <AccessSettings /> : null}
-        {section === "access_rights" ? <AccessRightsSettings /> : null}
+        {section === "access_rights" ? (
+          <>
+            <SubSection title={translate("ui.access.clinic_rules")}>
+              <AccessSettings />
+            </SubSection>
+            {canSeeRights ? (
+              <SubSection title={translate("ui.access.staff_rights")}>
+                <AccessRightsSettings />
+              </SubSection>
+            ) : null}
+          </>
+        ) : null}
         {section === "clinic" ? <ClinicSettings /> : null}
         {section === "import" ? <ImportWizard /> : null}
         {section === "mis" ? <MisSettings /> : null}
@@ -340,6 +352,19 @@ const Panel = ({
       <h2 className="text-xl font-bold tracking-[-0.02em]">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
     </div>
+    {children}
+  </section>
+);
+
+const SubSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <section className="flex flex-col gap-4 border-t pt-5 first-of-type:border-t-0 first-of-type:pt-0">
+    <h3 className="text-sm font-semibold">{title}</h3>
     {children}
   </section>
 );

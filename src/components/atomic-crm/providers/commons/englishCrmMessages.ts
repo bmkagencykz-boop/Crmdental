@@ -3929,6 +3929,10 @@ export const englishCrmMessages = {
   },
   ui: {
     filter: "Filter",
+    access: {
+      clinic_rules: "For the whole clinic",
+      staff_rights: "Employee rights",
+    },
   },
 } as const;
 

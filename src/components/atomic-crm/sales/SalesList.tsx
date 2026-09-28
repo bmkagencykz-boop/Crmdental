@@ -28,9 +28,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
         <Badge
           variant="outline"
           className={
-            record.role === "manager"
-              ? undefined
-              : "border-primary/50"
+            record.role === "manager" ? undefined : "border-primary/50"
           }
         >
           {translate(roleLabelKey(record.role))}

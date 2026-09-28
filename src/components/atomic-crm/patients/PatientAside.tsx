@@ -35,10 +35,7 @@ export const PatientAside = () => {
               key={phone}
               label={translate("resources.patients.fields.phone_number")}
             >
-              <a
-                href={`tel:${phone}`}
-                className="tabular-nums hover:underline"
-              >
+              <a href={`tel:${phone}`} className="tabular-nums hover:underline">
                 {formatPhone(phone)}
               </a>
             </Term>

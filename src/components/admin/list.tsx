@@ -144,9 +144,7 @@ export const ListView = <RecordType extends RaRecord = RaRecord>(
 
       <FilterContext.Provider value={filters}>
         {finalTitle ? (
-          <h2 className="text-lg font-semibold mb-2">
-            {finalTitle}
-          </h2>
+          <h2 className="text-lg font-semibold mb-2">{finalTitle}</h2>
         ) : null}
         {/* Filters on the left, actions on the right, on a single row */}
         <div className="flex flex-wrap items-end justify-between gap-2 mb-3">

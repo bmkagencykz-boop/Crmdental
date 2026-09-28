@@ -174,10 +174,7 @@ export const OnboardingPage = () => {
                   })
                 : `${ONBOARDING_STEPS.indexOf(current) + 1} / ${TRACKED_STEPS.length}`}
             </p>
-            <h2
-              id="onboarding-step-title"
-              className="text-lg font-semibold"
-            >
+            <h2 id="onboarding-step-title" className="text-lg font-semibold">
               {translate(`onboarding.steps.${current}.title`)}
             </h2>
             <p className="mt-0.5 text-sm text-muted-foreground">

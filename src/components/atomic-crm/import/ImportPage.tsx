@@ -8,9 +8,7 @@ export const ImportPage = () => {
   return (
     <section className="glass flex max-w-5xl flex-col gap-5 rounded-md p-5">
       <div>
-        <h2 className="text-lg font-semibold">
-          {translate("import.title")}
-        </h2>
+        <h2 className="text-lg font-semibold">{translate("import.title")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {translate("import.hint")}
         </p>

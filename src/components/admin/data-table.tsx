@@ -396,9 +396,13 @@ function DataTableHeadCell<
                 )}
                 {sort.field === source ? (
                   sort.order === "ASC" ? (
-                    <span aria-hidden className="ml-1 text-xs">↓</span>
+                    <span aria-hidden className="ml-1 text-xs">
+                      ↓
+                    </span>
                   ) : (
-                    <span aria-hidden className="ml-1 text-xs">↑</span>
+                    <span aria-hidden className="ml-1 text-xs">
+                      ↑
+                    </span>
                   )
                 ) : null}
                 {headerClassName?.includes("text-right") ? (

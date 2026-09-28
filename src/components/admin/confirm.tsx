@@ -1,4 +1,3 @@
-import { AlertCircle, CheckCircle } from "lucide-react";
 import { useTranslate } from "ra-core";
 import * as React from "react";
 import { type ComponentType, type MouseEventHandler, useCallback } from "react";
@@ -75,8 +74,8 @@ export const Confirm = (props: ConfirmProps) => {
     cancel = "ra.action.cancel",
     confirm = "ra.action.confirm",
     confirmColor = "primary",
-    ConfirmIcon = CheckCircle,
-    CancelIcon = AlertCircle,
+    ConfirmIcon,
+    CancelIcon,
     onClose,
     onConfirm,
     translateOptions = {},
@@ -126,7 +125,7 @@ export const Confirm = (props: ConfirmProps) => {
             onClick={onClose}
             className="gap-1"
           >
-            <CancelIcon className="h-5 w-5" />
+            {CancelIcon ? <CancelIcon className="h-4 w-4" /> : null}
             {translate(cancel, { _: cancel })}
           </Button>
           <Button
@@ -135,7 +134,7 @@ export const Confirm = (props: ConfirmProps) => {
             className="gap-1"
             variant={confirmColor === "warning" ? "destructive" : "default"}
           >
-            <ConfirmIcon className="h-5 w-5" />
+            {ConfirmIcon ? <ConfirmIcon className="h-4 w-4" /> : null}
             {translate(confirm, { _: confirm })}
           </Button>
         </DialogFooter>
@@ -149,8 +148,8 @@ export interface ConfirmProps {
   className?: string;
   confirm?: string;
   confirmColor?: "primary" | "warning";
-  ConfirmIcon?: ComponentType;
-  CancelIcon?: ComponentType;
+  ConfirmIcon?: ComponentType<{ className?: string }>;
+  CancelIcon?: ComponentType<{ className?: string }>;
   content?: React.ReactNode;
   isOpen?: boolean;
   loading?: boolean;

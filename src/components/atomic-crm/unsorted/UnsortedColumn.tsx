@@ -9,11 +9,7 @@ import {
 } from "../dictionaries/useDictionaries";
 import { patientDisplayName } from "../patients/parsePatientText";
 import { UnsortedActions } from "./UnsortedActions";
-import {
-  leadExcerpt,
-  unsortedAge,
-  type UnsortedLead,
-} from "./unsorted";
+import { leadExcerpt, unsortedAge, type UnsortedLead } from "./unsorted";
 
 export const UNSORTED_REFRESH_MS = 30_000;
 

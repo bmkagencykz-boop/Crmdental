@@ -181,6 +181,8 @@ describe("Zadarma", () => {
         phone: "77015551234",
         started_at: null,
         status: null,
+        // The clinic's number: the branch of a new deal (stage 33)
+        line: "77273550000",
       },
     });
     expect(
@@ -594,5 +596,30 @@ describe("md5", () => {
     expect(md5("abc")).toBe("900150983cd24fb0d6963f7d28e17f72");
     const long = "звонок ".repeat(40);
     expect(md5(long)).toBe(createHash("md5").update(long).digest("hex"));
+  });
+});
+
+describe("the clinic's line (branches, stage 33)", () => {
+  it("passes the number the call went through when the PBX sends it", () => {
+    expect(
+      genericToCall({
+        call_id: "g-2",
+        phone: "+77015551234",
+        line: "+7 727 222 22 22",
+      })?.call.line,
+    ).toBe("+7 727 222 22 22");
+    expect(
+      zadarmaToCall({
+        event: "NOTIFY_START",
+        pbx_call_id: "z-2",
+        caller_id: "77015551234",
+        called_did: "77272222222",
+      })?.call.line,
+    ).toBe("77272222222");
+  });
+  it("leaves it out otherwise", () => {
+    expect(
+      genericToCall({ call_id: "g-3", phone: "+77015551234" })?.call,
+    ).not.toHaveProperty("line");
   });
 });

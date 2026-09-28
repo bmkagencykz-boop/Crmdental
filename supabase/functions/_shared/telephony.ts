@@ -36,6 +36,17 @@ export type IngestCall = {
   status?: CallStatus | null;
   record_url?: string | null;
   name?: string | null;
+  /**
+   * The clinic's number the call went through (stage 33): a new deal goes
+   * to the branch with that phone number. Only set when the PBX sends it.
+   */
+  line?: string;
+};
+
+/** { line } when the PBX sent the clinic's number, else nothing */
+const withLine = (value: unknown): { line?: string } => {
+  const line = text(value);
+  return line ? { line } : {};
 };
 
 /** What to ask the provider's API for the recording of a call */
@@ -180,6 +191,7 @@ export const binotelToCall = (body: Payload): CallEvent | null => {
       text(object(source.employeeData).extNumber),
     started_at: toIsoDate(source.startTime),
     name: text(object(source.customerData).name),
+    ...withLine(object(source.pbxNumberData).number),
   };
   if (!completed) return { call: { ...call, status: null } };
 
@@ -239,6 +251,7 @@ export const zadarmaToCall = (body: Payload): CallEvent | null => {
           phone: text(body.caller_id),
           started_at: toIsoDate(body.call_start),
           status: null,
+          ...withLine(body.called_did),
         },
       };
     case "NOTIFY_ANSWER":
@@ -261,6 +274,7 @@ export const zadarmaToCall = (body: Payload): CallEvent | null => {
           started_at: toIsoDate(body.call_start),
           duration: number(body.duration),
           status: finalStatus(),
+          ...withLine(body.called_did),
         },
       };
     case "NOTIFY_OUT_START":
@@ -421,6 +435,7 @@ export const mangoToCall = (
         started_at: toIsoDate(data.create_time),
         duration: talk && end > talk ? end - talk : 0,
         status: String(data.entry_result) === "1" ? "answered" : "missed",
+        ...withLine(incoming ? to.line_number : from.line_number),
       },
     };
   }
@@ -559,7 +574,8 @@ const IN_PROGRESS = ["in_progress", "ringing", "started", "start"];
 /**
  * Documented JSON for any other PBX (docs/stages/12-telephony.md):
  *   { call_id, direction: in|out, phone, employee_ext, started_at,
- *     duration, status: answered|missed, record_url }
+ *     duration, status: answered|missed, record_url, line }
+ * line (or did): the clinic's number the call went through (branches).
  */
 export const genericToCall = (body: Payload): CallEvent | null => {
   const callId = text(body.call_id) ?? text(body.id);
@@ -590,6 +606,7 @@ export const genericToCall = (body: Payload): CallEvent | null => {
               : "missed",
       record_url: isAudioUrl(recordUrl) ? recordUrl : null,
       name: text(body.name),
+      ...withLine(body.line ?? body.did),
     },
   };
 };

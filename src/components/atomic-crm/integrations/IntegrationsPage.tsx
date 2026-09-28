@@ -147,7 +147,10 @@ export const IntegrationsPage = () => {
         role="group"
         aria-label={translate("market.filters.label")}
       >
-        {FILTERS.map((id) => (
+        {FILTERS.filter(
+          // A category the user cannot use (import for the integrator) is hidden
+          (id) => counts[id] > 0 || ["all", "connected", "apps"].includes(id),
+        ).map((id) => (
           <button
             key={id}
             type="button"

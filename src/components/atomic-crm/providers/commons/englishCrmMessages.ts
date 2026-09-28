@@ -3763,6 +3763,7 @@ export const englishCrmMessages = {
       title: "Keyboard shortcuts",
       hint: "Keys work with the Russian layout too. In text fields only Ctrl+K works.",
       then: "then",
+      or: "or",
       search: "Search",
       help: "This help",
       new_deal: "New deal",

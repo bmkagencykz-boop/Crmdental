@@ -1,3 +1,4 @@
+import { formatPhone } from "../misc/formatPhone";
 import {
   Globe,
   Instagram,
@@ -112,7 +113,7 @@ const UnsortedCard = ({ lead }: { lead: UnsortedLead }) => {
       last_name: lead.patient_last_name,
       first_name: lead.patient_first_name,
     }) ||
-    lead.patient_phone ||
+    formatPhone(lead.patient_phone) ||
     "—";
   const excerpt = leadExcerpt(lead);
   const source = findById(sources, lead.source_id ?? undefined);

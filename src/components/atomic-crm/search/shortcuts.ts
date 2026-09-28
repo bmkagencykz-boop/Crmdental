@@ -9,6 +9,8 @@ export type ShortcutAction = "search" | "help" | "new_deal" | "new_patient";
 export type Shortcut = {
   /** Keys shown in the help, e.g. ["g", "d"] or ["Ctrl", "K"] */
   keys: string[];
+  /** Another way to press it, shown after «или» */
+  alt?: string[];
   /** A route to open, or an action */
   to?: string;
   action?: ShortcutAction;
@@ -17,8 +19,12 @@ export type Shortcut = {
 };
 
 export const SHORTCUTS: Shortcut[] = [
-  { keys: ["/"], action: "search", label: "search.shortcuts.search" },
-  { keys: ["Ctrl", "K"], action: "search", label: "search.shortcuts.search" },
+  {
+    keys: ["/"],
+    alt: ["Ctrl", "K"],
+    action: "search",
+    label: "search.shortcuts.search",
+  },
   { keys: ["?"], action: "help", label: "search.shortcuts.help" },
   { keys: ["N"], action: "new_deal", label: "search.shortcuts.new_deal" },
   {

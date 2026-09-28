@@ -10,6 +10,7 @@ import {
 } from "../dictionaries/useDictionaries";
 import { accent, NO_TASK_COLOR, onAccent, OVERDUE_COLOR } from "../misc/accent";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { formatPhone } from "../misc/formatPhone";
 import { useGetSalesName } from "../sales/useGetSalesName";
 import { useTags } from "../tags/useTags";
 import type { Deal } from "../types";
@@ -79,7 +80,7 @@ export const DealCardContent = ({
     [deal.patient_last_name, deal.patient_first_name]
       .filter(Boolean)
       .join(" ") ||
-    deal.patient_phone ||
+    formatPhone(deal.patient_phone) ||
     "—";
   const taskState = getDealTaskState(deal);
   const color = accent(findById(stages, deal.stage_id)?.color);

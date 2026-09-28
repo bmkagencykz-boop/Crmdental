@@ -110,8 +110,16 @@ export const ShortcutsHelp = ({
           {SHORTCUTS.map((shortcut) => (
             <div key={shortcut.keys.join("+")} className="contents">
               <dt>{translate(shortcut.label)}</dt>
-              <dd>
+              <dd className="flex items-center gap-1">
                 <Keys keys={shortcut.keys} />
+                {shortcut.alt ? (
+                  <>
+                    <span className="text-xs text-muted-foreground">
+                      {translate("search.shortcuts.or")}
+                    </span>
+                    <Keys keys={shortcut.alt} />
+                  </>
+                ) : null}
               </dd>
             </div>
           ))}

@@ -3785,6 +3785,7 @@ export const russianCrmMessages: CrmMessages = {
       title: "Горячие клавиши",
       hint: "Клавиши работают и в русской раскладке. В полях ввода работает только Ctrl+K.",
       then: "затем",
+      or: "или",
       search: "Поиск",
       help: "Эта подсказка",
       new_deal: "Новая сделка",

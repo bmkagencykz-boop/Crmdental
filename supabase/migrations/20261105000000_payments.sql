@@ -408,6 +408,12 @@ declare
   cash_part bigint;
   payment_id bigint;
 begin
+  -- The method of a deal payment without one, of a payment from the deposit
+  -- or of a refund to the deposit stays as it is (the balances follow it)
+  if tg_op = 'UPDATE' and sync = '' and new.method <> old.method
+    and (old.method in ('deposit', 'other') or new.method in ('deposit', 'other')) then
+    raise exception 'Способ оплаты этой операции не меняется' using errcode = '22023', hint = 'method_locked';
+  end if;
   if tg_op = 'INSERT' then
     if new.kind = 'payment' then
       new.account := 'services';
@@ -566,7 +572,8 @@ begin
 end;
 $$;
 
--- A cancelled (deleted) operation takes its deal payment along
+-- A cancelled (deleted) operation takes its deal payment along; a deposit
+-- already spent cannot be cancelled
 CREATE OR REPLACE FUNCTION "private"."handle_account_operation_deleted"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -574,6 +581,14 @@ CREATE OR REPLACE FUNCTION "private"."handle_account_operation_deleted"() RETURN
 declare
   sync text := coalesce(current_setting('crm.ledger_sync', true), '');
 begin
+  -- A deposit already spent is not cancelled (the payments from it first)
+  if sync = '' and pg_trigger_depth() = 1 and old.deposit_delta > 0
+    and exists (select 1 from public.patients p where p.organization_id = old.organization_id and p.id = old.patient_id)
+    and coalesce((
+      select sum(o.deposit_delta) from public.account_operations o
+      where o.organization_id = old.organization_id and o.patient_id = old.patient_id), 0) < 0 then
+    raise exception 'Депозит уже израсходован: сначала отмените оплаты с депозита' using errcode = '22023', hint = 'deposit_used';
+  end if;
   if old.deal_payment_id is not null and sync <> 'deal' then
     perform set_config('crm.ledger_sync', 'ledger', true);
     delete from public.deal_payments p where p.id = old.deal_payment_id;
@@ -1069,13 +1084,17 @@ grant execute on function public.report_cash_methods(timestamp with time zone, t
 -- Existing deal payments: one ledger row each (method unknown: «Другое»)
 --
 
-select set_config('crm.ledger_sync', 'deal', false);
-insert into public.account_operations (organization_id, patient_id, kind, account, amount, method, prepayment,
-  occurred_at, sales_id, branch_id, deal_id, comment, source, deal_payment_id, created_at)
-select p.organization_id, d.patient_id, 'payment', 'services', p.amount, 'other', p.kind = 'prepayment',
-  private.payment_moment(p.organization_id, p.paid_at, p.created_at), p.sales_id, d.branch_id, p.deal_id, p.comment,
-  'deal', p.id, p.created_at
-from public.deal_payments p
-  join public.deals d on d.organization_id = p.organization_id and d.id = p.deal_id
-order by p.id;
-select set_config('crm.ledger_sync', '', false);
+do $$
+begin
+  perform set_config('crm.ledger_sync', 'deal', true);
+  insert into public.account_operations (organization_id, patient_id, kind, account, amount, method, prepayment,
+    occurred_at, sales_id, branch_id, deal_id, comment, source, deal_payment_id, created_at)
+  select p.organization_id, d.patient_id, 'payment', 'services', p.amount, 'other', p.kind = 'prepayment',
+    private.payment_moment(p.organization_id, p.paid_at, p.created_at), p.sales_id, d.branch_id, p.deal_id, p.comment,
+    'deal', p.id, p.created_at
+  from public.deal_payments p
+    join public.deals d on d.organization_id = p.organization_id and d.id = p.deal_id
+  order by p.id;
+  perform set_config('crm.ledger_sync', '', true);
+end;
+$$;

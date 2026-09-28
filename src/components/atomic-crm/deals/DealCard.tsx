@@ -1,6 +1,6 @@
 import { Draggable } from "@hello-pangea/dnd";
 import { MessageCircle } from "lucide-react";
-import { useRedirect, useTranslate } from "ra-core";
+import { useCanAccess, useRedirect, useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 
 import {
@@ -23,10 +23,19 @@ import {
 } from "../custom-fields/useCustomFields";
 
 export const DealCard = ({ deal, index }: { deal: Deal; index: number }) => {
+  // The integrator (stage 25) only reads the deals: no drag
+  const { canAccess: canEdit } = useCanAccess({
+    resource: "deals",
+    action: "edit",
+  });
   if (!deal) return null;
 
   return (
-    <Draggable draggableId={String(deal.id)} index={index}>
+    <Draggable
+      draggableId={String(deal.id)}
+      index={index}
+      isDragDisabled={canEdit === false}
+    >
       {(provided, snapshot) => (
         <DealCardContent provided={provided} snapshot={snapshot} deal={deal} />
       )}

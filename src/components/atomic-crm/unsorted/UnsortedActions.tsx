@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, GitMerge, X } from "lucide-react";
 import {
+  useCanAccess,
   useDataProvider,
   useGetList,
   useNotify,
@@ -100,6 +101,12 @@ export const UnsortedActions = ({
   const [dialog, setDialog] = useState<"accept" | "reject" | "merge" | null>(
     null,
   );
+  // The integrator (stage 25) only reads the deals
+  const { canAccess: canEdit } = useCanAccess({
+    resource: "deals",
+    action: "edit",
+  });
+  if (canEdit === false) return null;
   return (
     <div
       className={cn("flex flex-wrap gap-1.5", compact && "flex-nowrap gap-1")}

@@ -48,12 +48,18 @@ export const createListPlanDemo = ({
   all,
   currentSalesId,
   getDataProvider,
+  access,
 }: {
   baseDataProvider: DataProvider;
   all: <T>(resource: string) => Promise<T[]>;
   currentSalesId: () => Promise<Identifier | undefined>;
   /** The provider with the lifecycle callbacks (deal triggers) */
   getDataProvider: () => DataProvider;
+  /** Access rights (stage 30): deal visibility and the delete right */
+  access?: () => {
+    dealVisible: (deal: Deal) => Promise<boolean>;
+    canDeleteDeals: () => Promise<boolean>;
+  };
 }) => {
   const me = async () => {
     const salesId = await currentSalesId();
@@ -66,6 +72,7 @@ export const createListPlanDemo = ({
 
   /** Same as the RLS policy of deals */
   const canSeeDeal = async (deal: Deal) => {
+    if (access) return access().dealVisible(deal);
     const sale = await me();
     if (isAdmin(sale)) return true;
     const [settings] = await all<OrganizationSettings>("organization_settings");
@@ -93,7 +100,12 @@ export const createListPlanDemo = ({
     if (!BULK_ACTIONS.includes(action) || (action as string) === "export") {
       throw new Error(`Неизвестное действие «${action}»`);
     }
-    if (!isAllowedAction(action, (await me())?.role)) {
+    if (action === "delete" && access) {
+      // Stage 30: the delete right on deals, like public.bulk_deals
+      if (!(await access().canDeleteDeals())) {
+        throw new Error("deal_list.bulk.forbidden");
+      }
+    } else if (!isAllowedAction(action, (await me())?.role)) {
       throw new Error("deal_list.bulk.forbidden");
     }
     const dataProvider = getDataProvider();

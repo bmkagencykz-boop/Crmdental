@@ -1,3 +1,9 @@
+import type { Identifier } from "ra-core";
+
+import {
+  rightsAllow,
+  type AccessMatrix,
+} from "../../access-rights/accessRights";
 import type { SaleRole } from "../../types";
 
 // FIXME: This should be exported from the ra-core package
@@ -20,12 +26,19 @@ type CanAccessParams<
  *   patients read-only; no reports, staff, audit, mailings, import
  *
  * The action "menu" asks whether a section appears in the sidebar.
+ *
+ * Access rights (stage 30): for a head or a manager, the deals, patients,
+ * tasks, their export and the reports follow the employee's matrix
+ * (`rights`, from public.my_access_rights) when it is given; `me` is the
+ * employee's id, to check the scope «own» against a record.
  */
 export const canAccess = <
   RecordType extends Record<string, any> = Record<string, any>,
 >(
   role: SaleRole | undefined,
   params: CanAccessParams<RecordType>,
+  rights?: AccessMatrix | null,
+  me?: Identifier | null,
 ) => {
   if (role === "owner") {
     return true;
@@ -33,6 +46,17 @@ export const canAccess = <
 
   if (role === "integrator") {
     return integratorCanAccess(params);
+  }
+
+  if (rights && (role === "head" || role === "manager")) {
+    const allowed = rightsAllow(
+      rights,
+      params.resource,
+      params.action,
+      params.record,
+      me,
+    );
+    if (allowed !== undefined) return allowed;
   }
 
   // Marketplace of integrations (stage 25): owner, head (and integrator)
@@ -47,6 +71,11 @@ export const canAccess = <
 
   // Only the owner manages the staff; heads can see it (e.g. to filter deals)
   if (params.resource === "sales") {
+    return role === "head" && ["list", "show"].includes(params.action);
+  }
+
+  // Access rights (stage 30): the owner edits them, the head reads them
+  if (params.resource === "access_rights") {
     return role === "head" && ["list", "show"].includes(params.action);
   }
 

@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { ChevronLeft, MoreHorizontal } from "lucide-react";
 import {
+  useCanAccess,
   useDataProvider,
   useDelete,
   useNotify,
@@ -97,6 +98,12 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
   const dataProvider = useDataProvider<CrmDataProvider>();
   const { save } = useDealUpdate(deal);
   const [remove] = useDelete();
+  // Access rights (stage 30)
+  const { canAccess: canDelete } = useCanAccess({
+    resource: "deals",
+    action: "delete",
+    record: deal,
+  });
   const [startingBot, setStartingBot] = useState(false);
   const unarchive = useMutation({
     mutationFn: () => dataProvider.unarchiveDeal(deal),
@@ -146,21 +153,23 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
               {translate("resources.deals.archived.action")}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            className="text-destructive"
-            onClick={() =>
-              remove(
-                "deals",
-                { id: deal.id, previousData: deal },
-                {
-                  mutationMode: "pessimistic",
-                  onSuccess: () => redirect("/deals"),
-                },
-              )
-            }
-          >
-            {translate("ra.action.delete")}
-          </DropdownMenuItem>
+          {canDelete ? (
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() =>
+                remove(
+                  "deals",
+                  { id: deal.id, previousData: deal },
+                  {
+                    mutationMode: "pessimistic",
+                    onSuccess: () => redirect("/deals"),
+                  },
+                )
+              }
+            >
+              {translate("ra.action.delete")}
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

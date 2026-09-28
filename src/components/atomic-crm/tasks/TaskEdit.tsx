@@ -1,10 +1,13 @@
 import {
+  CanAccess,
   EditBase,
   Form,
   useNotify,
+  useRecordContext,
   useTranslate,
   type Identifier,
 } from "ra-core";
+import type { ComponentProps } from "react";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { SaveButton } from "@/components/admin/form";
 import {
@@ -57,7 +60,7 @@ export const TaskEdit = ({
                 </DialogHeader>
                 <TaskFormContent />
                 <DialogFooter className="w-full sm:justify-between gap-4">
-                  <DeleteButton
+                  <TaskDeleteButton
                     mutationOptions={{
                       onSuccess: () => {
                         close();
@@ -77,5 +80,15 @@ export const TaskEdit = ({
         </EditBase>
       )}
     </Dialog>
+  );
+};
+
+/** The delete button, for whom the access rights allow it (stage 30) */
+const TaskDeleteButton = (props: ComponentProps<typeof DeleteButton>) => {
+  const record = useRecordContext();
+  return (
+    <CanAccess resource="tasks" action="delete" record={record}>
+      <DeleteButton {...props} />
+    </CanAccess>
   );
 };

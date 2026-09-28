@@ -106,18 +106,21 @@ end;
 $$;
 
 -- The deals RLS policy for SECURITY DEFINER code: may the current user see it
+-- (the view scope of the access rights, stage 30)
 CREATE OR REPLACE FUNCTION "private"."deal_visible"("deal" "public"."deals") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  scope text := private.access_scope('deals', 'view');
 begin
   return coalesce(
     deal.id is not null
     and deal.organization_id = private.current_organization_id()
     and (
-      private.manager_deal_visibility() = 'all'
-      or deal.sales_id = private.current_sales_id()
-      or (private.manager_deal_visibility() = 'own_and_unassigned' and deal.sales_id is null)
+      scope = 'all'
+      or (scope in ('own', 'own_and_unassigned') and deal.sales_id = private.current_sales_id())
+      or (scope = 'own_and_unassigned' and deal.sales_id is null)
     ),
     false);
 end;

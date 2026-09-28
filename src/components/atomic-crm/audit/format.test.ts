@@ -416,3 +416,25 @@ describe("custom fields (stage 19)", () => {
     );
   });
 });
+
+describe("access rights (stage 30)", () => {
+  it("reads a change of rights cell by cell", () => {
+    const change = entry({
+      entity: "access_rights",
+      entity_id: 1,
+      deal_id: null,
+      patient_id: null,
+      changes: {
+        "deals.view": ["all", "own"],
+        "reports.view": ["none", "all"],
+      },
+    });
+    expect(auditSummary(change, lookups, t)).toBe(
+      "Сделки · Просмотр: Все → Только свои; Отчёты · Просмотр: Нет → Да",
+    );
+    expect(auditEntityLabel(change, lookups, t)).toContain("Иван Иванов");
+    expect(auditActionLabel({ action: "reset" }, t)).toBe(
+      "Сброс к правам роли",
+    );
+  });
+});

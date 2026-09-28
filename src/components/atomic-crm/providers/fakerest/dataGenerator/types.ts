@@ -1,5 +1,7 @@
 import type { AdSpend } from "../../../marketing/types";
+import type { Identifier } from "ra-core";
 import type { DeveloperApp } from "../../../integrations/types";
+import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
   AuditLogEntry,
   Call,
@@ -138,6 +140,8 @@ export interface Db {
   mis_doctors: MisDoctor[];
   mis_appointments: MisAppointment[];
   mis_sync_log: MisSyncLogEntry[];
+  // Access rights (stage 30): one row per employee with changed rights
+  access_rights: Array<AccessRightsRow & { id: Identifier }>;
   // Marketplace: developer apps (stage 25)
   developer_apps: DeveloperApp[];
   // Schedule (stage 28)

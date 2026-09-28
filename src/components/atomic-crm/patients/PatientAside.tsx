@@ -1,5 +1,5 @@
 import { Instagram, MessageCircle, Phone, Send } from "lucide-react";
-import { useRecordContext, useTranslate } from "ra-core";
+import { CanAccess, useRecordContext, useTranslate } from "ra-core";
 import type { ReactNode } from "react";
 import { DeleteButton } from "@/components/admin";
 import { EditButton } from "@/components/admin/edit-button";
@@ -86,12 +86,14 @@ export const PatientAside = () => {
         <PatientOptOutToggle patientId={record.id} />
       </Section>
 
-      <div className="border-t border-border pt-4">
-        <DeleteButton
-          size="sm"
-          className="text-destructive! hover:bg-destructive/10!"
-        />
-      </div>
+      <CanAccess resource="patients" action="delete" record={record}>
+        <div className="border-t border-border pt-4">
+          <DeleteButton
+            size="sm"
+            className="text-destructive! hover:bg-destructive/10!"
+          />
+        </div>
+      </CanAccess>
     </aside>
   );
 };

@@ -62,6 +62,7 @@ import {
 } from "./bulk";
 import { exportDealsCsv } from "./exportDeals";
 import { useIsAdmin } from "./useIsAdmin";
+import { useExportScope } from "../../access-rights/useAccessRights";
 
 const NONE = "none";
 
@@ -86,6 +87,12 @@ export const BulkActions = ({
     resource: "deals",
     action: "edit",
   });
+  // Access rights (stage 30): deleting and exporting are rights of their own
+  const { canAccess: canDelete } = useCanAccess({
+    resource: "deals",
+    action: "delete",
+  });
+  const { canExport } = useExportScope("deals");
   const { selectedIds, onUnselectItems, total, data, filterValues, sort } =
     useListContext<Deal>();
   const [action, setAction] = useState<BulkActionId | null>(null);
@@ -137,7 +144,11 @@ export const BulkActions = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {BULK_ACTIONS.filter((id) =>
-              isAllowedAction(id, isAdmin ? "owner" : "manager"),
+              id === "delete"
+                ? canDelete === true
+                : id === "export"
+                  ? canExport
+                  : isAllowedAction(id, isAdmin ? "owner" : "manager"),
             ).map((id) => (
               <span key={id}>
                 {id === "export" || id === "archive" ? (
@@ -196,6 +207,7 @@ const BulkDialog = ({
   const notify = useNotify();
   const refresh = useRefresh();
   const dataProvider = useDataProvider<CrmDataProvider>();
+  const { restrict } = useExportScope("deals");
   const [params, setParams] = useState<BulkParams>(() =>
     action === "task"
       ? { type: "call", due_date: tomorrowAt10(), text: "" }
@@ -210,9 +222,11 @@ const BulkDialog = ({
       setPhase({ step: "running", done: 0, total: count });
       const { ids, deals } = await resolveIds(dataProvider);
       if (action === "export") {
-        const rows = deals.length
-          ? deals
-          : (await dataProvider.getMany<Deal>("deals", { ids })).data;
+        const rows = restrict(
+          deals.length
+            ? deals
+            : (await dataProvider.getMany<Deal>("deals", { ids })).data,
+        );
         await exportDealsCsv(rows, dataProvider, translate);
         notify("deal_list.bulk.exported", {
           type: "info",

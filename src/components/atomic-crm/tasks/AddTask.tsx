@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import {
   CreateBase,
   Form,
+  useCanAccess,
   useGetIdentity,
   useNotify,
   useRecordContext,
@@ -66,7 +67,12 @@ export const AddTask = ({
     refresh();
   };
 
-  if (!identity) return null;
+  // Access rights (stage 30): the right to create tasks
+  const { canAccess: canCreate } = useCanAccess({
+    resource: "tasks",
+    action: "create",
+  });
+  if (!identity || canCreate === false) return null;
 
   return (
     <>

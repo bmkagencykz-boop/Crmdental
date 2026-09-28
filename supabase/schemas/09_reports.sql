@@ -21,14 +21,15 @@
 create index if not exists deals_created_at_idx on public.deals using btree (organization_id, created_at);
 create index if not exists deal_events_stage_idx on public.deal_events using btree (organization_id, to_stage_id) where to_stage_id is not null;
 
--- Reports are for the owner and the head
+-- Reports are for the owner and the head, and for whom the owner gives the
+-- right «Отчёты» (stage 30)
 CREATE OR REPLACE FUNCTION "private"."report_check_access"() RETURNS "void"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
 begin
-  if coalesce(private.current_user_role() in ('owner', 'head'), false) is false then
-    raise exception 'Отчёты доступны владельцу и руководителю'
+  if coalesce(private.access_scope('reports', 'view') = 'all', false) is false then
+    raise exception 'Нет доступа к отчётам'
       using errcode = 'insufficient_privilege', hint = 'reports_forbidden';
   end if;
 end;

@@ -60,6 +60,7 @@ import { getSalesbotMethods } from "./salesbotMethods";
 import { getMarketplaceMethods } from "./marketplaceMethods";
 import { getScheduleMethods } from "./scheduleMethods";
 import { getSearchMethods } from "./searchMethods";
+import { getAccessRightsMethods } from "./accessRightsMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -131,6 +132,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getSearchMethods(),
     // Marketing analytics (stage 32)
     ...getMarketingMethods(),
+    // Access rights (stage 30)
+    ...getAccessRightsMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

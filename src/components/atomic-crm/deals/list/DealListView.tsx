@@ -1,4 +1,4 @@
-import { useListContext, useStore, useTranslate } from "ra-core";
+import { useListContext, useStore, useTranslate, type Exporter } from "ra-core";
 import { useEffect, useState } from "react";
 import { List } from "@/components/admin/list";
 import { ListPagination } from "@/components/admin/list-pagination";
@@ -25,10 +25,13 @@ const PERMANENT_FILTER = { "archived_at@is": null, ...SORTED_FILTER };
 export const DealListView = ({
   actions,
   dialogs,
+  exporter,
 }: {
   actions: React.ReactElement;
   /** Create / edit dialogs (they read the list context) */
   dialogs?: React.ReactNode;
+  /** CSV of the toolbar's export button (the export scope, stage 30) */
+  exporter?: Exporter;
 }) => {
   const filters = useDealFilters({});
   return (
@@ -41,6 +44,7 @@ export const DealListView = ({
       filter={PERMANENT_FILTER}
       filters={filters}
       actions={actions}
+      exporter={exporter}
       pagination={<ListPagination rowsPerPageOptions={[25, 50, 100]} />}
     >
       <DealListBody />

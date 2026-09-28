@@ -24,10 +24,12 @@ import {
 } from "../custom-fields/useCustomFields";
 
 export const DealCard = ({ deal, index }: { deal: Deal; index: number }) => {
-  // The integrator (stage 25) only reads the deals: no drag
+  // The integrator (stage 25) only reads the deals: no drag; the access
+  // rights (stage 30) may keep the edit to the employee's own deals
   const { canAccess: canEdit } = useCanAccess({
     resource: "deals",
     action: "edit",
+    record: deal,
   });
   if (!deal) return null;
 

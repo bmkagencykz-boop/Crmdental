@@ -121,6 +121,7 @@ import { createScheduleDemo } from "./schedule";
 import { createTreatmentDemo } from "./treatmentPlans";
 import { createSearchDemo } from "./search";
 import { createMarketingDemo } from "./marketing";
+import { createAccessRightsDemo } from "./accessRights";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -290,6 +291,13 @@ export const createDataProvider = ({
     all,
     currentSalesId: () => currentSalesId(),
     getDataProvider: () => dataProvider,
+    access: () => ({
+      dealVisible: async (deal) =>
+        (await accessDemo.filterDeals([deal])).length > 0,
+      canDeleteDeals: async () =>
+        (await accessDemo.methods.getMyAccessRights())?.rights.deals.delete !==
+        "none",
+    }),
   });
   // Setup wizard (stage 24)
   const onboardingDemo = createOnboardingDemo({
@@ -328,12 +336,20 @@ export const createDataProvider = ({
   const searchDemo = createSearchDemo({
     all,
     currentSalesId: () => currentSalesId(),
+    getAccess: () => accessDemo,
   });
   // Marketing analytics: ad spend, UTM tags (stage 32)
   const marketingDemo = createMarketingDemo({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
+  });
+  // Access rights (stage 30)
+  const accessDemo = createAccessRightsDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -784,11 +800,12 @@ export const createDataProvider = ({
     });
   };
 
+  // The views follow the access rights of the employee, like RLS (stage 30)
   const views: Record<string, () => Promise<any[]>> = {
-    patients: patientsSummary,
-    deals: dealsSummary,
+    patients: async () => accessDemo.filterPatients(await patientsSummary()),
+    deals: async () => accessDemo.filterDeals(await dealsSummary()),
     audit_log: auditLogSummary,
-    deals_waiting: dealsWaitingView,
+    deals_waiting: async () => accessDemo.filterDeals(await dealsWaitingView()),
     ...mailingDemo.views,
     ...unsortedDemo.views,
     ...treatmentDemo.views,
@@ -812,6 +829,7 @@ export const createDataProvider = ({
     ...treatmentDemo.methods,
     ...searchDemo.methods,
     ...marketingDemo.methods,
+    ...accessDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -832,6 +850,14 @@ export const createDataProvider = ({
       }
       if (resource === "saved_filters") {
         return listPlanDemo.listSavedFilters(params);
+      }
+      if (resource === "tasks") {
+        // Same as the RLS policy: tasks of visible deals, in the view scope
+        return fakeRestDataProvider(
+          { tasks: await accessDemo.filterTasks(await all<Task>("tasks")) },
+          false,
+          0,
+        ).getList(resource, params);
       }
       if (resource === "quick_replies") {
         // Same as the RLS policy: clinic-wide replies and my own
@@ -860,6 +886,13 @@ export const createDataProvider = ({
       return baseDataProvider.getMany(resource, params);
     },
     async getManyReference(resource: string, params: any) {
+      if (resource === "tasks") {
+        return fakeRestDataProvider(
+          { tasks: await accessDemo.filterTasks(await all<Task>("tasks")) },
+          false,
+          0,
+        ).getManyReference(resource, params);
+      }
       if (views[resource]) {
         return (await viewProvider(resource)).getManyReference(
           resource,
@@ -1717,6 +1750,8 @@ export const createDataProvider = ({
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,
       ...treatmentDemo.callbacks,
+      // Access rights (stage 30): writes out of the employee's scopes
+      ...accessDemo.callbacks,
       {
         resource: "configuration",
         beforeUpdate: async (params) => {

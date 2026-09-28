@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { accessMatrix } from "../../access-rights/accessRights";
 import { canAccess } from "./canAccess";
 
 describe("canAccess", () => {
@@ -133,5 +134,52 @@ describe("canAccess", () => {
     expect(canAccess(undefined, { resource: "deals", action: "list" })).toBe(
       false,
     );
+  });
+});
+
+describe("canAccess with access rights (stage 30)", () => {
+  const rights = accessMatrix("manager", {
+    deals: { view: "own", edit: "own", export: "none" },
+    tasks: { create: "none" },
+    reports: { view: "all" },
+  });
+
+  it("follows the employee's matrix", () => {
+    const can = (resource: string, action: string, record?: object) =>
+      canAccess("manager", { resource, action, record }, rights, 1);
+    expect(can("deals", "list")).toBe(true);
+    expect(can("deals", "edit", { sales_id: 1 })).toBe(true);
+    expect(can("deals", "edit", { sales_id: 2 })).toBe(false);
+    expect(can("deals", "export")).toBe(false);
+    expect(can("tasks", "create")).toBe(false);
+    expect(can("reports", "list")).toBe(true);
+    // Everything else keeps the rules of the role
+    expect(can("configuration", "edit")).toBe(false);
+  });
+
+  it("never restricts the owner", () => {
+    expect(
+      canAccess(
+        "owner",
+        { resource: "deals", action: "delete" },
+        accessMatrix("manager", { deals: { delete: "none" } }),
+        0,
+      ),
+    ).toBe(true);
+  });
+
+  it("lets the owner edit rights and the head read them", () => {
+    expect(
+      canAccess("owner", { resource: "access_rights", action: "edit" }),
+    ).toBe(true);
+    expect(
+      canAccess("head", { resource: "access_rights", action: "list" }),
+    ).toBe(true);
+    expect(
+      canAccess("head", { resource: "access_rights", action: "edit" }),
+    ).toBe(false);
+    expect(
+      canAccess("manager", { resource: "access_rights", action: "list" }),
+    ).toBe(false);
   });
 });

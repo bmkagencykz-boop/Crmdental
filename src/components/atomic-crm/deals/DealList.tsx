@@ -28,6 +28,7 @@ import { DealListView } from "./list/DealListView";
 import { SavedFiltersBar } from "./list/SavedFiltersBar";
 import { useDealFilters } from "./list/useDealFilters";
 import { customFieldsExporter } from "../custom-fields/exporters";
+import { useScopedExporter } from "../access-rights/useAccessRights";
 import { SORTED_FILTER } from "../unsorted/unsorted";
 
 const dealExporter = customFieldsExporter("deal");
@@ -53,6 +54,8 @@ const DealList = () => {
   const { current } = useCurrentPipeline();
   const [view] = useStore<DealView>(DEAL_VIEW_STORE_KEY, "kanban");
   const filters = useDealFilters({ pipelineId: current?.id });
+  // Access rights (stage 30): the export scope «own» keeps own deals
+  const exporter = useScopedExporter("deals", dealExporter);
 
   if (!identity || !current) return null;
 
@@ -65,6 +68,7 @@ const DealList = () => {
       {view === "list" ? (
         <DealListView
           actions={<DealActions />}
+          exporter={exporter}
           dialogs={<DealDialogs pipelineId={current.id} fab={false} />}
         />
       ) : (
@@ -78,7 +82,7 @@ const DealList = () => {
             pipeline_id: current.id,
           }}
           title={false}
-          exporter={dealExporter}
+          exporter={exporter}
           sort={{ field: "index", order: "ASC" }}
           filters={filters}
           actions={<DealActions />}
@@ -211,7 +215,9 @@ const DealDialogs = ({
 const DealActions = () => (
   <TopToolbar className="items-center">
     <FilterButton iconOnly />
-    <ExportButton iconOnly />
+    <CanAccess resource="deals" action="export">
+      <ExportButton iconOnly />
+    </CanAccess>
     <DigitalPipelineButton />
     <CanAccess resource="deals" action="create">
       <CreateButton label="resources.deals.action.new" />

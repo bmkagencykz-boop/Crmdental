@@ -19,6 +19,7 @@ import { generateMarketplace } from "./marketplace";
 import { generateSchedule } from "./schedule";
 import { generateTreatmentPlans } from "./treatmentPlans";
 import { generateMarketing } from "./marketing";
+import { generateAccessRights } from "./accessRights";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -43,6 +44,7 @@ export default (): Db => {
   generateSalesbot(db);
   generateOnboarding(db);
   generateMarketplace(db);
+  generateAccessRights(db);
   generateSchedule(db);
   // UTM tags, a «Google» source and the ad spend (stage 32)
   generateMarketing(db);

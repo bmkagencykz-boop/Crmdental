@@ -62,6 +62,35 @@ begin
 end;
 $$;
 
+-- Access rights of the current user (stage 30): the scope ('all',
+-- 'own_and_unassigned', 'own' or 'none') of an action ('view', 'create',
+-- 'edit', 'delete', 'export') on an entity ('deals', 'patients', 'tasks',
+-- 'reports'). Declared here because the policies of 05_policies.sql use it;
+-- the table and the rules (private.access_resolve) are in 30_access_rights.sql.
+create or replace function private.access_scope(entity text, action text) returns text
+    language plpgsql stable security definer
+    set search_path to ''
+    as $$
+declare
+  my_id bigint;
+  my_org bigint;
+  my_role text;
+begin
+  select s.id, s.organization_id, s.role into my_id, my_org, my_role
+  from public.sales s
+  where s.user_id = auth.uid() and not s.disabled
+    and (s.access_expires_at is null or s.access_expires_at > now());
+  if my_id is null then
+    return 'none';
+  end if;
+  return private.access_resolve(my_org, my_role, (
+    select r.rights
+    from public.access_rights r
+    where r.organization_id = my_org and r.sales_id = my_id
+  ), entity, action);
+end;
+$$;
+
 --
 -- Organizations and staff
 --

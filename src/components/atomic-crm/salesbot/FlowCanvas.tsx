@@ -41,7 +41,7 @@ export const FlowCanvas = (props: CanvasProps) => {
   const { items, orphans } = buildFlow(props.scenario);
   return (
     <div
-      className="flex flex-col items-stretch gap-0"
+      className="flex min-w-fit flex-col items-stretch gap-0"
       data-testid="salesbot-flow"
     >
       <div className="mx-auto rounded-md border border-dashed px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -106,7 +106,7 @@ const Chain = ({ items, ...props }: CanvasProps & { items: FlowItem[] }) => {
               >
                 {translate("salesbot.editor.jump", {
                   name: target
-                    ? `${translate(`salesbot.types.${target.type}`)} ${target.id}`
+                    ? `${target.id} · ${translate(`salesbot.types.${target.type}`)}`
                     : item.target,
                 })}
               </button>
@@ -143,11 +143,11 @@ const Columns = ({
 }: CanvasProps & { step: Step; columns: FlowColumn[] }) => {
   const translate = useTranslate();
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 pl-4">
+    <div className="flex gap-3 pb-2 pl-4">
       {columns.map((column) => (
         <div
           key={JSON.stringify(column.slot)}
-          className="flex min-w-[15rem] flex-1 flex-col rounded-lg border-l-2 border-dashed border-border bg-muted/30 px-2 pt-2 pb-3"
+          className="flex min-w-[16rem] flex-1 flex-col rounded-lg border-l-2 border-dashed border-border bg-muted/30 px-2 pt-2 pb-3"
           data-testid="salesbot-column"
         >
           <p className="px-1 text-xs font-semibold text-muted-foreground">

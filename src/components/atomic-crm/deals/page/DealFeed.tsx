@@ -119,7 +119,20 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
     messages,
     files,
     automations,
-    salesbotLogs: botLogs.filter((log) => FEED_LOG_KINDS.includes(log.kind)),
+    salesbotLogs: botLogs.filter(
+      (log) =>
+        FEED_LOG_KINDS.includes(log.kind) &&
+        // A message the bot sent is in the conversation already
+        !(
+          log.kind === "sent" &&
+          messages.some(
+            (message) =>
+              message.automessage_id != null &&
+              String(message.automessage_id) ===
+                String(log.details.automessage_id),
+          )
+        ),
+    ),
   }).reverse();
 
   const bottom = useRef<HTMLDivElement>(null);

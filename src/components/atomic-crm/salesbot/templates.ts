@@ -41,18 +41,19 @@ export const BOT_TEMPLATES: { id: string; bot: PortableBot }[] = [
             id: "need",
             type: "condition",
             branches: [
-              { match: "option", value: "1", next: "pain" },
-              { match: "keywords", value: "боль, болит, ноет", next: "pain" },
-              { match: "option", value: "2", next: "implant" },
               {
                 match: "keywords",
-                value: "имплант, имплантация",
+                value: "1, боль, болит, ноет",
+                next: "pain",
+              },
+              {
+                match: "keywords",
+                value: "2, имплант, имплантация",
                 next: "implant",
               },
-              { match: "option", value: "3", next: "braces" },
               {
                 match: "keywords",
-                value: "брекеты, элайнеры, прикус",
+                value: "3, брекеты, элайнеры, прикус",
                 next: "braces",
               },
             ],
@@ -108,10 +109,9 @@ export const BOT_TEMPLATES: { id: string; bot: PortableBot }[] = [
             id: "answer",
             type: "condition",
             branches: [
-              { match: "option", value: "1", next: "book" },
               {
                 match: "keywords",
-                value: "да, давайте, хочу, запишите",
+                value: "1, да, давайте, хочу, запишите",
                 next: "book",
               },
             ],
@@ -178,14 +178,16 @@ export const BOT_TEMPLATES: { id: string; bot: PortableBot }[] = [
             id: "answer",
             type: "condition",
             branches: [
-              { match: "option", value: "1", next: "yes" },
-              { match: "option", value: "2", next: "no" },
               {
                 match: "keywords",
-                value: "нет, неактуально, не нужно",
+                value: "2, нет, неактуально, не нужно",
                 next: "no",
               },
-              { match: "keywords", value: "да, актуально, хочу", next: "yes" },
+              {
+                match: "keywords",
+                value: "1, да, актуально, хочу",
+                next: "yes",
+              },
             ],
             else_next: "handoff",
           },

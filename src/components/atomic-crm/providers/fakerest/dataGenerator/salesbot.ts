@@ -207,7 +207,21 @@ export const generateSalesbot = (db: Db) => {
       created: string,
       step?: string,
       text?: string | null,
-    ) =>
+      extra: Record<string, unknown> = {},
+    ) => {
+      const scenarioStep = step
+        ? bot.scenario.steps.find((s) => s.id === step)
+        : undefined;
+      // What the database logs: the end of a wait, the action of a change
+      const details: Record<string, unknown> = { ...extra };
+      if (kind === "waiting" && scenarioStep?.timeout_minutes) {
+        details.until = new Date(
+          new Date(created).getTime() + scenarioStep.timeout_minutes * MINUTE,
+        ).toISOString();
+      }
+      if (kind === "set" && scenarioStep?.actions?.[0]) {
+        details.action = scenarioStep.actions[0];
+      }
       db.salesbot_logs.push({
         id: db.salesbot_logs.length + 1,
         session_id: session.id,
@@ -218,9 +232,10 @@ export const generateSalesbot = (db: Db) => {
           : null,
         kind,
         text: text ?? null,
-        details: {},
+        details,
         created_at: created,
       } satisfies SalesbotLog);
+    };
 
     const chatId = phone.replace(/\D/g, "");
     log("started", since, undefined, bot.name);
@@ -276,13 +291,22 @@ export const generateSalesbot = (db: Db) => {
           automessage_id: automessageId,
         } satisfies Message);
         session.messages_sent++;
-        log("sent", sentAt, line.step, line.bot);
+        log("sent", sentAt, line.step, line.bot, {
+          automessage_id: automessageId,
+          send_at: sentAt,
+        });
       } else {
         log(line.log, sentAt, line.step, line.text);
       }
       session.updated_at = sentAt;
     });
     if (status !== "waiting") session.finished_at = session.updated_at;
+    else {
+      const wait = db.salesbot_logs
+        .filter((l) => l.session_id === session.id && l.kind === "waiting")
+        .at(-1);
+      session.wait_until = (wait?.details.until as string) ?? null;
+    }
     return { deal, patient, session };
   };
 

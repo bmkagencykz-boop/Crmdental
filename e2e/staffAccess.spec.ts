@@ -93,7 +93,9 @@ test.describe("staff access", () => {
     await ownerPage
       .getByRole("link", { name: "Settings", exact: true })
       .click();
-    await ownerPage.getByRole("button", { name: "Access" }).click();
+    await ownerPage
+      .getByRole("button", { name: "Access", exact: true })
+      .click();
     await ownerPage.getByRole("radio", { name: "Only their own" }).click();
     await expect(ownerPage.getByText("Configuration saved")).toBeVisible();
 

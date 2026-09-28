@@ -66,7 +66,7 @@ const TodayInClinicCard = () => {
   return (
     <div className="flex flex-col gap-2" data-testid="today-in-clinic">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold text-foreground">
+        <h2 className="text-[22px] font-normal tracking-[-0.02em] text-foreground">
           {translate("schedule.dashboard.title")}
         </h2>
         <Link

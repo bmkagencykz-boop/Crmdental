@@ -8,7 +8,7 @@ export function DashboardActivityLog() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center mb-4 md:mb-2">
-        <h2 className="text-[15px] font-semibold text-foreground">
+        <h2 className="text-[22px] font-normal tracking-[-0.02em] text-foreground">
           {translate("crm.dashboard.latest_activity", {
             _: "Latest Activity",
           })}

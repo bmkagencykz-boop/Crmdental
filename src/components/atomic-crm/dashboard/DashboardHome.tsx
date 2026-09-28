@@ -236,7 +236,7 @@ export const InWorkDeals = () => {
   return (
     <section className="mb-8" aria-label={translate("dashboard_home.in_work")}>
       <div className="mb-4 flex flex-wrap items-center gap-2.5">
-        <h2 className="mr-2 text-[22px] font-semibold tracking-[-0.01em]">
+        <h2 className="mr-2 text-[30px] font-normal tracking-[-0.03em]">
           {translate("dashboard_home.in_work")}
         </h2>
         {chosenSales.map((sale) => (
@@ -578,7 +578,7 @@ export const DayTimeline = () => {
   return (
     <section className="rounded-xl bg-card p-5 shadow-card">
       <div className="mb-4 flex items-center gap-3">
-        <h2 className="text-[22px] font-semibold tracking-[-0.01em]">
+        <h2 className="text-[26px] font-normal tracking-[-0.03em]">
           {translate("dashboard_home.day_tasks")}
         </h2>
         <Link

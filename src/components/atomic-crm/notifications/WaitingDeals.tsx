@@ -17,7 +17,7 @@ export const WaitingDeals = () => {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
-        <h2 className="text-[15px] font-semibold text-foreground">
+        <h2 className="text-[22px] font-normal tracking-[-0.02em] text-foreground">
           {translate("notifications.waiting.title")}
         </h2>
         {data.length ? (

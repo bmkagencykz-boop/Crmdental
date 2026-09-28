@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 import { FormToolbar } from "../layout/FormToolbar";
+import { RecordReady } from "../misc/RecordReady";
 import type { Deal } from "../types";
 import { DealInputs } from "./DealInputs";
 
@@ -47,10 +48,12 @@ export const DealEdit = ({ open, id }: { open: boolean; id?: string }) => {
             }}
           >
             <EditHeader />
-            <Form>
-              <DealInputs />
-              <FormToolbar />
-            </Form>
+            <RecordReady>
+              <Form>
+                <DealInputs />
+                <FormToolbar />
+              </Form>
+            </RecordReady>
           </EditBase>
         ) : null}
       </DialogContent>

@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { RecordReady } from "../misc/RecordReady";
 import { TaskFormContent } from "./TaskFormContent";
 
 export const TaskEdit = ({
@@ -47,29 +48,31 @@ export const TaskEdit = ({
           redirect={false}
         >
           <DialogContent className="lg:max-w-xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
-            <Form className="flex flex-col gap-4">
-              <DialogHeader>
-                <DialogTitle>
-                  {translate("resources.tasks.action.edit")}
-                </DialogTitle>
-              </DialogHeader>
-              <TaskFormContent />
-              <DialogFooter className="w-full sm:justify-between gap-4">
-                <DeleteButton
-                  mutationOptions={{
-                    onSuccess: () => {
-                      close();
-                      notify("resources.tasks.deleted", {
-                        type: "info",
-                        undoable: true,
-                      });
-                    },
-                  }}
-                  redirect={false}
-                />
-                <SaveButton label="ra.action.save" />
-              </DialogFooter>
-            </Form>
+            <RecordReady>
+              <Form className="flex flex-col gap-4">
+                <DialogHeader>
+                  <DialogTitle>
+                    {translate("resources.tasks.action.edit")}
+                  </DialogTitle>
+                </DialogHeader>
+                <TaskFormContent />
+                <DialogFooter className="w-full sm:justify-between gap-4">
+                  <DeleteButton
+                    mutationOptions={{
+                      onSuccess: () => {
+                        close();
+                        notify("resources.tasks.deleted", {
+                          type: "info",
+                          undoable: true,
+                        });
+                      },
+                    }}
+                    redirect={false}
+                  />
+                  <SaveButton label="ra.action.save" />
+                </DialogFooter>
+              </Form>
+            </RecordReady>
           </DialogContent>
         </EditBase>
       )}

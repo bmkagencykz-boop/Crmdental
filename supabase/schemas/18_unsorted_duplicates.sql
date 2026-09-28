@@ -528,6 +528,8 @@ begin
       where k.mailing_id = m.mailing_id and k.patient_id = keep_id
     );
 
+  -- The visits of the MIS move with their patient
+  perform set_config('crm.visit_sync', 'on', true);
   for reference in
     select c.conrelid::regclass as table_name, a.attname as column_name
     from pg_catalog.pg_constraint c
@@ -542,6 +544,7 @@ begin
       reference.table_name, reference.column_name, reference.column_name)
     using keep_id, org_id, merge_id;
   end loop;
+  perform set_config('crm.visit_sync', '', true);
   update public.external_refs r set entity_id = keep_id
   where r.organization_id = org_id and r.entity = 'patient' and r.entity_id = merge_id;
 

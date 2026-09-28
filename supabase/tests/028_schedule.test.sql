@@ -471,4 +471,21 @@ select tests.assert(
   (select count(*) from public.visits where organization_id = current_setting('t.mis_org')::bigint) = 1,
   'the MIS visit is still there');
 
+-- Direct edits only: a merge moves the MIS visit, removing the clinic removes it
+insert into public.patients (organization_id, first_name, last_name)
+values (current_setting('t.mis_org')::bigint, 'Айгерим', 'Дубль');
+select private.merge_patient_rows(current_setting('t.mis_org')::bigint,
+  (select id from public.patients where organization_id = current_setting('t.mis_org')::bigint and last_name = 'Дубль'),
+  (select patient_id from public.visits where organization_id = current_setting('t.mis_org')::bigint),
+  '{}'::jsonb);
+select tests.assert(
+  (select p.last_name = 'Дубль' from public.visits v
+     join public.patients p on p.organization_id = v.organization_id and p.id = v.patient_id
+   where v.organization_id = current_setting('t.mis_org')::bigint),
+  'merging patients moves the MIS visit to the kept patient');
+delete from public.organizations where id = current_setting('t.mis_org')::bigint;
+select tests.assert(
+  (select count(*) from public.visits where organization_id = current_setting('t.mis_org')::bigint) = 0,
+  'removing the clinic removes its MIS visits');
+
 rollback;

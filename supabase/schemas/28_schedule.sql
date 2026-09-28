@@ -568,10 +568,12 @@ CREATE OR REPLACE FUNCTION "private"."handle_visit_before_write"() RETURNS "trig
     AS $$
 declare
   syncing boolean := coalesce(current_setting('crm.visit_sync', true), '') = 'on';
+  -- A cascade (a patient, deal, service or clinic removed) is not an edit
+  cascading boolean := pg_trigger_depth() > 1;
   busy public.visits;
 begin
   if tg_op = 'DELETE' then
-    if old.source = 'mis' and not syncing then
+    if old.source = 'mis' and not syncing and not cascading then
       raise exception 'Запись ведётся в МИС' using errcode = '42501', hint = 'visit_mis_readonly';
     end if;
     return old;
@@ -589,7 +591,7 @@ begin
     new.updated_at := now();
     new.status_changed_at := now();
   else
-    if old.source = 'mis' and not syncing then
+    if old.source = 'mis' and not syncing and not cascading then
       raise exception 'Запись ведётся в МИС' using errcode = '42501', hint = 'visit_mis_readonly';
     end if;
     new.source := old.source;

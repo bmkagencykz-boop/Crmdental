@@ -210,13 +210,11 @@ test.describe("attachments", () => {
     await expect(feed.locator('audio[aria-label="voice.ogg"]')).toHaveCount(1);
 
     // The paperclip attaches a file to the reply, which can be removed
-    await page
-      .getByTestId("message-file-input")
-      .setInputFiles({
-        name: "plan.pdf",
-        mimeType: "application/pdf",
-        buffer: PDF,
-      });
+    await page.getByTestId("message-file-input").setInputFiles({
+      name: "plan.pdf",
+      mimeType: "application/pdf",
+      buffer: PDF,
+    });
     await expect(page.getByPlaceholder("Caption (optional)")).toBeVisible();
     await expect(page.getByRole("main")).toContainText("plan.pdf");
     await page.getByRole("button", { name: "Remove the file" }).click();

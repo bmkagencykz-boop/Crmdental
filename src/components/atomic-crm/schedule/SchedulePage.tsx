@@ -37,6 +37,7 @@ import {
   doctorHoursOn,
   findConflict,
   gridRange,
+  hoursWarning,
   moveVisit,
   toHm,
   visitDuration,
@@ -289,8 +290,17 @@ export const SchedulePage = () => {
         },
         previousData: visit,
       });
-      notify("schedule.grid.moved", {
-        type: "info",
+      // Outside the doctor's hours: moved anyway, with a warning
+      const doctor = findById(doctors, moved.doctor_id);
+      const warning = doctor
+        ? hoursWarning(
+            doctorHoursOn(doctor, column.day, exceptions, clinic),
+            minute,
+            minute + visitDuration(visit),
+          )
+        : null;
+      notify(warning ? `schedule.warnings.${warning}` : "schedule.grid.moved", {
+        type: warning ? "warning" : "info",
         messageArgs: { time: toHm(minute) },
       });
       refresh();

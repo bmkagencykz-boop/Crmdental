@@ -85,9 +85,9 @@ test.describe("plan editor", () => {
     await expect(
       lines.getByLabel("Tooth: Лечение кариеса").first(),
     ).toHaveValue("17");
-    await expect(
-      lines.getByLabel("Tooth: Лечение кариеса").last(),
-    ).toHaveValue("16");
+    await expect(lines.getByLabel("Tooth: Лечение кариеса").last()).toHaveValue(
+      "16",
+    );
     // The teeth of the stage are highlighted on the chart
     await expect(
       editor.locator('[data-tooth="16"][data-marked="true"]'),
@@ -118,7 +118,9 @@ test.describe("plan editor", () => {
     await expect(page.getByText("The stage template is saved")).toBeVisible();
     await editor.getByRole("button", { name: "Add a stage" }).click();
     await page.getByRole("menuitem", { name: /Кариес, два зуба/ }).click();
-    await expect(page.getByText("The stage is added from the template")).toBeVisible();
+    await expect(
+      page.getByText("The stage is added from the template"),
+    ).toBeVisible();
     await expect(
       editor.getByRole("tab", { name: /Stage 2/ }).first(),
     ).toHaveAttribute("aria-selected", "true");

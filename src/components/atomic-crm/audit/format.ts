@@ -116,7 +116,6 @@ export const AUDIT_ENTITY_GROUPS = {
   task: ["task"],
   employee: ["employee", "access_rights"],
   settings: [
-    "treatment_stage_template",
     "pipeline",
     "stage",
     "settings",
@@ -134,6 +133,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "service",
     "ad_spend",
     "branch",
+    "treatment_stage_template",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;

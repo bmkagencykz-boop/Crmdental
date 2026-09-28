@@ -6,7 +6,7 @@ import {
   localDate,
   type ReportData,
 } from "../reports/reportMath";
-import type { LeadSource } from "../types";
+import type { Deal, LeadSource } from "../types";
 import type {
   AdSpend,
   MarketingFilters,
@@ -293,3 +293,9 @@ export const marketingReport = (
 /** Share of a part, in whole percent; null when there is nothing to divide */
 export const conversion = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : null;
+
+/** «google / cpc / implant»: the tags that say where the deal came from */
+export const attributionSummary = (deal: Partial<Deal>) =>
+  [deal.utm_source, deal.utm_medium, deal.utm_campaign]
+    .filter(Boolean)
+    .join(" / ");

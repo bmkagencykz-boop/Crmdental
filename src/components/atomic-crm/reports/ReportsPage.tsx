@@ -29,12 +29,14 @@ import {
 } from "./ReportTabs";
 import { RecallsTab } from "../mailings/RecallsTab";
 import { SalesPlanTab } from "./SalesPlanTab";
+import { MarketingTab } from "../marketing/MarketingTab";
 
 const TABS = [
   "conversion",
   "speed",
   "lost_reasons",
   "money",
+  "marketing",
   "recalls",
   "sales_plan",
 ] as const;
@@ -74,7 +76,12 @@ export const ReportsPage = () => {
     <div className="flex flex-col gap-6">
       {/* The sales plan has its own month */}
       {tab === "sales_plan" ? null : (
-        <ReportFiltersBar state={state} onChange={setState} />
+        <ReportFiltersBar
+          state={state}
+          onChange={setState}
+          // Marketing (stage 32): the spend has only a period and a source
+          sourceOnly={tab === "marketing"}
+        />
       )}
       <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
         <TabsList className="rounded-md">
@@ -85,7 +92,9 @@ export const ReportsPage = () => {
                   ? "recalls.title"
                   : value === "sales_plan"
                     ? "sales_plan.tab"
-                    : `reports.tabs.${value}`,
+                    : value === "marketing"
+                      ? "marketing.tab"
+                      : `reports.tabs.${value}`,
               )}
             </TabsTrigger>
           ))}
@@ -101,6 +110,9 @@ export const ReportsPage = () => {
         </TabsContent>
         <TabsContent value="money" className="mt-4">
           <MoneyTab filters={filters} />
+        </TabsContent>
+        <TabsContent value="marketing" className="mt-4">
+          <MarketingTab filters={filters} />
         </TabsContent>
         <TabsContent value="recalls" className="mt-4">
           <RecallsTab filters={filters} />
@@ -118,9 +130,11 @@ ReportsPage.path = "/reports";
 const ReportFiltersBar = ({
   state,
   onChange,
+  sourceOnly,
 }: {
   state: ReportFilterState;
   onChange: (state: ReportFilterState) => void;
+  sourceOnly?: boolean;
 }) => {
   const translate = useTranslate();
   const { data: pipelines } = usePipelines();
@@ -182,23 +196,27 @@ const ReportFiltersBar = ({
           </Filter>
         </>
       ) : null}
-      <ChoiceFilter
-        label={translate("reports.filters.pipeline")}
-        allLabel={translate("reports.filters.all_pipelines")}
-        value={state.pipeline_id}
-        choices={pipelines.map((p) => ({ id: String(p.id), name: p.name }))}
-        onChange={(pipeline_id) => set({ pipeline_id })}
-      />
-      <ChoiceFilter
-        label={translate("reports.filters.employee")}
-        allLabel={translate("reports.filters.all_employees")}
-        value={state.sales_id}
-        choices={sales.map((s) => ({
-          id: String(s.id),
-          name: `${s.first_name} ${s.last_name}`,
-        }))}
-        onChange={(sales_id) => set({ sales_id })}
-      />
+      {sourceOnly ? null : (
+        <ChoiceFilter
+          label={translate("reports.filters.pipeline")}
+          allLabel={translate("reports.filters.all_pipelines")}
+          value={state.pipeline_id}
+          choices={pipelines.map((p) => ({ id: String(p.id), name: p.name }))}
+          onChange={(pipeline_id) => set({ pipeline_id })}
+        />
+      )}
+      {sourceOnly ? null : (
+        <ChoiceFilter
+          label={translate("reports.filters.employee")}
+          allLabel={translate("reports.filters.all_employees")}
+          value={state.sales_id}
+          choices={sales.map((s) => ({
+            id: String(s.id),
+            name: `${s.first_name} ${s.last_name}`,
+          }))}
+          onChange={(sales_id) => set({ sales_id })}
+        />
+      )}
       <ChoiceFilter
         label={translate("reports.filters.source")}
         allLabel={translate("reports.filters.all_sources")}
@@ -206,13 +224,15 @@ const ReportFiltersBar = ({
         choices={sources.map((s) => ({ id: String(s.id), name: s.name }))}
         onChange={(source_id) => set({ source_id })}
       />
-      <ChoiceFilter
-        label={translate("doctors.reports.filter")}
-        allLabel={translate("doctors.reports.all")}
-        value={state.doctor_id}
-        choices={doctors.map((d) => ({ id: String(d.id), name: d.name }))}
-        onChange={(doctor_id) => set({ doctor_id })}
-      />
+      {sourceOnly ? null : (
+        <ChoiceFilter
+          label={translate("doctors.reports.filter")}
+          allLabel={translate("doctors.reports.all")}
+          value={state.doctor_id}
+          choices={doctors.map((d) => ({ id: String(d.id), name: d.name }))}
+          onChange={(doctor_id) => set({ doctor_id })}
+        />
+      )}
     </div>
   );
 };

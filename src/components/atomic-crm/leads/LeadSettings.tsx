@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 
 import type { CrmDataProvider } from "../providers/types";
 import { leadFormSnippet } from "./leadWebhook";
+import { UtmSourcesSettings } from "../marketing/UtmSourcesSettings";
 
 const QUERY_KEY = ["lead_webhook"];
 
@@ -105,6 +106,8 @@ export const LeadSettings = () => {
       <Block title={translate("leads.fields_title")}>
         <p>{translate("leads.fields_help")}</p>
       </Block>
+
+      <UtmSourcesSettings />
 
       <Block
         title={translate("leads.snippet_title")}

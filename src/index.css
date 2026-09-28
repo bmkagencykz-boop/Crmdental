@@ -16,6 +16,12 @@
   --color-brand-pink: var(--brand-pink);
   --color-brand-rose: var(--brand-rose);
   --color-brand-blush: var(--brand-blush);
+  --color-tone-blue: var(--tone-blue);
+  --color-tone-violet: var(--tone-violet);
+  --color-tone-orange: var(--tone-orange);
+  --color-tone-green: var(--tone-green);
+  --color-tone-red: var(--tone-red);
+  --color-tone-pink-soft: var(--tone-pink-soft);
   --color-surface: var(--surface);
   --color-pill: var(--pill);
   --color-pill-hover: var(--pill-hover);
@@ -60,128 +66,85 @@
 }
 
 /*
- * Palette: Smile Sales Agency brand pink (#EF3B6E) on two themes.
- * Light (default of :root) is close to amoCRM: a pale warm grey board,
- * white cards with a thin border; dark is the warm near-black canvas.
- * Corners are small (6-8px) like amoCRM.
+ * Palette «Dental Studio»: one light theme (the dark one was removed by the
+ * user), soft grey canvas, white cards with large rounded corners and no
+ * borders, pill-shaped controls. The brand pink (#EF3B6E) is the accent of
+ * actions and the active state; blue, violet, orange, green and red mark
+ * statuses (like the chips «В клинике», «В лабе», «2 дня» of the reference).
  */
 :root {
   color-scheme: light;
-  --radius: 0.3125rem;
-  --background: #f3f0f1;
-  --foreground: #1a1517;
+  --radius: 1.125rem;
+  --background: #eeeef0;
+  --foreground: #16141a;
   --card: #ffffff;
-  --card-foreground: #1a1517;
+  --card-foreground: #16141a;
   --popover: #ffffff;
-  --popover-foreground: #1a1517;
+  --popover-foreground: #16141a;
   --primary: #ef3b6e;
   --primary-foreground: #ffffff;
-  --secondary: #ece6e9;
-  --secondary-foreground: #1a1517;
-  --muted: #ece6e9;
-  --muted-foreground: #62585d;
-  --accent: #f7edf1;
-  --accent-foreground: #1a1517;
-  --destructive: #d92650;
-  --border: rgba(26, 21, 23, 0.11);
-  --input: rgba(26, 21, 23, 0.18);
+  --secondary: #f3f2f5;
+  --secondary-foreground: #16141a;
+  --muted: #f3f2f5;
+  --muted-foreground: #7a7680;
+  --accent: #fdeef3;
+  --accent-foreground: #16141a;
+  --destructive: #e5484d;
+  --border: rgba(22, 20, 26, 0.08);
+  --input: rgba(22, 20, 26, 0.1);
   --ring: #ef3b6e;
+  /* Status colors */
+  --tone-blue: #2f80ed;
+  --tone-violet: #7b61ff;
+  --tone-orange: #f2994a;
+  --tone-green: #2fb56a;
+  --tone-red: #e5484d;
+  --tone-pink-soft: #ffe1ea;
   --brand-blue: #ef3b6e;
-  --brand-link: #c3245a;
-  --brand-red: #e0294f;
-  --brand-yellow: #eea46c;
-  --warn: #b35a17;
-  --brand-green: #f8b4c6;
-  --brand-lime: #f8b4c6;
+  --brand-link: #d6275b;
+  --brand-red: #e5484d;
+  --brand-yellow: #f2994a;
+  --warn: #c86a14;
+  --brand-green: #2fb56a;
+  --brand-lime: #ffe1ea;
   --brand-pink: #ef3b6e;
   --brand-rose: #f47c9c;
-  --brand-blush: #f8b4c6;
+  --brand-blush: #ffe1ea;
   /* Panels (columns, page blocks) and pills (rows, controls) */
   --surface: #ffffff;
-  --surface-strong: #ece6e9;
-  --surface-border: rgba(26, 21, 23, 0.09);
+  --surface-strong: #f3f2f5;
+  --surface-border: transparent;
   --pill: #ffffff;
-  --pill-hover: #fdf6f8;
-  --field: #ffffff;
-  --shadow-soft: 0 8px 24px -14px rgba(26, 21, 23, 0.35);
-  --shadow-card: 0 1px 2px rgba(26, 21, 23, 0.08);
+  --pill-hover: #f7f6f9;
+  --field: #f3f2f5;
+  --shadow-soft: 0 18px 40px -22px rgba(22, 20, 26, 0.35);
+  --shadow-card:
+    0 1px 2px rgba(22, 20, 26, 0.04), 0 6px 20px -12px rgba(22, 20, 26, 0.12);
   --chart-1: #ef3b6e;
-  --chart-2: #f47c9c;
-  --chart-3: #f8b4c6;
-  --chart-4: #9d8189;
-  --chart-5: #c58fa6;
+  --chart-2: #7b61ff;
+  --chart-3: #2f80ed;
+  --chart-4: #f2994a;
+  --chart-5: #2fb56a;
   --sidebar: transparent;
-  --sidebar-foreground: #1a1517;
+  --sidebar-foreground: #16141a;
   --sidebar-primary: #ef3b6e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ece6e9;
-  --sidebar-accent-foreground: #1a1517;
+  --sidebar-accent: #f3f2f5;
+  --sidebar-accent-foreground: #16141a;
   --sidebar-border: transparent;
   --sidebar-ring: #ef3b6e;
   --nav-button: #ffffff;
-  --nav-button-border: rgba(26, 21, 23, 0.1);
+  --nav-button-border: transparent;
   --avatar-0: #ef3b6e;
-  --avatar-1: #f47c9c;
-  --avatar-2: #f8b4c6;
-  --avatar-3: #cdbfc5;
-  --avatar-4: #c58fa6;
-  --avatar-5: #e8a87c;
-  --avatar-6: #d96c8e;
+  --avatar-1: #7b61ff;
+  --avatar-2: #2f80ed;
+  --avatar-3: #f2994a;
+  --avatar-4: #2fb56a;
+  --avatar-5: #f47c9c;
+  --avatar-6: #1fa3a3;
   --avatar-7: #9d8189;
   --avatar-8: #b23a5b;
-  --avatar-9: #6e6468;
-}
-
-.dark {
-  color-scheme: dark;
-  --background: #0d0b0c;
-  --foreground: #f6f4f1;
-  --card: #1f1b1d;
-  --card-foreground: #f6f4f1;
-  --popover: #231e21;
-  --popover-foreground: #f6f4f1;
-  --primary: #ef3b6e;
-  --primary-foreground: #ffffff;
-  --secondary: #2a2427;
-  --secondary-foreground: #f6f4f1;
-  --muted: #2a2427;
-  --muted-foreground: #b9aeb3;
-  --accent: #2e272b;
-  --accent-foreground: #f6f4f1;
-  --destructive: #ff5c77;
-  --border: rgba(246, 244, 241, 0.1);
-  --input: rgba(246, 244, 241, 0.16);
-  --ring: #f47c9c;
-  --brand-blue: #ef3b6e;
-  --brand-link: #f7a3bb;
-  --brand-red: #ff5c77;
-  --brand-yellow: #e8a87c;
-  --warn: #eeb07f;
-  --brand-green: #f8b4c6;
-  --brand-lime: #f8b4c6;
-  --brand-pink: #ef3b6e;
-  --brand-rose: #f47c9c;
-  --brand-blush: #f8b4c6;
-  --surface: #151113;
-  --surface-strong: #241f22;
-  --surface-border: rgba(246, 244, 241, 0.07);
-  --pill: #1f1b1d;
-  --pill-hover: #292326;
-  --field: #241f22;
-  --shadow-soft: 0 10px 30px -16px rgba(0, 0, 0, 0.9);
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
-  --chart-1: #ef3b6e;
-  --chart-2: #f47c9c;
-  --chart-3: #f8b4c6;
-  --chart-4: #f6f4f1;
-  --chart-5: #c58fa6;
-  --sidebar-foreground: #f6f4f1;
-  --sidebar-accent: #241f22;
-  --sidebar-accent-foreground: #f6f4f1;
-  --sidebar-ring: #f47c9c;
-  --nav-button: #241f22;
-  --nav-button-border: rgba(246, 244, 241, 0.1);
-  --avatar-3: #f6f4f1;
+  --avatar-9: #5b5864;
 }
 
 /* Panel: the main surface of the app (board columns, page blocks) */
@@ -243,10 +206,6 @@ input[type="time"] {
 ::-webkit-calendar-picker-indicator {
   position: absolute;
   right: 0.75rem;
-}
-
-.dark ::-webkit-calendar-picker-indicator {
-  filter: invert(1);
 }
 
 @layer base {

@@ -108,7 +108,7 @@ export const NotificationBell = () => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="relative flex size-11 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-colors hover:text-primary"
           aria-label={
             unread
               ? `${label}: ${translate("notifications.bell.unread", { smart_count: unread })}`

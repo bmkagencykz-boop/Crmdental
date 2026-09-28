@@ -16,28 +16,19 @@ type ThemeProviderProps = {
  */
 export function ThemeProvider({
   children,
-  defaultTheme = "dark",
+  defaultTheme = "light",
   storageKey = "theme",
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useStore<Theme>(storageKey, defaultTheme);
 
+  // One light theme: the dark one was removed (a stored «dark» choice of
+  // earlier versions is ignored)
   useEffect(() => {
     const root = window.document.documentElement;
-    const apply = () => {
-      const dark =
-        theme === "dark" ||
-        (theme === "system" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
-      root.classList.remove("light", "dark");
-      root.classList.add(dark ? "dark" : "light");
-    };
-    apply();
-    if (theme !== "system") return;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, [theme]);
+    root.classList.remove("dark");
+    root.classList.add("light");
+  }, []);
 
   const value = {
     theme,

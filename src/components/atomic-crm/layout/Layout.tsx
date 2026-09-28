@@ -1,16 +1,15 @@
 import { Suspense, type ReactNode } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { useTranslate } from "ra-core";
+import { useLocaleState, useTranslate } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
 import { Notification } from "@/components/admin/notification";
 import { Error } from "@/components/admin/error";
 import { UserMenu } from "@/components/admin/user-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTheme } from "@/components/admin/use-theme";
-import { Moon, Sun } from "lucide-react";
 
 import { useConfigurationLoader } from "../root/useConfigurationLoader";
 import { SIDEBAR_WIDTH, useNavItems } from "./navigation";
+import { ScheduleGlyph } from "./navGlyphs";
 import { ChangelogMenuItem, ProfileMenu, Sidebar } from "./Sidebar";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { OnboardingMenuItem } from "../onboarding/OnboardingCard";
@@ -24,37 +23,40 @@ export const Layout = ({ children }: { children: ReactNode }) => {
   useRecentTracker();
   return (
     <>
-      <Sidebar />
-      <div className="min-h-screen" style={{ paddingLeft: SIDEBAR_WIDTH }}>
-        {/* One compact bar: logo, section title, search, user (stage 31) */}
-        <div className="flex h-[4.25rem] items-center gap-6 pr-8 pl-2">
-          <Link
-            to="/"
-            className="shrink-0 text-[1.35rem] tracking-[-0.02em] text-foreground no-underline"
-          >
-            <span className="font-bold tracking-[-0.03em]">dental</span>
-            <span className="font-bold text-brand-pink">crm</span>
-          </Link>
-          <div className="w-44 shrink-0 truncate">
-            <PageTitle />
-          </div>
-          <div className="flex min-w-0 flex-1 justify-center">
-            <GlobalSearch />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {/* Branches (stage 33): only for a clinic with 2+ branches */}
-            <BranchSwitcher />
-            <ShortcutsButton />
-            <NotificationBell />
-            <ThemeToggle />
-            <UserMenu>
-              <ProfileMenu />
-              <OnboardingMenuItem />
-              <ChangelogMenuItem />
-            </UserMenu>
-          </div>
+      {/* One top bar across the page: logo, search, date, bell, user */}
+      <header className="fixed inset-x-0 top-0 z-40 flex h-20 items-center gap-6 bg-background pr-8">
+        <Link
+          to="/"
+          className="flex shrink-0 flex-col items-center justify-center text-[13px] leading-[1.05] font-extrabold tracking-[0.08em] text-foreground uppercase no-underline"
+          style={{ width: SIDEBAR_WIDTH }}
+          aria-label="Dental CRM"
+        >
+          <span>Dental</span>
+          <span className="text-primary">CRM</span>
+        </Link>
+        <div className="flex min-w-0 flex-1">
+          <GlobalSearch />
         </div>
-        <main className="px-8 pt-2 pb-12" id="main-content">
+        <div className="flex shrink-0 items-center gap-3">
+          {/* Branches (stage 33): only for a clinic with 2+ branches */}
+          <BranchSwitcher />
+          <TodayPill />
+          <ShortcutsButton />
+          <NotificationBell />
+          <UserMenu>
+            <ProfileMenu />
+            <OnboardingMenuItem />
+            <ChangelogMenuItem />
+          </UserMenu>
+        </div>
+      </header>
+      <Sidebar />
+      <div
+        className="min-h-screen pt-20"
+        style={{ paddingLeft: SIDEBAR_WIDTH }}
+      >
+        <main className="pt-3 pr-8 pb-12" id="main-content">
+          <PageTitle />
           <IntegratorBanner />
           <ErrorBoundary FallbackComponent={Error}>
             <Suspense
@@ -71,25 +73,25 @@ export const Layout = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/** Light / dark switch (light is the amoCRM-like theme) */
-const ThemeToggle = () => {
+/** «28 сентября» with a calendar: today, opens the schedule */
+const TodayPill = () => {
   const translate = useTranslate();
-  const { theme, setTheme } = useTheme();
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches);
-  const label = translate(isDark ? "crm.theme.to_light" : "crm.theme.to_dark");
+  const [locale] = useLocaleState();
+  const label = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ru-RU", {
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
   return (
-    <button
-      type="button"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      aria-label={label}
-      title={label}
+    <Link
+      to="/schedule"
+      className="flex h-11 items-center gap-2 rounded-full border-2 border-foreground/85 pr-1 pl-4 text-sm font-semibold text-foreground no-underline transition-colors hover:border-primary"
+      title={translate("schedule.nav")}
     >
-      {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
-    </button>
+      {label}
+      <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
+        <ScheduleGlyph className="size-4" />
+      </span>
+    </Link>
   );
 };
 
@@ -120,7 +122,7 @@ const PageTitle = () => {
   );
   if (!current) return null;
   return (
-    <h1 className="truncate text-lg font-semibold leading-tight text-foreground">
+    <h1 className="mb-5 truncate text-[28px] leading-tight font-semibold tracking-[-0.01em] text-foreground">
       {current.label}
     </h1>
   );

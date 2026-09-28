@@ -4025,6 +4025,33 @@ export const russianCrmMessages: CrmMessages = {
       staff_rights: "Права сотрудников",
     },
   },
+  dashboard_home: {
+    in_work: "В работе",
+    remove_filter: "Убрать %{name}",
+    add_filter: "Показать сделки сотрудника",
+    me: "я",
+    nothing_in_work: "Открытых сделок нет",
+    overdue_days:
+      "просрочено %{smart_count} д. |||| просрочено %{smart_count} д. |||| просрочено %{smart_count} д.",
+    doctor: "Врач",
+    no_doctor: "Не выбран",
+    patient: "Пациент",
+    appointment: "Приём",
+    responsible: "Ответственный",
+    next_task: "Ближайшая задача",
+    service: "Услуга",
+    amount: "Сумма",
+    no_task: "Задачи нет — поставьте следующий шаг",
+    expand: "Подробнее",
+    collapse: "Свернуть",
+    open_deal: "Открыть сделку",
+    day_tasks: "Задачи на день",
+    all_tasks: "Все задачи",
+    edit: "Править",
+    no_day_tasks: "На сегодня задач нет",
+    done: "Выполнено",
+    stage: "Этап",
+  },
 };
 
 export const raSupabaseRussianMessages = {

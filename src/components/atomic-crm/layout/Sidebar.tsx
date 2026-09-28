@@ -56,18 +56,11 @@ export const Sidebar = () => {
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-30 flex flex-col items-center overflow-y-auto pt-4 pb-4 [scrollbar-width:none]"
+      className="fixed top-20 bottom-0 left-0 z-30 flex flex-col items-center overflow-y-auto pt-4 pb-6 [scrollbar-width:none]"
       style={{ width: SIDEBAR_WIDTH }}
       aria-label={translate("crm.navigation.label")}
     >
-      <Link
-        to="/"
-        className="flex size-11 items-center justify-center rounded-md bg-primary text-primary-foreground"
-        aria-label="Dental CRM"
-      >
-        <LogoMark />
-      </Link>
-      <nav className="mt-6 flex flex-1 flex-col items-center gap-2">
+      <nav className="flex flex-1 flex-col items-center gap-3">
         {items.map((item) =>
           item.resource ? (
             // The integrator (stage 25) only sees Сделки, Интеграции, Настройки
@@ -79,7 +72,7 @@ export const Sidebar = () => {
           ),
         )}
       </nav>
-      <div className="flex flex-col items-center mt-4 gap-2">
+      <div className="mt-6 flex flex-col items-center gap-3">
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />
         </CanAccess>
@@ -99,38 +92,28 @@ export const Sidebar = () => {
   );
 };
 
-const LogoMark = () => (
-  <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden="true">
-    <path
-      d="M17.6 7.2A7.2 7.2 0 1 0 17.6 16.8"
-      stroke="currentColor"
-      strokeWidth="2.6"
-      strokeLinecap="round"
-    />
-    <circle cx="12" cy="12" r="2.4" fill="currentColor" />
-  </svg>
-);
-
+/** A round button; the section name shows on hover (and to screen readers) */
 const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
   const Icon = item.icon;
   return (
     <Link
       to={item.to}
       aria-current={active ? "page" : undefined}
-      className="group flex w-[4.75rem] flex-col items-center gap-1 rounded-md no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title={item.label}
+      className="group relative flex items-center no-underline outline-none"
     >
       <span
         className={cn(
-          "relative flex size-10 items-center justify-center rounded-md transition-all duration-200",
+          "relative flex size-12 items-center justify-center rounded-full transition-all duration-200 group-focus-visible:ring-2 group-focus-visible:ring-ring",
           active
-            ? "bg-primary text-primary-foreground shadow-[0_8px_22px_-10px_rgba(239,59,110,0.7)]"
-            : "border border-nav-button-border bg-nav-button text-foreground shadow-card group-hover:border-primary/60 group-hover:text-brand-link",
+            ? "bg-primary text-primary-foreground shadow-[0_10px_24px_-10px_rgba(239,59,110,0.8)]"
+            : "bg-card text-foreground/70 shadow-card group-hover:text-primary",
         )}
       >
-        <Icon className="size-[1.35rem]" />
+        <Icon className="size-[1.3rem]" />
         {item.badge ? (
           <span
-            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-blush px-1 text-[10px] font-bold text-[#1A1517] ring-2 ring-background"
+            className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-bold text-background ring-2 ring-background"
             data-testid="nav-badge"
             title={item.badgeLabel}
             aria-hidden
@@ -139,13 +122,10 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
           </span>
         ) : null}
       </span>
+      <span className="sr-only">{item.label}</span>
       <span
-        className={cn(
-          "text-center text-[11px] leading-[1.15] transition-colors",
-          active
-            ? "font-semibold text-brand-link"
-            : "font-medium text-foreground/85 group-hover:text-foreground",
-        )}
+        className="pointer-events-none absolute left-full z-50 ml-3 hidden rounded-full bg-foreground px-3 py-1.5 text-xs font-medium whitespace-nowrap text-background shadow-soft group-hover:block"
+        aria-hidden
       >
         {item.label}
       </span>

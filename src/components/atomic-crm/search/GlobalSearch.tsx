@@ -139,7 +139,7 @@ export const GlobalSearch = () => {
   return (
     <div
       ref={rootRef}
-      className="relative w-full max-w-xl"
+      className="relative w-full max-w-2xl"
       onBlur={(event) => {
         if (!rootRef.current?.contains(event.relatedTarget as Node)) close();
       }}
@@ -164,10 +164,22 @@ export const GlobalSearch = () => {
         onFocus={() => setOpen(true)}
         onClick={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        className="h-9 w-full rounded-md border border-input bg-card px-3 pr-16 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40"
+        className="h-12 w-full rounded-full border-0 bg-card pr-20 pl-12 text-sm shadow-card outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30"
       />
+      <svg
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute top-1/2 left-4.5 size-[18px] -translate-y-1/2 text-muted-foreground"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="M16 16l4 4" />
+      </svg>
       {q ? null : (
-        <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded-sm border border-border px-1.5 text-[11px] text-muted-foreground">
+        <kbd className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
           Ctrl K
         </kbd>
       )}
@@ -176,7 +188,7 @@ export const GlobalSearch = () => {
           id={listId}
           role="listbox"
           tabIndex={-1}
-          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-[70vh] overflow-y-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-soft)]"
+          className="absolute top-full right-0 left-0 z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border-0 bg-popover py-1 text-popover-foreground shadow-[var(--shadow-soft)]"
         >
           {!hasQuery && items.length > 0 ? (
             <GroupHeader label={translate("search.groups.recent")} />

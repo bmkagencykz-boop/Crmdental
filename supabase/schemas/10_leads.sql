@@ -70,13 +70,20 @@ create unique index telegram_bots_webhook_token_idx on public.telegram_bots usin
 
 -- A request from a website form, Tilda or 2GIS (edge function leads_webhook,
 -- service role):
---   { name, phone, source, service, comment, utm: { utm_source, ... } }
+--   { name, phone, source, service, comment, utm: { utm_source, ... },
+--     referrer, landing_page }
 -- source is a code or a name of the clinic's sources (default: website),
--- service a name of its services (case-insensitive). Finds the patient by
--- phone or creates one, attaches the request to the patient's most recently
--- updated open deal or opens a new deal (distributed by the clinic rules, with
--- its automatic tasks), and always writes the form into a note of the deal.
--- The same form sent again within 5 minutes is ignored.
+-- service a name of its services (case-insensitive). An utm_source mapped to
+-- a lead source (private.utm_lead_source) gives the source instead. Finds
+-- the patient by phone or creates one, attaches the request to the
+-- patient's most recently updated open deal or opens a new deal
+-- (distributed by the clinic rules, with its automatic tasks), and always
+-- writes the form into a note of the deal. The UTM tags, the referrer and
+-- the landing page go to the new deal, or to the open deal that has none
+-- yet (first touch). The same form sent again within 5 minutes is ignored.
+-- The UTM columns and private.utm_lead_source are declared in
+-- 32_marketing.sql (stage 32), loaded later: plpgsql resolves them when it
+-- runs.
 CREATE OR REPLACE FUNCTION "public"."ingest_lead"("token" "text", "lead" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -88,11 +95,14 @@ declare
   lead_source text := nullif(btrim(lead ->> 'source'), '');
   lead_service text := nullif(btrim(lead ->> 'service'), '');
   lead_comment text := nullif(btrim(lead ->> 'comment'), '');
+  lead_referrer text := left(nullif(btrim(lead ->> 'referrer'), ''), 2000);
+  lead_landing_page text := left(nullif(btrim(lead ->> 'landing_page'), ''), 2000);
   utm jsonb;
   payload jsonb;
   hash text;
   previous public.lead_submissions;
   found_source public.lead_sources;
+  mapped_source_id bigint;
   found_service_id bigint;
   found_patient_id bigint;
   found_deal_id bigint;
@@ -127,7 +137,8 @@ begin
   payload := jsonb_strip_nulls(jsonb_build_object(
     'name', lead_name, 'phone', lead_phone, 'source', lead_source,
     'service', lead_service, 'comment', lead_comment,
-    'utm', case when utm <> '{}'::jsonb then utm end
+    'utm', case when utm <> '{}'::jsonb then utm end,
+    'referrer', lead_referrer, 'landing_page', lead_landing_page
   ));
   hash := md5(payload::text);
 
@@ -144,11 +155,18 @@ begin
       'deal_id', previous.deal_id, 'duplicate', true);
   end if;
 
-  select * into found_source from public.lead_sources s
-  where s.organization_id = org_id
-    and (lower(s.code) = lower(coalesce(lead_source, 'website')) or lower(s.name) = lower(coalesce(lead_source, 'website')))
-  order by s.is_archived, s.is_system desc, s.position, s.id
-  limit 1;
+  -- The advert that brought the click names the source
+  mapped_source_id := private.utm_lead_source(org_id, utm ->> 'utm_source');
+  if mapped_source_id is not null then
+    select * into found_source from public.lead_sources s
+    where s.organization_id = org_id and s.id = mapped_source_id;
+  else
+    select * into found_source from public.lead_sources s
+    where s.organization_id = org_id
+      and (lower(s.code) = lower(coalesce(lead_source, 'website')) or lower(s.name) = lower(coalesce(lead_source, 'website')))
+    order by s.is_archived, s.is_system desc, s.position, s.id
+    limit 1;
+  end if;
   if not found then
     select * into found_source from public.lead_sources s
     where s.organization_id = org_id and s.code = 'website';
@@ -187,15 +205,35 @@ begin
   order by d.updated_at desc, d.id desc
   limit 1;
   if found_deal_id is null then
-    insert into public.deals (organization_id, patient_id, source_id, service_id, unsorted_at)
+    insert into public.deals (organization_id, patient_id, source_id, service_id, unsorted_at,
+      utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page)
     values (org_id, found_patient_id, found_source.id, found_service_id,
-      private.unsorted_intake(org_id, found_source.id))
+      private.unsorted_intake(org_id, found_source.id),
+      utm ->> 'utm_source', utm ->> 'utm_medium', utm ->> 'utm_campaign',
+      utm ->> 'utm_content', utm ->> 'utm_term', lead_referrer, lead_landing_page)
     returning id into found_deal_id;
     created_deal := true;
-  elsif found_service_id is not null then
-    update public.deals
-    set service_id = found_service_id
-    where organization_id = org_id and id = found_deal_id and service_id is null;
+  else
+    if found_service_id is not null then
+      update public.deals
+      set service_id = found_service_id
+      where organization_id = org_id and id = found_deal_id and service_id is null;
+    end if;
+    -- First touch: an open deal keeps the tags it came with
+    if utm <> '{}'::jsonb or lead_referrer is not null or lead_landing_page is not null then
+      update public.deals
+      set utm_source = utm ->> 'utm_source',
+          utm_medium = utm ->> 'utm_medium',
+          utm_campaign = utm ->> 'utm_campaign',
+          utm_content = utm ->> 'utm_content',
+          utm_term = utm ->> 'utm_term',
+          referrer = lead_referrer,
+          landing_page = lead_landing_page
+      where organization_id = org_id and id = found_deal_id
+        and utm_source is null and utm_medium is null and utm_campaign is null
+        and utm_content is null and utm_term is null
+        and referrer is null and landing_page is null;
+    end if;
   end if;
 
   note_text := concat_ws(E'\n',
@@ -207,7 +245,9 @@ begin
       then 'Источник: ' || lead_source end,
     'Услуга: ' || lead_service,
     'Комментарий: ' || lead_comment,
-    (select string_agg(u.key || ': ' || u.value, E'\n' order by u.key) from jsonb_each_text(utm) as u)
+    (select string_agg(u.key || ': ' || u.value, E'\n' order by u.key) from jsonb_each_text(utm) as u),
+    'Страница: ' || lead_landing_page,
+    'Переход с: ' || lead_referrer
   );
   insert into public.deal_notes (organization_id, deal_id, type, text, date)
   values (org_id, found_deal_id, 'lead', note_text, now())

@@ -490,7 +490,8 @@ $$;
 -- Views
 --
 
--- Deals with what the board and the lists display
+-- Deals with what the board and the lists display (redefined with the UTM
+-- tags at the end in 32_marketing.sql)
 create or replace view public.deals_summary with (security_invoker = on) as
 select
     d.id,

@@ -242,8 +242,7 @@ export const PaymentDialog = ({
     { ...operation, cash_received: cashReceived },
     { deposit, paid: paidScope },
   );
-  const remainder =
-    method === "mixed" ? partsRemainder(amount, parts) : 0;
+  const remainder = method === "mixed" ? partsRemainder(amount, parts) : 0;
 
   // Items chosen: their amount is proposed
   const chooseItems = (next: Identifier[]) => {
@@ -263,7 +262,11 @@ export const PaymentDialog = ({
 
   const methods: OperationMethod[] =
     mode === "payment"
-      ? [...PAYMENT_METHODS, "mixed", ...(deposit > 0 ? ["deposit" as const] : [])]
+      ? [
+          ...PAYMENT_METHODS,
+          "mixed",
+          ...(deposit > 0 ? ["deposit" as const] : []),
+        ]
       : mode === "deposit"
         ? [...PAYMENT_METHODS, "mixed"]
         : mode === "refund"
@@ -287,13 +290,16 @@ export const PaymentDialog = ({
           cash_received: change != null ? cashReceived : null,
           prepayment: kind === "payment" && prepayment,
           occurred_at: new Date(occurredAt).toISOString(),
-          deal_id: mode === "deposit" || dealId === NONE ? null : dealId,
+          deal_id: mode === "deposit" ? null : (deal?.id ?? null),
           plan_id:
-            mode === "deposit" || mode === "correction" || planId === NONE
+            mode === "deposit" || mode === "correction"
               ? null
-              : planId,
-          plan_item_ids: mode === "payment" ? itemIds : [],
-          visit_id: mode === "payment" && visitId !== NONE ? visitId : null,
+              : (plan?.id ?? null),
+          plan_item_ids: mode === "payment" && plan ? itemIds : [],
+          visit_id:
+            mode === "payment"
+              ? (visits.find((v) => String(v.id) === visitId)?.id ?? null)
+              : null,
           comment: comment.trim() || null,
         },
       },
@@ -377,12 +383,10 @@ export const PaymentDialog = ({
                 <Pills
                   label={translate("payments.dialog.correction_account")}
                   value={correctionAccount}
-                  options={(["deposit", "services"] as const).map(
-                    (value) => ({
-                      value,
-                      label: translate(`payments.accounts.${value}`),
-                    }),
-                  )}
+                  options={(["deposit", "services"] as const).map((value) => ({
+                    value,
+                    label: translate(`payments.accounts.${value}`),
+                  }))}
                   onChange={(value) =>
                     setCorrectionAccount(value as "services" | "deposit")
                   }
@@ -601,7 +605,10 @@ export const PaymentDialog = ({
                         setParts(
                           parts.map((p, i) =>
                             i === index
-                              ? { ...p, amount: parseAmount(event.target.value) }
+                              ? {
+                                  ...p,
+                                  amount: parseAmount(event.target.value),
+                                }
                               : p,
                           ),
                         )
@@ -664,7 +671,8 @@ export const PaymentDialog = ({
 
             {(mode === "payment" || mode === "deposit") &&
             (method === "cash" ||
-              (method === "mixed" && parts.some((p) => p.method === "cash"))) ? (
+              (method === "mixed" &&
+                parts.some((p) => p.method === "cash"))) ? (
               <div className="grid items-end gap-3 sm:grid-cols-2">
                 <Field label={translate("payments.dialog.cash_received")}>
                   <Input
@@ -821,13 +829,7 @@ export const Pills = ({
   </div>
 );
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) => (
+const Field = ({ label, children }: { label: string; children: ReactNode }) => (
   <label className="flex min-w-0 flex-col gap-1.5">
     <span className="text-xs text-muted-foreground">{label}</span>
     {children}

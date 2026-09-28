@@ -50,7 +50,11 @@ describe("operationDeltas (the generated columns)", () => {
   it("payment from the deposit: no money moves", () => {
     const row = op({ kind: "deposit_payment", amount: 4000 });
     expect(row.method).toBe("deposit");
-    expect(operationDeltas(row)).toEqual({ deposit: -4000, paid: 4000, till: 0 });
+    expect(operationDeltas(row)).toEqual({
+      deposit: -4000,
+      paid: 4000,
+      till: 0,
+    });
   });
   it("refunds: in cash, back to the deposit, from the deposit", () => {
     expect(operationDeltas(op({ kind: "refund", amount: 1000 }))).toEqual({
@@ -63,7 +67,12 @@ describe("operationDeltas (the generated columns)", () => {
     ).toEqual({ deposit: 1000, paid: -1000, till: 0 });
     expect(
       operationDeltas(
-        op({ kind: "refund", amount: 1000, account: "deposit", method: "card" }),
+        op({
+          kind: "refund",
+          amount: 1000,
+          account: "deposit",
+          method: "card",
+        }),
       ),
     ).toEqual({ deposit: -1000, paid: 0, till: -1000 });
   });
@@ -108,9 +117,7 @@ describe("mixed payments and change", () => {
   });
   it("gives the change of the cash part", () => {
     expect(changeDue(mixed, 20000)).toBe(10000);
-    expect(changeDue(op({ kind: "payment", amount: 12500 }), 20000)).toBe(
-      7500,
-    );
+    expect(changeDue(op({ kind: "payment", amount: 12500 }), 20000)).toBe(7500);
     expect(changeDue(op({ kind: "payment", amount: 12500 }), 10000)).toBe(
       -2500,
     );
@@ -160,8 +167,20 @@ describe("balances", () => {
       },
     ];
     const items = [
-      { plan_id: 1, quantity: 1, unit_price: 200000, discount_percent: 0, done: true },
-      { plan_id: 1, quantity: 1, unit_price: 100000, discount_percent: 0, done: false },
+      {
+        plan_id: 1,
+        quantity: 1,
+        unit_price: 200000,
+        discount_percent: 0,
+        done: true,
+      },
+      {
+        plan_id: 1,
+        quantity: 1,
+        unit_price: 100000,
+        discount_percent: 0,
+        done: false,
+      },
     ];
     const visits = [
       { patient_id: 7, deal_id: 11, service_id: 5, status: "completed" },
@@ -234,7 +253,9 @@ describe("the cash desk", () => {
 describe("checkOperation", () => {
   const state = { deposit: 10000, paid: 20000 };
   it("accepts a regular payment", () => {
-    expect(checkOperation(op({ kind: "payment", amount: 5000 }), state)).toBeNull();
+    expect(
+      checkOperation(op({ kind: "payment", amount: 5000 }), state),
+    ).toBeNull();
   });
   it("refuses beyond the deposit or the paid amount", () => {
     expect(
@@ -245,7 +266,12 @@ describe("checkOperation", () => {
     );
     expect(
       checkOperation(
-        op({ kind: "refund", amount: 15000, account: "deposit", method: "cash" }),
+        op({
+          kind: "refund",
+          amount: 15000,
+          account: "deposit",
+          method: "cash",
+        }),
         state,
       ),
     ).toBe("payments.errors.deposit_insufficient");
@@ -293,8 +319,22 @@ describe("itemsAmount", () => {
   it("proposes the chosen items with the plan discount", () => {
     const plan = { id: 1, discount_percent: 10, discount_amount: 0 };
     const items = [
-      { id: 1, plan_id: 1, quantity: 1, unit_price: 200000, discount_percent: 0, done: false },
-      { id: 2, plan_id: 1, quantity: 2, unit_price: 50000, discount_percent: 0, done: false },
+      {
+        id: 1,
+        plan_id: 1,
+        quantity: 1,
+        unit_price: 200000,
+        discount_percent: 0,
+        done: false,
+      },
+      {
+        id: 2,
+        plan_id: 1,
+        quantity: 2,
+        unit_price: 50000,
+        discount_percent: 0,
+        done: false,
+      },
     ];
     expect(itemsAmount(plan, items, [])).toBe(0);
     expect(itemsAmount(plan, items, [2])).toBe(90000);

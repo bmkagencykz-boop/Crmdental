@@ -34,7 +34,7 @@ export const parseAmount = (raw: string | number | null | undefined) => {
   if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
   const value = Number(
     String(raw ?? "")
-      .replace(/[\s ₸]/g, "")
+      .replace(/[\s\u00a0₸]/g, "")
       .replace(",", "."),
   );
   return Number.isFinite(value) ? Math.round(value) : 0;
@@ -263,7 +263,8 @@ export const patientCharged = ({
         visit.status === "completed" &&
         (visit.source ?? "crm") === "crm" &&
         !plans.some(
-          (plan) => same(plan.deal_id, visit.deal_id) && plan.status !== "declined",
+          (plan) =>
+            same(plan.deal_id, visit.deal_id) && plan.status !== "declined",
         ),
     )
     .reduce((sum, visit) => {

@@ -197,7 +197,10 @@ export const buildReceiptPdf = (
     total(translate("payments.receipt.change"), money(change));
   }
   if (data.account) {
-    total(translate("payments.receipt.deposit_after"), money(data.account.deposit));
+    total(
+      translate("payments.receipt.deposit_after"),
+      money(data.account.deposit),
+    );
     if (data.account.debt > 0) {
       total(translate("payments.receipt.debt_after"), money(data.account.debt));
     }
@@ -213,7 +216,12 @@ export const buildReceiptPdf = (
     ctx.y += lines.length * 4.2;
   }
   ctx.y += 18;
-  signature(ctx, translate("payments.receipt.sign_cashier"), op.cashier_name, left);
+  signature(
+    ctx,
+    translate("payments.receipt.sign_cashier"),
+    op.cashier_name,
+    left,
+  );
   signature(
     ctx,
     translate("payments.receipt.sign_patient"),

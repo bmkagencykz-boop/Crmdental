@@ -4054,6 +4054,16 @@ export const englishCrmMessages = {
   },
   // Payments, deposits and the cash desk (stage 36)
   payments: {
+    report: {
+      title: "Money in by payment method",
+      hint: "The till in the period: money in, refunds and the net per method",
+      empty: "No till movement in the period",
+      method: "Payment method",
+      operations: "Operations",
+      income: "In",
+      refunds: "Refunds",
+      net: "Net",
+    },
     nav: "Cash desk",
     title: "Cash desk",
     methods: {
@@ -4103,7 +4113,8 @@ export const englishCrmMessages = {
       no_operations: "No operations on the account yet",
       receipt: "Receipt",
       cancel: "Cancel the operation",
-      cancel_confirm: "Cancel the operation? The payment of the deal is removed too.",
+      cancel_confirm:
+        "Cancel the operation? The payment of the deal is removed too.",
       cancelled: "Operation cancelled",
       show_all: "All operations (%{count})",
     },
@@ -4169,7 +4180,8 @@ export const englishCrmMessages = {
       branch: "Branch",
       all: "All",
       export: "Download CSV",
-      own_only: "These are your operations: the whole clinic's cash desk needs the «Reports» right.",
+      own_only:
+        "These are your operations: the whole clinic's cash desk needs the «Reports» right.",
       net: "Day total",
       operations_count: "Till operations: %{count}",
       income: "In",
@@ -4197,9 +4209,11 @@ export const englishCrmMessages = {
       close: "Close shift",
       opened: "Opened %{time}",
       none: "No open shift",
-      none_hint: "Open a shift with the cash in the till: operations go into it, closing reconciles the cash.",
+      none_hint:
+        "Open a shift with the cash in the till: operations go into it, closing reconciles the cash.",
       open_hint: "How much cash is in the till at the start.",
-      close_hint: "Count the cash: the difference with the expected amount is kept in the shift.",
+      close_hint:
+        "Count the cash: the difference with the expected amount is kept in the shift.",
       opening_cash: "Cash at start",
       expected: "Expected in the till",
       counted: "Counted",
@@ -4283,7 +4297,8 @@ export const englishCrmMessages = {
       paid: "Paid",
       debt: "Debt",
       advance: "Advance",
-      statement: "The services were provided in full. I have no claims about their scope, quality or timing.",
+      statement:
+        "The services were provided in full. I have no claims about their scope, quality or timing.",
       sign_clinic: "Clinic",
       sign_patient: "Patient",
       empty: "No work done yet",

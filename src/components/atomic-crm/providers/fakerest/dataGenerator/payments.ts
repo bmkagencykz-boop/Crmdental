@@ -61,7 +61,10 @@ export const generatePayments = (db: Db) => {
     Math.max(0, ...db.deal_payments.map((payment) => Number(payment.id))) + 1;
 
   const push = (
-    data: Omit<AccountOperation, "id" | "deposit_delta" | "paid_delta" | "till_delta">,
+    data: Omit<
+      AccountOperation,
+      "id" | "deposit_delta" | "paid_delta" | "till_delta"
+    >,
   ) => {
     const op = withDeltas({
       ...data,
@@ -119,7 +122,9 @@ export const generatePayments = (db: Db) => {
     discrepancy: null as number | null,
     note: null as string | null,
   };
-  const todayOpened = new Date(Math.min(at(0, 9).getTime(), Date.now() - 60_000));
+  const todayOpened = new Date(
+    Math.min(at(0, 9).getTime(), Date.now() - 60_000),
+  );
   const todayShift = {
     id: 2,
     sales_id: cashier.id,
@@ -351,8 +356,7 @@ export const generatePayments = (db: Db) => {
   const plans = db.treatment_plans
     .filter((plan) => ["in_progress", "agreed"].includes(plan.status))
     .sort(
-      (a, b) =>
-        rank(a.status) - rank(b.status) || Number(a.id) - Number(b.id),
+      (a, b) => rank(a.status) - rank(b.status) || Number(a.id) - Number(b.id),
     );
   let agreedLeft = plans.filter((plan) => plan.status === "agreed").length;
   for (const plan of plans) {

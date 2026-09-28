@@ -2,7 +2,7 @@ import { useDelete, useNotify, useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
-import { operationDeltas } from "./paymentMath";
+import { operationSign, useMethodLabel } from "./operationFormat";
 import type { AccountOperationSummary } from "./types";
 import {
   money,
@@ -19,29 +19,6 @@ const time = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-
-/** The sign shown: money received (+), given back or taken (−) */
-export const operationSign = (op: AccountOperationSummary) => {
-  const { deposit, paid, till } = operationDeltas(op);
-  if (till !== 0) return Math.sign(till);
-  if (op.kind === "correction") return Math.sign(op.amount);
-  if (op.kind === "deposit_payment") return 0;
-  return Math.sign(paid || deposit);
-};
-
-/** The method of an operation in words: «Карта 40 000 ₸ + Kaspi QR …» */
-export const useMethodLabel = () => {
-  const translate = useTranslate();
-  return (op: AccountOperationSummary) =>
-    op.method === "mixed"
-      ? (op.parts ?? [])
-          .map(
-            (part) =>
-              `${translate(`payments.methods.${part.method}`)} ${money(part.amount)}`,
-          )
-          .join(" + ")
-      : translate(`payments.methods.${op.method}`);
-};
 
 /**
  * Operations of an account, a deal or a day: when, what, how, how much,
@@ -143,9 +120,7 @@ export const OperationsList = ({
                   op.comment ?? null,
                 ]
                   .filter(Boolean)
-                  .flatMap((part, index) =>
-                    index ? [" · ", part] : [part],
-                  )}
+                  .flatMap((part, index) => (index ? [" · ", part] : [part]))}
               </span>
             </span>
             <span className="flex items-center gap-2">

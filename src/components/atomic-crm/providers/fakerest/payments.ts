@@ -25,10 +25,7 @@ import {
 } from "../../payments/types";
 import type { Branch } from "../../branches/branches";
 import type { Visit } from "../../schedule/types";
-import type {
-  TreatmentPlan,
-  TreatmentPlanItem,
-} from "../../treatment/types";
+import type { TreatmentPlan, TreatmentPlanItem } from "../../treatment/types";
 import type {
   AuditLogEntry,
   Deal,
@@ -343,6 +340,7 @@ export const createPaymentsDemo = ({
         throw fail("Визит другого пациента");
       }
       op.patient_id = visit.patient_id;
+      op.visit_id = visit.id;
       op.deal_id = op.deal_id ?? visit.deal_id ?? null;
     }
     if (op.plan_id != null) {
@@ -353,12 +351,18 @@ export const createPaymentsDemo = ({
         throw fail("План лечения другой сделки");
       }
       op.deal_id = plan.deal_id;
-      const items = (await all<TreatmentPlanItem>("treatment_plan_items"))
-        .filter((item) => same(item.plan_id, plan.id))
-        .map((item) => String(item.id));
-      if (op.plan_item_ids.some((id) => !items.includes(String(id)))) {
+      op.plan_id = plan.id;
+      const items = (
+        await all<TreatmentPlanItem>("treatment_plan_items")
+      ).filter((item) => same(item.plan_id, plan.id));
+      const chosen = op.plan_item_ids.map((id) =>
+        items.find((item) => same(item.id, id)),
+      );
+      if (chosen.some((item) => !item)) {
         throw fail("Позиции не из этого плана лечения");
       }
+      // The ids as stored (a form sends strings)
+      op.plan_item_ids = chosen.map((item) => item!.id);
     } else if (op.plan_item_ids.length) {
       throw fail("Позиции не из этого плана лечения");
     }
@@ -366,14 +370,22 @@ export const createPaymentsDemo = ({
     if (op.deal_id != null) {
       deal = (await all<Deal>("deals")).find((d) => same(d.id, op.deal_id));
       if (!deal) throw fail("Сделка не найдена", "P0002");
+      op.deal_id = deal.id;
       if (op.patient_id == null) op.patient_id = deal.patient_id;
       else if (!same(op.patient_id, deal.patient_id)) {
         throw fail("Сделка другого пациента");
       }
     }
-    if (op.patient_id == null) throw fail("Пациент не найден", "P0002");
+    const patient = (await all<Patient>("patients")).find((p) =>
+      same(p.id, op.patient_id),
+    );
+    if (!patient) throw fail("Пациент не найден", "P0002");
+    op.patient_id = patient.id;
 
-    const problem = checkOperation(op, await balances(op.patient_id, op.deal_id));
+    const problem = checkOperation(
+      op,
+      await balances(op.patient_id, op.deal_id),
+    );
     if (problem) throw fail(MESSAGES[problem] ?? problem);
     if (
       !["payment", "deposit"].includes(op.kind) ||
@@ -683,24 +695,20 @@ export const createPaymentsDemo = ({
           "sales_branches",
         )
       ).filter((row) => same(row.sales_id, salesId));
-      const { data } = await baseDataProvider.create<CashShift>(
-        "cash_shifts",
-        {
-          data: {
-            sales_id: salesId,
-            branch_id:
-              branchId ?? (mine.length === 1 ? mine[0].branch_id : null),
-            opened_at: new Date().toISOString(),
-            opening_cash: Math.round(openingCash),
-            closed_at: null,
-            closed_by: null,
-            expected_cash: null,
-            counted_cash: null,
-            discrepancy: null,
-            note: null,
-          },
+      const { data } = await baseDataProvider.create<CashShift>("cash_shifts", {
+        data: {
+          sales_id: salesId,
+          branch_id: branchId ?? (mine.length === 1 ? mine[0].branch_id : null),
+          opened_at: new Date().toISOString(),
+          opening_cash: Math.round(openingCash),
+          closed_at: null,
+          closed_by: null,
+          expected_cash: null,
+          counted_cash: null,
+          discrepancy: null,
+          note: null,
         },
-      );
+      });
       await logAudit({
         entity: "cash_shift",
         entity_id: data.id,

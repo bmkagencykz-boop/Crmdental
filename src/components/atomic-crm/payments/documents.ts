@@ -97,7 +97,9 @@ export const actLines = ({
     }
   }
   const planned = (deal: Identifier | null | undefined) =>
-    plans.some((plan) => same(plan.deal_id, deal) && plan.status !== "declined");
+    plans.some(
+      (plan) => same(plan.deal_id, deal) && plan.status !== "declined",
+    );
   for (const visit of visits
     .filter(
       (v) =>

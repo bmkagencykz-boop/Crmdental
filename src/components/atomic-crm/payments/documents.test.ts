@@ -90,7 +90,11 @@ describe("documents", () => {
       receiptTitleKey({ kind: "payment", account: "services", method: "cash" }),
     ).toBe("payments.receipt.title_payment");
     expect(
-      receiptTitleKey({ kind: "refund", account: "services", method: "deposit" }),
+      receiptTitleKey({
+        kind: "refund",
+        account: "services",
+        method: "deposit",
+      }),
     ).toBe("payments.receipt.title_refund_deposit");
   });
   it("names the file safely", () => {

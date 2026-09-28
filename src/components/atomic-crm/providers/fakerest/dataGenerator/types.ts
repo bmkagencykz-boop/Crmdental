@@ -1,10 +1,7 @@
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
 import type { Identifier } from "ra-core";
-import type {
-  AccountOperation,
-  CashShift,
-} from "../../../payments/types";
+import type { AccountOperation, CashShift } from "../../../payments/types";
 import type { DeveloperApp } from "../../../integrations/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {

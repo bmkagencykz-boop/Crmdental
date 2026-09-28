@@ -3,15 +3,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import { OperationsList } from "../payments/OperationsList";
-import {
-  PaymentDialog,
-  type PaymentMode,
-} from "../payments/PaymentDialog";
+import { PaymentDialog, type PaymentMode } from "../payments/PaymentDialog";
 import type { AccountOperationSummary } from "../payments/types";
-import {
-  useMoneyDocuments,
-  usePaymentRights,
-} from "../payments/usePayments";
+import { useMoneyDocuments, usePaymentRights } from "../payments/usePayments";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal } from "../types";
 import { formatMoney } from "./kanbanFormat";

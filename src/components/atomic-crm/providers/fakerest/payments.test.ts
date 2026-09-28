@@ -81,7 +81,12 @@ describe("demo payments", () => {
     }
     const kinds = new Set(db.account_operations.map((op) => op.kind));
     expect([...kinds]).toEqual(
-      expect.arrayContaining(["payment", "deposit", "deposit_payment", "refund"]),
+      expect.arrayContaining([
+        "payment",
+        "deposit",
+        "deposit_payment",
+        "refund",
+      ]),
     );
     const methods = new Set(db.account_operations.map((op) => op.method));
     expect([...methods]).toEqual(
@@ -93,9 +98,13 @@ describe("demo payments", () => {
 
   it("has debtors", async () => {
     const { dataProvider } = setup();
-    const debtors = await list<PatientAccount>(dataProvider, "patient_accounts", {
-      "debt@gt": 0,
-    });
+    const debtors = await list<PatientAccount>(
+      dataProvider,
+      "patient_accounts",
+      {
+        "debt@gt": 0,
+      },
+    );
     expect(debtors.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -116,7 +125,8 @@ describe("demo payments", () => {
             { method: "card", amount: 20000 },
           ],
           cash_received: 15000,
-          deal_id: deal.id,
+          // A form sends the ids as strings
+          deal_id: String(deal.id),
           comment: "тест",
         },
       },
@@ -166,7 +176,11 @@ describe("demo payments", () => {
     const patient = db.patients[0];
     await expect(
       dataProvider.create("account_operations", {
-        data: { patient_id: patient.id, kind: "deposit_payment", amount: 10_000_000 },
+        data: {
+          patient_id: patient.id,
+          kind: "deposit_payment",
+          amount: 10_000_000,
+        },
       }),
     ).rejects.toThrow(/депозите/);
     loginAs("manager");

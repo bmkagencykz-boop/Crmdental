@@ -27,7 +27,8 @@ import { Implant3D } from "../misc/Dental3D";
 import type { CrmDataProvider } from "../providers/types";
 import { exportCsv, type ReportColumn } from "../reports/csv";
 import type { Sale } from "../types";
-import { OperationsList, useMethodLabel } from "./OperationsList";
+import { OperationsList } from "./OperationsList";
+import { useMethodLabel } from "./operationFormat";
 import { NativeSelect, PaymentDialog, Pills } from "./PaymentDialog";
 import { daysSince, parseAmount, tillTotals } from "./paymentMath";
 import {
@@ -340,7 +341,9 @@ const DayTab = () => {
                   </span>
                   {highlighted ? (
                     <span className="rounded-lg bg-neon px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-neon-ink">
-                      {Math.round((line.income / Math.max(1, total.income)) * 100)}
+                      {Math.round(
+                        (line.income / Math.max(1, total.income)) * 100,
+                      )}
                       %
                     </span>
                   ) : null}
@@ -516,7 +519,9 @@ const ShiftCard = ({ className }: { className?: string }) => {
                 onChange={setBranchId}
                 aria-label={translate("payments.desk.branch")}
               >
-                <option value="">{translate("payments.shift.my_branch")}</option>
+                <option value="">
+                  {translate("payments.shift.my_branch")}
+                </option>
                 {branches.map((b) => (
                   <option key={b.id} value={String(b.id)}>
                     {b.name}

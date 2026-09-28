@@ -61,9 +61,13 @@ test.describe("digital pipeline", () => {
     await page.goto(`/#/deals/${deal.id}/show`);
     const main = page.getByRole("main");
     await main.getByRole("tab", { name: "Payments" }).click();
-    await main.getByLabel("Amount, ₸").fill("50000");
-    await main.getByRole("button", { name: "Add payment" }).click();
-    await expect(page.getByText("Payment added")).toBeVisible();
+    // The payment dialog of the cash desk (stage 36)
+    await main.getByRole("button", { name: "Accept payment" }).click();
+    const payment = page.getByRole("dialog");
+    await payment.getByLabel("Amount", { exact: true }).fill("50000");
+    await payment.getByRole("button", { name: /^Accept 50/ }).click();
+    await expect(payment.getByText("Payment for services")).toBeVisible();
+    await payment.getByRole("button", { name: "Done" }).click();
     await page.reload();
     await expect(page.getByTestId("automation-run").first()).toContainText(
       "Automatically: stage → В лечении (rule «Оплата»)",

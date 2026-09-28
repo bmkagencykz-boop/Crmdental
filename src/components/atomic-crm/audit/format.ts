@@ -315,16 +315,16 @@ export const describeAuditChanges = (
                 ["kind", "method", "account", "parts"].includes(field)
               ? operationChange(field, translate)
               : entity === "treatment_plan" && field === "status"
-              ? {
-                  label: translate("treatment.audit.fields.status"),
-                  format: (value: unknown) =>
-                    value == null
-                      ? EMPTY
-                      : translate(`treatment.statuses.${value}`, {
-                          _: String(value),
-                        }),
-                }
-              : null);
+                ? {
+                    label: translate("treatment.audit.fields.status"),
+                    format: (value: unknown) =>
+                      value == null
+                        ? EMPTY
+                        : translate(`treatment.statuses.${value}`, {
+                            _: String(value),
+                          }),
+                  }
+                : null);
       // Fields of the treatment plans and the patient card (stage 29)
       const label =
         special?.label ??
@@ -435,13 +435,13 @@ export const auditEntityLabel = (
               ? translate("branches.audit.entity")
               : PAYMENT_ENTITIES.includes(entry.entity)
                 ? translate(`payments.audit.${entry.entity}`)
-              : SCHEDULE_ENTITIES.includes(entry.entity)
-                ? translate(`schedule.audit.${entry.entity}`)
-                : TREATMENT_ENTITIES.includes(entry.entity)
-                  ? translate(`treatment.audit.${entry.entity}`)
-                  : translate(`audit.entities.${entry.entity}`, {
-                      _: entry.entity,
-                    });
+                : SCHEDULE_ENTITIES.includes(entry.entity)
+                  ? translate(`schedule.audit.${entry.entity}`)
+                  : TREATMENT_ENTITIES.includes(entry.entity)
+                    ? translate(`treatment.audit.${entry.entity}`)
+                    : translate(`audit.entities.${entry.entity}`, {
+                        _: entry.entity,
+                      });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {

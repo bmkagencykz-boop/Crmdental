@@ -115,6 +115,10 @@ export type Patient = {
   contraindications?: string | null;
   chronic_diseases?: string | null;
   preferred_doctor_id?: Identifier | null;
+  /** The Kazakh IIN, 12 digits (stage 37) */
+  iin?: string | null;
+  /** The number of the paper card (stage 37); the id when empty */
+  card_number?: string | null;
   // patients_summary
   nb_deals?: number;
   nb_open_deals?: number;

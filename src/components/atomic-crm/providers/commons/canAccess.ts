@@ -122,6 +122,12 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Consent templates (stage 37): the owner and the head write them; every
+  // employee but the integrator reads the medical data («medical_records»)
+  if (params.resource === "consent_templates") {
+    return role === "head" || ["list", "show"].includes(params.action);
+  }
+
   // Merging duplicate patients (stage 18): owner and head, like the database
   if (params.resource === "duplicates") {
     return role === "head";

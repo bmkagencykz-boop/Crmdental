@@ -118,7 +118,15 @@ export const AUDIT_ENTITY_GROUPS = {
     "treatment_plan_item",
     "treatment_stage",
   ],
-  patient: ["patient"],
+  patient: [
+    "patient",
+    // The full patient card (stage 37)
+    "patient_tooth",
+    "visit_record",
+    "patient_questionnaire",
+    "patient_consent",
+    "patient_file",
+  ],
   payment: ["payment", "account_operation", "cash_shift"],
   task: ["task"],
   employee: ["employee", "access_rights"],
@@ -141,6 +149,8 @@ export const AUDIT_ENTITY_GROUPS = {
     "ad_spend",
     "branch",
     "treatment_stage_template",
+    "consent_template",
+    "visit_record_template",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -321,27 +331,37 @@ export const describeAuditChanges = (
             : entity === "account_operation" &&
                 ["kind", "method", "account", "parts"].includes(field)
               ? operationChange(field, translate)
-              : entity === "treatment_stage" && field === "status"
+              : entity === "patient_tooth" && field === "state"
                 ? {
-                    label: translate("plan_editor.stages.fields.status"),
+                    label: translate("patient_card.audit.fields.state"),
                     format: (value: unknown) =>
                       value == null
                         ? EMPTY
-                        : translate(`plan_editor.stages.statuses.${value}`, {
+                        : translate(`patient_card.chart.states.${value}`, {
                             _: String(value),
                           }),
                   }
-                : entity === "treatment_plan" && field === "status"
+                : entity === "treatment_stage" && field === "status"
                   ? {
-                      label: translate("treatment.audit.fields.status"),
+                      label: translate("plan_editor.stages.fields.status"),
                       format: (value: unknown) =>
                         value == null
                           ? EMPTY
-                          : translate(`treatment.statuses.${value}`, {
+                          : translate(`plan_editor.stages.statuses.${value}`, {
                               _: String(value),
                             }),
                     }
-                  : null);
+                  : entity === "treatment_plan" && field === "status"
+                    ? {
+                        label: translate("treatment.audit.fields.status"),
+                        format: (value: unknown) =>
+                          value == null
+                            ? EMPTY
+                            : translate(`treatment.statuses.${value}`, {
+                                _: String(value),
+                              }),
+                      }
+                    : null);
       // Fields of the treatment plans and the patient card (stage 29)
       const label =
         special?.label ??
@@ -353,7 +373,12 @@ export const describeAuditChanges = (
               _: translate(`marketing.audit.fields.${field}`, {
                 _: translate(`branches.audit.fields.${field}`, {
                   // The cash desk (stage 36)
-                  _: translate(`payments.audit.fields.${field}`, { _: field }),
+                  _: translate(`payments.audit.fields.${field}`, {
+                    // The patient card (stage 37)
+                    _: translate(`patient_card.audit.fields.${field}`, {
+                      _: field,
+                    }),
+                  }),
                 }),
               }),
             }),
@@ -455,15 +480,17 @@ export const auditEntityLabel = (
               ? translate("branches.audit.entity")
               : PAYMENT_ENTITIES.includes(entry.entity)
                 ? translate(`payments.audit.${entry.entity}`)
-                : SCHEDULE_ENTITIES.includes(entry.entity)
-                  ? translate(`schedule.audit.${entry.entity}`)
-                  : PLAN_EDITOR_ENTITIES.includes(entry.entity)
-                    ? translate(`plan_editor.audit.${entry.entity}`)
-                    : TREATMENT_ENTITIES.includes(entry.entity)
-                      ? translate(`treatment.audit.${entry.entity}`)
-                      : translate(`audit.entities.${entry.entity}`, {
-                          _: entry.entity,
-                        });
+                : PATIENT_CARD_ENTITIES.includes(entry.entity)
+                  ? translate(`patient_card.audit.${entry.entity}`)
+                  : SCHEDULE_ENTITIES.includes(entry.entity)
+                    ? translate(`schedule.audit.${entry.entity}`)
+                    : PLAN_EDITOR_ENTITIES.includes(entry.entity)
+                      ? translate(`plan_editor.audit.${entry.entity}`)
+                      : TREATMENT_ENTITIES.includes(entry.entity)
+                        ? translate(`treatment.audit.${entry.entity}`)
+                        : translate(`audit.entities.${entry.entity}`, {
+                            _: entry.entity,
+                          });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -477,7 +504,24 @@ export const auditEntityLabel = (
         (entry.deal_id != null ? `#${entry.deal_id}` : undefined);
       break;
     case "account_operation":
+    case "visit_record":
+    case "patient_questionnaire":
       name = entry.patient_name ?? undefined;
+      break;
+    case "patient_tooth": {
+      const tooth = changedName(entry, "tooth");
+      name = [entry.patient_name, tooth != null ? `№ ${tooth}` : null]
+        .filter(Boolean)
+        .join(", ");
+      break;
+    }
+    case "patient_consent":
+      name = changedName(entry, "title") ?? ref;
+      break;
+    case "patient_file":
+    case "consent_template":
+    case "visit_record_template":
+      name = changedName(entry) ?? ref;
       break;
     case "patient":
       name =
@@ -544,6 +588,17 @@ export const auditEntityLabel = (
     : name;
   return `${kind} ${quoted}`;
 };
+
+/** Entities of the patient card (stage 37), labelled in its namespace */
+const PATIENT_CARD_ENTITIES = [
+  "patient_tooth",
+  "visit_record",
+  "patient_questionnaire",
+  "patient_consent",
+  "patient_file",
+  "consent_template",
+  "visit_record_template",
+];
 
 /** Entities of the cash desk (stage 36), labelled in its namespace */
 const PAYMENT_ENTITIES = ["account_operation", "cash_shift"];

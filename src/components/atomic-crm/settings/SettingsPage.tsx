@@ -40,6 +40,7 @@ import { SalesbotSettings } from "../salesbot/SalesbotSettings";
 import { ChairsEditor, ScheduleSettings } from "../schedule/ScheduleSettings";
 import { PriceListEditor } from "../treatment/PriceListEditor";
 import { PlanDictionariesSettings } from "../treatment/PlanDictionariesSettings";
+import { PatientCardSettings } from "../patient-card/PatientCardSettings";
 import { AccessRightsSettings } from "../access-rights/AccessRightsSettings";
 import { BranchesSettings } from "../branches/BranchesSettings";
 
@@ -72,6 +73,7 @@ const SECTIONS = [
   "import",
   "mis",
   "schedule",
+  "patient_card",
 ] as const;
 type Section = (typeof SECTIONS)[number];
 
@@ -107,7 +109,10 @@ const GROUPS: { id: string; sections: Section[] }[] = [
       "custom_fields",
     ],
   },
-  { id: "patients", sections: ["recalls", "duplicates", "import"] },
+  {
+    id: "patients",
+    sections: ["patient_card", "recalls", "duplicates", "import"],
+  },
   {
     id: "clinic",
     sections: ["clinic", "branches", "access_rights", "api", "mis"],
@@ -124,39 +129,41 @@ const requestedSection = (value: string | null) =>
 
 /** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
-  section === "treatment_dictionaries"
-    ? `plan_editor.settings.${kind === "title" ? "section" : "hint"}`
-    : section === "branches"
-      ? `branches.settings.${kind === "title" ? "section" : "hint"}`
-      : section === "access_rights"
-        ? `access_rights.settings.${kind === "title" ? "section" : "hint"}`
-        : section === "schedule" || section === "chairs"
-          ? `schedule.settings.sections.${section}.${kind}`
-          : section === "services"
-            ? `treatment.price_list.${kind === "title" ? "section" : "hint"}`
-            : section === "salesbots"
-              ? `salesbot.${kind === "title" ? "section" : "hint"}`
-              : section === "custom_fields"
-                ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
-                : section === "pipeline_automation" || section === "api"
-                  ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-                  : section === "quick_replies"
-                    ? `quick_replies.${kind}`
-                    : section === "automessages" ||
-                        section === "recalls" ||
-                        section === "doctors" ||
-                        section === "unsorted" ||
-                        section === "duplicates"
-                      ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-                      : section === "leads"
-                        ? `leads.${kind === "title" ? "section" : "hint"}`
-                        : section === "import" || section === "mis"
-                          ? `${section}.${kind}`
-                          : section === "telephony"
-                            ? `telephony.${kind === "title" ? "section" : "hint"}`
-                            : section === "response"
-                              ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-                              : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+  section === "patient_card"
+    ? `patient_card.settings.${kind === "title" ? "section" : "hint"}`
+    : section === "treatment_dictionaries"
+      ? `plan_editor.settings.${kind === "title" ? "section" : "hint"}`
+      : section === "branches"
+        ? `branches.settings.${kind === "title" ? "section" : "hint"}`
+        : section === "access_rights"
+          ? `access_rights.settings.${kind === "title" ? "section" : "hint"}`
+          : section === "schedule" || section === "chairs"
+            ? `schedule.settings.sections.${section}.${kind}`
+            : section === "services"
+              ? `treatment.price_list.${kind === "title" ? "section" : "hint"}`
+              : section === "salesbots"
+                ? `salesbot.${kind === "title" ? "section" : "hint"}`
+                : section === "custom_fields"
+                  ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
+                  : section === "pipeline_automation" || section === "api"
+                    ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+                    : section === "quick_replies"
+                      ? `quick_replies.${kind}`
+                      : section === "automessages" ||
+                          section === "recalls" ||
+                          section === "doctors" ||
+                          section === "unsorted" ||
+                          section === "duplicates"
+                        ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+                        : section === "leads"
+                          ? `leads.${kind === "title" ? "section" : "hint"}`
+                          : section === "import" || section === "mis"
+                            ? `${section}.${kind}`
+                            : section === "telephony"
+                              ? `telephony.${kind === "title" ? "section" : "hint"}`
+                              : section === "response"
+                                ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+                                : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -196,7 +203,13 @@ export const SettingsPage = () => {
     resource: "branches",
     action: "edit",
   });
+  // The medical templates (stage 37): not for the integrator
+  const { canAccess: canSeeMedical } = useCanAccess({
+    resource: "medical_records",
+    action: "list",
+  });
   const hidden: Section[] = [
+    ...(canSeeMedical ? [] : (["patient_card"] as const)),
     ...(canManageBranches ? [] : (["branches"] as const)),
     ...(canImport ? [] : (["import"] as const)),
     ...(canMerge ? [] : (["duplicates"] as const)),
@@ -320,6 +333,8 @@ export const SettingsPage = () => {
           <DictionaryEditor resource="lost_reasons" items={lostReasons} />
         ) : null}
         {section === "doctors" ? <DoctorsEditor /> : null}
+        {/* Consent and visit record templates (stage 37) */}
+        {section === "patient_card" ? <PatientCardSettings /> : null}
         {section === "chairs" ? <ChairsEditor /> : null}
         {section === "schedule" ? <ScheduleSettings /> : null}
         {section === "custom_fields" ? <CustomFieldsEditor /> : null}

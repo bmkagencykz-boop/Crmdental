@@ -14,7 +14,16 @@ import { phoneQueryDigits } from "../providers/commons/search";
 import { AccountManagerInput } from "../sales/AccountManagerInput";
 import { CustomFieldInputs } from "../custom-fields/CustomFieldInputs";
 import type { Patient } from "../types";
+import { ruDate } from "../patient-card/consents";
+import { parseIin } from "../patient-card/iin";
 import { patientDisplayName } from "./parsePatientText";
+
+/** The IIN field (stage 37): 12 digits with the check digit, or empty */
+const validateIin = (value: string | null | undefined) => {
+  if (!value?.trim()) return undefined;
+  const parsed = parseIin(value);
+  return parsed.valid ? undefined : `patient_card.form.iin_${parsed.problem}`;
+};
 
 /** Patient card fields (spec §3) */
 export const PatientInputs = () => {
@@ -33,6 +42,20 @@ export const PatientInputs = () => {
         <div className="grid grid-cols-2 gap-4">
           <DateInput source="birth_date" helperText={false} />
           <TextInput source="city" helperText={false} />
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_10rem] gap-4">
+          <TextInput
+            source="iin"
+            label="patient_card.form.iin"
+            validate={validateIin}
+            helperText={<IinHint />}
+            placeholder="000000000000"
+          />
+          <TextInput
+            source="card_number"
+            label="patient_card.form.card_number"
+            helperText={false}
+          />
         </div>
       </section>
       <section className="flex flex-col gap-4">
@@ -80,6 +103,23 @@ export const PatientInputs = () => {
       </section>
       <CustomFieldInputs entity="patient" className="md:col-span-2" />
     </div>
+  );
+};
+
+/** What the IIN says: «15.05.1990, женский» (filled in when empty) */
+const IinHint = () => {
+  const translate = useTranslate();
+  const iin: string | null = useWatch({ name: "iin" });
+  const parsed = parseIin(iin);
+  return (
+    <span className="text-xs text-muted-foreground" data-testid="iin-hint">
+      {parsed.valid
+        ? translate("patient_card.form.iin_derived", {
+            date: ruDate(parsed.birthDate),
+            gender: translate(`patient_card.form.gender.${parsed.gender}`),
+          })
+        : translate("patient_card.form.iin_hint")}
+    </span>
   );
 };
 

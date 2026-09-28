@@ -391,13 +391,13 @@ export const auditEntityLabel = (
           ? translate("mis_connectors.audit.entity")
           : entry.entity === "ad_spend"
             ? translate("marketing.audit.entity")
-          : SCHEDULE_ENTITIES.includes(entry.entity)
-            ? translate(`schedule.audit.${entry.entity}`)
-            : TREATMENT_ENTITIES.includes(entry.entity)
-              ? translate(`treatment.audit.${entry.entity}`)
-              : translate(`audit.entities.${entry.entity}`, {
-                  _: entry.entity,
-                });
+            : SCHEDULE_ENTITIES.includes(entry.entity)
+              ? translate(`schedule.audit.${entry.entity}`)
+              : TREATMENT_ENTITIES.includes(entry.entity)
+                ? translate(`treatment.audit.${entry.entity}`)
+                : translate(`audit.entities.${entry.entity}`, {
+                    _: entry.entity,
+                  });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {

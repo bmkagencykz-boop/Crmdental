@@ -347,7 +347,36 @@ export const generateSchedule = (db: Db) => {
     "Оплата по QR",
   ];
   const regulars = db.patients.slice(0, 60);
-  const fillDays = Array.from({ length: 18 }, (_, i) => addDays(today, i - 14));
+  // Most regulars came before: one past visit each, a week or more ago, so
+  // «1В» (first visit) marks only the new ones
+  regulars.forEach((patient, index) => {
+    if (index % 5 === 0) return;
+    const d = addDays(today, -5 - (index % 20));
+    const doctor = db.doctors.find(
+      (item) => doctorHoursOn(item, d, db.doctor_exceptions, clinic) != null,
+    );
+    if (!doctor) return;
+    const hours = doctorHoursOn(doctor, d, db.doctor_exceptions, clinic)!;
+    const minute = hours.start + Math.floor(index / 20) * 60;
+    const starts = zonedMoment(d, minute, timeZone);
+    visits.push({
+      id: nextId++,
+      patient_id: patient.id,
+      deal_id: null,
+      doctor_id: doctor.id,
+      chair_id: null,
+      service_id: null,
+      starts_at: starts.toISOString(),
+      ends_at: new Date(starts.getTime() + 30 * 60 * 1000).toISOString(),
+      status: "completed",
+      note: null,
+      source: "crm",
+      created_by: patient.sales_id ?? null,
+      created_at: starts.toISOString(),
+      updated_at: starts.toISOString(),
+    });
+  });
+  const fillDays = Array.from({ length: 6 }, (_, i) => addDays(today, i - 2));
   fillDays.forEach((d) => {
     db.doctors.forEach((doctor) => {
       const hours = doctorHoursOn(doctor, d, db.doctor_exceptions, clinic);

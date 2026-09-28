@@ -31,10 +31,10 @@ test.describe("treatment plans", () => {
 
     await login("owner@smile.kz");
 
-    // Settings → Price list: a priced service
-    await page.goto("/#/settings?section=services");
+    // The price list page: a priced service
+    await page.goto("/#/price-list");
     await expect(
-      page.getByRole("heading", { name: "Price list" }),
+      page.getByRole("heading", { name: "Price list", exact: true }),
     ).toBeVisible();
     await page.getByLabel("New service").fill("Имплант Osstem");
     await page.getByLabel("Price, ₸").last().fill("180000");

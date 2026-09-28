@@ -4008,7 +4008,7 @@ export const englishCrmMessages = {
     remove_filter: "Remove %{name}",
     add_filter: "Show an employee's deals",
     me: "me",
-    nothing_in_work: "No open deals",
+    nothing_in_work: "Nothing in progress yet",
     overdue_days: "%{smart_count} day overdue |||| %{smart_count} days overdue",
     doctor: "Doctor",
     no_doctor: "Not chosen",

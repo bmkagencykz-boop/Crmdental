@@ -54,6 +54,8 @@ export function UserMenu({ children }: UserMenuProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
+            aria-label={translate("ra.auth.user_menu")}
+            title={identity?.fullName}
             className="flex items-center gap-3 rounded-full py-1 pr-1 pl-3 text-right outline-none hover:bg-card focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="flex flex-col leading-tight">

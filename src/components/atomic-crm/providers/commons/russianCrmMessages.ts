@@ -4030,7 +4030,7 @@ export const russianCrmMessages: CrmMessages = {
     remove_filter: "Убрать %{name}",
     add_filter: "Показать сделки сотрудника",
     me: "я",
-    nothing_in_work: "Открытых сделок нет",
+    nothing_in_work: "Сейчас в работе ничего нет",
     overdue_days:
       "просрочено %{smart_count} д. |||| просрочено %{smart_count} д. |||| просрочено %{smart_count} д.",
     doctor: "Врач",

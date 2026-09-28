@@ -144,8 +144,7 @@ test("the setup put off shows on the dashboard", async ({ page }) => {
   await expect(card).toContainText("1 of 7 steps are set up");
 
   // It is also in the user menu
-  // (the avatar button shows the first letter of the name)
-  await page.getByRole("button", { name: "A", exact: true }).click();
+  await page.getByRole("button", { name: "Profile", exact: true }).click();
   await expect(
     page.getByRole("menuitem", { name: "Setup wizard" }),
   ).toBeVisible();

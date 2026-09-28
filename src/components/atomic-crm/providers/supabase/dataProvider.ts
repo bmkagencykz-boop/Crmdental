@@ -62,6 +62,7 @@ import { getMarketplaceMethods } from "./marketplaceMethods";
 import { getScheduleMethods } from "./scheduleMethods";
 import { getSearchMethods } from "./searchMethods";
 import { getAccessRightsMethods } from "./accessRightsMethods";
+import { getPriceListMethods } from "./priceListMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -137,6 +138,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getBranchMethods(),
     // Access rights (stage 30)
     ...getAccessRightsMethods(),
+    // The price list page (stage 35)
+    ...getPriceListMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

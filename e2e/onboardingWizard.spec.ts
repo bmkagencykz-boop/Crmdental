@@ -106,8 +106,8 @@ test("a new clinic is set up with the setup wizard", async ({ page }) => {
     page.getByRole("region", { name: "Continue setup" }),
   ).toBeHidden();
 
-  // The services got their prices
-  await page.goto("/#/settings?section=services");
+  // The services got their prices (the price list page, stage 35)
+  await page.goto("/#/price-list");
   await expect(page.getByLabel("Price: Консультация")).toHaveValue("5 000");
   await expect(page.getByLabel("Price: Виниры")).toHaveValue("90 000");
 

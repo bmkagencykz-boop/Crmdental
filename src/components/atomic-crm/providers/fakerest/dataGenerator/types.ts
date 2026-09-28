@@ -1,6 +1,11 @@
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
 import type { Identifier } from "ra-core";
+import type {
+  PriceHistoryRow,
+  ServiceCategory,
+  ServiceCost,
+} from "../../../price-list/types";
 import type { DeveloperApp } from "../../../integrations/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
@@ -158,4 +163,8 @@ export interface Db {
   // Branches (stage 33)
   branches: Branch[];
   sales_branches: SalesBranch[];
+  // The price list page (stage 35)
+  service_categories: ServiceCategory[];
+  service_costs: ServiceCost[];
+  service_price_history: PriceHistoryRow[];
 }

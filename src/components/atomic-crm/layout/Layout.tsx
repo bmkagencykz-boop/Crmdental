@@ -232,6 +232,7 @@ const PageTitle = () => {
     { match: "/settings", label: translate("crm.settings.title") },
     { match: "/profile", label: translate("crm.profile.title") },
     { match: "/reports", label: translate("reports.title") },
+    { match: "/price-list", label: translate("price_list.title") },
     { match: "/audit", label: translate("audit.title") },
     { match: "/mailings", label: translate("mailings.title") },
     { match: "/integrations", label: translate("market.title") },

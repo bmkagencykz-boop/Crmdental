@@ -3,6 +3,7 @@ import { TasksPage } from "../tasks/TasksPage";
 import { SchedulePage } from "../schedule/SchedulePage";
 import { AuditPage } from "../audit/AuditPage";
 import { ReportsPage } from "../reports/ReportsPage";
+import { PriceListPage } from "../price-list/PriceListPage";
 import { MailingsPage } from "../mailings/MailingsPage";
 import type {
   CoreAdminProps,
@@ -223,6 +224,7 @@ const DesktopAdmin = (
         <Route path={SchedulePage.path} element={<SchedulePage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
         <Route path={ReportsPage.path} element={<ReportsPage />} />
+        <Route path={PriceListPage.path} element={<PriceListPage />} />
         <Route path={AuditPage.path} element={<AuditPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />

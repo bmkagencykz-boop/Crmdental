@@ -123,6 +123,7 @@ import { createSearchDemo } from "./search";
 import { createMarketingDemo } from "./marketing";
 import { createAccessRightsDemo } from "./accessRights";
 import { createBranchesDemo } from "./branches";
+import { createPriceListDemo } from "./priceList";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -349,6 +350,12 @@ export const createDataProvider = ({
   });
   // Branches (stage 33)
   const branchesDemo = createBranchesDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+  });
+  // The price list page (stage 35)
+  const priceListDemo = createPriceListDemo({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
@@ -833,6 +840,7 @@ export const createDataProvider = ({
     ...mailingDemo.views,
     ...unsortedDemo.views,
     ...treatmentDemo.views,
+    ...priceListDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -855,6 +863,7 @@ export const createDataProvider = ({
     ...marketingDemo.methods,
     ...accessDemo.methods,
     ...branchesDemo.methods,
+    ...priceListDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1785,6 +1794,8 @@ export const createDataProvider = ({
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,
       ...treatmentDemo.callbacks,
+      // The price list (stage 35): categories, paths, price history, rights
+      ...priceListDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

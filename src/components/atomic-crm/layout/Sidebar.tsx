@@ -1,6 +1,7 @@
 import {
   IntegrationsGlyph,
   MailingsGlyph,
+  PriceListGlyph,
   ReportsGlyph,
   SettingsGlyph,
   TeamGlyph,
@@ -31,6 +32,12 @@ export const Sidebar = () => {
     match: "/reports",
     icon: ReportsGlyph,
     label: translate("reports.title"),
+  };
+  const priceList: NavItem = {
+    to: "/price-list",
+    match: "/price-list",
+    icon: PriceListGlyph,
+    label: translate("price_list.nav"),
   };
   const mailings: NavItem = {
     to: "/mailings",
@@ -63,6 +70,10 @@ export const Sidebar = () => {
       <div className="mt-3 flex flex-col items-center gap-3">
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />
+        </CanAccess>
+        {/* «Прайс» (stage 35): everybody reads the prices */}
+        <CanAccess resource="price_list" action="menu">
+          <SidebarLink item={priceList} active={isActive(priceList)} />
         </CanAccess>
         <CanAccess resource="mailings" action="list">
           <SidebarLink item={mailings} active={isActive(mailings)} />

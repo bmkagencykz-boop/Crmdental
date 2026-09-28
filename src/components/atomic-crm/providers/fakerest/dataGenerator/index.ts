@@ -21,6 +21,7 @@ import { generateTreatmentPlans } from "./treatmentPlans";
 import { generateMarketing } from "./marketing";
 import { generateAccessRights } from "./accessRights";
 import { generateBranches } from "./branches";
+import { generatePriceList } from "./priceList";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -51,6 +52,8 @@ export default (): Db => {
   generateMarketing(db);
   // Last: the price list is appended to the services the other data uses
   generateTreatmentPlans(db);
+  // The price list page (stage 35): categories, units, cost prices, history
+  generatePriceList(db);
   // Branches (stage 33): after the deals, the tasks and the visits
   generateBranches(db);
   db.configuration = [

@@ -122,7 +122,7 @@ export const withStepStatus = (
 /** Settings section (/#/settings?section=<id>) or page of each step */
 export const STEP_LINKS: Record<TrackedStep, string> = {
   clinic: "/settings?section=clinic",
-  services: "/settings?section=services",
+  services: "/price-list",
   doctors: "/settings?section=doctors",
   team: "/sales",
   pipeline: "/settings?section=pipelines",

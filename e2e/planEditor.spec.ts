@@ -36,13 +36,13 @@ test.describe("plan editor", () => {
     await login("owner@smile.kz");
 
     // A priced service in the price list
-    await page.goto("/#/settings?section=services");
+    await page.goto("/#/price-list");
     await page.getByLabel("New service").fill("Лечение кариеса");
     await page.getByLabel("Price, ₸").last().fill("25000");
     await page.getByRole("button", { name: "Add service" }).click();
-    await expect(page.getByLabel("Price: Лечение кариеса")).toHaveValue(
-      "25 000",
-    );
+    await expect(
+      page.getByLabel("Price: Лечение кариеса", { exact: true }),
+    ).toHaveValue("25 000");
 
     // The patient card opens a new plan page
     await page.goto(`/#/patients/${patient.id}/show`);

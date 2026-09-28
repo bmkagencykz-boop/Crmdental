@@ -81,7 +81,10 @@ export const BulkBar = ({
           const value = event.target.value;
           if (!value) return;
           void apply("move", {
-            categoryId: value === NONE ? null : value,
+            categoryId:
+              value === NONE
+                ? null
+                : (tree.find((node) => String(node.id) === value)?.id ?? null),
           });
         }}
         aria-label={translate("price_list.bulk.move")}

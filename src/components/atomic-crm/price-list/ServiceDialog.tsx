@@ -151,7 +151,11 @@ const ServiceFields = ({
           <select
             value={row.category_id != null ? String(row.category_id) : ""}
             onChange={(event) =>
-              update({ category_id: event.target.value || null })
+              update({
+                category_id:
+                  categories.find((c) => String(c.id) === event.target.value)
+                    ?.id ?? null,
+              })
             }
             aria-label={translate("price_list.details.category_for", { name })}
             className="h-8 w-full rounded-full bg-transparent px-2 text-[13px] outline-none"

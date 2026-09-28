@@ -3929,7 +3929,8 @@ export const englishCrmMessages = {
   },
   ui: {
     filter: "Filter",
-    default_pipeline: "default",
+    merge_short: "Merge",
+    default_pipeline: "Default pipeline",
     access: {
       clinic_rules: "For the whole clinic",
       staff_rights: "Employee rights",

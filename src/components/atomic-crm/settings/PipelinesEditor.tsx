@@ -118,19 +118,17 @@ export const PipelinesEditor = () => {
             type="button"
             onClick={() => setSelectedId(item.id)}
             aria-pressed={item.id === pipeline?.id}
+            title={
+              item.is_default ? translate("ui.default_pipeline") : undefined
+            }
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all",
+              "flex h-8 items-center rounded-md border px-3 text-sm font-medium transition-colors",
               item.id === pipeline?.id
-                ? "bg-primary text-primary-foreground"
-                : "soft text-foreground/80 hover:text-foreground",
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-input bg-card text-foreground/80 hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
             {item.name}
-            {item.is_default ? (
-              <span className="text-xs font-normal opacity-70">
-                · {translate("ui.default_pipeline")}
-              </span>
-            ) : null}
           </button>
         ))}
         <NewPipelineButton onCreated={setSelectedId} />

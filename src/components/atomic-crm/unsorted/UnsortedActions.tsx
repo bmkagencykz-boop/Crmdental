@@ -113,7 +113,7 @@ export const UnsortedActions = ({
     >
       <Button
         size="sm"
-        className={cn(compact && "h-7 px-2 text-xs")}
+        className={cn(compact && "h-7 px-1.5 text-xs")}
         onClick={() => setDialog("accept")}
       >
         {translate("unsorted.actions.accept")}
@@ -121,7 +121,7 @@ export const UnsortedActions = ({
       <Button
         size="sm"
         variant="outline"
-        className={cn(compact && "h-7 px-2 text-xs")}
+        className={cn(compact && "h-7 px-1.5 text-xs")}
         onClick={() => setDialog("reject")}
       >
         {translate("unsorted.actions.reject")}
@@ -129,10 +129,11 @@ export const UnsortedActions = ({
       <Button
         size="sm"
         variant="outline"
-        className={cn(compact && "h-7 px-2 text-xs")}
+        className={cn(compact && "h-7 px-1.5 text-xs")}
         onClick={() => setDialog("merge")}
+        aria-label={translate("unsorted.actions.merge")}
       >
-        {translate("unsorted.actions.merge")}
+        {translate(compact ? "ui.merge_short" : "unsorted.actions.merge")}
       </Button>
       {dialog === "accept" ? (
         <AcceptDialog lead={lead} onClose={() => setDialog(null)} />

@@ -13,6 +13,7 @@ import { generateDigitalPipeline } from "./digitalPipeline";
 import { generateSales } from "./sales";
 import { generateTags } from "./tags";
 import { generateUnsorted } from "./unsorted";
+import { generateMisConnectors } from "./misConnectors";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -33,6 +34,7 @@ export default (): Db => {
   generateUnsorted(db);
   generateListsPlans(db);
   generateDigitalPipeline(db);
+  generateMisConnectors(db);
   generateOnboarding(db);
   db.configuration = [
     {

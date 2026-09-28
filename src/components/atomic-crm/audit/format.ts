@@ -117,6 +117,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "stage_trigger",
     "webhook",
     "api_key",
+    "mis_connection",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -322,9 +323,11 @@ export const auditEntityLabel = (
   const kind =
     entry.entity === "custom_field"
       ? translate("custom_fields.audit.entity")
-      : translate(`audit.entities.${entry.entity}`, {
-          _: entry.entity,
-        });
+      : entry.entity === "mis_connection"
+        ? translate("mis_connectors.audit.entity")
+        : translate(`audit.entities.${entry.entity}`, {
+            _: entry.entity,
+          });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {

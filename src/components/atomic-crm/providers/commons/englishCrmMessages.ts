@@ -2609,6 +2609,175 @@ export const englishCrmMessages = {
     },
     menu: "Setup wizard",
   },
+  mis_connectors: {
+    name: {
+      dentist_plus: "Dentist Plus",
+      macdent: "MacDent",
+    },
+    access_denied:
+      "The MIS connection is set up by the clinic owner and the head.",
+    status: {
+      connected: "Connected",
+      error: "Sync error",
+      requested: "Not connected",
+      disabled: "Disconnected",
+      none: "Not connected",
+    },
+    last_sync: "Last sync: %{date}",
+    never_synced: "No sync yet",
+    statuses: {
+      scheduled: "Booked",
+      confirmed: "Booking confirmed",
+      arrived: "Arrived",
+      completed: "Visit done",
+      in_treatment: "Treatment started",
+      cancelled: "Cancelled",
+      no_show: "No-show",
+    },
+    settings: {
+      open: "Settings",
+      connect: "Connect",
+      hide: "Collapse",
+      planned: "Coming soon",
+    },
+    connection: {
+      title: "Connection",
+      base_url: "API address",
+      base_url_help:
+        "Left empty, %{url} is used. The exact address is in the vendor's documentation or with its support.",
+      api_key: "API key",
+      api_key_placeholder: "Paste the key",
+      api_key_stored: "Saved — type a new one to replace it",
+      api_key_help: {
+        dentist_plus:
+          "Create the key in Dentist Plus: «Settings → Integrations». The key stays on the server and is never shown again.",
+        macdent:
+          "MacDent gives the key and the documentation to the clinic director or a trusted person on request to its support. The key stays on the server.",
+      },
+      connect: "Connect",
+      save: "Save",
+      saved: "MIS settings saved",
+      save_error: "Could not save the MIS settings",
+      test: "Test connection",
+      sync: "Sync now",
+      disconnect: "Disconnect",
+      disconnect_title: "Disconnect %{name}?",
+      disconnect_content:
+        "The key is removed and the sync stops. Synced visits, patients and payments stay in the CRM.",
+      disconnected: "MIS disconnected",
+    },
+    directions: {
+      title: "What to sync",
+      sync_patients: "Patients from the MIS",
+      sync_patients_help:
+        "A patient is found by the MIS id, then by phone; otherwise created with the source «МИС».",
+      sync_appointments: "Bookings and visits from the MIS",
+      sync_appointments_help:
+        "A booking goes to the patient's open deal (or opens one), fills the appointment date, doctor and service, and moves the deal by the statuses below.",
+      sync_payments: "Payments from the MIS",
+      sync_payments_help:
+        "A payment is added to the patient's deal once; syncing again does not duplicate it.",
+      push_appointments: "Send CRM bookings to the MIS",
+      push_appointments_help:
+        "When a deal reaches the stage of the «Booked» status with an appointment date, the patient and the booking are sent to the MIS. Changes that came from the MIS are never sent back. Off by default.",
+    },
+    mapping: {
+      title: "MIS statuses and deal stages",
+      help: "A deal only moves forward and within its pipeline; the stage checklist can stop a move — it is then skipped and written to the deal feed and the log.",
+      mis_status: "MIS status",
+      action: "What to do with the deal",
+      none: "Nothing",
+      stages: "Stage of «%{pipeline}»",
+      tags: "Add a tag",
+      tag: "Tag «%{name}»",
+      hints: {
+        scheduled: "The patient was booked",
+        confirmed: "The patient confirmed the booking",
+        arrived: "The patient came to the clinic",
+        completed: "The visit is over",
+        in_treatment: "The treatment plan started",
+        cancelled: "The booking was cancelled",
+        no_show: "The patient did not come",
+      },
+    },
+    doctors: {
+      title: "MIS doctors",
+      help: "Doctors are matched by name on the first sync. Pick the ones not recognised by hand.",
+      crm_doctor: "CRM doctor",
+      none: "Not linked",
+      unlinked: "not linked",
+      empty: "Doctors appear after the first sync.",
+      saved: "Doctor linked",
+    },
+    webhook: {
+      title: "Address for the MIS",
+      help: "If the MIS can send events to an external address, set this address in its settings — changes arrive at once. Otherwise the CRM polls for changes every 10 minutes.",
+      copy: "Copy",
+      copied: "Address copied",
+      regenerate: "New address",
+      regenerated:
+        "Address changed: set it in the MIS again, the old one no longer works",
+    },
+    log: {
+      title: "Sync log",
+      empty: "No events yet",
+      time: "Time",
+      event: "Event",
+      result: "Result",
+      details: "Details",
+      open_deal: "Deal",
+      direction: {
+        in: "from the MIS",
+        out: "to the MIS",
+      },
+      results: {
+        ok: "Done",
+        skipped: "Skipped",
+        error: "Error",
+      },
+      operations: {
+        patient: "Patient",
+        appointment: "Booking",
+        visit: "Visit",
+        payment: "Payment",
+        stage: "Deal stage",
+        poll: "Sync",
+        push: "Booking sent",
+        test: "Test",
+        webhook: "Webhook",
+      },
+    },
+    notice: {
+      title: "To confirm with the vendor's documentation",
+      intro: {
+        dentist_plus:
+          "Dentist Plus has not published its API documentation. The connector follows a typical REST API with a key; addresses and field names sit in one place and change without rebuilding the CRM.",
+        macdent:
+          "MacDent gives its API documentation with the key. The connector follows a typical REST API with a key; addresses and field names sit in one place and change without rebuilding the CRM.",
+      },
+      items:
+        "The exact API address and how the key is sent (header or parameter)\nPaths of patients, bookings (visits) and payments, the «changed since» filter, pagination\nThe list of booking statuses and their codes\nWhether the MIS can send events to an external address (webhooks), and their format\nWhether patients and bookings can be created through the API (to send CRM bookings)",
+    },
+    visits: {
+      title: "Visits from the MIS",
+      no_details: "No doctor or service",
+      open_deal: "Open the deal",
+      badge: "MIS",
+      badge_hint: "Deal synced with %{name}",
+    },
+    audit: {
+      entity: "MIS connection",
+    },
+  },
+  sipuni: {
+    name: "Sipuni",
+    no_keys:
+      "Sipuni does not sign its events: the secret token of the address is the check. No secret or API key is needed; the recording link comes with the call end event.",
+    secret_help: "Not needed for Sipuni",
+    api_key_help: "Not needed for Sipuni",
+    instructions:
+      'Sipuni account → Settings → API → «PBX events».\nPaste the address below and switch on the call start, answer and end events. GET or POST — the CRM takes both and answers {"success": true}.\nSwitch call recording on in the PBX if you want the recording link on the call.\nSet the employees\' extensions below — as in Sipuni (e.g. 201).',
+  },
 } as const;
 
 type MessageSchema<T> = {

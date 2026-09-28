@@ -68,6 +68,11 @@ export const MisSettings = () => {
           const status = statusOf(kind);
           const expanded = shown === kind;
           const connected = status === "connected" || status === "error";
+          const toggleKey = expanded
+            ? "mis_connectors.settings.hide"
+            : connected
+              ? "mis_connectors.settings.open"
+              : "mis_connectors.settings.connect";
           return (
             <li key={kind} className="rounded-lg bg-card">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
@@ -95,15 +100,9 @@ export const MisSettings = () => {
                   variant={expanded ? "ghost" : "outline"}
                   onClick={() => setOpen(expanded ? "none" : kind)}
                   aria-expanded={expanded}
-                  aria-label={`${translate(expanded ? "mis_connectors.settings.hide" : "mis_connectors.settings.open")}: ${translate(`mis_connectors.name.${kind}`)}`}
+                  aria-label={`${translate(toggleKey)}: ${translate(`mis_connectors.name.${kind}`)}`}
                 >
-                  {translate(
-                    expanded
-                      ? "mis_connectors.settings.hide"
-                      : connected
-                        ? "mis_connectors.settings.open"
-                        : "mis_connectors.settings.connect",
-                  )}
+                  {translate(toggleKey)}
                 </Button>
               </div>
               {expanded ? (

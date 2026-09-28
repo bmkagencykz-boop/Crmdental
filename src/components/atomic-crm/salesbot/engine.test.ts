@@ -172,9 +172,9 @@ describe("replyMatches", () => {
     expect(replyMatches(branch, "Какая ЦЕНА?")).toBe(true);
     expect(replyMatches(branch, "Сколько СТОИТ имплант")).toBe(true);
     expect(replyMatches(branch, "бесценно")).toBe(false);
-    expect(replyMatches({ match: "keywords", value: "еще" }, "Ещё вопрос")).toBe(
-      true,
-    );
+    expect(
+      replyMatches({ match: "keywords", value: "еще" }, "Ещё вопрос"),
+    ).toBe(true);
     expect(replyMatches({ match: "keywords", value: "да" }, "когда")).toBe(
       false,
     );
@@ -194,9 +194,9 @@ describe("replyMatches", () => {
     expect(replyMatches({ match: "regex", value: "^\\d{2}$" }, "42")).toBe(
       true,
     );
-    expect(replyMatches({ match: "regex", value: "^спасибо" }, "Спасибо!")).toBe(
-      true,
-    );
+    expect(
+      replyMatches({ match: "regex", value: "^спасибо" }, "Спасибо!"),
+    ).toBe(true);
     expect(replyMatches({ match: "regex", value: "(" }, "x")).toBe(false);
     expect(replyMatches({ match: "any" }, "")).toBe(true);
     expect(replyMatches({ match: "any" }, null)).toBe(false);
@@ -217,20 +217,29 @@ describe("dealMatches", () => {
     expect(dealMatches({ match: "tag", tag_id: 6, next: "x" }, deal)).toBe(
       false,
     );
-    expect(dealMatches({ match: "source", source_id: 4, next: "x" }, deal)).toBe(
-      true,
-    );
     expect(
-      dealMatches({ match: "field", field_id: 3, value: "инстаграм", next: "x" }, deal),
+      dealMatches({ match: "source", source_id: 4, next: "x" }, deal),
+    ).toBe(true);
+    expect(
+      dealMatches(
+        { match: "field", field_id: 3, value: "инстаграм", next: "x" },
+        deal,
+      ),
     ).toBe(true);
     expect(dealMatches({ match: "field", field_id: 3, next: "x" }, deal)).toBe(
       true,
     );
     expect(
-      dealMatches({ match: "field", field_id: 4, value: "да", next: "x" }, deal),
+      dealMatches(
+        { match: "field", field_id: 4, value: "да", next: "x" },
+        deal,
+      ),
     ).toBe(true);
     expect(
-      dealMatches({ match: "field", field_id: 5, value: "кт", next: "x" }, deal),
+      dealMatches(
+        { match: "field", field_id: 5, value: "кт", next: "x" },
+        deal,
+      ),
     ).toBe(true);
     expect(dealMatches({ match: "field", field_id: 9, next: "x" }, deal)).toBe(
       false,
@@ -331,8 +340,8 @@ describe("runtime", () => {
 
   it("fills a custom field with the reply", async () => {
     const r = recorder();
-    let session = await advance(startSession(consultation), r.hooks);
-    session = await receiveReply(session, "Хочу имплант", r.hooks);
+    const session = await advance(startSession(consultation), r.hooks);
+    await receiveReply(session, "Хочу имплант", r.hooks);
     expect(r.deal.custom_values).toEqual({ "3": "Хочу имплант" });
     expect(r.deal.tags).toEqual([6]);
   });
@@ -383,7 +392,11 @@ describe("runtime", () => {
     expect(session.state.wait).toBe("delay");
     session = await receiveReply(session, "Привет", r.hooks);
     expect(session.status).toBe("waiting");
-    session = await resumeDue(session, r.hooks, new Date("2026-10-02T00:00:00Z"));
+    session = await resumeDue(
+      session,
+      r.hooks,
+      new Date("2026-10-02T00:00:00Z"),
+    );
     expect(r.sent).toEqual(["Ответ: Привет"]);
     expect(session.status).toBe("done");
   });

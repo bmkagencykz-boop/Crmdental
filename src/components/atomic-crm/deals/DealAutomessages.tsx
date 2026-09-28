@@ -57,6 +57,9 @@ export const DealAutomessages = ({ deal }: { deal: Deal }) => {
   if (!rows.length) return null;
 
   const templateName = (row: Automessage) => {
+    if (row.salesbot_session_id != null) {
+      return translate("salesbot.deal.queue_name");
+    }
     const rule = rules.find((r) => String(r.id) === String(row.rule_id));
     const template = templates.find(
       (t) => String(t.id) === String(row.template_id ?? rule?.template_id),

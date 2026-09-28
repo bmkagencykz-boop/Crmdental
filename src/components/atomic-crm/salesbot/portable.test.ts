@@ -108,12 +108,11 @@ describe("export / import", () => {
     expect(json).not.toContain('"sales_id"');
     const [message, condition, set, webhook] = portable.scenario.steps;
     expect(message.template_name).toBe("Приветствие");
-    expect(condition.branches?.map((b) => b.tag_name ?? b.stage_name ?? b.field_name ?? b.value)).toEqual([
-      "Боль",
-      "Записан",
-      "Жалоба",
-      "да",
-    ]);
+    expect(
+      condition.branches?.map(
+        (b) => b.tag_name ?? b.stage_name ?? b.field_name ?? b.value,
+      ),
+    ).toEqual(["Боль", "Записан", "Жалоба", "да"]);
     expect(set.actions?.[2]).toEqual({
       kind: "deal_field",
       field: "service_id",

@@ -27,6 +27,9 @@ import { DealEventContent } from "../DealEvents";
 import { AutomationRunLine } from "../../pipeline-automation/AutomationRunLine";
 import type { StageTriggerRun } from "../../pipeline-automation/types";
 import { buildTimeline, type TimelineItem } from "../timeline";
+import { FEED_LOG_KINDS } from "../../salesbot/labels";
+import { SalesbotLogLine } from "../../salesbot/SalesbotLogLine";
+import type { SalesbotLog } from "../../salesbot/types";
 
 const dayKey = (value: string) => new Date(value).toDateString();
 
@@ -98,6 +101,16 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
       pagination: { page: 1, perPage: 200 },
     },
   );
+  // What the salesbot did (stage 26); replies are in the messages already
+  const { data: botLogs = [] } = useGetList<SalesbotLog>(
+    "salesbot_logs",
+    {
+      filter: { deal_id: deal.id },
+      sort: { field: "id", order: "DESC" },
+      pagination: { page: 1, perPage: 300 },
+    },
+    { refetchInterval: 30_000 },
+  );
   const items = buildTimeline({
     notes,
     tasks,
@@ -106,6 +119,7 @@ export const DealFeed = ({ deal }: { deal: Deal }) => {
     messages,
     files,
     automations,
+    salesbotLogs: botLogs.filter((log) => FEED_LOG_KINDS.includes(log.kind)),
   }).reverse();
 
   const bottom = useRef<HTMLDivElement>(null);
@@ -169,6 +183,14 @@ const FeedItem = ({ item }: { item: TimelineItem }) => {
             <span>
               {time(item.date)} · <AutomationRunLine run={item.run} />
             </span>
+          </div>
+        </div>
+      );
+    case "salesbot":
+      return (
+        <div className="flex justify-center" data-testid="salesbot-log">
+          <div className="max-w-[85%] text-center text-xs text-muted-foreground">
+            {time(item.date)} · <SalesbotLogLine log={item.log} />
           </div>
         </div>
       );

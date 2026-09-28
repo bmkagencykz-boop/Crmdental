@@ -117,6 +117,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "stage_trigger",
     "webhook",
     "api_key",
+    "salesbot",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -370,6 +371,7 @@ export const auditEntityLabel = (
       break;
     case "stage_trigger":
     case "api_key":
+    case "salesbot":
       name = changedName(entry) ?? ref;
       break;
     case "webhook":

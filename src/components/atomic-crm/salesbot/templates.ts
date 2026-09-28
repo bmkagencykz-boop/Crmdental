@@ -44,9 +44,17 @@ export const BOT_TEMPLATES: { id: string; bot: PortableBot }[] = [
               { match: "option", value: "1", next: "pain" },
               { match: "keywords", value: "боль, болит, ноет", next: "pain" },
               { match: "option", value: "2", next: "implant" },
-              { match: "keywords", value: "имплант, имплантация", next: "implant" },
+              {
+                match: "keywords",
+                value: "имплант, имплантация",
+                next: "implant",
+              },
               { match: "option", value: "3", next: "braces" },
-              { match: "keywords", value: "брекеты, элайнеры, прикус", next: "braces" },
+              {
+                match: "keywords",
+                value: "брекеты, элайнеры, прикус",
+                next: "braces",
+              },
             ],
             else_next: "offer",
           },
@@ -172,7 +180,11 @@ export const BOT_TEMPLATES: { id: string; bot: PortableBot }[] = [
             branches: [
               { match: "option", value: "1", next: "yes" },
               { match: "option", value: "2", next: "no" },
-              { match: "keywords", value: "нет, неактуально, не нужно", next: "no" },
+              {
+                match: "keywords",
+                value: "нет, неактуально, не нужно",
+                next: "no",
+              },
               { match: "keywords", value: "да, актуально, хочу", next: "yes" },
             ],
             else_next: "handoff",

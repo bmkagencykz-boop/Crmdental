@@ -174,7 +174,8 @@ export const createSalesbotDemo = ({
             ? [deal.sales_id]
             : sales
                 .filter(
-                  (s) => !s.disabled && (s.role === "owner" || s.role === "head"),
+                  (s) =>
+                    !s.disabled && (s.role === "owner" || s.role === "head"),
                 )
                 .map((s) => s.id);
         const patient = (await all<Patient>("patients")).find((p) =>
@@ -275,7 +276,9 @@ export const createSalesbotDemo = ({
           throw new Error("Этап не найден в воронке сделки");
         }
         if (stage.kind === "lost") {
-          throw new Error("Перевести в отказ может только сотрудник: нужна причина");
+          throw new Error(
+            "Перевести в отказ может только сотрудник: нужна причина",
+          );
         }
         if (same(deal.stage_id, stage.id)) return { unchanged: true };
         await update({ stage_id: stage.id });
@@ -311,7 +314,8 @@ export const createSalesbotDemo = ({
       }
       case "field": {
         const field = (await all<CustomField>("custom_fields")).find(
-          (f) => same(f.id, action.field_id) && f.entity === "deal" && f.is_active,
+          (f) =>
+            same(f.id, action.field_id) && f.entity === "deal" && f.is_active,
         );
         if (!field) throw new Error("Поле не найдено");
         const values = { ...(deal.custom_values ?? {}) };
@@ -576,9 +580,7 @@ export const createSalesbotDemo = ({
             ].sort(),
           }
         : {}),
-      version: previous
-        ? previous.version + (scenarioChanged ? 1 : 0)
-        : 1,
+      version: previous ? previous.version + (scenarioChanged ? 1 : 0) : 1,
       updated_at: nowIso(),
     };
   };

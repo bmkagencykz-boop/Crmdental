@@ -362,7 +362,7 @@ export const generateSalesbot = (db: Db) => {
     firstName: "Алия",
     lastName: "Муратова",
     phone: "+7 747 902 18 64",
-    minutesAgo: 2 * DAY / MINUTE,
+    minutesAgo: (2 * DAY) / MINUTE,
     stage: "Записан",
     tags: ["Боль"],
     status: "done",

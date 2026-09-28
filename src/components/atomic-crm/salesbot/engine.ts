@@ -391,10 +391,8 @@ export type EngineHooks = {
   log: (entry: EngineLog) => void | Promise<void>;
 };
 
-export const findStep = (
-  scenario: Scenario,
-  id: string | null | undefined,
-) => (id ? scenario.steps.find((step) => step.id === id) : undefined);
+export const findStep = (scenario: Scenario, id: string | null | undefined) =>
+  id ? scenario.steps.find((step) => step.id === id) : undefined;
 
 /** A new session of a scenario (status running, at its start) */
 export const startSession = (scenario: Scenario): EngineSession => ({
@@ -486,7 +484,11 @@ export const advance = async (
           step.buttons,
         );
         if (!text) {
-          await hooks.log({ step, kind: "skipped", text: "Пустой текст сообщения" });
+          await hooks.log({
+            step,
+            kind: "skipped",
+            text: "Пустой текст сообщения",
+          });
         } else {
           const sendAt = hooks.sendTime?.(now) ?? now;
           await hooks.send(text, sendAt, step);
@@ -663,8 +665,7 @@ export const resumeDue = async (
 ): Promise<EngineSession> => {
   if (
     session.status !== "waiting" ||
-    (!force &&
-      (!session.wait_until || new Date(session.wait_until) > moment))
+    (!force && (!session.wait_until || new Date(session.wait_until) > moment))
   ) {
     return session;
   }
@@ -675,8 +676,7 @@ export const resumeDue = async (
     status: "running",
     wait_until: null,
     state,
-    current_step:
-      (wait === "reply" ? step?.timeout_next : step?.next) || null,
+    current_step: (wait === "reply" ? step?.timeout_next : step?.next) || null,
   };
   if (step?.type === "wait_reply") await hooks.log({ step, kind: "timeout" });
   return advance(resumed, hooks);

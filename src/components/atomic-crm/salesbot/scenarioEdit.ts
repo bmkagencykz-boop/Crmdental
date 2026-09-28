@@ -104,7 +104,12 @@ export const createStep = (type: StepType, id: string): Step => {
         else_next: null,
       };
     case "set":
-      return { id, type, actions: [{ kind: "tag_add", tag_id: null }], next: null };
+      return {
+        id,
+        type,
+        actions: [{ kind: "tag_add", tag_id: null }],
+        next: null,
+      };
     case "create_task":
       return {
         id,

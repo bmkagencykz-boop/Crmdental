@@ -33,6 +33,7 @@ import { ProfilePage } from "../settings/ProfilePage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { ImportPage } from "../import/ImportPage";
 import { ApiDocsPage } from "../pipeline-automation/ApiDocsPage";
+import { SalesbotEditorPage } from "../salesbot/SalesbotEditorPage";
 import { OnboardingPage } from "../onboarding/OnboardingPage";
 import {
   CONFIGURATION_STORE_KEY,
@@ -222,6 +223,10 @@ const DesktopAdmin = (
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />
         <Route path={ApiDocsPage.path} element={<ApiDocsPage />} />
+        <Route
+          path={SalesbotEditorPage.path}
+          element={<SalesbotEditorPage />}
+        />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />
@@ -254,6 +259,9 @@ const DesktopAdmin = (
       <Resource name="stage_trigger_runs" />
       <Resource name="webhooks" />
       <Resource name="webhook_deliveries" />
+      <Resource name="salesbots" />
+      <Resource name="salesbot_sessions" />
+      <Resource name="salesbot_logs" />
     </Admin>
   );
 };

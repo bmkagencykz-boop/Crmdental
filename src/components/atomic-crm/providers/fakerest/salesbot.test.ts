@@ -102,9 +102,9 @@ describe("demo salesbot", () => {
       trigger: "manual",
       current_step: "wait_need",
     });
-    const queued = (await list<Automessage>(dataProvider, "automessages")).filter(
-      (row) => String(row.salesbot_session_id) === String(session!.id),
-    );
+    const queued = (
+      await list<Automessage>(dataProvider, "automessages")
+    ).filter((row) => String(row.salesbot_session_id) === String(session!.id));
     // The demo dispatcher "sends" due messages when the queue is read
     expect(queued).toHaveLength(1);
     expect(queued[0].text).toContain("1 — Боль");

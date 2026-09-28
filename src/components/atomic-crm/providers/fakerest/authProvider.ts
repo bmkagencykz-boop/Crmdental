@@ -1,8 +1,16 @@
 import type { AuthProvider } from "ra-core";
 
 import type { Sale } from "../../types";
+import { createRightsCache } from "../../access-rights/rightsCache";
 import { canAccess } from "../commons/canAccess";
 import { dataProvider } from "./dataProvider";
+
+// Access rights of the signed-in employee (stage 30); short-lived in the
+// demo, where the owner switches to an employee to try the rights
+const myRights = createRightsCache(
+  () => dataProvider.getMyAccessRights(),
+  3_000,
+);
 
 export const DEFAULT_USER = {
   id: 0,
@@ -47,6 +55,7 @@ export const authProvider: AuthProvider = {
   login: async ({ email }) => {
     const user = await getUser(email);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    myRights.clear();
     return Promise.resolve();
   },
   resetPassword: async () => {
@@ -61,6 +70,7 @@ export const authProvider: AuthProvider = {
   },
   logout: () => {
     localStorage.removeItem(USER_STORAGE_KEY);
+    myRights.clear();
     return Promise.resolve();
   },
   checkError: () => Promise.resolve(),
@@ -74,8 +84,13 @@ export const authProvider: AuthProvider = {
     const localUser = userItem ? (JSON.parse(userItem) as Sale) : null;
     if (!localUser) return false;
 
-    // Compute access rights from the sale role
-    return canAccess(localUser.role, params);
+    // Compute access rights from the sale role and the employee's matrix
+    // (stage 30)
+    const rights =
+      localUser.role === "head" || localUser.role === "manager"
+        ? await myRights.get()
+        : null;
+    return canAccess(localUser.role, params, rights?.rights, localUser.id);
   },
   getIdentity: () => {
     const userItem = localStorage.getItem(USER_STORAGE_KEY);

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { InputProps } from "ra-core";
-import { useCanAccess, useGetIdentity, useTranslate } from "ra-core";
+import { CanAccess, useCanAccess, useGetIdentity, useTranslate } from "ra-core";
 
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { BulkTagButton } from "./BulkTagButton";
 import { patientDisplayName } from "./parsePatientText";
 import { TagsList } from "./TagsList";
 import { customFieldsExporter } from "../custom-fields/exporters";
+import { useScopedExporter } from "../access-rights/useAccessRights";
 
 const patientExporter = customFieldsExporter("patient");
 
@@ -37,6 +38,8 @@ export const PatientList = () => {
   const { identity } = useGetIdentity();
   const translate = useTranslate();
   const { data: sources } = useLeadSources();
+  // Access rights (stage 30): the export scope «own» keeps own patients
+  const exporter = useScopedExporter("patients", patientExporter);
   if (!identity) return null;
 
   const filters = [
@@ -76,7 +79,7 @@ export const PatientList = () => {
       filters={filters}
       perPage={50}
       sort={{ field: "last_seen", order: "DESC" }}
-      exporter={patientExporter}
+      exporter={exporter}
     >
       <PatientTable />
     </List>
@@ -93,8 +96,12 @@ const PatientTable = () => {
         bulkActionButtons={
           <>
             <BulkTagButton />
-            <BulkExportButton />
-            <BulkDeleteButton />
+            <CanAccess resource="patients" action="export">
+              <BulkExportButton />
+            </CanAccess>
+            <CanAccess resource="patients" action="delete">
+              <BulkDeleteButton />
+            </CanAccess>
           </>
         }
       >
@@ -172,9 +179,13 @@ const SalesName = ({ id }: { id?: Patient["sales_id"] }) => {
 const PatientListActions = () => (
   <TopToolbar className="items-center">
     <FilterButton iconOnly />
-    <ExportButton iconOnly />
+    <CanAccess resource="patients" action="export">
+      <ExportButton iconOnly />
+    </CanAccess>
     <ImportButton />
-    <CreateButton label="resources.patients.action.new" />
+    <CanAccess resource="patients" action="create">
+      <CreateButton label="resources.patients.action.new" />
+    </CanAccess>
   </TopToolbar>
 );
 

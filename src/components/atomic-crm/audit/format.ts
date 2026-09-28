@@ -108,7 +108,7 @@ export const AUDIT_ENTITY_GROUPS = {
   patient: ["patient"],
   payment: ["payment"],
   task: ["task"],
-  employee: ["employee"],
+  employee: ["employee", "access_rights"],
   settings: [
     "pipeline",
     "stage",
@@ -248,6 +248,26 @@ const definitionChange = (field: string, translate: Translate) => ({
               : String(value),
 });
 
+/**
+ * A cell of the access rights (stage 30): «Сделки · Просмотр: Все → Только
+ * свои»
+ */
+const accessRightsChange = (field: string, translate: Translate) => {
+  const [entity, action] = field.split(".");
+  return {
+    label: `${translate(`access_rights.entities.${entity}`, { _: entity })} · ${translate(`access_rights.actions.${action}`, { _: action })}`,
+    format: (value: unknown) =>
+      value == null
+        ? EMPTY
+        : translate(
+            entity === "reports" || action === "create"
+              ? `access_rights.scopes.${value === "all" ? "yes" : "no"}`
+              : `access_rights.scopes.${value}`,
+            { _: String(value) },
+          ),
+  };
+};
+
 /** Actions that only have an "after" (or a "before") side */
 const CREATION_ACTIONS = new Set(["create", "invite"]);
 const DELETION_ACTIONS = new Set(["delete"]);
@@ -275,19 +295,21 @@ export const describeAuditChanges = (
         | undefined;
       const special =
         customChange(field, lookups, translate) ??
-        (entity === "custom_field"
-          ? definitionChange(field, translate)
-          : entity === "treatment_plan" && field === "status"
-            ? {
-                label: translate("treatment.audit.fields.status"),
-                format: (value: unknown) =>
-                  value == null
-                    ? EMPTY
-                    : translate(`treatment.statuses.${value}`, {
-                        _: String(value),
-                      }),
-              }
-            : null);
+        (entity === "access_rights"
+          ? accessRightsChange(field, translate)
+          : entity === "custom_field"
+            ? definitionChange(field, translate)
+            : entity === "treatment_plan" && field === "status"
+              ? {
+                  label: translate("treatment.audit.fields.status"),
+                  format: (value: unknown) =>
+                    value == null
+                      ? EMPTY
+                      : translate(`treatment.statuses.${value}`, {
+                          _: String(value),
+                        }),
+                }
+              : null);
       // Fields of the treatment plans and the patient card (stage 29)
       const label =
         special?.label ??
@@ -327,7 +349,11 @@ export const auditActor = (
 export const auditActionLabel = (
   entry: Pick<AuditLogEntry, "action">,
   translate: Translate,
-) => translate(`audit.actions.${entry.action}`, { _: entry.action });
+) =>
+  // Rights back to the role's (stage 30)
+  entry.action === "reset"
+    ? translate("access_rights.audit.reset")
+    : translate(`audit.actions.${entry.action}`, { _: entry.action });
 
 const changedName = (entry: AuditLogEntry, field = "name") => {
   const pair = entry.changes?.[field];
@@ -353,17 +379,19 @@ export const auditEntityLabel = (
   translate: Translate,
 ) => {
   const kind =
-    entry.entity === "custom_field"
-      ? translate("custom_fields.audit.entity")
-      : entry.entity === "mis_connection"
-        ? translate("mis_connectors.audit.entity")
-        : SCHEDULE_ENTITIES.includes(entry.entity)
-          ? translate(`schedule.audit.${entry.entity}`)
-          : TREATMENT_ENTITIES.includes(entry.entity)
-            ? translate(`treatment.audit.${entry.entity}`)
-            : translate(`audit.entities.${entry.entity}`, {
-                _: entry.entity,
-              });
+    entry.entity === "access_rights"
+      ? translate("access_rights.audit.entity")
+      : entry.entity === "custom_field"
+        ? translate("custom_fields.audit.entity")
+        : entry.entity === "mis_connection"
+          ? translate("mis_connectors.audit.entity")
+          : SCHEDULE_ENTITIES.includes(entry.entity)
+            ? translate(`schedule.audit.${entry.entity}`)
+            : TREATMENT_ENTITIES.includes(entry.entity)
+              ? translate(`treatment.audit.${entry.entity}`)
+              : translate(`audit.entities.${entry.entity}`, {
+                  _: entry.entity,
+                });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -385,6 +413,7 @@ export const auditEntityLabel = (
           ref);
       break;
     case "employee":
+    case "access_rights":
       name = findName(lookups.sales, entry.entity_id) ?? ref;
       break;
     case "stage":

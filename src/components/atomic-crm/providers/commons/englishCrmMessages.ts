@@ -3729,6 +3729,73 @@ export const englishCrmMessages = {
       },
     },
   },
+  access_rights: {
+    settings: {
+      section: "Access rights",
+      hint: "Who sees, creates, edits, deletes and exports what. Every employee has the rights of their role; the owner changes them for any head or administrator.",
+    },
+    employees: "Employees",
+    matrix: "Rights of the employee",
+    entity: "Section",
+    owner_note:
+      "Owner: every right, cannot be restricted. The clinic always keeps its owner.",
+    integrator_note:
+      "Integrators: read-only deals and patients, access is set in «Integrations».",
+    read_only: "Only the owner changes rights",
+    custom: "Custom rights",
+    by_role: "Role rights",
+    empty: "No employee whose rights can be set",
+    entities: {
+      deals: "Deals",
+      patients: "Patients",
+      tasks: "Tasks",
+      reports: "Reports",
+      settings: "Settings",
+    },
+    actions: {
+      view: "View",
+      create: "Create",
+      edit: "Edit",
+      delete: "Delete",
+      export: "Export",
+    },
+    scopes: {
+      all: "All",
+      own_and_unassigned: "Own and unassigned",
+      own: "Own only",
+      none: "Denied",
+      yes: "Yes",
+      no: "No",
+    },
+    presets: {
+      title: "Presets",
+      head: "Like a head",
+      manager: "Like an administrator",
+      reset: "Role rights",
+    },
+    save: "Save rights",
+    saved: "Rights saved",
+    unsaved: "Unsaved changes",
+    hints: {
+      own: "«Own only» — the employee is responsible. An own patient is one the employee or one of whose deals the employee is responsible for; the patient of a visible deal is always visible.",
+      settings:
+        "The role «Head» gives access to the settings: the switch changes the employee's role.",
+      export:
+        "Export is the CSV download of the lists. The buttons are hidden, but what the employee sees on screen can still be copied by hand.",
+      rows: "Notes, tasks, payments, conversations, files and visits of a deal are visible to whoever sees the deal.",
+    },
+    audit: {
+      entity: "Access rights",
+      reset: "Reset to role rights",
+    },
+    errors: {
+      invalid: "Invalid rights",
+      owner_only: "Only the owner changes access rights",
+      not_found: "Employee not found",
+      fixed: "The rights of the owner and of integrators are fixed",
+      denied: "You have no right to do this",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

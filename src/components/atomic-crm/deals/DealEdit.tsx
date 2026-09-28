@@ -1,4 +1,5 @@
 import {
+  CanAccess,
   EditBase,
   Form,
   useNotify,
@@ -79,7 +80,9 @@ function EditHeader() {
           {translate("resources.deals.action.edit")}
         </h2>
         <div className="flex gap-2 pr-10">
-          <DeleteButton />
+          <CanAccess resource="deals" action="delete" record={deal}>
+            <DeleteButton />
+          </CanAccess>
           <Button asChild variant="outline">
             <Link to={`/deals/${deal.id}/show`}>
               {translate("resources.deals.action.back_to_deal")}

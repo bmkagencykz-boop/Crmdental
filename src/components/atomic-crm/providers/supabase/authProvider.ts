@@ -1,8 +1,17 @@
 import type { AuthProvider } from "ra-core";
 import { supabaseAuthProvider } from "ra-supabase-core";
 
+import type { MyAccessRights } from "../../access-rights/accessRights";
+import { createRightsCache } from "../../access-rights/rightsCache";
 import { canAccess } from "../commons/canAccess";
 import { getSupabaseClient } from "./supabase";
+
+// Access rights of the signed-in employee (stage 30, public.my_access_rights)
+const myRights = createRightsCache(async () => {
+  const { data, error } = await getSupabaseClient().rpc("my_access_rights");
+  if (error) throw error;
+  return (data ?? null) as MyAccessRights | null;
+});
 
 const getBaseAuthProvider = () =>
   supabaseAuthProvider(getSupabaseClient(), {
@@ -90,6 +99,7 @@ const getSale = async () => {
 function clearCache() {
   const storage = getLocalStorage();
   storage?.removeItem(CURRENT_SALE_CACHE_KEY);
+  myRights.clear();
 }
 
 export const getAuthProvider = (): AuthProvider => {
@@ -149,7 +159,12 @@ export const getAuthProvider = (): AuthProvider => {
       const sale = await getSale();
       if (sale == null) return false;
 
-      return canAccess(sale.role, params);
+      // The owner has every right; the others follow their matrix
+      const rights =
+        sale.role === "head" || sale.role === "manager"
+          ? await myRights.get()
+          : null;
+      return canAccess(sale.role, params, rights?.rights, sale.id);
     },
     getAuthorizationDetails(authorizationId: string) {
       return getSupabaseClient().auth.oauth.getAuthorizationDetails(

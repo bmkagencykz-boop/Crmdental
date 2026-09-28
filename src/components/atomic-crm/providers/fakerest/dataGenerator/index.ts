@@ -18,6 +18,7 @@ import { generateMisConnectors } from "./misConnectors";
 import { generateMarketplace } from "./marketplace";
 import { generateSchedule } from "./schedule";
 import { generateTreatmentPlans } from "./treatmentPlans";
+import { generateAccessRights } from "./accessRights";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -42,6 +43,7 @@ export default (): Db => {
   generateSalesbot(db);
   generateOnboarding(db);
   generateMarketplace(db);
+  generateAccessRights(db);
   generateSchedule(db);
   // Last: the price list is appended to the services the other data uses
   generateTreatmentPlans(db);

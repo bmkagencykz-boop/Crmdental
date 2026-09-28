@@ -250,7 +250,7 @@ export const ClinicHeroCard = ({ className }: { className?: string }) => {
         </h2>
         <ArrowButton
           to="/schedule"
-          label={translate("schedule.nav")}
+          label={translate("studio.open_schedule")}
           className="-mt-1 -mr-1 size-11 bg-pill"
         />
       </div>
@@ -315,7 +315,7 @@ export const ActivityCard = ({ className }: { className?: string }) => {
     <StudioCard
       title={translate("studio.activity")}
       to="/deals"
-      toLabel={translate("resources.deals.name", { smart_count: 2 })}
+      toLabel={translate("studio.open_deals")}
       tools={
         <RoundTool label={translate("studio.filters")}>
           <SlidersIcon />
@@ -412,7 +412,7 @@ export const RevenueCard = ({ className }: { className?: string }) => {
     <StudioCard
       title={translate("studio.revenue")}
       to="/reports"
-      toLabel={translate("reports.title")}
+      toLabel={translate("studio.open_reports")}
       tools={
         <RoundTool dark label={translate("studio.filters")}>
           <SlidersIcon />
@@ -548,7 +548,7 @@ export const PaymentsCard = ({ className }: { className?: string }) => {
     <StudioCard
       title={translate("studio.payments")}
       to="/reports"
-      toLabel={translate("reports.title")}
+      toLabel={translate("studio.open_reports")}
       tools={
         <RoundTool label={translate("studio.filters")}>
           <SlidersIcon />
@@ -631,7 +631,7 @@ export const SourcesCard = ({ className }: { className?: string }) => {
     <StudioCard
       title={translate("studio.sources")}
       to="/reports"
-      toLabel={translate("reports.title")}
+      toLabel={translate("studio.open_reports")}
       className={className}
     >
       <p className="text-sm text-muted-foreground">

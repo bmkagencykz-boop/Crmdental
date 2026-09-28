@@ -4074,6 +4074,9 @@ export const russianCrmMessages: CrmMessages = {
     sources: "Источники заявок",
     leads_30_days: "Заявок за 30 дней",
     leads: "заявок",
+    open_deals: "Открыть доску сделок",
+    open_reports: "Открыть отчёты",
+    open_schedule: "Открыть расписание",
   },
 };
 

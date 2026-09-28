@@ -4051,6 +4051,9 @@ export const englishCrmMessages = {
     sources: "Lead sources",
     leads_30_days: "Leads in 30 days",
     leads: "leads",
+    open_deals: "Open the deals board",
+    open_reports: "Open the reports",
+    open_schedule: "Open the schedule",
   },
 } as const;
 

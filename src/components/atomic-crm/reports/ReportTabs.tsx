@@ -12,6 +12,7 @@ import type {
   ReportFilters,
 } from "./reportMath";
 import { useReport } from "./useReport";
+import { PlanServicesReport } from "../treatment/PlanServicesReport";
 
 const useUnits = (): DurationUnits => {
   const translate = useTranslate();
@@ -519,6 +520,8 @@ export const MoneyTab = ({ filters }: { filters: ReportFilters }) => {
           translate("doctors.reports.none"),
         )}
       />
+      {/* Stage 29: the services of the agreed treatment plans */}
+      <PlanServicesReport filters={filters} />
     </div>
   );
 };

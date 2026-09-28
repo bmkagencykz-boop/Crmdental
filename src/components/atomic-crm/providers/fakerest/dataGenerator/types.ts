@@ -69,6 +69,10 @@ import type {
   SalesbotLog,
   SalesbotSession,
 } from "../../../salesbot/types";
+import type {
+  TreatmentPlan,
+  TreatmentPlanItem,
+} from "../../../treatment/types";
 
 export interface Db {
   sales: Sale[];
@@ -140,4 +144,7 @@ export interface Db {
   doctor_exceptions: DoctorException[];
   schedule_settings: Array<Omit<ScheduleSettings, "mis_kind"> & { id: number }>;
   visits: Visit[];
+  // Treatment plans with an estimate (stage 29)
+  treatment_plans: TreatmentPlan[];
+  treatment_plan_items: TreatmentPlanItem[];
 }

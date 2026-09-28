@@ -4,6 +4,7 @@ import type { AutomessageRule } from "../../types";
 import {
   automessageSendTime,
   automessageValues,
+  formatPlanSum,
   formatVisitDate,
   renderTemplate,
   scheduleAutomessages,
@@ -191,6 +192,7 @@ describe("automessageValues", () => {
       дата_визита: "12 марта в 14:30",
       клиника: "Жемчуг",
       врач: null,
+      сумма_плана: null,
     });
   });
 
@@ -201,8 +203,22 @@ describe("automessageValues", () => {
       doctorName: " Ахметова Айгуль ",
     });
     expect(values.врач).toBe("Ахметова Айгуль");
+    expect(values.сумма_плана).toBeNull();
     expect(renderTemplate("{имя}, ваш врач — {врач}.", values)).toBe(
       "Асель, ваш врач — Ахметова Айгуль.",
     );
+  });
+});
+
+describe("{сумма_плана}", () => {
+  it("is the plan amount of the deal, like private.automessage_vars", () => {
+    const values = automessageValues({
+      deal: { appointment_at: null, visit_at: null, plan_amount: 577090 },
+    });
+    expect(values.сумма_плана).toBe("577 090 ₸");
+    expect(
+      renderTemplate("Стоимость вашего плана лечения: {сумма_плана}.", values),
+    ).toBe("Стоимость вашего плана лечения: 577 090 ₸.");
+    expect(formatPlanSum(0)).toBeNull();
   });
 });

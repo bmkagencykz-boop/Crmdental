@@ -24,6 +24,7 @@ export const TEMPLATE_VARIABLES = [
   "дата_визита",
   "клиника",
   "врач",
+  "сумма_плана",
 ] as const;
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number];
 /** The variables, plus {поле:Название} of the custom fields (stage 19) */
@@ -210,6 +211,15 @@ export const scheduleAutomessages = ({
     });
 };
 
+/**
+ * {сумма_плана}: the plan amount of the deal (the total of its agreed
+ * treatment plan, stage 29) as "577 090 ₸", nothing when there is none
+ */
+export const formatPlanSum = (amount: number | null | undefined) =>
+  amount != null && amount > 0
+    ? `${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₸`
+    : null;
+
 /** Values of the variables for a deal. Same as private.automessage_vars */
 export const automessageValues = ({
   deal,
@@ -220,7 +230,8 @@ export const automessageValues = ({
   customFields = [],
   timeZone = DEFAULT_TIME_ZONE,
 }: {
-  deal: Pick<Deal, "appointment_at" | "visit_at" | "custom_values">;
+  deal: Pick<Deal, "appointment_at" | "visit_at" | "custom_values"> &
+    Partial<Pick<Deal, "plan_amount">>;
   patientFirstName?: string | null;
   serviceName?: string | null;
   clinicName?: string | null;
@@ -235,6 +246,7 @@ export const automessageValues = ({
   дата_визита: formatVisitDate(deal.appointment_at ?? deal.visit_at, timeZone),
   клиника: clinicName ?? null,
   врач: doctorName?.trim() || null,
+  сумма_плана: formatPlanSum(deal.plan_amount),
   ...customFieldVars(customFields, "deal", deal.custom_values, timeZone),
 });
 
@@ -252,6 +264,7 @@ export const previewValues = (clinicName?: string | null): TemplateValues => {
     ),
     клиника: clinicName || "Клиника",
     врач: "Ахметова Айгуль",
+    сумма_плана: formatPlanSum(577090),
   };
 };
 

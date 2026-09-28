@@ -48,6 +48,7 @@ import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
 import { getMailingMethods } from "./mailingMethods";
 import { getFileMethods, uploadToDealFolder } from "./fileMethods";
+import { getTreatmentMethods } from "./treatmentMethods";
 import { getUnsortedMethods } from "./unsortedMethods";
 import { getListPlanMethods } from "./listPlanMethods";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
@@ -122,6 +123,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getMarketplaceMethods(),
     // Schedule (stage 28)
     ...getScheduleMethods(),
+    // Treatment plans with an estimate (stage 29)
+    ...getTreatmentMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

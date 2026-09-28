@@ -577,6 +577,7 @@ from public.deals d
     join public.patients p on p.organization_id = d.organization_id and p.id = d.patient_id
     left join public.doctors dr on dr.organization_id = d.organization_id and dr.id = d.doctor_id;
 
+-- Redefined with the columns of the light patient card in 29_treatment_plans.sql
 create or replace view public.patients_summary with (security_invoker = on) as
 select
     p.id,

@@ -1,3 +1,4 @@
+import { formatPlanSum } from "../providers/commons/automessages";
 import type { Deal, QuickReply } from "../types";
 
 /** Variables of the quick replies, as typed in the text */
@@ -7,6 +8,7 @@ export const QUICK_REPLY_VARIABLES = [
   "дата_визита",
   "клиника",
   "сотрудник",
+  "сумма_плана",
 ] as const;
 export type QuickReplyVariable = (typeof QUICK_REPLY_VARIABLES)[number];
 
@@ -98,10 +100,10 @@ export const quickReplyContext = ({
   salesFirstName,
   timeZone,
 }: {
-  deal?: Pick<
-    Deal,
-    "patient_first_name" | "appointment_at" | "visit_at"
-  > | null;
+  deal?:
+    | (Pick<Deal, "patient_first_name" | "appointment_at" | "visit_at"> &
+        Partial<Pick<Deal, "plan_amount">>)
+    | null;
   serviceName?: string | null;
   clinicName?: string | null;
   salesFirstName?: string | null;
@@ -115,6 +117,7 @@ export const quickReplyContext = ({
   ),
   клиника: clinicName,
   сотрудник: salesFirstName,
+  сумма_плана: formatPlanSum(deal?.plan_amount) ?? undefined,
 });
 
 /** Replies whose title or shortcut contains the query, in their order */

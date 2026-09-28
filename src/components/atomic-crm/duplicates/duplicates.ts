@@ -1,6 +1,7 @@
 import type { Identifier } from "ra-core";
 
 import type { MessengerTransport, Patient } from "../types";
+import { mergeMedical } from "../treatment/medical";
 
 /**
  * Duplicate patients (stage 18): the rules of supabase/schemas/
@@ -376,6 +377,8 @@ export const mergePatientRecords = <T extends Patient>(
     messaging_opt_out: !!(keep.messaging_opt_out || merge.messaging_opt_out),
     messaging_opt_out_at:
       keep.messaging_opt_out_at ?? merge.messaging_opt_out_at ?? null,
+    // The light patient card (stage 29)
+    ...mergeMedical(keep, merge),
   };
 };
 

@@ -155,7 +155,9 @@ begin
       'услуга', sv.name,
       'дата_визита', private.format_visit_date(coalesce(deal.appointment_at, deal.visit_at), o.timezone),
       'клиника', coalesce(nullif(btrim(c.config ->> 'title'), ''), o.name),
-      'врач', nullif(btrim(dr.name), '')
+      'врач', nullif(btrim(dr.name), ''),
+      -- The total of the agreed treatment plan (stage 29)
+      'сумма_плана', case when deal.plan_amount > 0 then private.format_tenge(deal.plan_amount) || ' ₸' end
     ) || private.custom_field_vars(o.id, 'deal', deal.custom_values, o.timezone)
     from public.organizations o
       left join public.configuration c on c.organization_id = o.id

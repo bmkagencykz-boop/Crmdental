@@ -139,7 +139,7 @@ export const ShortcutsButton = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex size-11 items-center justify-center rounded-full bg-card text-sm font-semibold text-foreground shadow-card transition-colors hover:text-primary"
+        className="flex size-12 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-105"
         aria-label={label}
         title={`${label} (?)`}
       >

@@ -56,19 +56,9 @@ export function UserMenu({ children }: UserMenuProps) {
             type="button"
             aria-label={translate("ra.auth.user_menu")}
             title={identity?.fullName}
-            className="flex items-center gap-3 rounded-full py-1 pr-1 pl-3 text-right outline-none hover:bg-card focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold text-foreground">
-                {identity?.fullName}
-              </span>
-              {identity?.role ? (
-                <span className="text-xs text-muted-foreground">
-                  {translate(`crm.roles.${identity.role}`, { _: "" })}
-                </span>
-              ) : null}
-            </span>
-            <Avatar className="size-11">
+            <Avatar className="size-12">
               <AvatarImage src={identity?.avatar} role="presentation" />
               <AvatarFallback>{identity?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
@@ -85,6 +75,11 @@ export function UserMenu({ children }: UserMenuProps) {
               <p className="text-sm font-medium leading-none">
                 {identity?.fullName}
               </p>
+              {identity?.role ? (
+                <p className="text-xs text-muted-foreground">
+                  {translate(`crm.roles.${identity.role}`, { _: "" })}
+                </p>
+              ) : null}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

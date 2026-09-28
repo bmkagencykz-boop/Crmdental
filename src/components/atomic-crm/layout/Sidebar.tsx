@@ -6,12 +6,12 @@ import {
   TeamGlyph,
 } from "./navGlyphs";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
-import { Link, matchPath, useLocation } from "react-router";
+import { Link, matchPath, useLocation, useNavigate } from "react-router";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 import { ChangelogPage } from "../misc/ChangelogPage";
-import { type NavItem, SIDEBAR_WIDTH, useNavItems } from "./navigation";
+import { type NavItem, SIDEBAR_WIDTH } from "./navigation";
 
 /**
  * Column of square-ish buttons with short labels under each icon (amoCRM
@@ -20,7 +20,6 @@ import { type NavItem, SIDEBAR_WIDTH, useNavItems } from "./navigation";
 export const Sidebar = () => {
   const translate = useTranslate();
   const location = useLocation();
-  const items = useNavItems();
   const sales: NavItem = {
     to: "/sales",
     match: "/sales/*",
@@ -56,23 +55,12 @@ export const Sidebar = () => {
 
   return (
     <aside
-      className="fixed top-20 bottom-0 left-0 z-30 flex flex-col items-center overflow-y-auto pt-4 pb-6 [scrollbar-width:none]"
+      className="fixed top-24 bottom-0 left-0 z-30 flex flex-col items-center gap-3 overflow-y-auto pt-2 pb-6 [scrollbar-width:none]"
       style={{ width: SIDEBAR_WIDTH }}
       aria-label={translate("crm.navigation.label")}
     >
-      <nav className="flex flex-1 flex-col items-center gap-3">
-        {items.map((item) =>
-          item.resource ? (
-            // The integrator (stage 25) only sees Сделки, Интеграции, Настройки
-            <CanAccess key={item.to} resource={item.resource} action="menu">
-              <SidebarLink item={item} active={isActive(item)} />
-            </CanAccess>
-          ) : (
-            <SidebarLink key={item.to} item={item} active={isActive(item)} />
-          ),
-        )}
-      </nav>
-      <div className="mt-6 flex flex-col items-center gap-3">
+      <BackButton />
+      <div className="mt-3 flex flex-col items-center gap-3">
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />
         </CanAccess>
@@ -92,6 +80,34 @@ export const Sidebar = () => {
   );
 };
 
+/** «←»: back to the previous screen */
+const BackButton = () => {
+  const translate = useTranslate();
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(-1)}
+      className="flex size-12 items-center justify-center rounded-full bg-card text-foreground transition-colors hover:bg-pill"
+      aria-label={translate("ra.action.back")}
+      title={translate("ra.action.back")}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="size-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M19 12H5M11 6l-6 6 6 6" />
+      </svg>
+    </button>
+  );
+};
+
 /** A round button; the section name shows on hover (and to screen readers) */
 const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
   const Icon = item.icon;
@@ -104,10 +120,10 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
     >
       <span
         className={cn(
-          "relative flex size-12 items-center justify-center rounded-full transition-all duration-200 group-focus-visible:ring-2 group-focus-visible:ring-ring",
+          "relative flex size-12 items-center justify-center rounded-full transition-colors duration-200 group-focus-visible:ring-2 group-focus-visible:ring-ring",
           active
-            ? "bg-primary text-primary-foreground shadow-[0_10px_24px_-10px_rgba(239,59,110,0.8)]"
-            : "bg-card text-foreground/70 shadow-card group-hover:text-primary",
+            ? "bg-primary text-primary-foreground"
+            : "bg-card text-foreground group-hover:bg-pill",
         )}
       >
         <Icon className="size-[1.3rem]" />

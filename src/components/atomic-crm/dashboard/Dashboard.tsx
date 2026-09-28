@@ -2,6 +2,13 @@ import { useCanAccess } from "ra-core";
 import { Navigate } from "react-router";
 import { DashboardActivityLog } from "./DashboardActivityLog";
 import { DashboardHeader, DayTimeline, InWorkDeals } from "./DashboardHome";
+import {
+  ActivityCard,
+  ClinicHeroCard,
+  PaymentsCard,
+  RevenueCard,
+  SourcesCard,
+} from "./StudioCards";
 import { HotPatients } from "./HotPatients";
 import { MonthPlanWidget } from "./MonthPlanWidget";
 import { TasksList } from "./TasksList";
@@ -24,13 +31,20 @@ const DashboardContent = () => (
   <>
     <OnboardingDashboardCard />
     <DashboardHeader />
+    <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <ClinicHeroCard className="lg:col-span-3 lg:row-span-2" />
+      <ActivityCard className="lg:col-span-4" />
+      <RevenueCard className="lg:col-span-5" />
+      <PaymentsCard className="lg:col-span-5" />
+      <SourcesCard className="lg:col-span-4" />
+    </div>
     <InWorkDeals />
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
-      <div className="flex flex-col gap-6 md:col-span-7">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
+      <div className="flex flex-col gap-5 md:col-span-7">
         <DayTimeline />
         <TasksList />
       </div>
-      <div className="flex flex-col gap-6 md:col-span-5">
+      <div className="flex flex-col gap-5 md:col-span-5">
         <TodayInClinic />
         <MonthPlanWidget />
         <WaitingDeals />

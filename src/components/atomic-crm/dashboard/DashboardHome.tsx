@@ -21,7 +21,10 @@ import {
 } from "../dictionaries/useDictionaries";
 import { formatMoney } from "../deals/kanbanFormat";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { accent } from "../misc/accent";
+import { Molar3D } from "../misc/Dental3D";
 import type { Deal, Sale, Task, TaskType } from "../types";
+import { ArrowButton } from "./StudioCards";
 
 const startOfToday = () => {
   const date = new Date();
@@ -161,8 +164,8 @@ const Figure = ({
     <span className="flex items-end gap-2">
       <span
         className={cn(
-          "text-[40px] leading-none font-semibold tracking-[-0.03em] tabular-nums",
-          accent ? "text-primary" : "text-foreground",
+          "text-[40px] leading-none font-light tracking-[-0.04em] tabular-nums",
+          accent ? "text-brand-link" : "text-foreground",
         )}
       >
         {value}
@@ -267,9 +270,14 @@ export const InWorkDeals = () => {
           {translate("dashboard_home.nothing_in_work")}
         </p>
       ) : (
-        <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pt-3 pb-3 [scrollbar-width:thin]">
-          {cards.map((deal) => (
-            <DealWorkCard key={deal.id} deal={deal} sales={sales} />
+        <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-3 [scrollbar-width:thin]">
+          {cards.map((deal, index) => (
+            <DealWorkCard
+              key={deal.id}
+              deal={deal}
+              sales={sales}
+              highlighted={index === 0}
+            />
           ))}
         </div>
       )}
@@ -335,17 +343,25 @@ const chipTone = (deal: Deal) => {
   }
   return "violet" as const;
 };
-const CHIP_CLASS = {
-  blue: "bg-tone-blue text-white",
-};
 
-/** A deal as the reference's «наряд» card */
-const DealWorkCard = ({ deal, sales }: { deal: Deal; sales: Sale[] }) => {
+/**
+ * A deal as the reference's person card: the patient on top with the round
+ * «↗» in the notch, the service and its date in the middle, the stage pill
+ * and the «write» / «call» buttons at the bottom. The first card is neon.
+ */
+const DealWorkCard = ({
+  deal,
+  sales,
+  highlighted,
+}: {
+  deal: Deal;
+  sales: Sale[];
+  highlighted: boolean;
+}) => {
   const translate = useTranslate();
   const { currency } = useConfigurationContext();
   const { data: stages } = useStages();
   const { data: services } = useServices();
-  const [expanded, setExpanded] = useState(false);
   const sale = findById(sales, deal.sales_id);
   const saleName = sale ? `${sale.first_name} ${sale.last_name}` : undefined;
   const stage = findById(stages, deal.stage_id);
@@ -360,155 +376,182 @@ const DealWorkCard = ({ deal, sales }: { deal: Deal; sales: Sale[] }) => {
           ),
         )
       : 0;
-  const patient = [deal.patient_last_name, deal.patient_first_name]
-    .filter(Boolean)
-    .join(" ");
+  const patient =
+    [deal.patient_last_name, deal.patient_first_name]
+      .filter(Boolean)
+      .join(" ") ||
+    deal.patient_phone ||
+    translate("dashboard_home.patient");
+  const service = findById(services, deal.service_id)?.name ?? deal.name ?? "—";
+  const when = shortDateTime(deal.appointment_at ?? deal.next_task_due_at);
+  const people = [deal.doctor_name, saleName].filter(Boolean) as string[];
   return (
     <article
-      className="relative flex w-[19rem] shrink-0 snap-start flex-col gap-3 rounded-xl bg-card p-4 shadow-card"
+      className="relative w-[21rem] shrink-0 snap-start"
       data-testid="dashboard-deal-card"
     >
-      <span className="absolute -top-3 right-4 flex gap-1.5">
-        {tone === "red" ? (
-          <span className="rounded-full bg-tone-orange px-2.5 py-0.5 text-[11px] font-semibold text-white">
-            {translate("dashboard_home.overdue_days", {
-              smart_count: overdueDays,
-            })}
-          </span>
-        ) : null}
-        {stage ? (
+      <div
+        className={cn(
+          "notch flex h-full flex-col gap-5 rounded-[28px] p-4",
+          highlighted ? "bg-neon text-neon-ink" : "bg-card",
+        )}
+      >
+        <div className="flex items-center gap-3 pr-16">
           <span
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-              tone === "blue" ? CHIP_CLASS.blue : "bg-tone-violet text-white",
+              "flex size-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+              highlighted ? "bg-white/70" : "bg-pill",
             )}
           >
-            {stage.name}
+            {initials(patient)}
           </span>
-        ) : null}
-      </span>
-      <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-tone-pink-soft text-xs font-bold text-primary">
-          {initials(deal.doctor_name ?? saleName) || "—"}
-        </span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <div className="text-[11px] text-muted-foreground">
-            {translate(
-              deal.doctor_name
-                ? "dashboard_home.doctor"
-                : "dashboard_home.responsible",
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[19px] font-normal tracking-[-0.02em]">
+              {patient}
+            </div>
+            <div
+              className={cn(
+                "truncate text-xs",
+                highlighted ? "text-neon-ink/70" : "text-muted-foreground",
+              )}
+            >
+              {formatMoney(deal.plan_amount, currency)} · № {deal.id}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex size-12 shrink-0 items-center justify-center rounded-full border",
+              highlighted
+                ? "border-neon-ink/15 bg-white/60"
+                : "border-border bg-pill",
             )}
-          </div>
-          <div className="truncate text-sm font-semibold">
-            {deal.doctor_name ?? saleName ?? "—"}
+          >
+            <Molar3D className="h-7" tone={highlighted ? "ink" : "neon"} />
+          </span>
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[17px] font-normal tracking-[-0.01em]">
+              {service}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs">
+              <span className="flex">
+                {people.map((name, index) => (
+                  <span
+                    key={name}
+                    className={cn(
+                      "-ml-1.5 flex size-5 items-center justify-center rounded-full border text-[8px] font-bold first:ml-0",
+                      highlighted
+                        ? "border-neon bg-white text-neon-ink"
+                        : "border-card bg-primary text-primary-foreground",
+                    )}
+                    style={{ zIndex: 5 - index }}
+                    title={name}
+                  >
+                    {initials(name)}
+                  </span>
+                ))}
+              </span>
+              <span className="truncate tabular-nums">
+                {when ?? translate("dashboard_home.no_task")}
+              </span>
+              {overdueDays > 0 ? (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 text-[10px] font-semibold",
+                    highlighted
+                      ? "bg-neon-ink text-white"
+                      : "bg-neon text-neon-ink",
+                  )}
+                >
+                  {translate("dashboard_home.overdue_days", {
+                    smart_count: overdueDays,
+                  })}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
-        <div className="text-right text-[11px] leading-tight text-muted-foreground tabular-nums">
-          <div>
-            {new Intl.DateTimeFormat("ru-RU").format(new Date(deal.created_at))}
-          </div>
-          <div className="font-semibold text-foreground">№ {deal.id}</div>
-        </div>
-      </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-[13px] leading-tight">
-        <Field
-          label={translate("dashboard_home.patient")}
-          value={patient || deal.patient_phone || "—"}
-        />
-        <Field
-          label={translate("dashboard_home.appointment")}
-          value={shortDateTime(deal.appointment_at) ?? "—"}
-        />
-        {deal.doctor_name ? (
-          <Field
-            label={translate("dashboard_home.responsible")}
-            value={saleName ?? "—"}
-          />
-        ) : (
-          <Field
-            label={translate("dashboard_home.stage")}
-            value={stage?.name ?? "—"}
-          />
-        )}
-        <Field
-          label={translate("dashboard_home.next_task")}
-          value={shortDateTime(deal.next_task_due_at) ?? "—"}
-        />
-        <Field
-          label={translate("dashboard_home.service")}
-          value={findById(services, deal.service_id)?.name ?? deal.name ?? "—"}
-        />
-        <Field
-          label={translate("dashboard_home.amount")}
-          value={formatMoney(deal.plan_amount, currency)}
-        />
-      </dl>
-      {expanded ? (
-        <div className="rounded-lg bg-muted px-3 py-2 text-[13px] leading-snug">
-          {deal.next_task_text ? (
-            <p>{deal.next_task_text}</p>
-          ) : (
-            <p className="text-muted-foreground">
-              {translate("dashboard_home.no_task")}
-            </p>
-          )}
-          {deal.last_message_text ? (
-            <p className="mt-1 line-clamp-2 text-muted-foreground">
-              «{deal.last_message_text}»
-            </p>
+        <div className="mt-auto flex items-center gap-2">
+          <Link
+            to={`/deals/${deal.id}/show`}
+            className={cn(
+              "flex h-12 min-w-0 flex-1 items-center gap-2 rounded-full border pr-4 pl-1.5 text-sm no-underline",
+              highlighted
+                ? "border-neon-ink/20 text-neon-ink"
+                : "border-border text-foreground hover:bg-pill",
+            )}
+          >
+            <span
+              className="size-9 shrink-0 rounded-full"
+              style={{ background: accent(stage?.color) }}
+            />
+            <span className="truncate">{stage?.name ?? "—"}</span>
+            <span className="ml-auto text-xs" aria-hidden>
+              ▾
+            </span>
+          </Link>
+          <Link
+            to={`/deals/${deal.id}/show`}
+            className={cn(
+              "flex size-12 shrink-0 items-center justify-center rounded-full border no-underline",
+              highlighted
+                ? "border-neon-ink/20 text-neon-ink"
+                : "border-border text-foreground hover:bg-pill",
+            )}
+            aria-label={translate("dashboard_home.write")}
+            title={translate("dashboard_home.write")}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="size-[18px]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.6}
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
+              <path d="M4 7l8 6 8-6" />
+            </svg>
+          </Link>
+          {deal.patient_phone ? (
+            <a
+              href={`tel:${deal.patient_phone}`}
+              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground no-underline"
+              aria-label={translate("dashboard_home.call")}
+              title={deal.patient_phone}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-[18px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.6}
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z" />
+              </svg>
+            </a>
           ) : null}
         </div>
-      ) : null}
-      <div className="mt-auto flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          className="flex size-9 items-center justify-center rounded-full bg-muted text-foreground hover:bg-foreground hover:text-background"
-          aria-label={translate(
-            expanded ? "dashboard_home.collapse" : "dashboard_home.expand",
-          )}
-          aria-expanded={expanded}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className={cn(
-              "size-4 transition-transform",
-              expanded && "rotate-180",
-            )}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
-        <Link
-          to={`/deals/${deal.id}/show`}
-          className="flex h-9 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground no-underline shadow-[0_10px_22px_-12px_rgba(239,59,110,0.9)] hover:bg-primary/90"
-        >
-          {translate("dashboard_home.open_deal")}
-        </Link>
       </div>
+      <ArrowButton
+        to={`/deals/${deal.id}/show`}
+        label={translate("dashboard_home.open_deal")}
+        className="absolute top-0 right-0"
+      />
     </article>
   );
 };
 
-const Field = ({ label, value }: { label: string; value: string }) => (
-  <div className="min-w-0">
-    <dt className="text-[11px] text-muted-foreground">{label}</dt>
-    <dd className="truncate font-semibold">{value}</dd>
-  </div>
-);
-
 const TASK_TONE: Record<TaskType, string> = {
-  call: "bg-primary text-primary-foreground",
-  message: "bg-tone-blue text-white",
+  call: "bg-neon text-neon-ink",
+  message: "bg-primary text-primary-foreground",
   meeting: "bg-tone-violet text-white",
-  reminder: "bg-tone-orange text-white",
-  other: "bg-tone-pink-soft text-foreground",
+  reminder: "bg-neon-soft text-neon-ink",
+  other: "bg-pill text-foreground",
 };
 
 /**

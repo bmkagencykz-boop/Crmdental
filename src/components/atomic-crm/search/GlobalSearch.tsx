@@ -139,7 +139,7 @@ export const GlobalSearch = () => {
   return (
     <div
       ref={rootRef}
-      className="relative w-full max-w-2xl"
+      className="relative w-full"
       onBlur={(event) => {
         if (!rootRef.current?.contains(event.relatedTarget as Node)) close();
       }}
@@ -164,25 +164,24 @@ export const GlobalSearch = () => {
         onFocus={() => setOpen(true)}
         onClick={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        className="h-12 w-full rounded-full border-0 bg-card pr-20 pl-12 text-sm shadow-card outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30"
+        className="h-12 w-full rounded-full border-0 bg-card pr-14 pl-5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30"
       />
-      <svg
-        viewBox="0 0 24 24"
-        className="pointer-events-none absolute top-1/2 left-4.5 size-[18px] -translate-y-1/2 text-muted-foreground"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        aria-hidden="true"
+      <span
+        className="pointer-events-none absolute top-1/2 right-1.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground"
+        aria-hidden
       >
-        <circle cx="11" cy="11" r="6.5" />
-        <path d="M16 16l4 4" />
-      </svg>
-      {q ? null : (
-        <kbd className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-          Ctrl K
-        </kbd>
-      )}
+        <svg
+          viewBox="0 0 24 24"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+        >
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="M16 16l4 4" />
+        </svg>
+      </span>
       {open ? (
         <div
           id={listId}

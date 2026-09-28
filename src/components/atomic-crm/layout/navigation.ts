@@ -13,7 +13,7 @@ import { useLocation } from "react-router";
 
 import { UNSORTED_FILTER } from "../unsorted/unsorted";
 
-export const SIDEBAR_WIDTH = "6.5rem";
+export const SIDEBAR_WIDTH = "6rem";
 
 export type NavItem = {
   to: string;

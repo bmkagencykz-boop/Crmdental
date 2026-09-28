@@ -22,6 +22,9 @@
   --color-tone-green: var(--tone-green);
   --color-tone-red: var(--tone-red);
   --color-tone-pink-soft: var(--tone-pink-soft);
+  --color-neon: var(--neon);
+  --color-neon-soft: var(--neon-soft);
+  --color-neon-ink: var(--neon-ink);
   --color-surface: var(--surface);
   --color-pill: var(--pill);
   --color-pill-hover: var(--pill-hover);
@@ -66,85 +69,110 @@
 }
 
 /*
- * Palette «Dental Studio»: one light theme (the dark one was removed by the
- * user), soft grey canvas, white cards with large rounded corners and no
- * borders, pill-shaped controls. The brand pink (#EF3B6E) is the accent of
- * actions and the active state; blue, violet, orange, green and red mark
- * statuses (like the chips «В клинике», «В лабе», «2 дня» of the reference).
+ * Palette «Dental CRM · Studio»: a monochrome light-grey world (canvas,
+ * lighter cards, white controls), black pills for the active and main
+ * actions, and one acid pink for highlights — chips, the active bar of a
+ * chart, the hero card, 3D teeth. Huge light titles, large radii, cards
+ * with a notch for their round «↗» button.
  */
 :root {
   color-scheme: light;
-  --radius: 1.125rem;
-  --background: #eeeef0;
-  --foreground: #16141a;
-  --card: #ffffff;
-  --card-foreground: #16141a;
-  --popover: #ffffff;
-  --popover-foreground: #16141a;
-  --primary: #ef3b6e;
+  --radius: 1.5rem;
+  --background: #e4e4e6;
+  --foreground: #121214;
+  --card: #f2f2f3;
+  --card-foreground: #121214;
+  --popover: #fbfbfb;
+  --popover-foreground: #121214;
+  --primary: #151517;
   --primary-foreground: #ffffff;
-  --secondary: #f3f2f5;
-  --secondary-foreground: #16141a;
-  --muted: #f3f2f5;
-  --muted-foreground: #7a7680;
-  --accent: #fdeef3;
-  --accent-foreground: #16141a;
+  --secondary: #e9e9eb;
+  --secondary-foreground: #121214;
+  --muted: #e8e8ea;
+  --muted-foreground: #88888e;
+  --accent: #ececee;
+  --accent-foreground: #121214;
   --destructive: #e5484d;
-  --border: rgba(22, 20, 26, 0.08);
-  --input: rgba(22, 20, 26, 0.1);
-  --ring: #ef3b6e;
-  /* Status colors */
-  --tone-blue: #2f80ed;
-  --tone-violet: #7b61ff;
-  --tone-orange: #f2994a;
-  --tone-green: #2fb56a;
+  --border: rgba(18, 18, 20, 0.08);
+  --input: rgba(18, 18, 20, 0.12);
+  --ring: #ff2e93;
+  /* The acid pink and its companions */
+  --neon: #ff2e93;
+  --neon-soft: #ffc2e0;
+  --neon-ink: #121214;
+  --tone-blue: #3b6cff;
+  --tone-violet: #8b5cff;
+  --tone-orange: #ff8a3d;
+  --tone-green: #1faa66;
   --tone-red: #e5484d;
-  --tone-pink-soft: #ffe1ea;
-  --brand-blue: #ef3b6e;
-  --brand-link: #d6275b;
+  --tone-pink-soft: #ffd6ea;
+  --brand-blue: #151517;
+  --brand-link: #e0157a;
   --brand-red: #e5484d;
-  --brand-yellow: #f2994a;
+  --brand-yellow: #ff8a3d;
   --warn: #c86a14;
-  --brand-green: #2fb56a;
-  --brand-lime: #ffe1ea;
-  --brand-pink: #ef3b6e;
-  --brand-rose: #f47c9c;
-  --brand-blush: #ffe1ea;
-  /* Panels (columns, page blocks) and pills (rows, controls) */
-  --surface: #ffffff;
-  --surface-strong: #f3f2f5;
+  --brand-green: #1faa66;
+  --brand-lime: #ff2e93;
+  --brand-pink: #ff2e93;
+  --brand-rose: #ff6fb3;
+  --brand-blush: #ffd6ea;
+  --surface: #f2f2f3;
+  --surface-strong: #e8e8ea;
   --surface-border: transparent;
-  --pill: #ffffff;
-  --pill-hover: #f7f6f9;
-  --field: #f3f2f5;
-  --shadow-soft: 0 18px 40px -22px rgba(22, 20, 26, 0.35);
-  --shadow-card:
-    0 1px 2px rgba(22, 20, 26, 0.04), 0 6px 20px -12px rgba(22, 20, 26, 0.12);
-  --chart-1: #ef3b6e;
-  --chart-2: #7b61ff;
-  --chart-3: #2f80ed;
-  --chart-4: #f2994a;
-  --chart-5: #2fb56a;
+  --pill: #fbfbfb;
+  --pill-hover: #ffffff;
+  --field: #fbfbfb;
+  --shadow-soft: 0 24px 48px -28px rgba(18, 18, 20, 0.35);
+  --shadow-card: none;
+  --chart-1: #ff2e93;
+  --chart-2: #151517;
+  --chart-3: #8b5cff;
+  --chart-4: #3b6cff;
+  --chart-5: #ff8a3d;
   --sidebar: transparent;
-  --sidebar-foreground: #16141a;
-  --sidebar-primary: #ef3b6e;
+  --sidebar-foreground: #121214;
+  --sidebar-primary: #151517;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3f2f5;
-  --sidebar-accent-foreground: #16141a;
+  --sidebar-accent: #e8e8ea;
+  --sidebar-accent-foreground: #121214;
   --sidebar-border: transparent;
-  --sidebar-ring: #ef3b6e;
-  --nav-button: #ffffff;
+  --sidebar-ring: #ff2e93;
+  --nav-button: #f2f2f3;
   --nav-button-border: transparent;
-  --avatar-0: #ef3b6e;
-  --avatar-1: #7b61ff;
-  --avatar-2: #2f80ed;
-  --avatar-3: #f2994a;
-  --avatar-4: #2fb56a;
-  --avatar-5: #f47c9c;
-  --avatar-6: #1fa3a3;
-  --avatar-7: #9d8189;
-  --avatar-8: #b23a5b;
-  --avatar-9: #5b5864;
+  --avatar-0: #ff2e93;
+  --avatar-1: #151517;
+  --avatar-2: #8b5cff;
+  --avatar-3: #3b6cff;
+  --avatar-4: #ff8a3d;
+  --avatar-5: #1faa66;
+  --avatar-6: #ff6fb3;
+  --avatar-7: #5b5b62;
+  --avatar-8: #b8b8bf;
+  --avatar-9: #2b2b30;
+}
+
+/* Hatching of charts and «in progress» fills */
+@utility hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(18, 18, 20, 0.28) 0 1.5px,
+    transparent 1.5px 7px
+  );
+}
+
+/*
+ * A card with a round notch in its top-right corner, for the «↗» button
+ * that sits in it (the reference's cards). --notch is the button size.
+ */
+@utility notch {
+  --notch: 3.5rem;
+  --notch-gap: 0.4rem;
+  mask: radial-gradient(
+    circle calc(var(--notch) / 2 + var(--notch-gap)) at
+      calc(100% - var(--notch) / 2) calc(var(--notch) / 2),
+    transparent 99%,
+    #000 100%
+  );
 }
 
 /* Panel: the main surface of the app (board columns, page blocks) */

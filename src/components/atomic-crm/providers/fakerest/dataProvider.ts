@@ -119,6 +119,7 @@ import { createSalesbotDemo } from "./salesbot";
 import { createMarketplaceDemo } from "./marketplace";
 import { createScheduleDemo } from "./schedule";
 import { createTreatmentDemo } from "./treatmentPlans";
+import { createMarketingDemo } from "./marketing";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -321,6 +322,12 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     getDataProvider: () => dataProvider,
     logAudit: (row) => logAudit(row),
+  });
+  // Marketing analytics: ad spend, UTM tags (stage 32)
+  const marketingDemo = createMarketingDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -797,6 +804,7 @@ export const createDataProvider = ({
     ...marketplaceDemo.methods,
     ...scheduleDemo.methods,
     ...treatmentDemo.methods,
+    ...marketingDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1696,6 +1704,8 @@ export const createDataProvider = ({
     [
       // First: the integrator only reads the deals (stage 25)
       ...marketplaceDemo.callbacks,
+      // Before the deal rules: the source of a deal comes from its utm_source
+      ...marketingDemo.callbacks,
       ...mailingDemo.callbacks,
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,

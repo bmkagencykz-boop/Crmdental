@@ -184,8 +184,10 @@ begin
     from public.deals d
     where d.organization_id = org_id and d.id = row_deal_id;
   end if;
-  -- Rows of a patient without a deal (account operations, stage 36)
-  if row_patient_id is null and entity_name = 'account_operation' then
+  -- Rows of a patient without a deal (account operations, stage 36; the
+  -- patient card, stage 37)
+  if row_patient_id is null and entity_name in ('account_operation', 'patient_tooth', 'visit_record',
+    'patient_questionnaire', 'patient_consent', 'patient_file') then
     row_patient_id := (row_data ->> 'patient_id')::bigint;
   end if;
 

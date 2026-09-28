@@ -528,7 +528,8 @@ $$;
 --
 
 -- The patients with the light patient card (first declared in
--- 19_custom_fields.sql; the new columns come last)
+-- 19_custom_fields.sql; the new columns come last). Redefined again with
+-- the IIN and the card number in 37_patient_card.sql
 create or replace view public.patients_summary with (security_invoker = on) as
 select
     p.id,

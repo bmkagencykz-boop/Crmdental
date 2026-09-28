@@ -125,6 +125,7 @@ import { createAccessRightsDemo } from "./accessRights";
 import { createBranchesDemo } from "./branches";
 import { createPriceListDemo } from "./priceList";
 import { createPaymentsDemo } from "./payments";
+import { createPatientCardDemo } from "./patientCard";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -379,6 +380,21 @@ export const createDataProvider = ({
     reportsAllowed: async () =>
       (await accessDemo.methods.getMyAccessRights())?.rights.reports.view ===
       "all",
+  });
+  // The full patient card (stage 37)
+  const patientCardDemo = createPatientCardDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
+    patientVisible: async (patientId) => {
+      const patient = (await all<Patient>("patients")).find(
+        (row) => String(row.id) === String(patientId),
+      );
+      return (
+        !!patient && (await accessDemo.filterPatients([patient])).length > 0
+      );
+    },
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -878,6 +894,7 @@ export const createDataProvider = ({
     ...branchesDemo.methods,
     ...priceListDemo.methods,
     ...paymentsDemo.methods,
+    ...patientCardDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1814,6 +1831,8 @@ export const createDataProvider = ({
       ...priceListDemo.callbacks,
       // Payments (stage 36): the ledger and the deal payments in sync
       ...paymentsDemo.callbacks,
+      // The patient card (stage 37): IIN, the chart and its history, records
+      ...patientCardDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

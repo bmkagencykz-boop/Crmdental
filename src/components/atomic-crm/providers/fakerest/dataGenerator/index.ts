@@ -23,6 +23,7 @@ import { generateAccessRights } from "./accessRights";
 import { generateBranches } from "./branches";
 import { generatePriceList } from "./priceList";
 import { generatePayments } from "./payments";
+import { generatePatientCard } from "./patientCard";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -59,6 +60,8 @@ export default (): Db => {
   generateBranches(db);
   // Payments, deposits and the cash desk (stage 36): after the branches
   generatePayments(db);
+  // The full patient card (stage 37): after the plans and the visits
+  generatePatientCard(db);
   db.configuration = [
     {
       id: 1,

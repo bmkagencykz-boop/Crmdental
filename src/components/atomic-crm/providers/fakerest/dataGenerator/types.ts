@@ -7,6 +7,16 @@ import type {
   ServiceCost,
 } from "../../../price-list/types";
 import type { AccountOperation, CashShift } from "../../../payments/types";
+import type {
+  ConsentTemplate,
+  PatientConsent,
+  PatientFile,
+  PatientQuestionnaire,
+  PatientTooth,
+  ToothHistoryRow,
+  VisitRecord,
+  VisitRecordTemplate,
+} from "../../../patient-card/types";
 import type { DeveloperApp } from "../../../integrations/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
@@ -179,4 +189,13 @@ export interface Db {
   // Payments, deposits and the cash desk (stage 36)
   account_operations: AccountOperation[];
   cash_shifts: CashShift[];
+  // The full patient card (stage 37)
+  patient_teeth: PatientTooth[];
+  patient_tooth_history: ToothHistoryRow[];
+  visit_records: VisitRecord[];
+  visit_record_templates: VisitRecordTemplate[];
+  patient_questionnaires: PatientQuestionnaire[];
+  consent_templates: ConsentTemplate[];
+  patient_consents: PatientConsent[];
+  patient_files: PatientFile[];
 }

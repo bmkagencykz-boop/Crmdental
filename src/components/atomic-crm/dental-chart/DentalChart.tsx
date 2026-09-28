@@ -25,9 +25,30 @@ import {
 export type ToothMark = {
   /** neon: the accent (items of the stage); ink: black; soft: light pink; done: muted */
   tone?: "neon" | "ink" | "soft" | "done";
+  /** A fill colour of its own (the state of the tooth, stage 37); wins over the tone */
+  color?: string;
+  /** What is drawn on the tooth: its state on the patient card (stage 37) */
+  glyph?: ToothGlyphKind;
+  /** A dot under the number: a service planned (neon) or done (black) */
+  badge?: "planned" | "done";
   /** Tooltip: the services of the tooth */
   title?: string;
 };
+
+/**
+ * Marks of the state of a tooth: caries (spots on the crown), a filling (a
+ * dark inlay), a crown (a thick cap), pulpitis/periodontitis (the canal in
+ * red), an implant (a screw instead of the roots), a root (no crown), a
+ * missing tooth (a faded outline, crossed).
+ */
+export type ToothGlyphKind =
+  | "caries"
+  | "filling"
+  | "crown"
+  | "endo"
+  | "implant"
+  | "root"
+  | "missing";
 
 export type DentalChartProps = {
   /** Controlled dentition; defaultDentition otherwise */
@@ -37,6 +58,10 @@ export type DentalChartProps = {
   /** Selected teeth; checkboxes are shown when onSelectedChange is given */
   selected?: number[];
   onSelectedChange?: (teeth: number[]) => void;
+  /** A click on a tooth picks it (the patient card) instead of toggling the selection */
+  onToothClick?: (tooth: number) => void;
+  /** The picked tooth, outlined */
+  activeTooth?: number | null;
   /** Selected areas (a jaw, the mouth) */
   areas?: Area[];
   onAreasChange?: (areas: Area[]) => void;
@@ -104,8 +129,9 @@ export const ToothGlyph = ({
   const lower = jawOf(tooth) === "lower";
   const primary = dentitionOf(tooth) === "primary";
   const roots = rootCount(tooth);
-  const fill = mark?.tone ? TONE_FILL[mark.tone] : "#fbfbfc";
-  const ink = mark?.tone === "ink" ? "#fbfbfc" : "#121214";
+  const glyph = mark?.glyph;
+  const fill = mark?.color ?? (mark?.tone ? TONE_FILL[mark.tone] : "#fbfbfc");
+  const ink = mark?.tone === "ink" && !mark.color ? "#fbfbfc" : "#121214";
   // Primary teeth are smaller; the lower jaw is the upper one upside down
   const transform = [
     lower ? `matrix(1 0 0 -1 0 ${VIEW_H})` : "",
@@ -113,22 +139,57 @@ export const ToothGlyph = ({
   ]
     .filter(Boolean)
     .join(" ");
+  const clipId = `tooth-crown-${tooth}`;
+  const faded = glyph === "missing";
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
       className={cn("block h-auto w-full overflow-visible", className)}
       aria-hidden="true"
+      data-glyph={glyph}
     >
       <g transform={transform || undefined}>
+        {glyph === "root" || glyph === "implant" || glyph === "crown" ? (
+          <defs>
+            {/* The crown is below the neck (y 43) in the upper orientation */}
+            <clipPath id={`${clipId}-crown`}>
+              <rect x="0" y="43" width={VIEW_W} height={VIEW_H - 43} />
+            </clipPath>
+            <clipPath id={`${clipId}-roots`}>
+              <rect x="0" y="0" width={VIEW_W} height="43" />
+            </clipPath>
+          </defs>
+        ) : null}
         <path
           d={OUTLINE[kind]}
-          fill={fill}
+          fill={faded ? "none" : fill}
           stroke="#121214"
-          strokeOpacity={selected ? 1 : 0.55}
+          strokeOpacity={faded ? 0.3 : selected ? 1 : 0.55}
           strokeWidth={selected ? 2.2 : 1.1}
+          strokeDasharray={faded ? "2.5 2" : undefined}
           strokeLinejoin="round"
         />
-        {roots === 3 ? (
+        {/* A root: the crown is gone; an implant: the roots are a screw */}
+        {glyph === "root" || glyph === "implant" ? (
+          <path
+            d={OUTLINE[kind]}
+            clipPath={`url(#${clipId}-${glyph === "root" ? "crown" : "roots"})`}
+            fill="#f2f2f3"
+            stroke="#121214"
+            strokeOpacity="0.35"
+            strokeWidth="1"
+            strokeDasharray="2.5 2"
+          />
+        ) : null}
+        {glyph === "implant" ? (
+          <g stroke="#121214" strokeWidth="1.2" strokeLinecap="round">
+            <path d="M16 42 L17 12 L20 7 L23 12 L24 42 Z" fill="#9aa3ad" />
+            {[16, 21, 26, 31, 36].map((y) => (
+              <path key={y} d={`M15.4 ${y + 2} L24.6 ${y}`} fill="none" />
+            ))}
+          </g>
+        ) : null}
+        {roots === 3 && !glyph ? (
           <path
             d={EXTRA_ROOT}
             fill="none"
@@ -137,7 +198,7 @@ export const ToothGlyph = ({
             strokeWidth="1"
           />
         ) : null}
-        {roots === 2 && kind === "premolar" ? (
+        {roots === 2 && kind === "premolar" && !glyph ? (
           <path
             d={ROOT_SPLIT}
             fill="none"
@@ -146,21 +207,69 @@ export const ToothGlyph = ({
             strokeWidth="1"
           />
         ) : null}
-        <path
-          d={NECK[kind]}
-          fill="none"
-          stroke={ink}
-          strokeOpacity="0.35"
-          strokeWidth="1"
-        />
-        <path
-          d={CROWN_DETAIL[kind]}
-          fill="none"
-          stroke={ink}
-          strokeOpacity="0.3"
-          strokeWidth="1"
-          strokeLinecap="round"
-        />
+        {!faded ? (
+          <path
+            d={NECK[kind]}
+            fill="none"
+            stroke={ink}
+            strokeOpacity="0.35"
+            strokeWidth="1"
+          />
+        ) : null}
+        {glyph !== "root" && !faded ? (
+          <path
+            d={CROWN_DETAIL[kind]}
+            fill="none"
+            stroke={ink}
+            strokeOpacity="0.3"
+            strokeWidth="1"
+            strokeLinecap="round"
+          />
+        ) : null}
+        {glyph === "caries" ? (
+          <g fill="#121214">
+            <circle cx="16.5" cy="55" r="2.2" />
+            <circle cx="23" cy="59" r="1.6" />
+          </g>
+        ) : null}
+        {glyph === "filling" ? (
+          <ellipse
+            cx="20"
+            cy="56"
+            rx="6"
+            ry="4"
+            fill="#121214"
+            fillOpacity="0.78"
+          />
+        ) : null}
+        {glyph === "crown" ? (
+          <path
+            d={OUTLINE[kind]}
+            fill="none"
+            stroke="#121214"
+            strokeWidth="2.6"
+            clipPath={`url(#${clipId}-crown)`}
+          />
+        ) : null}
+        {glyph === "endo" ? (
+          <path
+            d="M20 10 L20 50"
+            fill="none"
+            stroke="#e5484d"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        ) : null}
+        {faded ? (
+          <path
+            d="M9 14 L31 62 M31 14 L9 62"
+            fill="none"
+            stroke="#121214"
+            strokeOpacity="0.55"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        ) : null}
       </g>
     </svg>
   );
@@ -177,6 +286,8 @@ export const DentalChart = ({
   onSelectedChange,
   areas = [],
   onAreasChange,
+  onToothClick,
+  activeTooth,
   marks = {},
   areaMarks = {},
   disabled,
@@ -190,7 +301,7 @@ export const DentalChart = ({
     onDentitionChange?.(next);
   };
   const rows = chartRows(dentition);
-  const selectable = !!onSelectedChange && !disabled;
+  const selectable = (!!onSelectedChange || !!onToothClick) && !disabled;
   const half = rows.upper.length / 2;
 
   const toothLabel = (tooth: number) =>
@@ -198,14 +309,17 @@ export const DentalChart = ({
 
   const column = (tooth: number) => {
     const mark = marks[tooth];
-    const isSelected = selected.includes(tooth);
+    const isSelected =
+      selected.includes(tooth) ||
+      (activeTooth != null && activeTooth === tooth);
     const label = toothLabel(tooth);
     return (
       <div
         key={tooth}
         className="flex min-w-0 flex-1 flex-col items-center gap-1"
         data-tooth={tooth}
-        data-marked={mark?.tone ? "true" : undefined}
+        data-marked={mark?.tone || mark?.glyph ? "true" : undefined}
+        data-badge={mark?.badge}
       >
         <span
           className={cn(
@@ -217,13 +331,30 @@ export const DentalChart = ({
         >
           {tooth}
         </span>
+        <span
+          className={cn(
+            "-mt-0.5 size-1.5 rounded-full",
+            mark?.badge === "planned"
+              ? "bg-neon"
+              : mark?.badge === "done"
+                ? "bg-primary"
+                : "bg-transparent",
+          )}
+          aria-hidden
+        />
         <button
           type="button"
-          tabIndex={-1}
+          tabIndex={onToothClick ? 0 : -1}
           disabled={!selectable}
           title={mark?.title ? `${label}: ${mark.title}` : label}
-          aria-hidden="true"
-          onClick={() => onSelectedChange?.(toggle(selected, tooth))}
+          aria-hidden={onToothClick ? undefined : "true"}
+          aria-label={onToothClick ? label : undefined}
+          aria-pressed={onToothClick ? isSelected : undefined}
+          onClick={() =>
+            onToothClick
+              ? onToothClick(tooth)
+              : onSelectedChange?.(toggle(selected, tooth))
+          }
           className={cn(
             "w-full max-w-11 rounded-xl px-0.5 py-1 transition-colors",
             selectable && "cursor-pointer hover:bg-pill",

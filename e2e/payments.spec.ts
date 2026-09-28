@@ -42,7 +42,7 @@ test.describe("payments and the cash desk", () => {
     await expect(page.getByTestId("shift-open")).toBeVisible();
 
     // The patient card: «Счёт», a cash payment of 30 000 with 50 000 given
-    await page.goto(`/#/patients/${patient.id}/show`);
+    await page.goto(`/#/patients/${patient.id}/show?tab=account`);
     const account = page.getByTestId("patient-account");
     await account.getByRole("button", { name: "Accept payment" }).click();
     let dialog = page.getByRole("dialog");

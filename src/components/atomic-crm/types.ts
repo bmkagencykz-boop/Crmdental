@@ -161,6 +161,16 @@ export type Service = DictionaryItem & {
   /** Price list (stage 29): optional code and category */
   code?: string | null;
   category?: string | null;
+  /**
+   * Price list page (stage 35): the category of the tree (category is its
+   * path «Раздел / Подраздел»), unit, default visit length in minutes,
+   * direction / specialty and a note on the materials
+   */
+  category_id?: Identifier | null;
+  unit?: "tooth" | "jaw" | "visit" | "service";
+  duration_minutes?: number | null;
+  specialty?: string | null;
+  materials_note?: string | null;
 };
 export type LostReason = DictionaryItem & {
   /** System value: 'spam' is «Спам / не целевое» (stage 18) */

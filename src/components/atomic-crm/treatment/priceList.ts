@@ -20,14 +20,66 @@ export const PRICE_CATEGORIES = [
   "Диагностика",
 ] as const;
 
-/** Columns of a price list file */
-export type PriceColumn = "code" | "name" | "category" | "price";
+/**
+ * Columns of a price list file. The price list page (stage 35) adds the
+ * unit, the duration, the direction, the materials and the cost price.
+ */
+export type PriceColumn =
+  | "code"
+  | "name"
+  | "category"
+  | "price"
+  | "unit"
+  | "duration"
+  | "specialty"
+  | "materials"
+  | "cost";
 
 const HEADER_PATTERNS: Record<PriceColumn, RegExp> = {
   code: /^(код|артикул|code|sku|№\s*услуги)/i,
   name: /(наименование|название|услуга|name|service)/i,
   category: /(категория|раздел|группа|category|section)/i,
   price: /(цена|стоимость|сумма|тариф|price|cost)/i,
+  unit: /^(ед\.?|единиц|unit)/i,
+  duration: /(длительн|минут|duration)/i,
+  specialty: /(направлени|специальн|specialty|direction)/i,
+  materials: /(материал|material)/i,
+  cost: /(себестоим|cost price|^cost$)/i,
+};
+/** The order headers are tried in: «Себестоимость» before «Стоимость» */
+const COLUMN_ORDER: PriceColumn[] = [
+  "code",
+  "cost",
+  "category",
+  "unit",
+  "duration",
+  "specialty",
+  "materials",
+  "price",
+  "name",
+];
+
+/** Units of a service (stage 35) and the words that mean them in a file */
+export const SERVICE_UNITS = ["tooth", "jaw", "visit", "service"] as const;
+export type ServiceUnit = (typeof SERVICE_UNITS)[number];
+const UNIT_PATTERNS: [ServiceUnit, RegExp][] = [
+  ["tooth", /^(зуб|tooth|канал)/i],
+  ["jaw", /^(челюст|jaw|сегмент)/i],
+  ["visit", /^(посещ|визит|при[её]м|сеанс|visit)/i],
+  ["service", /^(услуг|шт|ед|service|item)/i],
+];
+export const parseUnit = (value: string | null | undefined) => {
+  const text = (value ?? "").trim();
+  if (!text) return null;
+  return UNIT_PATTERNS.find(([, pattern]) => pattern.test(text))?.[0] ?? null;
+};
+/** «60», «60 мин», «1,5 ч» → minutes (5..720), else null */
+export const parseDuration = (value: string | null | undefined) => {
+  const text = (value ?? "").trim().toLowerCase().replace(",", ".");
+  const match = text.match(/^(\d+(?:\.\d+)?)\s*(ч|h|час)?/);
+  if (!match) return null;
+  const minutes = Math.round(Number(match[1]) * (match[2] ? 60 : 1));
+  return minutes >= 5 && minutes <= 720 ? minutes : null;
 };
 
 /**
@@ -42,7 +94,7 @@ export const guessPriceColumns = (
   header.forEach((cell, index) => {
     const text = cellText(cell);
     if (!text) return;
-    for (const column of ["code", "category", "price", "name"] as const) {
+    for (const column of COLUMN_ORDER) {
       if (columns[column] == null && HEADER_PATTERNS[column].test(text)) {
         columns[column] = index;
         return;
@@ -58,8 +110,15 @@ export type PriceRow = {
   line: number;
   code: string | null;
   name: string;
+  /** A category or a path «Раздел / Подраздел» (stage 35) */
   category: string | null;
   price: number | null;
+  /** Only when the file has the column (stage 35) */
+  unit?: ServiceUnit | null;
+  duration_minutes?: number | null;
+  specialty?: string | null;
+  materials_note?: string | null;
+  cost_price?: number | null;
 };
 
 export type PriceRowError = { line: number; name: string; error: string };
@@ -89,44 +148,86 @@ export const parsePriceRows = (
       errors.push({ line, name, error: "bad_price" });
       return;
     }
-    items.push({
+    const item: PriceRow = {
       line,
       code: at(row, "code") || null,
       name,
       category: normalizeCategory(at(row, "category")),
       price,
-    });
+    };
+    if (columns.unit != null) item.unit = parseUnit(at(row, "unit"));
+    if (columns.duration != null) {
+      item.duration_minutes = parseDuration(at(row, "duration"));
+    }
+    if (columns.specialty != null) {
+      item.specialty = at(row, "specialty").replace(/\s+/g, " ") || null;
+    }
+    if (columns.materials != null) {
+      item.materials_note = at(row, "materials") || null;
+    }
+    if (columns.cost != null) {
+      const cost = parseAmount(row[columns.cost] ?? null);
+      item.cost_price = cost == null || Number.isNaN(cost) ? null : cost;
+    }
+    items.push(item);
   });
   return { items, errors };
 };
 
-/** «имплантация» → «Имплантация» (a suggested category), else as typed */
+/**
+ * «имплантация» → «Имплантация» (a suggested category), else as typed. A
+ * path «терапия > Лечение кариеса» becomes «Терапия / Лечение кариеса»
+ * (two levels, stage 35).
+ */
 export const normalizeCategory = (value: string | null | undefined) => {
-  const text = (value ?? "").trim().replace(/\s+/g, " ");
-  if (!text) return null;
-  return (
-    PRICE_CATEGORIES.find(
-      (category) => category.toLowerCase() === text.toLowerCase(),
-    ) ?? text
-  );
+  const parts = (value ?? "")
+    .split(/[/>→]/)
+    .map((part) => part.trim().replace(/\s+/g, " "))
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!parts.length) return null;
+  return parts
+    .map(
+      (text) =>
+        PRICE_CATEGORIES.find(
+          (category) => category.toLowerCase() === text.toLowerCase(),
+        ) ?? text,
+    )
+    .join(" / ");
 };
 
 const key = (value: string | null | undefined) =>
   (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+
+/** Fields of the stage-35 columns, copied when the file has them */
+const EXTRA_FIELDS = [
+  "unit",
+  "duration_minutes",
+  "specialty",
+  "materials_note",
+] as const;
+type ExtraField = (typeof EXTRA_FIELDS)[number];
 
 export type PriceImportPlan = {
   create: Array<
     Pick<Service, "name" | "price" | "position"> & {
       code: string | null;
       category: string | null;
-    }
+    } & Partial<Pick<Service, ExtraField>>
   >;
   update: Array<{
     id: Identifier;
     previous: Service;
-    data: Partial<Pick<Service, "price" | "code" | "category" | "is_archived">>;
+    data: Partial<
+      Pick<Service, "price" | "code" | "category" | "is_archived" | ExtraField>
+    >;
   }>;
   unchanged: number;
+  /**
+   * Cost prices of the file (stage 35): of an existing service (`id`) or of
+   * the n-th created one (`create`)
+   */
+  costs: Array<{ id?: Identifier; create?: number; cost: number }>;
 };
 
 /**
@@ -152,7 +253,12 @@ export const planPriceImport = (
       row,
     );
   }
-  const plan: PriceImportPlan = { create: [], update: [], unchanged: 0 };
+  const plan: PriceImportPlan = {
+    create: [],
+    update: [],
+    unchanged: 0,
+    costs: [],
+  };
   let position = Math.max(-1, ...services.map((s) => s.position)) + 1;
   const seen = new Set<Identifier>();
   for (const row of unique.values()) {
@@ -171,19 +277,37 @@ export const planPriceImport = (
         data.category = row.category;
       }
       if (existing.is_archived) data.is_archived = false;
+      for (const field of EXTRA_FIELDS) {
+        const value = row[field];
+        if (value != null && value !== (existing[field] ?? null)) {
+          (data as Record<string, unknown>)[field] = value;
+        }
+      }
+      if (row.cost_price != null) {
+        plan.costs.push({ id: existing.id, cost: row.cost_price });
+      }
       if (Object.keys(data).length) {
         plan.update.push({ id: existing.id, previous: existing, data });
       } else {
         plan.unchanged++;
       }
     } else if (!existing) {
-      plan.create.push({
+      const created: PriceImportPlan["create"][number] = {
         name: row.name,
         code: row.code,
         category: row.category,
         price: row.price,
         position: position++,
-      });
+      };
+      for (const field of EXTRA_FIELDS) {
+        if (row[field] != null) {
+          (created as Record<string, unknown>)[field] = row[field];
+        }
+      }
+      if (row.cost_price != null) {
+        plan.costs.push({ create: plan.create.length, cost: row.cost_price });
+      }
+      plan.create.push(created);
     }
   }
   return plan;

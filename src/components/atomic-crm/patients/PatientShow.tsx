@@ -23,7 +23,7 @@ import type { Deal, Patient } from "../types";
 import { DuplicateWarning } from "../duplicates/DuplicateWarning";
 import { PatientAside } from "./PatientAside";
 import { PatientCalls } from "./PatientCalls";
-import { MisVisits } from "../mis/MisVisits";
+import { PatientVisits } from "../schedule/PatientVisits";
 import { PatientFiles } from "../files/PatientFiles";
 import { patientDisplayName } from "./parsePatientText";
 
@@ -68,7 +68,7 @@ const PatientShowContent = () => {
           <Panel title={translate("crm.calls.title")}>
             <PatientCalls patientId={record.id} />
           </Panel>
-          <MisVisits patientId={record.id} />
+          <PatientVisits patientId={record.id} />
           <Panel title={translate("resources.notes.name", { smart_count: 2 })}>
             <InfiniteListBase
               resource="patient_notes"

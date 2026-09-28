@@ -59,14 +59,15 @@ select tests.assert(
 -- Defaults of a new clinic
 --
 select tests.assert(
-  (select count(*) from public.message_templates where organization_id = current_setting('t.org')::bigint) = 3,
-  'a new clinic gets the default templates');
+  (select count(*) from public.message_templates where organization_id = current_setting('t.org')::bigint) = 4,
+  'a new clinic gets the default templates (with «Подтверждение записи» of the schedule)');
 select tests.assert(
   (select array_agg(s.name || ':' || r.timing || ':' || r.mode || ':' || r.is_active order by r.position)
    from public.automessage_rules r join public.stages s on s.id = r.stage_id
    where r.organization_id = current_setting('t.org')::bigint)
-  = array['Записан:before_visit:auto:true', 'Отказ:after_stage:confirm:false', 'Новый лид:after_stage:confirm:false'],
-  'default rules: reminder before the visit (on), reactivation and greeting (off, shown first)');
+  = array['Записан:before_visit:auto:true', 'Отказ:after_stage:confirm:false', 'Новый лид:after_stage:confirm:false',
+      'Записан:before_visit:auto:false'],
+  'default rules: reminder before the visit (on), reactivation and greeting (off, shown first), confirmation of the schedule (off)');
 
 --
 -- Rights and isolation
@@ -94,8 +95,8 @@ select tests.logout();
 
 select tests.login_as(current_setting('t.other')::uuid);
 select tests.assert(
-  tests.count('select * from public.message_templates') = 3
-  and tests.count('select * from public.automessage_rules') = 3
+  tests.count('select * from public.message_templates') = 4
+  and tests.count('select * from public.automessage_rules') = 4
   and tests.count($q$select * from public.message_templates where organization_id = current_setting('t.org')::bigint$q$) = 0,
   'another clinic only sees its own templates and rules');
 select tests.logout();

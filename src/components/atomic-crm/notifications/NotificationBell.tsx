@@ -45,6 +45,7 @@ const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
   task_overdue: AlarmClock,
   response_overdue: Flame,
   bot_handoff: Forward,
+  visit_reschedule: AlarmClock,
 };
 
 /** Title of a notification in the language of the user */

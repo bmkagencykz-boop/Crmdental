@@ -17,6 +17,7 @@ import { DealHeader } from "./DealHeader";
 import { PatientBlock } from "./PatientBlock";
 import { UnsortedBanner } from "../../unsorted/UnsortedBanner";
 import { MisDealBadge, MisVisits } from "../../mis/MisVisits";
+import { DealVisits } from "../../schedule/DealVisits";
 
 /**
  * The deal card as a page, amoCRM layout in the CRM design: on the left the
@@ -85,6 +86,7 @@ const DealPageContent = () => {
                 <DealAutomessages deal={deal} />
                 <DealFields deal={deal} />
               </div>
+              <DealVisits deal={deal} />
               <PatientBlock deal={deal} />
               <MisVisits patientId={deal.patient_id} compact />
             </>

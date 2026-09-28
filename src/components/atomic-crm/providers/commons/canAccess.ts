@@ -70,6 +70,12 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Deleting a visit of the schedule (stage 28): owner and head, like the
+  // database; everybody else marks it cancelled
+  if (params.resource === "visits" && params.action === "delete") {
+    return role === "head";
+  }
+
   // Merging duplicate patients (stage 18): owner and head, like the database
   if (params.resource === "duplicates") {
     return role === "head";

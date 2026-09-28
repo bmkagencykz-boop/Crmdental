@@ -4,6 +4,7 @@ import {
   InboxGlyph,
   type NavGlyph,
   PatientsGlyph,
+  ScheduleGlyph,
   TasksGlyph,
 } from "./navGlyphs";
 import { useGetList, useTranslate } from "ra-core";
@@ -89,6 +90,13 @@ export const useNavItems = (): NavItem[] => {
       icon: TasksGlyph,
       label: translate("resources.tasks.name", { smart_count: 2 }),
       resource: "tasks",
+    },
+    {
+      to: "/schedule",
+      match: "/schedule",
+      icon: ScheduleGlyph,
+      label: translate("schedule.nav"),
+      resource: "visits",
     },
     {
       to: "/patients",

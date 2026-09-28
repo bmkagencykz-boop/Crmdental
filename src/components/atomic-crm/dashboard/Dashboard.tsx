@@ -5,6 +5,7 @@ import { DashboardSummary } from "./DashboardSummary";
 import { HotPatients } from "./HotPatients";
 import { MonthPlanWidget } from "./MonthPlanWidget";
 import { TasksList } from "./TasksList";
+import { TodayInClinic } from "../schedule/TodayInClinic";
 import { WaitingDeals } from "../notifications/WaitingDeals";
 import { OnboardingDashboardCard } from "../onboarding/OnboardingCard";
 
@@ -31,6 +32,7 @@ const DashboardContent = () => (
         <DashboardActivityLog />
       </div>
       <div className="flex flex-col gap-8 md:col-span-3">
+        <TodayInClinic />
         <MonthPlanWidget />
         <WaitingDeals />
         <HotPatients />

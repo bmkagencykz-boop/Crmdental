@@ -117,6 +117,7 @@ import { createOnboardingDemo } from "./onboarding";
 import { createMisDemo } from "./misConnectors";
 import { createSalesbotDemo } from "./salesbot";
 import { createMarketplaceDemo } from "./marketplace";
+import { createTreatmentDemo } from "./treatmentPlans";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -303,6 +304,14 @@ export const createDataProvider = ({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
+  });
+  // Treatment plans with an estimate (stage 29)
+  const treatmentDemo = createTreatmentDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+    logAudit: (row) => logAudit(row),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -758,6 +767,7 @@ export const createDataProvider = ({
     deals_waiting: dealsWaitingView,
     ...mailingDemo.views,
     ...unsortedDemo.views,
+    ...treatmentDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -774,6 +784,7 @@ export const createDataProvider = ({
     ...onboardingDemo.methods,
     ...misDemo.methods,
     ...marketplaceDemo.methods,
+    ...treatmentDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1676,6 +1687,7 @@ export const createDataProvider = ({
       ...mailingDemo.callbacks,
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,
+      ...treatmentDemo.callbacks,
       {
         resource: "configuration",
         beforeUpdate: async (params) => {

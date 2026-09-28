@@ -109,6 +109,11 @@ export type Patient = {
   messaging_opt_out_at?: string | null;
   /** Custom fields (stage 19): { "<field id>": value } */
   custom_values?: CustomValues;
+  /** The light patient card (stage 29): free text */
+  allergies?: string | null;
+  contraindications?: string | null;
+  chronic_diseases?: string | null;
+  preferred_doctor_id?: Identifier | null;
   // patients_summary
   nb_deals?: number;
   nb_open_deals?: number;
@@ -152,6 +157,9 @@ export type DictionaryItem = {
 export type Service = DictionaryItem & {
   /** Optional price in tenge (setup wizard, stage 24) */
   price?: number | null;
+  /** Price list (stage 29): optional code and category */
+  code?: string | null;
+  category?: string | null;
 };
 export type LostReason = DictionaryItem & {
   /** System value: 'spam' is «Спам / не целевое» (stage 18) */
@@ -453,6 +461,8 @@ export type OrganizationSettings = {
   clinic_city?: string | null;
   clinic_phone?: string | null;
   clinic_address?: string | null;
+  /** Discount above this percent: owner and head only (stage 29) */
+  max_discount_percent?: number;
 };
 
 /** Status of a step of the setup wizard (stage 24) */

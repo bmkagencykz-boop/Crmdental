@@ -16,6 +16,7 @@ import { generateTags } from "./tags";
 import { generateUnsorted } from "./unsorted";
 import { generateMisConnectors } from "./misConnectors";
 import { generateMarketplace } from "./marketplace";
+import { generateTreatmentPlans } from "./treatmentPlans";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -40,6 +41,8 @@ export default (): Db => {
   generateSalesbot(db);
   generateOnboarding(db);
   generateMarketplace(db);
+  // Last: the price list is appended to the services the other data uses
+  generateTreatmentPlans(db);
   db.configuration = [
     {
       id: 1,

@@ -10,6 +10,9 @@ export type Lead = {
   source: string | null;
   service: string | null;
   comment: string | null;
+  /** Page the visitor came from, and the page of the form (stage 32) */
+  referrer: string | null;
+  landing_page: string | null;
   utm: Record<string, string>;
 };
 
@@ -52,6 +55,8 @@ const ALIASES: Record<Exclude<keyof Lead, "utm">, string[]> = {
     "сообщение",
     "вопрос",
   ],
+  referrer: ["referrer", "referer"],
+  landing_page: ["landing_page", "landing", "page_url", "pageurl", "page"],
 };
 
 /** Technical fields of Tilda and other builders: not shown to the clinic */
@@ -62,8 +67,6 @@ const IGNORED = new Set([
   "formid",
   "formname",
   "cookies",
-  "referer",
-  "referrer",
   "_ym_uid",
   "form_id",
   "form_name",
@@ -89,7 +92,7 @@ export const isTestPing = (fields: Record<string, unknown>) =>
 
 /**
  * Form fields → lead. Known names (any case) fill name, phone, source,
- * service and comment; utm_* fields are kept as UTM tags; any other field is
+ * service, comment, referrer and landing page; utm_* fields are kept as UTM tags; any other field is
  * appended to the comment so that nothing the patient wrote is lost.
  */
 export const toLead = (fields: Record<string, unknown>): Lead => {
@@ -99,6 +102,8 @@ export const toLead = (fields: Record<string, unknown>): Lead => {
     source: null,
     service: null,
     comment: null,
+    referrer: null,
+    landing_page: null,
     utm: {},
   };
   const extra: string[] = [];

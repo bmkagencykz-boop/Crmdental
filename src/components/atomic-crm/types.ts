@@ -170,6 +170,8 @@ export type LeadSource = DictionaryItem & {
   /** whatsapp, instagram, telegram, call, website, 2gis, referral, other */
   code?: string | null;
   is_system: boolean;
+  /** utm_source values that mean this source (stage 32) */
+  utm_sources?: string[];
 };
 
 /**
@@ -254,6 +256,14 @@ export type Deal = {
   custom_values?: CustomValues;
   /** Waiting in «Неразобранное» since (stage 18); null: in work */
   unsorted_at?: string | null;
+  /** UTM tags of the website form, the referrer and the page (stage 32) */
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  referrer?: string | null;
+  landing_page?: string | null;
   // deals_summary
   stage_kind?: StageKind;
   patient_first_name?: string | null;

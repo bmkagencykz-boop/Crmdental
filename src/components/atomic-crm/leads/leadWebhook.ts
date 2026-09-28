@@ -38,7 +38,8 @@ const escapeHtml = (value: string) =>
 
 /**
  * A plain HTML form posting to the webhook with fetch(): name, phone and a
- * comment, plus the UTM tags of the page address.
+ * comment, plus the UTM tags of the page address, the page the visitor came
+ * from and the page of the form (stage 32).
  */
 export const leadFormSnippet = (url: string, texts: SnippetTexts) =>
   `<form id="dentalcrm-form">
@@ -56,6 +57,8 @@ document.getElementById("dentalcrm-form").addEventListener("submit", function (e
   ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach(function (key) {
     if (params.get(key)) data[key] = params.get(key);
   });
+  if (document.referrer) data.referrer = document.referrer;
+  data.landing_page = window.location.origin + window.location.pathname;
   data.source = data.source || "website";
   fetch(${JSON.stringify(url)}, {
     method: "POST",

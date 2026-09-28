@@ -961,10 +961,10 @@ export const englishCrmMessages = {
     test_error: "The test request did not go through",
     fields_title: "Fields",
     fields_help:
-      "POST with a JSON or form body: phone (required), name, source (website, 2gis or the name of a source), service (the name of a service), comment, utm_source, utm_medium, utm_campaign… Other fields are added to the comment. The same form sent twice within 5 minutes is stored once.",
+      "POST with a JSON or form body: phone (required), name, source (website, 2gis or the name of a source), service (the name of a service), comment, utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer (where the visitor came from), landing_page (page of the form). The UTM tags are kept on the deal, and utm_source picks the source when it is listed under «UTM tags of the sources». Other fields are added to the comment. The same form sent twice within 5 minutes is stored once.",
     snippet_title: "Form for your website",
     snippet_help:
-      "Paste this code where the form should be. It sends the name, the phone, the comment and the UTM tags of the page.",
+      "Paste this code where the form should be. It sends the name, the phone, the comment, the UTM tags, the page of the form and where the visitor came from.",
     snippet: {
       name: "Your name",
       phone: "Phone",

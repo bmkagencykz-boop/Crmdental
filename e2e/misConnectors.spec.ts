@@ -103,7 +103,10 @@ test.describe("MIS connectors", () => {
     const visits = deal.getByTestId("mis-visits");
     await expect(visits).toContainText("Visits from the MIS");
     await expect(visits).toContainText("Имплантация");
-    await expect(deal.getByText("Записан").first()).toBeVisible();
+    // The visit moved the deal to «Записан» (the stage select of the header)
+    await expect(
+      deal.getByRole("combobox", { name: "Stage" }).locator("option:checked"),
+    ).toHaveText("Записан");
 
     // The visit took place: the deal moves by the mapping
     await misCall("mis_visit_completed", {
@@ -112,8 +115,11 @@ test.describe("MIS connectors", () => {
     });
     await page.reload();
     await expect(
-      page.getByRole("main").getByText("Пришёл на консультацию").first(),
-    ).toBeVisible();
+      page
+        .getByRole("main")
+        .getByRole("combobox", { name: "Stage" })
+        .locator("option:checked"),
+    ).toHaveText("Пришёл на консультацию");
 
     // The sync log of the settings
     await page.goto("/#/settings?section=mis");

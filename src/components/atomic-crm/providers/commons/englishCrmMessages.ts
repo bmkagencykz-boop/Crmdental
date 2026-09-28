@@ -1318,7 +1318,7 @@ export const englishCrmMessages = {
   },
   mis: {
     title: "MIS integration",
-    hint: "The CRM keeps sales, not the doctors' schedule: it will exchange patients, visits and payments with your medical information system.",
+    hint: "The CRM keeps sales, not the doctors' schedule: patients, visits and payments come from your medical information system.",
     soon: "soon",
     requested: "Request sent",
     request: "Leave a request",

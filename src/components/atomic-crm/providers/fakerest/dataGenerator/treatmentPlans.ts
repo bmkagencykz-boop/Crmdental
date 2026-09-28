@@ -17,7 +17,12 @@ export const DEMO_PRICE_LIST: [string, string, string, number][] = [
   ["D-04", "Ортопантомограмма (ОПТГ)", "Диагностика", 6000],
   ["D-05", "КТ одной челюсти", "Диагностика", 15000],
   ["D-06", "КТ обеих челюстей", "Диагностика", 22000],
-  ["G-01", "Профессиональная гигиена (Air Flow + ультразвук)", "Гигиена", 25000],
+  [
+    "G-01",
+    "Профессиональная гигиена (Air Flow + ультразвук)",
+    "Гигиена",
+    25000,
+  ],
   ["G-02", "Фторирование", "Гигиена", 5000],
   ["G-03", "Отбеливание ZOOM 4", "Гигиена", 90000],
   ["T-01", "Лечение кариеса (поверхностный)", "Терапия", 25000],
@@ -301,25 +306,43 @@ export const generateTreatmentPlans = (db: Db) => {
     const template = TEMPLATES[serviceName(deal)] ?? TEMPLATES.Терапия;
     if (index === 0) {
       addPlan(deal, "Вариант эконом", "declined", template.economy);
-      const { total } = addPlan(deal, "Вариант премиум", "agreed", template.premium, {
-        isMain: true,
-        discountPercent: 5,
-      });
+      const { total } = addPlan(
+        deal,
+        "Вариант премиум",
+        "agreed",
+        template.premium,
+        {
+          isMain: true,
+          discountPercent: 5,
+        },
+      );
       setAmount(deal, total);
     } else {
-      const { total } = addPlan(deal, "План лечения", "agreed", template.economy, {
-        isMain: true,
-      });
+      const { total } = addPlan(
+        deal,
+        "План лечения",
+        "agreed",
+        template.economy,
+        {
+          isMain: true,
+        },
+      );
       setAmount(deal, total);
     }
   });
   // In treatment: the first stage is done
   pick("В лечении", 3).forEach((deal) => {
     const template = TEMPLATES[serviceName(deal)] ?? TEMPLATES.Терапия;
-    const { total } = addPlan(deal, "План лечения", "in_progress", template.economy, {
-      isMain: true,
-      doneStages: 1,
-    });
+    const { total } = addPlan(
+      deal,
+      "План лечения",
+      "in_progress",
+      template.economy,
+      {
+        isMain: true,
+        doneStages: 1,
+      },
+    );
     setAmount(deal, total);
   });
   // Finished treatments
@@ -328,10 +351,16 @@ export const generateTreatmentPlans = (db: Db) => {
     .slice(0, 2)
     .forEach((deal) => {
       const template = TEMPLATES[serviceName(deal)] ?? TEMPLATES.Терапия;
-      const { total } = addPlan(deal, "План лечения", "completed", template.economy, {
-        isMain: true,
-        doneStages: 9,
-      });
+      const { total } = addPlan(
+        deal,
+        "План лечения",
+        "completed",
+        template.economy,
+        {
+          isMain: true,
+          doneStages: 9,
+        },
+      );
       setAmount(deal, total);
     });
 

@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 
 import { formatTenge } from "../onboarding/servicePresets";
+import { formatDate } from "./format";
 import { lineTotal, planTotals } from "./planMath";
 import type { TreatmentPlan, TreatmentPlanItem } from "./types";
 
@@ -45,21 +46,8 @@ const MUTED = 110;
 const LINE = 200;
 
 const money = (amount: number) => `${formatTenge(amount)} ₸`;
-const pad = (n: number) => String(n).padStart(2, "0");
-export const formatDate = (date: Date) =>
-  `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 const percent = (value: number) =>
   `${Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 2 })}%`;
-
-/** «Смета — План лечения — Нурланова Асель.pdf», safe for a file system */
-export const estimateFileName = (planName: string, patientName: string) =>
-  `${["Смета", planName, patientName]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(" — ")
-    .replace(/[\\/:*?"<>|]+/g, " ")
-    .replace(/\s+/g, " ")
-    .slice(0, 120)}.pdf`;
 
 export const buildEstimatePdf = (
   data: EstimateData,
@@ -205,6 +193,7 @@ export const buildEstimatePdf = (
       ) as string[];
       const height = Math.max(1, nameLines.length) * 4.2 + 1.3;
       ensureSpace(height);
+      font(9, false);
       const cells = [
         String(number),
         nameLines,
@@ -278,7 +267,11 @@ export const buildEstimatePdf = (
   y += 5;
   doc.text(translate("treatment.pdf.disclaimer"), left, y);
   y += 16;
-  const signature = (label: string, name: string | null | undefined, x: number) => {
+  const signature = (
+    label: string,
+    name: string | null | undefined,
+    x: number,
+  ) => {
     doc.setDrawColor(120);
     doc.line(x, y, x + 78, y);
     font(8.5, false, MUTED);
@@ -286,7 +279,11 @@ export const buildEstimatePdf = (
     if (name) doc.text(name, x + 78, y + 4.5, { align: "right" });
   };
   signature(translate("treatment.pdf.sign_doctor"), data.doctor, left);
-  signature(translate("treatment.pdf.sign_patient"), data.patient.name, right - 78);
+  signature(
+    translate("treatment.pdf.sign_patient"),
+    data.patient.name,
+    right - 78,
+  );
   y += 12;
   font(8.5, false, MUTED);
   doc.text(translate("treatment.pdf.acknowledged"), left, y);

@@ -3339,7 +3339,7 @@ export const englishCrmMessages = {
       note: "Note for the estimate",
       service: "Service",
       tooth: "Tooth",
-      tooth_placeholder: "36, 11-13",
+      tooth_placeholder: "—",
       qty: "Qty",
       price: "Price",
       discount: "Discount %",
@@ -3374,8 +3374,10 @@ export const englishCrmMessages = {
     },
     limits: {
       discount: "A discount above %{max}% is for the owner or the head only",
-      price_below: "A price below the price list (%{price}) is for the owner or the head only",
-      read_only: "Treatment plans are edited by administrators, the head and the owner.",
+      price_below:
+        "A price below the price list (%{price}) is for the owner or the head only",
+      read_only:
+        "Treatment plans are edited by administrators, the head and the owner.",
     },
     notify: {
       agreed: "Plan agreed. Deal amount: %{amount}",
@@ -3385,6 +3387,7 @@ export const englishCrmMessages = {
     },
     pdf: {
       button: "Estimate PDF",
+      file_prefix: "Estimate",
       title: "Treatment plan and estimate",
       number: "Estimate No. %{id}",
       patient: "Patient",

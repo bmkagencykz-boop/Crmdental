@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import {
   InfiniteListBase,
   ShowBase,
+  useCanAccess,
   useGetList,
   useRecordContext,
   useTranslate,
@@ -27,6 +28,7 @@ import { PatientCalls } from "./PatientCalls";
 import { MisVisits } from "../mis/MisVisits";
 import { PatientFiles } from "../files/PatientFiles";
 import { patientDisplayName } from "./parsePatientText";
+import { PatientMedical, PatientPlans } from "../treatment/PatientTreatment";
 
 /**
  * Patient history (spec §3): every request (deal), notes and calls, with
@@ -41,6 +43,11 @@ export const PatientShow = () => (
 const PatientShowContent = () => {
   const translate = useTranslate();
   const record = useRecordContext<Patient>();
+  // Treatment plans (stage 29): not for the integrator (no money)
+  const { canAccess: canSeePlans = false } = useCanAccess({
+    resource: "treatment_plans",
+    action: "list",
+  });
   if (!record) return null;
 
   return (
@@ -51,6 +58,9 @@ const PatientShowContent = () => {
       <DuplicateWarning patientId={record.id} className="-mt-3" />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-6">
+          <Panel title={translate("treatment.patient.medical")}>
+            <PatientMedical patient={record} />
+          </Panel>
           <Panel
             title={translate("crm.patients.sections.requests")}
             action={
@@ -64,6 +74,11 @@ const PatientShowContent = () => {
           >
             <PatientDeals patientId={record.id} />
           </Panel>
+          {canSeePlans ? (
+            <Panel title={translate("treatment.patient.plans")}>
+              <PatientPlans patient={record} />
+            </Panel>
+          ) : null}
           <Panel title={translate("files.patient_title")}>
             <PatientFiles patientId={record.id} />
           </Panel>

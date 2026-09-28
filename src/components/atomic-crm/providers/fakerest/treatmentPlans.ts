@@ -1,8 +1,4 @@
-import type {
-  DataProvider,
-  Identifier,
-  ResourceCallbacks,
-} from "ra-core";
+import type { DataProvider, Identifier, ResourceCallbacks } from "ra-core";
 
 import type { StageTriggerRun } from "../../pipeline-automation/types";
 import type { ReportFilters } from "../../reports/reportMath";
@@ -28,8 +24,10 @@ import type {
   Stage,
 } from "../../types";
 
-const same = (a: Identifier | null | undefined, b: Identifier | null | undefined) =>
-  a != null && b != null && String(a) === String(b);
+const same = (
+  a: Identifier | null | undefined,
+  b: Identifier | null | undefined,
+) => a != null && b != null && String(a) === String(b);
 const nowIso = () => new Date().toISOString();
 const OPEN_STATUSES = ["draft", "presented", "declined"];
 const AUDITED = [
@@ -75,8 +73,8 @@ export const createTreatmentDemo = ({
     const salesId = await currentSalesId();
     // The demo user is the owner of the clinic
     return (
-      (await all<Sale>("sales")).find((sale) => same(sale.id, salesId))
-        ?.role ?? "owner"
+      (await all<Sale>("sales")).find((sale) => same(sale.id, salesId))?.role ??
+      "owner"
     );
   };
   const checkRights = async () => {
@@ -92,18 +90,12 @@ export const createTreatmentDemo = ({
         ?.max_discount_percent ?? 10,
     );
   /** Same as private.check_treatment_discount */
-  const checkDiscount = async (
-    percent: number,
-    subtotal = 0,
-    amount = 0,
-  ) => {
+  const checkDiscount = async (percent: number, subtotal = 0, amount = 0) => {
     if (copying || canExceedLimits(await myRole())) return;
     const max = await maxDiscount();
     if (discountExceeds({ percent, amount, subtotal, max })) {
       throw Object.assign(
-        new Error(
-          `Скидка больше ${max} % — только владелец или руководитель`,
-        ),
+        new Error(`Скидка больше ${max} % — только владелец или руководитель`),
         { code: "42501" },
       );
     }
@@ -264,7 +256,9 @@ export const createTreatmentDemo = ({
   ): Promise<Partial<TreatmentPlanItem>> => {
     const next = { ...previous, ...data } as TreatmentPlanItem;
     const service = next.service_id
-      ? (await all<Service>("services")).find((s) => same(s.id, next.service_id))
+      ? (await all<Service>("services")).find((s) =>
+          same(s.id, next.service_id),
+        )
       : undefined;
     const name = next.name?.trim() || service?.name;
     if (!name) throw new Error("Укажите название позиции");
@@ -284,9 +278,7 @@ export const createTreatmentDemo = ({
           next.unit_price !== previous.unit_price ||
           !same(next.service_id, previous.service_id))
       ) {
-        throw forbidden(
-          "Цена ниже прайса — только владелец или руководитель",
-        );
+        throw forbidden("Цена ниже прайса — только владелец или руководитель");
       }
     }
     const done = !!next.done;
@@ -393,9 +385,18 @@ export const createTreatmentDemo = ({
         if (filters.to && plan.agreed_at >= filters.to) continue;
         const deal = deals.find((d) => same(d.id, plan.deal_id));
         if (!deal) continue;
-        if (filters.pipeline_id != null && !same(deal.pipeline_id, filters.pipeline_id)) continue;
-        if (filters.sales_id != null && !same(deal.sales_id, filters.sales_id)) continue;
-        if (filters.source_id != null && !same(deal.source_id, filters.source_id)) continue;
+        if (
+          filters.pipeline_id != null &&
+          !same(deal.pipeline_id, filters.pipeline_id)
+        )
+          continue;
+        if (filters.sales_id != null && !same(deal.sales_id, filters.sales_id))
+          continue;
+        if (
+          filters.source_id != null &&
+          !same(deal.source_id, filters.source_id)
+        )
+          continue;
         if (
           filters.doctor_id != null &&
           !same(plan.doctor_id ?? deal.doctor_id, filters.doctor_id)
@@ -427,7 +428,9 @@ export const createTreatmentDemo = ({
         }
       }
       return [...rows.values()]
-        .sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, "ru"))
+        .sort(
+          (a, b) => b.amount - a.amount || a.name.localeCompare(b.name, "ru"),
+        )
         .slice(0, 20)
         .map(({ planIds: _planIds, ...row }) => row);
     },
@@ -532,7 +535,10 @@ export const createTreatmentDemo = ({
         ) {
           await syncAmount(plan.id);
         }
-        if (plan.status === "agreed" && OPEN_STATUSES.includes(previous.status)) {
+        if (
+          plan.status === "agreed" &&
+          OPEN_STATUSES.includes(previous.status)
+        ) {
           await moveStage(plan);
         }
         return result;
@@ -586,9 +592,9 @@ export const createTreatmentDemo = ({
       },
       beforeUpdate: async (params) => {
         await checkRights();
-        const previous = (await all<TreatmentPlanItem>("treatment_plan_items")).find(
-          (item) => same(item.id, params.id),
-        );
+        const previous = (
+          await all<TreatmentPlanItem>("treatment_plan_items")
+        ).find((item) => same(item.id, params.id));
         if (!previous) throw new Error("Позиция не найдена");
         const data = { ...params.data } as Partial<TreatmentPlanItem>;
         if (data.plan_id != null && !same(data.plan_id, previous.plan_id)) {
@@ -616,7 +622,8 @@ export const createTreatmentDemo = ({
         const deal = result.data as Deal;
         const plans = (await all<TreatmentPlan>("treatment_plans")).filter(
           (plan) =>
-            same(plan.deal_id, deal.id) && !same(plan.patient_id, deal.patient_id),
+            same(plan.deal_id, deal.id) &&
+            !same(plan.patient_id, deal.patient_id),
         );
         for (const plan of plans) {
           await baseDataProvider.update("treatment_plans", {

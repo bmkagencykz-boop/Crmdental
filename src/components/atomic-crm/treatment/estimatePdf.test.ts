@@ -3,20 +3,18 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { russianCrmMessages } from "../providers/commons/russianCrmMessages";
-import {
-  buildEstimatePdf,
-  estimateFileName,
-  formatDate,
-  FONT_NAME,
-  type EstimateData,
-} from "./estimatePdf";
+import { buildEstimatePdf, FONT_NAME, type EstimateData } from "./estimatePdf";
+import { estimateFileName, formatDate } from "./format";
 import type { TreatmentPlanItem } from "./types";
 
 const font = (name: string) =>
   readFileSync(
     resolve(process.cwd(), "node_modules/dejavu-fonts-ttf/ttf", name),
   ).toString("base64");
-const fonts = { regular: font("DejaVuSans.ttf"), bold: font("DejaVuSans-Bold.ttf") };
+const fonts = {
+  regular: font("DejaVuSans.ttf"),
+  bold: font("DejaVuSans-Bold.ttf"),
+};
 
 /** The Russian catalog with %{name} interpolation, like the app */
 const translate = (key: string, options: Record<string, unknown> = {}) => {

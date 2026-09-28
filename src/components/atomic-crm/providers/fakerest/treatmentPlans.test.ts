@@ -63,8 +63,13 @@ const list = async <T>(
  * An open deal of the main pipeline without plans, put at a stage before
  * the demo provider is created (it copies the data)
  */
-const freshDeal = (db: ReturnType<typeof generateData>, stageName = "Записан") => {
-  const stage = db.stages.find((s) => s.name === stageName && s.pipeline_id === 1)!;
+const freshDeal = (
+  db: ReturnType<typeof generateData>,
+  stageName = "Записан",
+) => {
+  const stage = db.stages.find(
+    (s) => s.name === stageName && s.pipeline_id === 1,
+  )!;
   const deal = db.deals.find(
     (d) =>
       d.pipeline_id === 1 &&
@@ -96,20 +101,33 @@ describe("demo treatment plans", () => {
     expect(priced.length).toBeGreaterThanOrEqual(40);
     expect(new Set(priced.map((s) => s.category)).size).toBe(8);
     const statuses = new Set(db.treatment_plans.map((p) => p.status));
-    for (const status of ["draft", "presented", "agreed", "in_progress", "completed", "declined"]) {
-      expect(statuses.has(status as TreatmentPlan["status"]), status).toBe(true);
+    for (const status of [
+      "draft",
+      "presented",
+      "agreed",
+      "in_progress",
+      "completed",
+      "declined",
+    ]) {
+      expect(statuses.has(status as TreatmentPlan["status"]), status).toBe(
+        true,
+      );
     }
     // One deal with two variants
     const perDeal = new Map<string, number>();
     for (const plan of db.treatment_plans) {
-      perDeal.set(String(plan.deal_id), (perDeal.get(String(plan.deal_id)) ?? 0) + 1);
+      perDeal.set(
+        String(plan.deal_id),
+        (perDeal.get(String(plan.deal_id)) ?? 0) + 1,
+      );
     }
     expect([...perDeal.values()].some((n) => n >= 2)).toBe(true);
     // At most one main plan per deal; the deal amount covers it
     for (const [dealId] of perDeal) {
       expect(
-        db.treatment_plans.filter((p) => String(p.deal_id) === dealId && p.is_main)
-          .length,
+        db.treatment_plans.filter(
+          (p) => String(p.deal_id) === dealId && p.is_main,
+        ).length,
       ).toBeLessThanOrEqual(1);
     }
     expect(db.patients.some((p) => p.allergies)).toBe(true);
@@ -122,7 +140,11 @@ describe("demo treatment plans", () => {
       "treatment_plans",
       { data: { deal_id: deal.id, name: "Вариант эконом" } },
     );
-    expect(plan).toMatchObject({ status: "draft", is_main: false, patient_id: deal.patient_id });
+    expect(plan).toMatchObject({
+      status: "draft",
+      is_main: false,
+      patient_id: deal.patient_id,
+    });
     await dataProvider.create("treatment_plan_items", {
       data: {
         plan_id: plan.id,
@@ -134,23 +156,41 @@ describe("demo treatment plans", () => {
         discount_percent: 5,
       },
     });
-    const [item] = await list<TreatmentPlanItem>(dataProvider, "treatment_plan_items", {
-      plan_id: plan.id,
+    const [item] = await list<TreatmentPlanItem>(
+      dataProvider,
+      "treatment_plan_items",
+      {
+        plan_id: plan.id,
+      },
+    );
+    expect(item).toMatchObject({
+      name: implant.name,
+      tooth: "36",
+      line_total: 342_000,
     });
-    expect(item).toMatchObject({ name: implant.name, tooth: "36", line_total: 342_000 });
 
     await dataProvider.update("treatment_plans", {
       id: plan.id,
       data: { status: "agreed" },
       previousData: plan,
     });
-    const { data: after } = await dataProvider.getOne<Deal>("deals", { id: deal.id });
-    expect(after.plan_amount).toBe(342_000);
-    expect(db.stages.find((s) => s.id === after.stage_id)?.name).toBe("План согласован");
-    const runs = await list<StageTriggerRun>(dataProvider, "stage_trigger_runs", {
-      deal_id: deal.id,
+    const { data: after } = await dataProvider.getOne<Deal>("deals", {
+      id: deal.id,
     });
-    expect(runs.some((run) => run.status === "done" && run.action === "move_stage")).toBe(true);
+    expect(after.plan_amount).toBe(342_000);
+    expect(db.stages.find((s) => s.id === after.stage_id)?.name).toBe(
+      "План согласован",
+    );
+    const runs = await list<StageTriggerRun>(
+      dataProvider,
+      "stage_trigger_runs",
+      {
+        deal_id: deal.id,
+      },
+    );
+    expect(
+      runs.some((run) => run.status === "done" && run.action === "move_stage"),
+    ).toBe(true);
 
     // Items of the agreed plan change the amount; progress moves the status
     await dataProvider.update("treatment_plan_items", {
@@ -163,33 +203,54 @@ describe("demo treatment plans", () => {
       "treatment_plans_summary",
       { id: plan.id },
     );
-    expect(summary).toMatchObject({ status: "completed", total_amount: 171_000, done_count: 1 });
-    expect((await dataProvider.getOne<Deal>("deals", { id: deal.id })).data.plan_amount).toBe(
-      171_000,
-    );
+    expect(summary).toMatchObject({
+      status: "completed",
+      total_amount: 171_000,
+      done_count: 1,
+    });
+    expect(
+      (await dataProvider.getOne<Deal>("deals", { id: deal.id })).data
+        .plan_amount,
+    ).toBe(171_000);
 
     // A second variant agreed becomes the main plan
     const copyId = await dataProvider.duplicateTreatmentPlan(plan.id);
-    const { data: copy } = await dataProvider.getOne<TreatmentPlan>("treatment_plans", {
-      id: copyId,
+    const { data: copy } = await dataProvider.getOne<TreatmentPlan>(
+      "treatment_plans",
+      {
+        id: copyId,
+      },
+    );
+    expect(copy).toMatchObject({
+      status: "draft",
+      name: "Вариант эконом (копия)",
     });
-    expect(copy).toMatchObject({ status: "draft", name: "Вариант эконом (копия)" });
     await dataProvider.update("treatment_plans", {
       id: copyId,
       data: { status: "agreed" },
       previousData: copy,
     });
-    const plans = await list<TreatmentPlan>(dataProvider, "treatment_plans", { deal_id: deal.id });
+    const plans = await list<TreatmentPlan>(dataProvider, "treatment_plans", {
+      deal_id: deal.id,
+    });
     expect(plans.filter((p) => p.is_main).map((p) => p.id)).toEqual([copyId]);
   });
 
   it("a move refused by the stage checklist is skipped and logged", async () => {
     // The demo checklist of «Пришёл на консультацию» is not done
-    const { db, dataProvider, deal } = withFreshDeal(0, "Пришёл на консультацию");
-    const consultation = db.stages.find((s) => s.name === "Пришёл на консультацию")!;
-    const { data: plan } = await dataProvider.create<TreatmentPlan>("treatment_plans", {
-      data: { deal_id: deal.id, name: "План" },
-    });
+    const { db, dataProvider, deal } = withFreshDeal(
+      0,
+      "Пришёл на консультацию",
+    );
+    const consultation = db.stages.find(
+      (s) => s.name === "Пришёл на консультацию",
+    )!;
+    const { data: plan } = await dataProvider.create<TreatmentPlan>(
+      "treatment_plans",
+      {
+        data: { deal_id: deal.id, name: "План" },
+      },
+    );
     await dataProvider.create("treatment_plan_items", {
       data: { plan_id: plan.id, name: "Коронка", unit_price: 120_000 },
     });
@@ -198,24 +259,40 @@ describe("demo treatment plans", () => {
       data: { status: "agreed" },
       previousData: plan,
     });
-    const { data: after } = await dataProvider.getOne<Deal>("deals", { id: deal.id });
+    const { data: after } = await dataProvider.getOne<Deal>("deals", {
+      id: deal.id,
+    });
     expect(after.stage_id).toBe(consultation.id);
     expect(after.plan_amount).toBe(120_000);
-    const runs = await list<StageTriggerRun>(dataProvider, "stage_trigger_runs", {
-      deal_id: deal.id,
-    });
-    expect(runs.find((run) => run.status === "skipped")?.error).toMatch(/чек-лист/);
+    const runs = await list<StageTriggerRun>(
+      dataProvider,
+      "stage_trigger_runs",
+      {
+        deal_id: deal.id,
+      },
+    );
+    expect(runs.find((run) => run.status === "skipped")?.error).toMatch(
+      /чек-лист/,
+    );
   });
 
   it("a manager keeps to the discount limit and the price list", async () => {
     const { db, dataProvider, deal } = withFreshDeal(1);
     const crown = db.services.find((s) => s.code === "O-02")!;
-    const { data: plan } = await dataProvider.create<TreatmentPlan>("treatment_plans", {
-      data: { deal_id: deal.id, name: "План" },
-    });
+    const { data: plan } = await dataProvider.create<TreatmentPlan>(
+      "treatment_plans",
+      {
+        data: { deal_id: deal.id, name: "План" },
+      },
+    );
     await expect(
       dataProvider.create("treatment_plan_items", {
-        data: { plan_id: plan.id, name: "Скидка", unit_price: 10_000, discount_percent: 15 },
+        data: {
+          plan_id: plan.id,
+          name: "Скидка",
+          unit_price: 10_000,
+          discount_percent: 15,
+        },
       }),
     ).rejects.toThrow(/Скидка больше 10/);
     await expect(
@@ -224,7 +301,12 @@ describe("demo treatment plans", () => {
       }),
     ).rejects.toThrow(/ниже прайса/);
     await dataProvider.create("treatment_plan_items", {
-      data: { plan_id: plan.id, service_id: crown.id, unit_price: 120_000, discount_percent: 10 },
+      data: {
+        plan_id: plan.id,
+        service_id: crown.id,
+        unit_price: 120_000,
+        discount_percent: 10,
+      },
     });
     await expect(
       dataProvider.update("treatment_plans", {

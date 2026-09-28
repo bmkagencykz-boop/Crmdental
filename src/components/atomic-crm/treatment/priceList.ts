@@ -115,10 +115,12 @@ const key = (value: string | null | undefined) =>
   (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 
 export type PriceImportPlan = {
-  create: Array<Pick<Service, "name" | "price" | "position"> & {
-    code: string | null;
-    category: string | null;
-  }>;
+  create: Array<
+    Pick<Service, "name" | "price" | "position"> & {
+      code: string | null;
+      category: string | null;
+    }
+  >;
   update: Array<{
     id: Identifier;
     previous: Service;
@@ -145,7 +147,10 @@ export const planPriceImport = (
   }
   const unique = new Map<string, PriceRow>();
   for (const row of rows) {
-    unique.set(row.code ? `code:${key(row.code)}` : `name:${key(row.name)}`, row);
+    unique.set(
+      row.code ? `code:${key(row.code)}` : `name:${key(row.name)}`,
+      row,
+    );
   }
   const plan: PriceImportPlan = { create: [], update: [], unchanged: 0 };
   let position = Math.max(-1, ...services.map((s) => s.position)) + 1;
@@ -160,7 +165,8 @@ export const planPriceImport = (
       if (row.price != null && row.price !== (existing.price ?? null)) {
         data.price = row.price;
       }
-      if (row.code && row.code !== (existing.code ?? null)) data.code = row.code;
+      if (row.code && row.code !== (existing.code ?? null))
+        data.code = row.code;
       if (row.category && row.category !== (existing.category ?? null)) {
         data.category = row.category;
       }

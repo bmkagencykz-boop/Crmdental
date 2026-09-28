@@ -169,8 +169,7 @@ export const discountExceeds = ({
   amount?: number;
   subtotal?: number;
   max: number;
-}) =>
-  percent > max || subtotal * percent + amount * 100 > max * subtotal;
+}) => percent > max || subtotal * percent + amount * 100 > max * subtotal;
 
 /** Only the owner and the head go beyond the limit and below the price list */
 export const canExceedLimits = (role: string | undefined | null) =>
@@ -222,3 +221,9 @@ export const progressPlan = <
   plans
     .filter((plan) => ["in_progress", "completed"].includes(plan.status))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+
+/** "12,5" → 12.5, "5 000 ₸" → 5000; unreadable → fallback */
+export const parseNumber = (raw: string, fallback = 0) => {
+  const value = Number(raw.replace(/[\s\u00a0₸%]/g, "").replace(",", "."));
+  return raw.trim() && Number.isFinite(value) ? value : fallback;
+};

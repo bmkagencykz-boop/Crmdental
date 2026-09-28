@@ -102,9 +102,9 @@ describe("planTotals", () => {
 
 describe("statusAfterProgress", () => {
   it("moves an agreed plan along with the done items", () => {
-    expect(statusAfterProgress("agreed", [{ done: true }, { done: false }])).toBe(
-      "in_progress",
-    );
+    expect(
+      statusAfterProgress("agreed", [{ done: true }, { done: false }]),
+    ).toBe("in_progress");
     expect(statusAfterProgress("in_progress", [{ done: true }])).toBe(
       "completed",
     );
@@ -125,10 +125,20 @@ describe("discount limit", () => {
     expect(discountExceeds({ percent: 10, max: 10 })).toBe(false);
     expect(discountExceeds({ percent: 12, max: 10 })).toBe(true);
     expect(
-      discountExceeds({ percent: 8, amount: 100_000, subtotal: 400_000, max: 10 }),
+      discountExceeds({
+        percent: 8,
+        amount: 100_000,
+        subtotal: 400_000,
+        max: 10,
+      }),
     ).toBe(true);
     expect(
-      discountExceeds({ percent: 5, amount: 20_000, subtotal: 400_000, max: 10 }),
+      discountExceeds({
+        percent: 5,
+        amount: 20_000,
+        subtotal: 400_000,
+        max: 10,
+      }),
     ).toBe(false);
   });
 
@@ -163,8 +173,18 @@ describe("helpers", () => {
 
   it("shows the progress of the main plan", () => {
     const plans = [
-      { id: 1, is_main: false, status: "completed" as const, updated_at: "2026-01-02" },
-      { id: 2, is_main: true, status: "agreed" as const, updated_at: "2026-01-01" },
+      {
+        id: 1,
+        is_main: false,
+        status: "completed" as const,
+        updated_at: "2026-01-02",
+      },
+      {
+        id: 2,
+        is_main: true,
+        status: "agreed" as const,
+        updated_at: "2026-01-01",
+      },
     ];
     expect(progressPlan(plans)?.id).toBe(2);
     expect(progressPlan([plans[0]])?.id).toBe(1);

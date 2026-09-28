@@ -43,6 +43,10 @@ const MONEY_FIELDS = new Set([
   "paid_amount",
   "amount",
   "consultation_amount",
+  // Treatment plans and the price list (stage 29)
+  "unit_price",
+  "discount_amount",
+  "price",
 ]);
 const DATE_TIME_FIELDS = new Set([
   "due_date",
@@ -84,6 +88,7 @@ const REFERENCES: Record<
   source_id: "sources",
   service_id: "services",
   doctor_id: "doctors",
+  preferred_doctor_id: "doctors",
   target_stage_id: "stages",
   target_sales_id: "sales",
   tag_id: "tags",
@@ -99,7 +104,7 @@ const LIST_REFERENCES: Record<
 
 /** Entity types of the filter, and the logged entities they cover */
 export const AUDIT_ENTITY_GROUPS = {
-  deal: ["deal", "file"],
+  deal: ["deal", "file", "treatment_plan", "treatment_plan_item"],
   patient: ["patient"],
   payment: ["payment"],
   task: ["task"],
@@ -119,6 +124,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "api_key",
     "mis_connection",
     "salesbot",
+    "service",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -264,13 +270,30 @@ export const describeAuditChanges = (
     )
     .map(([field, pair]) => {
       const [before, after] = Array.isArray(pair) ? pair : [null, pair];
+      const entity = (entry as Partial<AuditLogEntry>).entity as
+        | string
+        | undefined;
       const special =
         customChange(field, lookups, translate) ??
-        ((entry as Partial<AuditLogEntry>).entity === "custom_field"
+        (entity === "custom_field"
           ? definitionChange(field, translate)
-          : null);
+          : entity === "treatment_plan" && field === "status"
+            ? {
+                label: translate("treatment.audit.fields.status"),
+                format: (value: unknown) =>
+                  value == null
+                    ? EMPTY
+                    : translate(`treatment.statuses.${value}`, {
+                        _: String(value),
+                      }),
+              }
+            : null);
+      // Fields of the treatment plans and the patient card (stage 29)
       const label =
-        special?.label ?? translate(`audit.fields.${field}`, { _: field });
+        special?.label ??
+        translate(`audit.fields.${field}`, {
+          _: translate(`treatment.audit.fields.${field}`, { _: field }),
+        });
       const format = (value: unknown) =>
         special
           ? special.format(value)
@@ -326,9 +349,11 @@ export const auditEntityLabel = (
       ? translate("custom_fields.audit.entity")
       : entry.entity === "mis_connection"
         ? translate("mis_connectors.audit.entity")
-        : translate(`audit.entities.${entry.entity}`, {
-            _: entry.entity,
-          });
+        : TREATMENT_ENTITIES.includes(entry.entity)
+          ? translate(`treatment.audit.${entry.entity}`)
+          : translate(`audit.entities.${entry.entity}`, {
+              _: entry.entity,
+            });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -375,6 +400,9 @@ export const auditEntityLabel = (
     case "stage_trigger":
     case "api_key":
     case "salesbot":
+    case "treatment_plan":
+    case "treatment_plan_item":
+    case "service":
       name = changedName(entry) ?? ref;
       break;
     case "webhook":
@@ -392,11 +420,19 @@ export const auditEntityLabel = (
     "pipeline",
     "file",
     "custom_field",
+    ...TREATMENT_ENTITIES,
   ].includes(entry.entity)
     ? `«${name}»`
     : name;
   return `${kind} ${quoted}`;
 };
+
+/** Entities of stage 29, labelled in the treatment namespace */
+const TREATMENT_ENTITIES: string[] = [
+  "treatment_plan",
+  "treatment_plan_item",
+  "service",
+];
 
 /** The deal page, else the patient page */
 export const auditEntityLink = (entry: AuditLogEntry) => {

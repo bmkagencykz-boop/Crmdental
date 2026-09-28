@@ -3348,7 +3348,8 @@ export const russianCrmMessages: CrmMessages = {
         "Планов лечения ещё нет. Соберите план из прайса — позиции, зубы, этапы — и отправьте пациенту смету.",
       default_name: "План лечения",
       variant_name: "Вариант %{n}",
-      items_count: "%{smart_count} позиция |||| %{smart_count} позиции |||| %{smart_count} позиций",
+      items_count:
+        "%{smart_count} позиция |||| %{smart_count} позиции |||| %{smart_count} позиций",
       created: "Создан %{date}",
       agreed_at: "Согласован %{date}",
     },
@@ -3359,7 +3360,7 @@ export const russianCrmMessages: CrmMessages = {
       note: "Комментарий для сметы",
       service: "Услуга",
       tooth: "Зуб",
-      tooth_placeholder: "36, 11-13",
+      tooth_placeholder: "—",
       qty: "Кол-во",
       price: "Цена",
       discount: "Скидка %",
@@ -3394,8 +3395,10 @@ export const russianCrmMessages: CrmMessages = {
     },
     limits: {
       discount: "Скидка больше %{max}% — только владелец или руководитель",
-      price_below: "Цена ниже прайса (%{price}) — только владелец или руководитель",
-      read_only: "Планы лечения меняют администраторы, руководитель и владелец.",
+      price_below:
+        "Цена ниже прайса (%{price}) — только владелец или руководитель",
+      read_only:
+        "Планы лечения меняют администраторы, руководитель и владелец.",
     },
     notify: {
       agreed: "План согласован. Сумма сделки: %{amount}",
@@ -3405,6 +3408,7 @@ export const russianCrmMessages: CrmMessages = {
     },
     pdf: {
       button: "Смета PDF",
+      file_prefix: "Смета",
       title: "План лечения и смета",
       number: "Смета № %{id}",
       patient: "Пациент",
@@ -3462,7 +3466,8 @@ export const russianCrmMessages: CrmMessages = {
       import_empty: "В файле не нашлось услуг",
       import_unsupported: "Нужен файл .xlsx или .csv",
       export: "Скачать прайс (CSV)",
-      count: "%{smart_count} услуга |||| %{smart_count} услуги |||| %{smart_count} услуг",
+      count:
+        "%{smart_count} услуга |||| %{smart_count} услуги |||| %{smart_count} услуг",
       empty: "Ничего не нашлось",
       max_discount: "Скидка без руководителя — до",
       max_discount_hint:

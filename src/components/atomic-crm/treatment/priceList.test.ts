@@ -58,7 +58,13 @@ describe("price list import mapping", () => {
         category: "Имплантация",
         price: 180000,
       },
-      { line: 4, code: null, name: "Консультация", category: null, price: null },
+      {
+        line: 4,
+        code: null,
+        name: "Консультация",
+        category: null,
+        price: null,
+      },
     ]);
     expect(errors).toEqual([
       { line: 5, name: "", error: "no_name" },
@@ -79,11 +85,35 @@ describe("price list import mapping", () => {
       service(3, { name: "Гигиена", is_archived: true, price: 25000 }),
     ];
     const plan = planPriceImport(services, [
-      { line: 2, code: null, name: "консультация ", category: null, price: 5000 },
-      { line: 3, code: "IMP-1", name: "Имплант", category: "Имплантация", price: 180000 },
+      {
+        line: 2,
+        code: null,
+        name: "консультация ",
+        category: null,
+        price: 5000,
+      },
+      {
+        line: 3,
+        code: "IMP-1",
+        name: "Имплант",
+        category: "Имплантация",
+        price: 180000,
+      },
       { line: 4, code: null, name: "Гигиена", category: null, price: 25000 },
-      { line: 5, code: null, name: "Виниры", category: "Ортопедия", price: 90000 },
-      { line: 6, code: null, name: "виниры", category: "Ортопедия", price: 95000 },
+      {
+        line: 5,
+        code: null,
+        name: "Виниры",
+        category: "Ортопедия",
+        price: 90000,
+      },
+      {
+        line: 6,
+        code: null,
+        name: "виниры",
+        category: "Ортопедия",
+        price: 95000,
+      },
     ]);
     expect(plan.update.map(({ id, data }) => ({ id, data }))).toEqual([
       { id: 1, data: { price: 5000 } },
@@ -104,7 +134,11 @@ describe("price list import mapping", () => {
 
   it("exports the active price list as CSV that the import reads back", () => {
     const csv = priceListCsv([
-      service(1, { name: "Консультация", price: 5000, category: "Диагностика" }),
+      service(1, {
+        name: "Консультация",
+        price: 5000,
+        category: "Диагностика",
+      }),
       service(2, { name: "Старое", is_archived: true }),
     ]);
     expect(csv).toContain("Код;Наименование;Категория;Цена");

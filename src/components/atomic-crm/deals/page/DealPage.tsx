@@ -1,4 +1,9 @@
-import { ShowBase, useRecordContext, useTranslate } from "ra-core";
+import {
+  ShowBase,
+  useCanAccess,
+  useRecordContext,
+  useTranslate,
+} from "ra-core";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +22,7 @@ import { DealHeader } from "./DealHeader";
 import { PatientBlock } from "./PatientBlock";
 import { UnsortedBanner } from "../../unsorted/UnsortedBanner";
 import { MisDealBadge, MisVisits } from "../../mis/MisVisits";
+import { DealTreatmentPlans } from "../../treatment/DealTreatmentPlans";
 
 /**
  * The deal card as a page, amoCRM layout in the CRM design: on the left the
@@ -29,13 +35,18 @@ export const DealPage = () => (
   </ShowBase>
 );
 
-type Tab = "main" | "payments" | "files";
+type Tab = "main" | "payments" | "treatment" | "files";
 
 const DealPageContent = () => {
   const translate = useTranslate();
   const deal = useRecordContext<Deal>();
   const [tab, setTab] = useState<Tab>("main");
   const [mode, setMode] = useState<ComposerMode>("chat");
+  // Treatment plans (stage 29): not for the integrator (no money)
+  const { canAccess: canSeePlans = false } = useCanAccess({
+    resource: "treatment_plans",
+    action: "list",
+  });
   useMarkDealRead(deal);
   if (!deal) return null;
 
@@ -54,7 +65,14 @@ const DealPageContent = () => {
           className="flex gap-5 border-b border-border px-6 text-sm font-semibold"
           role="tablist"
         >
-          {(["main", "payments", "files"] as const).map((value) => (
+          {(
+            [
+              "main",
+              "payments",
+              ...(canSeePlans ? (["treatment"] as const) : []),
+              "files",
+            ] as const
+          ).map((value) => (
             <button
               key={value}
               type="button"
@@ -71,7 +89,9 @@ const DealPageContent = () => {
               {translate(
                 value === "files"
                   ? "files.tab"
-                  : `crm.deals.page.tabs.${value}`,
+                  : value === "treatment"
+                    ? "treatment.tab"
+                    : `crm.deals.page.tabs.${value}`,
               )}
             </button>
           ))}
@@ -91,6 +111,10 @@ const DealPageContent = () => {
           ) : tab === "payments" ? (
             <div className="px-6 py-5">
               <DealPayments deal={deal} />
+            </div>
+          ) : tab === "treatment" ? (
+            <div className="px-5 py-5">
+              <DealTreatmentPlans deal={deal} />
             </div>
           ) : (
             <div className="px-6 py-5">

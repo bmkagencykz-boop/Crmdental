@@ -360,7 +360,7 @@ export const generatePayments = (db: Db) => {
     );
   let agreedLeft = plans.filter((plan) => plan.status === "agreed").length;
   for (const plan of plans) {
-    if (debtors.size >= 4) break;
+    if (debtors.size >= 6) break;
     if (debtors.has(String(plan.patient_id))) continue;
     if (plan.status === "agreed") {
       if (agreedLeft <= 1) continue;
@@ -378,5 +378,20 @@ export const generatePayments = (db: Db) => {
     // All items done: the plan is completed (like the database)
     if (items.every((item) => item.done)) plan.status = "completed";
     if (debt(plan.patient_id) > 0) debtors.add(String(plan.patient_id));
+  }
+  // Always a few debtors: a completed visit of a priced service, not paid
+  const priced = db.services.filter((service) => Number(service.price) > 0);
+  for (const visit of db.visits) {
+    if (debtors.size >= 4 || priced.length === 0) break;
+    if (
+      visit.status !== "completed" ||
+      visit.source === "mis" ||
+      visit.deal_id != null ||
+      debtors.has(String(visit.patient_id))
+    ) {
+      continue;
+    }
+    visit.service_id = priced[debtors.size % priced.length].id;
+    if (debt(visit.patient_id) > 0) debtors.add(String(visit.patient_id));
   }
 };

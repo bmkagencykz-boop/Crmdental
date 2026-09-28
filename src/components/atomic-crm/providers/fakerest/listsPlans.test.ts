@@ -118,7 +118,15 @@ describe("demo bulk actions", () => {
       (stage) =>
         stage.kind === "lost" && stage.pipeline_id === deals[0].pipeline_id,
     )!;
-    const ids = deals.slice(0, 2).map((deal) => deal.id);
+    // Two deals of the lost stage's pipeline (a lost stage of another
+    // pipeline is refused for another reason)
+    const ids = deals
+      .filter(
+        (deal) =>
+          deal.pipeline_id === deals[0].pipeline_id && !deal.unsorted_at,
+      )
+      .slice(0, 2)
+      .map((deal) => deal.id);
     const refused = await dataProvider.bulkDeals("stage", ids, {
       stage_id: lost.id,
     });

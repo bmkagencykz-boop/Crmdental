@@ -91,7 +91,7 @@ create index saved_filters_organization_id_idx on public.saved_filters using btr
 --   task: text, due_date, type (call by default), sales_id (the responsible
 --     of each deal by default);
 --   message: template_id or body, name (of the mailing) - owner and head;
---   archive, delete - owner and head.
+--   archive - owner and head; delete - the delete right on deals (stage 30).
 -- Returns { action, results: [{ id, ok, error, code }], ok, failed,
 -- mailing_id }. At most 1000 deals per call.
 CREATE OR REPLACE FUNCTION "public"."bulk_deals"("action" "text", "ids" bigint[], "params" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
@@ -130,8 +130,14 @@ begin
     raise exception 'Не больше 1000 сделок за раз'
       using errcode = '22023', hint = 'bulk_too_many';
   end if;
-  if action in ('message', 'archive', 'delete') and coalesce(user_role in ('owner', 'head'), false) is false then
+  if action in ('message', 'archive') and coalesce(user_role in ('owner', 'head'), false) is false then
     raise exception 'Это действие доступно владельцу и руководителю'
+      using errcode = '42501', hint = 'bulk_forbidden';
+  end if;
+  -- Deleting follows the access rights (stage 30); RLS keeps it to the deals
+  -- of the employee's delete scope
+  if action = 'delete' and coalesce(private.access_scope('deals', 'delete') <> 'none', false) is false then
+    raise exception 'Нет права удалять сделки'
       using errcode = '42501', hint = 'bulk_forbidden';
   end if;
   params := coalesce(params, '{}'::jsonb);

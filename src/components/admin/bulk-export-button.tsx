@@ -1,4 +1,3 @@
-import { Download } from "lucide-react";
 import type { RaRecord, UseBulkExportOptions } from "ra-core";
 import {
   useBulkExport,
@@ -75,7 +74,7 @@ export const BulkExportButton = <T extends RaRecord>({
   );
 };
 
-const defaultIcon = <Download className="h-4 w-4" />;
+const defaultIcon = null;
 
 export type BulkExportButtonProps<T extends RaRecord> =
   UseBulkExportOptions<T> & {

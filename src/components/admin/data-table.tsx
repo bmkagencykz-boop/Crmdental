@@ -28,7 +28,6 @@ import {
   useTranslateLabel,
 } from "ra-core";
 import { useNavigate } from "react-router";
-import { ArrowDownAZ, ArrowUpZA } from "lucide-react";
 import get from "lodash/get";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -397,9 +396,9 @@ function DataTableHeadCell<
                 )}
                 {sort.field === source ? (
                   sort.order === "ASC" ? (
-                    <ArrowDownAZ className="ml-2 h-6 w-6" />
+                    <span aria-hidden className="ml-1 text-xs">↓</span>
                   ) : (
-                    <ArrowUpZA className="ml-2 h-6 w-6" />
+                    <span aria-hidden className="ml-1 text-xs">↑</span>
                   )
                 ) : null}
                 {headerClassName?.includes("text-right") ? (

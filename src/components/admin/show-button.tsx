@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
 import { buttonVariants } from "@/components/ui/button";
-import { Eye } from "lucide-react";
 import type { RaRecord } from "ra-core";
 import {
   useCreatePath,
@@ -73,7 +72,7 @@ export const ShowButton = (props: ShowButtonProps) => {
       aria-label={typeof label === "string" ? label : undefined}
       {...rest}
     >
-      {icon ?? <Eye />}
+      {icon}
       {label}
     </Link>
   );

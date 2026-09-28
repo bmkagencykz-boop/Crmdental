@@ -95,7 +95,6 @@ export const ColumnsButton = (props: ColumnsButtonProps) => {
             </Tooltip>
           ) : (
             <Button variant="outline" className="cursor-pointer" {...rest}>
-              <Columns />
               {title}
             </Button>
           )}

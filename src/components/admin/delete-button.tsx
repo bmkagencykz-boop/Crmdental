@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { humanize, singularize } from "inflection";
 import type { UseDeleteOptions, RedirectionSideEffect } from "ra-core";
@@ -106,7 +105,6 @@ export const DeleteButton = (props: DeleteButtonProps) => {
       size={size}
       className={className}
     >
-      <Trash />
       {label}
     </Button>
   );

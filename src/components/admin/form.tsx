@@ -14,7 +14,7 @@ import {
   ValidationError,
   warning,
 } from "ra-core";
-import { Loader2, Save } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import { FormProvider, useFormContext, useFormState } from "react-hook-form";
@@ -249,7 +249,7 @@ const SaveButton = <RecordType extends RaRecord = RaRecord>(
   );
 };
 
-const defaultIcon = <Save className="h-4 w-4" />;
+const defaultIcon = null;
 
 interface Props<
   RecordType extends RaRecord = RaRecord,

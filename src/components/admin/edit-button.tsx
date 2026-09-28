@@ -1,6 +1,5 @@
 import React from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
 import type { RaRecord } from "ra-core";
 import {
   useCreatePath,
@@ -72,7 +71,6 @@ export const EditButton = (props: EditButtonProps) => {
       onClick={stopPropagation}
       aria-label={typeof label === "string" ? label : undefined}
     >
-      <Pencil />
       {label}
     </Link>
   );

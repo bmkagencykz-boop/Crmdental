@@ -69,7 +69,7 @@ export const SearchInput = (inProps: SearchInputProps) => {
           variant="ghost"
           size="sm"
           onClick={handleClear}
-          className="absolute right-8 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full p-0 text-muted-foreground"
+          className="absolute right-8 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-sm p-0 text-muted-foreground"
           aria-label={translate("ra.action.clear_search", {
             _: "Clear search",
           })}

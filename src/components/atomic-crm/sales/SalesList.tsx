@@ -60,6 +60,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
 export function SalesList() {
   return (
     <List
+      title={false}
       filters={filters}
       actions={<SalesListActions />}
       sort={{ field: "first_name", order: "ASC" }}

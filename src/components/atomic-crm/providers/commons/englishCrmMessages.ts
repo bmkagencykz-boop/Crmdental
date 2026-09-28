@@ -3927,6 +3927,9 @@ export const englishCrmMessages = {
       denied: "You have no right to do this",
     },
   },
+  ui: {
+    filter: "Filter",
+  },
 } as const;
 
 type MessageSchema<T> = {

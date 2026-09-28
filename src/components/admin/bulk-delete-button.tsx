@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
-import { Trash } from "lucide-react";
 import type { RaRecord, UseBulkDeleteControllerParams } from "ra-core";
 import {
   useBulkDeleteController,
@@ -84,4 +83,4 @@ export type BulkDeleteButtonProps<
 } & React.ComponentPropsWithoutRef<"button"> &
   UseBulkDeleteControllerParams<RecordType, MutationOptionsError>;
 
-const defaultIcon = <Trash />;
+const defaultIcon = null;

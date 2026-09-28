@@ -3949,6 +3949,9 @@ export const russianCrmMessages: CrmMessages = {
       denied: "Нет прав на это действие",
     },
   },
+  ui: {
+    filter: "Фильтр",
+  },
 };
 
 export const raSupabaseRussianMessages = {

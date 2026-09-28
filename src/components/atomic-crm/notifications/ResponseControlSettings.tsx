@@ -185,7 +185,7 @@ export const ResponseControlSettings = () => {
                   className={cn(
                     "rounded-md px-4 py-2 text-sm font-medium transition-all",
                     active
-                      ? "bg-primary text-primary-foreground shadow-soft"
+                      ? "bg-primary text-primary-foreground"
                       : "soft hover:bg-card",
                   )}
                 >

@@ -54,7 +54,7 @@ export function ActivityLogIterator() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {data?.map((activity, index) => (
         <Fragment key={index}>
           <ActivityLogItem activity={activity} />

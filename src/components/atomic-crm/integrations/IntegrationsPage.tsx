@@ -288,7 +288,7 @@ const CardGrid = ({
           <button
             type="button"
             onClick={() => onOpen(entry)}
-            className="flex h-full w-full items-start gap-3 rounded-lg border bg-card p-3.5 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-full w-full items-start gap-3 rounded-md border bg-card p-3.5 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="integration-card"
             aria-label={entry.name}
           >
@@ -380,7 +380,7 @@ const IntegrationDetail = ({
         <Monogram logo={entry.logo} size="lg" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <DialogTitle className="text-xl">{entry.name}</DialogTitle>
+            <DialogTitle className="text-lg">{entry.name}</DialogTitle>
             <StatusBadge badge={catalogBadge(entry.status, connected)} />
           </div>
           <DialogDescription>

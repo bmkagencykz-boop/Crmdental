@@ -1,12 +1,4 @@
 import { formatPhone } from "../misc/formatPhone";
-import {
-  Globe,
-  Instagram,
-  MessageCircle,
-  PhoneIncoming,
-  Send,
-  type LucideIcon,
-} from "lucide-react";
 import { useGetList, useTranslate, type Identifier } from "ra-core";
 import { useNavigate } from "react-router";
 
@@ -17,23 +9,9 @@ import {
 } from "../dictionaries/useDictionaries";
 import { patientDisplayName } from "../patients/parsePatientText";
 import { UnsortedActions } from "./UnsortedActions";
-import {
-  leadExcerpt,
-  unsortedAge,
-  type UnsortedChannel,
-  type UnsortedLead,
-} from "./unsorted";
+import { leadExcerpt, unsortedAge, type UnsortedLead } from "./unsorted";
 
 export const UNSORTED_REFRESH_MS = 30_000;
-
-const CHANNEL_ICONS: Record<UnsortedChannel, LucideIcon> = {
-  whatsapp: MessageCircle,
-  instagram: Instagram,
-  telegram: Send,
-  telegram_bot: Send,
-  form: Globe,
-  call: PhoneIncoming,
-};
 
 /** The unsorted leads of a pipeline, newest first */
 export const useUnsortedLeads = (pipelineId?: Identifier) =>
@@ -90,19 +68,6 @@ export const UnsortedColumn = ({ pipelineId }: { pipelineId: Identifier }) => {
   );
 };
 
-export const ChannelIcon = ({
-  channel,
-  className,
-}: {
-  channel: UnsortedChannel | null;
-  className?: string;
-}) => {
-  const translate = useTranslate();
-  const Icon = channel ? CHANNEL_ICONS[channel] : MessageCircle;
-  const label = channel ? translate(`unsorted.channels.${channel}`) : "";
-  return <Icon className={className} aria-label={label} role="img" />;
-};
-
 const UnsortedCard = ({ lead }: { lead: UnsortedLead }) => {
   const translate = useTranslate();
   const navigate = useNavigate();
@@ -125,11 +90,7 @@ const UnsortedCard = ({ lead }: { lead: UnsortedLead }) => {
       data-unsorted-id={lead.id}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1.5 font-semibold text-brand-link">
-          <ChannelIcon
-            channel={lead.channel}
-            className="size-3.5 shrink-0 text-muted-foreground"
-          />
+        <p className="flex min-w-0 items-center font-semibold text-brand-link">
           <span className="truncate">{name}</span>
         </p>
         <time

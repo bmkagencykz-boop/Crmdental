@@ -66,7 +66,7 @@ export const InlineField = ({
             editable ? `${label}: ${translate("ra.action.edit")}` : label
           }
           className={cn(
-            "flex min-h-7 min-w-0 items-center gap-2 rounded-lg px-2 py-0.5 text-left",
+            "flex min-h-7 min-w-0 items-center gap-2 rounded-md px-2 py-0.5 text-left",
             editable && "hover:bg-card",
           )}
         >
@@ -241,7 +241,7 @@ const MultiselectEditor = ({
       ref={ref}
       role="group"
       aria-label={label}
-      className="flex flex-col gap-1.5 rounded-lg bg-card p-2"
+      className="flex flex-col gap-1.5 rounded-md bg-card p-2"
       onKeyDown={(event) => {
         if (event.key === "Escape") onDone(value, false);
       }}

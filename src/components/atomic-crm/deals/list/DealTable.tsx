@@ -110,7 +110,7 @@ export const DealTable = ({ settings }: { settings: ColumnSettings }) => {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
+    <div className="overflow-x-auto rounded-md border bg-card">
       <table
         className="w-full min-w-max text-[13px]"
         aria-label={translate("deal_list.title")}
@@ -339,7 +339,7 @@ const useCellRenderer = () => {
         return (
           <span
             className={cn(
-              "flex min-w-0 flex-col",
+              "flex min-w-0 items-baseline gap-1.5",
               state === "overdue" && "text-brand-red",
             )}
           >
@@ -361,7 +361,7 @@ const useCellRenderer = () => {
       }
       case "tags":
         return deal.tags?.length ? (
-          <span className="flex flex-wrap gap-1">
+          <span className="flex gap-1 overflow-hidden">
             {deal.tags.map((id) => {
               const tag = tags.find((t) => String(t.id) === String(id));
               return tag ? (

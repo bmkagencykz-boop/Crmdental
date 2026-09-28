@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck } from "lucide-react";
 import {
   useDataProvider,
   useGetList,
@@ -116,11 +115,14 @@ export const TelephonySettings = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          {connected ? (
-            <CircleCheck className="size-5 text-brand-lime" />
-          ) : (
-            <CircleAlert className="size-5 text-muted-foreground" />
-          )}
+          <span
+            aria-hidden
+            className={
+              connected
+                ? "size-2 rounded-full bg-primary"
+                : "size-2 rounded-full bg-muted-foreground/50"
+            }
+          />
           {connected
             ? translate("telephony.status_connected", {
                 provider: translate(
@@ -253,7 +255,7 @@ export const TelephonySettings = () => {
         </div>
       ) : null}
 
-      <section className="flex max-w-3xl flex-col gap-2 rounded-md bg-card px-5 py-4">
+      <section className="flex max-w-3xl flex-col gap-2 rounded-md border bg-card px-4 py-3">
         <h3 className="text-sm font-semibold">
           {translate("telephony.setup_title")} ·{" "}
           {translate(providerTextKey(provider, "providers"))}

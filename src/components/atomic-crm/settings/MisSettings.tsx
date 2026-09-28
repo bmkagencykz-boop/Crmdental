@@ -74,7 +74,7 @@ export const MisSettings = () => {
               ? "mis_connectors.settings.open"
               : "mis_connectors.settings.connect";
           return (
-            <li key={kind} className="rounded-lg bg-card">
+            <li key={kind} className="rounded-md bg-card">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">
@@ -127,7 +127,7 @@ export const MisSettings = () => {
             return (
               <li
                 key={kind}
-                className="flex items-center justify-between gap-3 rounded-lg bg-card px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-md bg-card px-4 py-3"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">

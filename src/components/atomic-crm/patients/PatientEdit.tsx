@@ -34,7 +34,7 @@ const EditTitle = () => {
   const translate = useTranslate();
   const record = useRecordContext<Patient>();
   return (
-    <h2 className="text-xl font-bold">
+    <h2 className="text-lg font-semibold">
       {translate("resources.patients.action.edit")}:{" "}
       {patientDisplayName(record)}
     </h2>

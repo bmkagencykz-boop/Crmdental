@@ -56,10 +56,10 @@ export const DealComposer = ({
   });
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border px-6 py-4">
+    <div className="flex flex-col gap-3 border-t border-border px-5 py-3">
       {openTasks.length ? (
         <div
-          className="flex max-h-36 flex-col gap-2 overflow-y-auto rounded-lg bg-card px-4 py-3"
+          className="flex max-h-36 flex-col gap-2 overflow-y-auto rounded-md bg-card px-4 py-3"
           aria-label={translate("crm.deals.timeline.next_steps")}
         >
           {openTasks.map((task) => (
@@ -79,7 +79,7 @@ export const DealComposer = ({
         </div>
       )}
 
-      <div className="rounded-lg bg-card p-3 shadow-card">
+      <div className="rounded-md bg-card p-3 shadow-card">
         <div
           className="mb-2 flex flex-wrap items-center gap-1 text-sm"
           role="tablist"

@@ -27,7 +27,7 @@ export const DealAttribution = ({ deal }: { deal: Deal }) => {
 
   return (
     <section
-      className="flex flex-col gap-2 border-t border-border px-6 py-4"
+      className="flex flex-col gap-2 border-t border-border px-5 py-4"
       data-testid="deal-attribution"
     >
       <div className="flex items-center justify-between gap-2">

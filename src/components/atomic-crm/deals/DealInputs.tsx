@@ -205,7 +205,7 @@ const PipelineAndStageInputs = () => {
         </p>
       ) : null}
       {stage?.kind === "lost" ? (
-        <div className="flex flex-col gap-4 rounded-lg bg-brand-red/10 p-4">
+        <div className="flex flex-col gap-4 rounded-md bg-brand-red/10 p-4">
           <SelectInput
             source="lost_reason_id"
             choices={toChoices(lostReasons, lostReasonId)}

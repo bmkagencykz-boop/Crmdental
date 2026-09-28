@@ -28,7 +28,7 @@ export const PatientCreate = () => {
         >
           <Card>
             <CardContent className="flex flex-col gap-6">
-              <h2 className="text-xl font-bold">
+              <h2 className="text-lg font-semibold">
                 {translate("resources.patients.action.new")}
               </h2>
               <PatientInputs />

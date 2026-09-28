@@ -43,11 +43,11 @@ export const DealHeader = ({ deal }: { deal: Deal }) => {
     deal.name || translate("crm.deals.page.number", { id: deal.id });
 
   return (
-    <div className="flex flex-col gap-4 px-6 pt-5 pb-4">
+    <div className="flex flex-col gap-3 px-5 pt-4 pb-3">
       <div className="flex items-start gap-2">
         <Link
           to="/deals"
-          className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
+          className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground"
           aria-label={translate("crm.deals.page.back")}
         >
           <ChevronLeft className="size-5" />
@@ -72,7 +72,7 @@ export const DealHeader = ({ deal }: { deal: Deal }) => {
             />
           ) : (
             <h1
-              className="cursor-text break-words text-[1.35rem] font-bold leading-tight tracking-[-0.02em]"
+              className="cursor-text break-words text-lg font-semibold leading-tight tracking-[-0.01em]"
               onClick={() => setEditingTitle(true)}
               title={translate("ra.action.edit")}
             >
@@ -120,7 +120,7 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
       />
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-card"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--surface-strong)]"
           aria-label={translate("crm.deals.page.actions")}
         >
           <MoreHorizontal className="size-5" />

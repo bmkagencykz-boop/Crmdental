@@ -76,7 +76,7 @@ export const SalesPlanTab = () => {
         >
           <ChevronLeft className="size-4" />
         </Button>
-        <h2 className="min-w-40 text-center text-base font-semibold capitalize">
+        <h2 className="min-w-40 text-center text-base font-semibold first-letter:uppercase">
           {monthLabel(month)}
         </h2>
         <Button
@@ -166,7 +166,7 @@ const PlanReport = ({ report }: { report: SalesPlanReport }) => {
                 <span className="text-xs font-semibold uppercase tracking-[0.04em] text-muted-foreground">
                   {translate(`sales_plan.metrics.${metric}`)}
                 </span>
-                <span className="text-xl font-bold tabular-nums">
+                <span className="text-xl font-semibold tabular-nums">
                   {format(metric, row.fact)}
                 </span>
                 <PlanBar row={row} />

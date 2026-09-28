@@ -62,7 +62,7 @@ export const DealCreate = ({
   return (
     <Dialog open={open} onOpenChange={() => handleClose()}>
       <DialogContent className="top-1/20 max-h-9/10 translate-y-0 overflow-y-auto lg:max-w-3xl">
-        <DialogTitle className="text-xl font-bold">
+        <DialogTitle className="text-lg font-semibold">
           {translate("resources.deals.action.new")}
         </DialogTitle>
         <Create resource="deals" mutationOptions={{ onSuccess }} title={false}>

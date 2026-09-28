@@ -28,9 +28,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
         <Badge
           variant="outline"
           className={
-            record.role === "manager"
-              ? undefined
-              : "border-blue-300 dark:border-blue-700"
+            record.role === "manager" ? undefined : "border-primary/50"
           }
         >
           {translate(roleLabelKey(record.role))}
@@ -48,7 +46,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
       {record.disabled && (
         <Badge
           variant="outline"
-          className="border-orange-300 dark:border-orange-700"
+          className="border-destructive/50 text-destructive"
         >
           {translate("resources.sales.fields.disabled")}
         </Badge>
@@ -60,6 +58,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
 export function SalesList() {
   return (
     <List
+      title={false}
       filters={filters}
       actions={<SalesListActions />}
       sort={{ field: "first_name", order: "ASC" }}

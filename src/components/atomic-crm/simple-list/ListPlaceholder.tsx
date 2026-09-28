@@ -5,5 +5,5 @@ interface ListPlaceholderProps {
 }
 
 export const ListPlaceholder = ({ className }: ListPlaceholderProps) => {
-  return <span className={cn("bg-gray-300 flex", className)}>&nbsp;</span>;
+  return <span className={cn("bg-muted flex", className)}>&nbsp;</span>;
 };

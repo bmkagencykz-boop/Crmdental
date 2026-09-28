@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy } from "lucide-react";
 import { useDataProvider, useNotify, useTranslate } from "ra-core";
 import { useState, type ReactNode } from "react";
 import { Confirm } from "@/components/admin/confirm";
@@ -155,7 +154,7 @@ const Block = ({
 }) => (
   <section
     aria-label={title}
-    className="flex max-w-3xl flex-col gap-2 rounded-lg border bg-card p-4 text-sm"
+    className="flex max-w-3xl flex-col gap-2 rounded-md border bg-card p-4 text-sm"
   >
     <div className="flex items-center justify-between gap-2">
       <h3 className="font-semibold">{title}</h3>
@@ -188,7 +187,6 @@ const CopyButton = ({ text, label }: { text: string; label: string }) => {
   };
   return (
     <Button variant="outline" onClick={copy} type="button">
-      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
       {copied ? translate("leads.copied") : label}
     </Button>
   );

@@ -28,7 +28,6 @@ import {
   useTranslateLabel,
 } from "ra-core";
 import { useNavigate } from "react-router";
-import { ArrowDownAZ, ArrowUpZA } from "lucide-react";
 import get from "lodash/get";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -112,7 +111,7 @@ export function DataTable<RecordType extends RaRecord = RaRecord>(
       empty={<DataTableEmpty />}
       {...rest}
     >
-      <div className={cn("rounded-md border", className)}>
+      <div className={cn("rounded-md border bg-card", className)}>
         <Table>
           <DataTableRenderContext.Provider value="header">
             <DataTableHead>{columns}</DataTableHead>
@@ -384,7 +383,7 @@ function DataTableHeadCell<
               <Button
                 variant="ghost"
                 size="sm"
-                className="-ml-3 -mr-3 h-8 data-[state=open]:bg-accent cursor-pointer"
+                className="-ml-2 -mr-2 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground data-[state=open]:bg-accent cursor-pointer"
                 data-field={source}
                 onClick={handleSort}
               >
@@ -397,9 +396,13 @@ function DataTableHeadCell<
                 )}
                 {sort.field === source ? (
                   sort.order === "ASC" ? (
-                    <ArrowDownAZ className="ml-2 h-6 w-6" />
+                    <span aria-hidden className="ml-1 text-xs">
+                      ↓
+                    </span>
                   ) : (
-                    <ArrowUpZA className="ml-2 h-6 w-6" />
+                    <span aria-hidden className="ml-1 text-xs">
+                      ↑
+                    </span>
                   )
                 ) : null}
                 {headerClassName?.includes("text-right") ? (

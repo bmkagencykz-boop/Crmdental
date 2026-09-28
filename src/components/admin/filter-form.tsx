@@ -17,15 +17,7 @@ import {
   useTranslate,
 } from "ra-core";
 import { useNavigate } from "react-router";
-import {
-  Bookmark,
-  BookmarkMinus,
-  BookmarkPlus,
-  Check,
-  Filter,
-  MinusCircle,
-  X,
-} from "lucide-react";
+import { Check, MinusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -335,14 +327,13 @@ export const FilterButton = (props: FilterButtonProps) => {
             type="button"
             className="add-filter"
             variant={variant}
-            size={iconOnly ? "icon" : size}
+            size={size}
             aria-haspopup="true"
-            title={iconOnly ? translate("ra.action.add_filter") : undefined}
+            aria-label={translate("ra.action.add_filter")}
           >
-            <Filter className="h-4 w-4" />
-            <span className={iconOnly ? "sr-only" : undefined}>
-              {translate("ra.action.add_filter")}
-            </span>
+            {iconOnly
+              ? translate("ui.filter", { _: "Filter" })
+              : translate("ra.action.add_filter")}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
@@ -375,7 +366,6 @@ export const FilterButton = (props: FilterButtonProps) => {
                 onClick={showRemoveSavedQueryDialog}
                 key={index}
               >
-                <BookmarkMinus className="h-4 w-4 mr-2" />
                 {translate("ra.saved_queries.remove_label_with_name", {
                   _: 'Remove query "%{name}"',
                   name: savedQuery.label,
@@ -400,14 +390,12 @@ export const FilterButton = (props: FilterButtonProps) => {
                 }}
                 key={index}
               >
-                <Bookmark className="h-4 w-4 mr-2" />
                 {savedQuery.label}
               </DropdownMenuItem>
             ),
           )}
           {hasFilterValues && !hasSavedCurrentQuery && !disableSaveQuery && (
             <DropdownMenuItem onClick={showAddSavedQueryDialog}>
-              <BookmarkPlus className="h-4 w-4 mr-2" />
               {translate("ra.saved_queries.new_label", {
                 _: "Save current query...",
               })}
@@ -420,7 +408,6 @@ export const FilterButton = (props: FilterButtonProps) => {
                 setOpen(false);
               }}
             >
-              <X className="h-4 w-4 mr-2" />
               {translate("ra.action.remove_all_filters", {
                 _: "Remove all filters",
               })}

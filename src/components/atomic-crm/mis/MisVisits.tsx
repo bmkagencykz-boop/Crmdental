@@ -46,7 +46,7 @@ export const MisVisits = ({
     <section
       className={cn(
         "flex flex-col gap-2",
-        compact ? "border-t border-border px-6 py-5" : "glass rounded-lg p-6",
+        compact ? "border-t border-border px-5 py-4" : "glass rounded-md p-4",
       )}
       data-testid="mis-visits"
     >

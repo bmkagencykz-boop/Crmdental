@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, X } from "lucide-react";
 import {
   useCanAccess,
   useDataProvider,
@@ -109,34 +108,32 @@ export const UnsortedActions = ({
   if (canEdit === false) return null;
   return (
     <div
-      className={cn("flex flex-wrap gap-1.5", compact && "flex-nowrap gap-1")}
+      className={cn("flex flex-wrap gap-1.5", compact && "gap-1")}
       onClick={(event) => event.stopPropagation()}
     >
       <Button
         size="sm"
-        className={cn(compact && "h-7 gap-1 px-2 text-xs has-[>svg]:px-2")}
+        className={cn(compact && "h-7 px-1.5 text-xs")}
         onClick={() => setDialog("accept")}
       >
-        <Check className="size-3.5" />
         {translate("unsorted.actions.accept")}
       </Button>
       <Button
         size="sm"
         variant="outline"
-        className={cn(compact && "h-7 gap-1 px-2 text-xs has-[>svg]:px-2")}
+        className={cn(compact && "h-7 px-1.5 text-xs")}
         onClick={() => setDialog("reject")}
       >
-        <X className="size-3.5" />
         {translate("unsorted.actions.reject")}
       </Button>
       <Button
         size="sm"
         variant="outline"
-        className={cn(compact && "h-7 gap-1 px-2 text-xs has-[>svg]:px-2")}
+        className={cn(compact && "h-7 px-1.5 text-xs")}
         onClick={() => setDialog("merge")}
-        title={translate("unsorted.actions.merge")}
+        aria-label={translate("unsorted.actions.merge")}
       >
-        {compact ? null : translate("unsorted.actions.merge")}
+        {translate(compact ? "ui.merge_short" : "unsorted.actions.merge")}
       </Button>
       {dialog === "accept" ? (
         <AcceptDialog lead={lead} onClose={() => setDialog(null)} />

@@ -78,7 +78,7 @@ const TodayInClinicCard = () => {
       </div>
       <Card className="gap-2 px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <span className="text-xl font-bold tabular-nums">
+          <span className="text-xl font-semibold tabular-nums">
             {todays.length}
           </span>
           <span className="text-xs text-muted-foreground">

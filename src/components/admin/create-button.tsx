@@ -1,6 +1,5 @@
 import React from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import {
   useCreatePath,
   useGetResourceLabel,
@@ -61,7 +60,6 @@ export const CreateButton = (props: CreateButtonProps) => {
       onClick={stopPropagation}
       aria-label={typeof label === "string" ? label : undefined}
     >
-      <Plus />
       {label}
     </Link>
   );

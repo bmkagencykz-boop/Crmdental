@@ -7,7 +7,6 @@ import {
   type Identifier,
 } from "ra-core";
 import { Link, matchPath, useLocation, useNavigate } from "react-router";
-import { KanbanSquare, List as ListIcon, Plus } from "lucide-react";
 import { CreateButton } from "@/components/admin/create-button";
 import { ExportButton } from "@/components/admin/export-button";
 import { List } from "@/components/admin/list";
@@ -118,25 +117,19 @@ const ViewSwitch = () => {
       role="group"
       aria-label={translate("deal_list.view.label")}
     >
-      {(
-        [
-          ["kanban", KanbanSquare],
-          ["list", ListIcon],
-        ] as const
-      ).map(([id, Icon]) => (
+      {(["kanban", "list"] as const).map((id) => (
         <button
           key={id}
           type="button"
           aria-pressed={view === id}
           onClick={() => choose(id)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-semibold transition-colors",
+            "inline-flex h-8 items-center rounded-sm px-3 text-sm font-medium transition-colors",
             view === id
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <Icon className="size-4" />
           {translate(`deal_list.view.${id}`)}
         </button>
       ))}
@@ -159,9 +152,9 @@ const PipelineTabs = () => {
             onClick={() => setCurrent(pipeline.id)}
             aria-pressed={active}
             className={cn(
-              "rounded-md px-4 py-2 text-sm font-semibold transition-all",
+              "h-8 rounded-md px-3 text-sm font-medium transition-colors",
               active
-                ? "bg-primary text-primary-foreground shadow-soft"
+                ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
             )}
           >
@@ -185,10 +178,10 @@ const DealLayout = ({ pipelineId }: { pipelineId: Identifier }) => (
 /** New deal button and the create / edit dialogs of both views */
 const DealDialogs = ({
   pipelineId,
-  fab = true,
+  fab = false,
 }: {
   pipelineId: Identifier;
-  /** The round «+» of the board (the list has the toolbar button) */
+  /** A floating «+»; off: both views have the toolbar button */
   fab?: boolean;
 }) => {
   const translate = useTranslate();
@@ -205,10 +198,10 @@ const DealDialogs = ({
       {fab && canCreate ? (
         <Link
           to="/deals/create"
-          className="fixed right-8 bottom-8 z-20 flex size-14 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-[0_14px_40px_-10px_rgba(239,59,110,0.6)] transition-transform hover:scale-105"
+          className="fixed right-8 bottom-8 z-20 flex size-11 items-center justify-center rounded-md bg-primary text-2xl text-primary-foreground shadow-[var(--shadow-soft)]"
           aria-label={translate("resources.deals.action.new")}
         >
-          <Plus className="size-7" strokeWidth={2.2} />
+          +
         </Link>
       ) : null}
       <DealCreate open={!!matchCreate} pipelineId={pipelineId} />
@@ -243,7 +236,7 @@ const DigitalPipelineButton = () => {
     <Link
       to={`/settings?section=pipeline_automation&pipeline=${current.id}`}
       title={translate("pipeline_automation.open_hint")}
-      className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium text-foreground no-underline hover:bg-accent"
+      className="inline-flex h-9 items-center rounded-md border border-input bg-card px-3 text-sm font-medium text-foreground no-underline hover:bg-[var(--surface-strong)]"
     >
       {translate("pipeline_automation.open")}
     </Link>

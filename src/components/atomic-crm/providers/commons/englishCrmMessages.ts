@@ -3927,7 +3927,6 @@ export const englishCrmMessages = {
       denied: "You have no right to do this",
     },
   },
-  // Branches (stage 33)
   branches: {
     scope: "My branch",
     switcher: {
@@ -3993,6 +3992,15 @@ export const englishCrmMessages = {
       assign_confirm:
         "Every deal and visit without a branch moves to the chosen branch. Continue?",
       assigned: "Attached: %{deals} deals, %{visits} visits",
+    },
+  },
+  ui: {
+    filter: "Filter",
+    merge_short: "Merge",
+    default_pipeline: "Default pipeline",
+    access: {
+      clinic_rules: "For the whole clinic",
+      staff_rights: "Employee rights",
     },
   },
 } as const;

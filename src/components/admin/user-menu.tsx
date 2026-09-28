@@ -6,7 +6,6 @@ import {
   useLogout,
   UserMenuContext,
 } from "ra-core";
-import { LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,7 +75,6 @@ export function UserMenu({ children }: UserMenuProps) {
           {children}
           {Children.count(children) > 0 && <DropdownMenuSeparator />}
           <DropdownMenuItem onClick={() => logout()} className="cursor-pointer">
-            <LogOut />
             <Translate i18nKey="ra.auth.logout">Log out</Translate>
           </DropdownMenuItem>
         </DropdownMenuContent>

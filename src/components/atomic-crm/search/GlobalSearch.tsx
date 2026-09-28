@@ -176,7 +176,7 @@ export const GlobalSearch = () => {
           id={listId}
           role="listbox"
           tabIndex={-1}
-          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-[70vh] overflow-y-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-lg"
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-[70vh] overflow-y-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-soft)]"
         >
           {!hasQuery && items.length > 0 ? (
             <GroupHeader label={translate("search.groups.recent")} />

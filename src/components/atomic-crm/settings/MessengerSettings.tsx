@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, CircleAlert } from "lucide-react";
 import { useDataProvider, useGetList, useNotify, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -62,11 +61,14 @@ export const MessengerSettings = ({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2 text-sm font-semibold">
-        {connected ? (
-          <CircleCheck className="size-5 text-brand-lime" />
-        ) : (
-          <CircleAlert className="size-5 text-muted-foreground" />
-        )}
+        <span
+          aria-hidden
+          className={
+            connected
+              ? "size-2 rounded-full bg-primary"
+              : "size-2 rounded-full bg-muted-foreground/50"
+          }
+        />
         {translate(
           connected
             ? "crm.settings.messengers.status_connected"
@@ -74,7 +76,7 @@ export const MessengerSettings = ({
         )}
       </div>
       {status?.last_error ? (
-        <p className="rounded-lg bg-brand-red/10 px-4 py-3 text-sm text-destructive">
+        <p className="rounded-md bg-brand-red/10 px-4 py-3 text-sm text-destructive">
           {status.last_error}
         </p>
       ) : null}
@@ -117,7 +119,7 @@ export const MessengerSettings = ({
             {channels.map((channel) => (
               <li
                 key={channel.id}
-                className="flex items-center gap-3 rounded-lg bg-card px-4 py-2.5 text-sm"
+                className="flex items-center gap-3 rounded-md bg-card px-4 py-2.5 text-sm"
               >
                 <span className="font-medium">
                   {translate(transportLabelKey(channel.transport))}

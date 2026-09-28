@@ -76,7 +76,7 @@ function EditHeader() {
   return (
     <DialogTitle className="pb-0">
       <div className="mb-6 flex items-start justify-between gap-4">
-        <h2 className="text-xl font-bold">
+        <h2 className="text-lg font-semibold">
           {translate("resources.deals.action.edit")}
         </h2>
         <div className="flex gap-2 pr-10">

@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck } from "lucide-react";
 import { useDataProvider, useNotify, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -62,11 +61,14 @@ export const TelegramBotSettings = ({
         </p>
       </div>
       <div className="flex items-center gap-2 text-sm font-semibold">
-        {connected ? (
-          <CircleCheck className="size-5 text-brand-lime" />
-        ) : (
-          <CircleAlert className="size-5 text-muted-foreground" />
-        )}
+        <span
+          aria-hidden
+          className={
+            connected
+              ? "size-2 rounded-full bg-primary"
+              : "size-2 rounded-full bg-muted-foreground/50"
+          }
+        />
         {connected
           ? translate("telegram.status_connected", {
               name: status?.username
@@ -76,7 +78,7 @@ export const TelegramBotSettings = ({
           : translate("telegram.status_disconnected")}
       </div>
       {status?.last_error ? (
-        <p className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {status.last_error}
         </p>
       ) : null}

@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { CircleX, Pencil } from "lucide-react";
 import {
   email,
   Form,
@@ -179,7 +178,7 @@ const ProfileForm = ({
       <Card>
         <CardContent>
           <div className="mb-4 flex flex-row justify-between">
-            <h2 className="text-xl font-semibold text-muted-foreground">
+            <h2 className="text-base font-semibold">
               {translate("crm.profile.title")}
             </h2>
           </div>
@@ -219,7 +218,6 @@ const ProfileForm = ({
               onClick={() => setEditMode(!isEditMode)}
               className="flex items-center"
             >
-              {isEditMode ? <CircleX /> : <Pencil />}
               {isEditMode
                 ? translate("ra.action.cancel")
                 : translate("ra.action.edit")}

@@ -96,16 +96,9 @@ export const AddTask = ({
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <div className="my-2">
-          <Button
-            variant="outline"
-            className="h-6 cursor-pointer"
-            onClick={handleOpen}
-            size="sm"
-          >
-            {translate("resources.tasks.action.add")}
-          </Button>
-        </div>
+        <Button className="cursor-pointer" onClick={handleOpen} size="sm">
+          {translate("resources.tasks.action.add")}
+        </Button>
       )}
 
       <TaskCreateDialog

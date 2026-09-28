@@ -50,7 +50,7 @@ export const FlowCanvas = (props: CanvasProps) => {
       <Insert anchor={{ kind: "start" }} onInsert={props.onInsert} />
       <Chain items={items} {...props} />
       {orphans.length ? (
-        <section className="mt-8 rounded-lg border border-dashed p-4">
+        <section className="mt-8 rounded-md border border-dashed p-4">
           <h3 className="text-sm font-semibold">
             {translate("salesbot.editor.orphans")}
           </h3>
@@ -147,7 +147,7 @@ const Columns = ({
       {columns.map((column) => (
         <div
           key={JSON.stringify(column.slot)}
-          className="flex min-w-[16rem] flex-1 flex-col rounded-lg border-l-2 border-dashed border-border bg-muted/30 px-2 pt-2 pb-3"
+          className="flex min-w-[16rem] flex-1 flex-col rounded-md border-l-2 border-dashed border-border bg-muted/30 px-2 pt-2 pb-3"
           data-testid="salesbot-column"
         >
           <p className="px-1 text-xs font-semibold text-muted-foreground">

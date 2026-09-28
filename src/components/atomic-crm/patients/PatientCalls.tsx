@@ -1,4 +1,3 @@
-import { PhoneIncoming, PhoneOutgoing } from "lucide-react";
 import {
   useCreate,
   useGetList,
@@ -116,11 +115,6 @@ export const CallForm = ({
                 : "soft hover:bg-card",
             )}
           >
-            {value === "out" ? (
-              <PhoneOutgoing className="size-4" />
-            ) : (
-              <PhoneIncoming className="size-4" />
-            )}
             {translate(`crm.calls.direction.${value}`)}
           </button>
         ))}
@@ -190,17 +184,14 @@ export const CallRow = ({ call }: { call: Call }) => {
   const author = useGetSalesName(call.sales_id ?? undefined, {
     enabled: call.sales_id != null,
   });
-  const Icon = call.direction === "out" ? PhoneOutgoing : PhoneIncoming;
   return (
     <div className="flex items-start gap-3 text-sm">
-      <Icon
-        className={cn(
-          "mt-0.5 size-4 shrink-0 text-muted-foreground",
-          call.status === "missed" && call.provider && "text-destructive",
-        )}
-      />
       <div className="min-w-0 flex-1">
-        <p>
+        <p
+          className={cn(
+            call.status === "missed" && call.provider && "text-destructive",
+          )}
+        >
           {translate(`crm.calls.direction.${call.direction}`)} ·{" "}
           <CallSummary call={call} />
         </p>

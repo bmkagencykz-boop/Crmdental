@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useCallback } from "react";
-import { Download } from "lucide-react";
 import type { Exporter } from "ra-core";
 import {
   fetchRelatedRecords,
@@ -108,19 +107,19 @@ export const ExportButton = (props: ExportButtonProps) => {
   return (
     <Button
       variant="outline"
-      size={iconOnly ? "icon" : "default"}
+      size={iconOnly && icon ? "icon" : "default"}
       onClick={handleClick}
       disabled={total === 0}
       className={className}
-      title={iconOnly && typeof label === "string" ? label : undefined}
+      title={iconOnly && icon && typeof label === "string" ? label : undefined}
     >
       {icon}
-      <span className={iconOnly ? "sr-only" : undefined}>{label}</span>
+      <span className={iconOnly && icon ? "sr-only" : undefined}>{label}</span>
     </Button>
   );
 };
 
-const defaultIcon = <Download />;
+const defaultIcon = null;
 
 export interface ExportButtonProps {
   className?: string;

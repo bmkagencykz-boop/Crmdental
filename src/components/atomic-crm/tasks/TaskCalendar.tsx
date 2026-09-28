@@ -343,7 +343,7 @@ const TimeGrid = ({
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="overflow-x-auto rounded-md border border-border bg-card">
       <div
         className={cn("grid", days.length > 1 && "min-w-[760px]")}
         style={columns}
@@ -506,7 +506,7 @@ const MonthGrid = ({
   const translate = useTranslate();
   const byDay = useMemo(() => tasksByDay(tasks, timeZone), [tasks, timeZone]);
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="overflow-x-auto rounded-md border border-border bg-card">
       <div className="grid min-w-[760px] grid-cols-7">
         {days.slice(0, 7).map((day) => (
           <div

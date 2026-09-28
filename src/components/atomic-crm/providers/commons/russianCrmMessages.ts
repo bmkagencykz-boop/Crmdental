@@ -3949,7 +3949,6 @@ export const russianCrmMessages: CrmMessages = {
       denied: "Нет прав на это действие",
     },
   },
-  // Branches «Филиалы» (stage 33)
   branches: {
     scope: "Мой филиал",
     switcher: {
@@ -4015,6 +4014,15 @@ export const russianCrmMessages: CrmMessages = {
       assign_confirm:
         "Все сделки и визиты без филиала перейдут в выбранный филиал. Продолжить?",
       assigned: "Привязано: сделок — %{deals}, визитов — %{visits}",
+    },
+  },
+  ui: {
+    filter: "Фильтр",
+    merge_short: "Объединить",
+    default_pipeline: "Основная воронка",
+    access: {
+      clinic_rules: "Для всей клиники",
+      staff_rights: "Права сотрудников",
     },
   },
 };

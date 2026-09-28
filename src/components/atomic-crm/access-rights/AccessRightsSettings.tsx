@@ -140,7 +140,7 @@ export const AccessRightsSettings = () => {
           {translate("access_rights.empty")}
         </p>
       ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[11rem_minmax(0,1fr)]">
           <nav
             aria-label={translate("access_rights.employees")}
             className="flex flex-col gap-0.5"
@@ -242,12 +242,12 @@ export const AccessRightsSettings = () => {
                       <tr key={entity} className="border-b">
                         <th
                           scope="row"
-                          className="px-3 py-1.5 text-left font-medium"
+                          className="px-3 py-1 text-left font-medium"
                         >
                           {translate(`access_rights.entities.${entity}`)}
                         </th>
                         {ACCESS_ACTIONS.map((action) => (
-                          <td key={action} className="px-2 py-1.5">
+                          <td key={action} className="px-1.5 py-1">
                             <ScopeSelect
                               entity={entity}
                               action={action}
@@ -264,11 +264,11 @@ export const AccessRightsSettings = () => {
                     <tr className="border-b">
                       <th
                         scope="row"
-                        className="px-3 py-1.5 text-left font-medium"
+                        className="px-3 py-1 text-left font-medium"
                       >
                         {translate("access_rights.entities.reports")}
                       </th>
-                      <td className="px-2 py-1.5">
+                      <td className="px-1.5 py-1">
                         <ScopeSelect
                           entity="reports"
                           action="view"
@@ -284,12 +284,12 @@ export const AccessRightsSettings = () => {
                     <tr>
                       <th
                         scope="row"
-                        className="px-3 py-1.5 text-left font-medium"
+                        className="px-3 py-1 text-left font-medium"
                         title={translate("access_rights.hints.settings")}
                       >
                         {translate("access_rights.entities.settings")}
                       </th>
-                      <td className="px-2 py-1.5">
+                      <td className="px-1.5 py-1">
                         <select
                           className={SELECT_CLASS}
                           aria-label={`${translate("access_rights.entities.settings")} · ${translate("access_rights.actions.view")}`}
@@ -349,7 +349,7 @@ export const AccessRightsSettings = () => {
 };
 
 const SELECT_CLASS =
-  "h-8 w-full min-w-[8.5rem] rounded-sm border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70";
+  "h-7 w-full min-w-[6.25rem] rounded-sm border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70";
 
 /** One cell: Все / Свои… / Запрещено; Да / Нет for create and reports */
 const ScopeSelect = ({

@@ -1,4 +1,3 @@
-import { Plus } from "lucide-react";
 import {
   InfiniteListBase,
   ShowBase,
@@ -56,7 +55,6 @@ const PatientShowContent = () => {
             action={
               <Button asChild size="sm">
                 <Link to={`/deals/create?patient_id=${record.id}`}>
-                  <Plus className="size-4" />
                   {translate("crm.patients.new_request")}
                 </Link>
               </Button>

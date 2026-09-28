@@ -1,4 +1,4 @@
-import { Download, ExternalLink, FileImage } from "lucide-react";
+import { Download } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useState } from "react";
 import {
@@ -106,7 +106,7 @@ const ImageThumb = ({
           />
         ) : (
           <span className="flex size-32 items-center justify-center text-muted-foreground">
-            <FileImage className="size-6" />
+            <span className="text-xs font-semibold uppercase">IMG</span>
           </span>
         )}
       </button>
@@ -167,7 +167,6 @@ export const FileActions = ({
       {url ? (
         <Button asChild variant="outline" size="sm">
           <a href={url} target="_blank" rel="noreferrer">
-            <ExternalLink className="size-4" />
             {translate("files.open")}
           </a>
         </Button>
@@ -178,7 +177,6 @@ export const FileActions = ({
           size="sm"
           onClick={() => download({ path: file.path!, name: file.name })}
         >
-          <Download className="size-4" />
           {translate("files.download")}
         </Button>
       ) : null}

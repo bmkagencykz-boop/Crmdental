@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+
 import { useDataProvider, useNotify, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -146,7 +146,6 @@ export const ServicesStep = () => {
           onClick={add}
           disabled={!newName.trim() || busy}
         >
-          <Plus className="size-4" />
           {translate("onboarding.services.add")}
         </Button>
       </div>

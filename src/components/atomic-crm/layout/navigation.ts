@@ -1,11 +1,11 @@
-import type { LucideIcon } from "lucide-react";
 import {
-  Columns3,
-  LayoutGrid,
-  ListChecks,
-  MessagesSquare,
-  UsersRound,
-} from "lucide-react";
+  DashboardGlyph,
+  DealsGlyph,
+  InboxGlyph,
+  type NavGlyph,
+  PatientsGlyph,
+  TasksGlyph,
+} from "./navGlyphs";
 import { useGetList, useTranslate } from "ra-core";
 import { useEffect } from "react";
 import { useLocation } from "react-router";
@@ -17,7 +17,7 @@ export const SIDEBAR_WIDTH = "6rem";
 export type NavItem = {
   to: string;
   match: string;
-  icon: LucideIcon;
+  icon: NavGlyph;
   label: string;
   /** canAccess resource of the section, asked with the action "menu" */
   resource?: string;
@@ -62,14 +62,14 @@ export const useNavItems = (): NavItem[] => {
     {
       to: "/",
       match: "/",
-      icon: LayoutGrid,
+      icon: DashboardGlyph,
       label: translate("crm.navigation.dashboard", { _: "Рабочий стол" }),
       resource: "dashboard",
     },
     {
       to: "/deals",
       match: "/deals/*",
-      icon: Columns3,
+      icon: DealsGlyph,
       label: translate("resources.deals.name", { smart_count: 2 }),
       resource: "deals",
       badge: unsorted ?? 0,
@@ -78,7 +78,7 @@ export const useNavItems = (): NavItem[] => {
     {
       to: "/inbox",
       match: "/inbox",
-      icon: MessagesSquare,
+      icon: InboxGlyph,
       label: translate("crm.navigation.inbox"),
       resource: "messages",
       badge: unread ?? 0,
@@ -86,14 +86,14 @@ export const useNavItems = (): NavItem[] => {
     {
       to: "/tasks",
       match: "/tasks",
-      icon: ListChecks,
+      icon: TasksGlyph,
       label: translate("resources.tasks.name", { smart_count: 2 }),
       resource: "tasks",
     },
     {
       to: "/patients",
       match: "/patients/*",
-      icon: UsersRound,
+      icon: PatientsGlyph,
       label: translate("resources.patients.name", { smart_count: 2 }),
       resource: "patients",
     },

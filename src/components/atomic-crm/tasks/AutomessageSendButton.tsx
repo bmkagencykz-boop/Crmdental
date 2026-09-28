@@ -1,4 +1,3 @@
-import { Send } from "lucide-react";
 import { useNotify, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,6 @@ export const AutomessageSendButton = ({ task }: { task: Task }) => {
           setOpen(true);
         }}
       >
-        <Send className="size-3.5" />
         {translate("automessages.task.send")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -69,7 +67,6 @@ export const AutomessageSendButton = ({ task }: { task: Task }) => {
               {translate("ra.action.cancel")}
             </Button>
             <Button onClick={submit} disabled={!text.trim() || send.isPending}>
-              <Send className="size-4" />
               {translate("automessages.task.send")}
             </Button>
           </DialogFooter>

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, GitMerge, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   useCanAccess,
   useDataProvider,
@@ -136,7 +136,6 @@ export const UnsortedActions = ({
         onClick={() => setDialog("merge")}
         title={translate("unsorted.actions.merge")}
       >
-        <GitMerge className="size-3.5" />
         {compact ? null : translate("unsorted.actions.merge")}
       </Button>
       {dialog === "accept" ? (

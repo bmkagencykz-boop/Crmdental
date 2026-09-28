@@ -1,12 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BookOpen,
   Copy,
   Eye,
   EyeOff,
   KeyRound,
-  Plus,
-  RefreshCw,
   Send,
   Trash2,
   Webhook as WebhookIcon,
@@ -76,7 +73,6 @@ export const ApiSettings = () => {
         to="/api-docs"
         className="inline-flex w-fit items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium no-underline hover:bg-accent"
       >
-        <BookOpen className="size-4" />
         {translate("api.docs_link")}
       </Link>
       <Section
@@ -280,7 +276,6 @@ const ApiKeys = () => {
           variant="outline"
           disabled={!name.trim() || createKey.isPending}
         >
-          <Plus className="size-4" />
           {translate("api.keys.create")}
         </Button>
       </form>
@@ -393,7 +388,6 @@ const Webhooks = () => {
           className="w-96 max-w-full"
         />
         <Button type="submit" variant="outline" disabled={!url.trim()}>
-          <Plus className="size-4" />
           {translate("api.webhooks.add")}
         </Button>
       </form>
@@ -578,7 +572,6 @@ const WebhookCard = ({ webhook }: { webhook: Webhook }) => {
             disabled={!webhook.is_active || test.isPending}
             onClick={() => test.mutate()}
           >
-            <Send className="size-4" />
             {translate("api.webhooks.test")}
           </Button>
           <Button
@@ -587,7 +580,6 @@ const WebhookCard = ({ webhook }: { webhook: Webhook }) => {
             disabled={regenerate.isPending}
             onClick={() => regenerate.mutate()}
           >
-            <RefreshCw className="size-4" />
             {translate("api.webhooks.regenerate")}
           </Button>
           <Button

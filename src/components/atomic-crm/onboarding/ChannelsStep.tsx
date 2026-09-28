@@ -1,12 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Bot,
-  ChevronDown,
-  Globe,
-  MessageCircle,
-  Phone,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useDataProvider, useTranslate } from "ra-core";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -46,31 +39,31 @@ export const ChannelsStep = () => {
 
   const channels: {
     id: Channel;
-    icon: LucideIcon;
+    mark: string;
     status: ChannelStatus;
     content: ReactNode;
   }[] = [
     {
       id: "wazzup",
-      icon: MessageCircle,
+      mark: "WA",
       status: messenger?.connected ? "connected" : "not_connected",
       content: <MessengerSettings withTelegramBot={false} />,
     },
     {
       id: "website",
-      icon: Globe,
+      mark: "WEB",
       status: "ready",
       content: <LeadSettings />,
     },
     {
       id: "telegram_bot",
-      icon: Bot,
+      mark: "TG",
       status: bot?.connected ? "connected" : "not_connected",
       content: <TelegramBotSettings />,
     },
     {
       id: "telephony",
-      icon: Phone,
+      mark: "ATC",
       status: telephony ? "connected" : "not_connected",
       content: <TelephonySettings />,
     },
@@ -78,7 +71,7 @@ export const ChannelsStep = () => {
 
   return (
     <div className="flex flex-col gap-3">
-      {channels.map(({ id, icon: Icon, status, content }) => {
+      {channels.map(({ id, mark, status, content }) => {
         const expanded = open === id;
         const title = translate(`onboarding.channels.${id}.title`);
         return (
@@ -88,8 +81,8 @@ export const ChannelsStep = () => {
             className="rounded-md border bg-card"
           >
             <div className="flex items-center gap-3 px-4 py-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <Icon className="size-5" />
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-[11px] font-bold tracking-tight text-foreground">
+                {mark}
               </span>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold">{title}</h3>

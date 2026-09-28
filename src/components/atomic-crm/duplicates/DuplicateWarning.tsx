@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { TriangleAlert } from "lucide-react";
+
 import {
   useCanAccess,
   useDataProvider,
@@ -56,7 +56,6 @@ export const DuplicateWarning = ({
       role="status"
       data-testid="duplicate-warning"
     >
-      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" />
       <div className="min-w-0 flex-1">
         <span className="font-semibold">
           {translate("duplicates.possible")}

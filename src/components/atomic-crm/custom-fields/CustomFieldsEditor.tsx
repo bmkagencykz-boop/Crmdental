@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ListChecks, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { useNotify, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Confirm } from "@/components/admin/confirm";
@@ -191,7 +191,6 @@ const FieldRow = ({
             onClick={() => setShowOptions((value) => !value)}
             aria-expanded={showOptions}
           >
-            <ListChecks className="size-4" />
             {translate("custom_fields.settings.options_count", {
               smart_count: field.options.length,
             })}
@@ -383,7 +382,6 @@ const NewField = ({
           disabled={!name.trim() || (isList && !splitLines(options).length)}
           variant="outline"
         >
-          <Plus className="size-4" />
           {translate("custom_fields.settings.add")}
         </Button>
       </div>

@@ -66,7 +66,14 @@ test.describe("automatic messages", () => {
     );
 
     await page.goto(`/#/deals/${deal.id}`);
-    await page.getByRole("combobox", { name: "Stage" }).click();
+    // The form may render again while its dictionaries load, closing the
+    // list: open it until the option shows
+    await expect(async () => {
+      await page.getByRole("combobox", { name: "Stage" }).click();
+      await expect(page.getByRole("option", { name: "В работе" })).toBeVisible({
+        timeout: 1000,
+      });
+    }).toPass();
     await page.getByRole("option", { name: "В работе" }).click();
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Deal updated")).toBeVisible();

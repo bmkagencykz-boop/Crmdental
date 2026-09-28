@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useDataProvider, useNotify, useStore, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -104,7 +104,6 @@ export const SalesPlanTab = () => {
             className="ml-auto gap-1.5"
             onClick={() => setEditing(true)}
           >
-            <Pencil className="size-3.5" />
             {translate("sales_plan.edit")}
           </Button>
         ) : null}

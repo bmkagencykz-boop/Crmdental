@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, RefreshCw, Send } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useDataProvider, useNotify, useTranslate } from "ra-core";
 import { useState, type ReactNode } from "react";
 import { Confirm } from "@/components/admin/confirm";
@@ -84,7 +84,6 @@ export const LeadSettings = () => {
             onClick={() => setConfirming(true)}
             disabled={regenerate.isPending}
           >
-            <RefreshCw className="size-4" />
             {translate("leads.regenerate")}
           </Button>
         </div>
@@ -99,7 +98,6 @@ export const LeadSettings = () => {
           disabled={test.isPending}
           variant="secondary"
         >
-          <Send className="size-4" />
           {translate("leads.test")}
         </Button>
       </div>

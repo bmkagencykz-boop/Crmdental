@@ -1,4 +1,4 @@
-import { ArrowRight, Check, CircleDashed, Kanban, Upload } from "lucide-react";
+import { Check, CircleDashed } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,7 @@ export const ImportStep = ({ onOpen }: { onOpen: () => void }) => {
       <p className="text-sm">{translate("onboarding.import.text")}</p>
       <div>
         <Button asChild variant="outline" onClick={onOpen}>
-          <Link to="/import">
-            <Upload className="size-4" />
-            {translate("onboarding.import.open")}
-          </Link>
+          <Link to="/import">{translate("onboarding.import.open")}</Link>
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
@@ -88,7 +85,6 @@ export const DoneStep = ({
                 className="flex items-center gap-1 text-xs font-medium text-brand-link"
               >
                 {translate("onboarding.done.open_section")}
-                <ArrowRight className="size-3" />
               </Link>
             </li>
           );
@@ -96,7 +92,6 @@ export const DoneStep = ({
       </ul>
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => onFinish("/deals")}>
-          <Kanban className="size-4" />
           {translate("onboarding.done.open_pipeline")}
         </Button>
         <Button variant="outline" onClick={() => onFinish("/")}>

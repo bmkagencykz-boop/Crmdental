@@ -1,4 +1,3 @@
-import { History } from "lucide-react";
 import { CanAccess, useCanAccess, useTranslate } from "ra-core";
 import {
   useCallback,
@@ -259,7 +258,6 @@ export const SettingsPage = () => {
             title={translate("audit.open_hint")}
             className="flex items-center gap-2 rounded-md px-4 py-2 text-left text-sm font-semibold text-muted-foreground no-underline transition-all hover:bg-[var(--surface-strong)] hover:text-foreground lg:mt-2 lg:border-t lg:pt-3"
           >
-            <History className="size-4" />
             {translate("audit.open")}
           </Link>
         </CanAccess>

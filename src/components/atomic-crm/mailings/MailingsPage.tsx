@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pause, Play, Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   useCanAccess,
   useDataProvider,
@@ -66,7 +66,6 @@ export const MailingsPage = () => {
         </p>
         {!creating ? (
           <Button onClick={() => setCreating(true)}>
-            <Plus className="size-4" />
             {translate("mailings.new")}
           </Button>
         ) : null}
@@ -183,7 +182,6 @@ const MailingCard = ({ mailing }: { mailing: MailingSummary }) => {
               disabled={isPending}
               onClick={() => setStatus("paused")}
             >
-              <Pause className="size-4" />
               {translate("mailings.actions.pause")}
             </Button>
           ) : null}
@@ -194,7 +192,6 @@ const MailingCard = ({ mailing }: { mailing: MailingSummary }) => {
               disabled={isPending}
               onClick={() => setStatus("scheduled")}
             >
-              <Play className="size-4" />
               {translate("mailings.actions.resume")}
             </Button>
           ) : null}

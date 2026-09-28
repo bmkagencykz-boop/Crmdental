@@ -1,4 +1,4 @@
-import { ChevronDown, ScrollText } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,6 @@ export const StageScript = ({ deal }: { deal: Deal }) => {
         aria-expanded={open}
         className="flex w-full items-center gap-2 px-4 py-3 text-left"
       >
-        <ScrollText className="size-4 text-muted-foreground" />
         <h3 className="flex-1 text-[15px] font-semibold">
           {translate("automessages.script.title")}
         </h3>

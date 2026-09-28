@@ -1,4 +1,3 @@
-import { AlertTriangle } from "lucide-react";
 import {
   useCreate,
   useGetIdentity,
@@ -69,7 +68,6 @@ export const DealComposer = ({
         </div>
       ) : (
         <div className="flex items-center gap-2 rounded-md bg-brand-yellow px-4 py-2.5 text-sm font-medium text-black">
-          <AlertTriangle className="size-4 shrink-0" />
           <span>{translate("crm.deals.page.no_task")}</span>
           <button
             type="button"

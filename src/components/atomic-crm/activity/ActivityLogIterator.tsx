@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/admin/spinner";
-import { RotateCcw } from "lucide-react";
+
 import type { Activity } from "../types";
 import { ActivityLogItem } from "./ActivityLogItem";
 
@@ -46,7 +46,6 @@ export function ActivityLogIterator() {
         </div>
         <div className="text-center mt-2">
           <Button onClick={() => refetch()}>
-            <RotateCcw />
             {translate("crm.common.retry")}
           </Button>
         </div>

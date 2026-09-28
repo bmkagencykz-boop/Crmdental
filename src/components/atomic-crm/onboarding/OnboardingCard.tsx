@@ -1,4 +1,4 @@
-import { Rocket, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useTranslate, useUserMenu } from "ra-core";
 import { useState } from "react";
 import { Link, Navigate } from "react-router";
@@ -58,9 +58,6 @@ const ContinueCard = ({
       aria-label={title}
       className="mb-6 flex flex-wrap items-center gap-4 rounded-lg border bg-card px-5 py-4 shadow-sm"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-        <Rocket className="size-5" />
-      </span>
       <div className="flex min-w-48 flex-1 flex-col gap-1.5">
         <div className="flex items-baseline gap-2">
           <h2 className="text-[15px] font-semibold">{title}</h2>
@@ -117,7 +114,6 @@ export const OnboardingMenuItem = () => {
   return (
     <DropdownMenuItem asChild onClick={userMenu?.onClose}>
       <Link to={WIZARD_PATH} className="flex items-center gap-2">
-        <Rocket />
         {translate("onboarding.menu")}
       </Link>
     </DropdownMenuItem>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { InputProps } from "ra-core";
 import { useCanAccess, useGetIdentity, useTranslate } from "ra-core";
-import { Upload } from "lucide-react";
+
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { BulkDeleteButton } from "@/components/admin/bulk-delete-button";
@@ -188,10 +188,7 @@ const ImportButton = () => {
   if (!canAccess) return null;
   return (
     <Button variant="outline" asChild>
-      <Link to="/import">
-        <Upload className="size-4" />
-        {translate("import.open")}
-      </Link>
+      <Link to="/import">{translate("import.open")}</Link>
     </Button>
   );
 };

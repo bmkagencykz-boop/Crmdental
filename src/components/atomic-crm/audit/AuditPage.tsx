@@ -1,5 +1,5 @@
 import jsonExport from "jsonexport/dist";
-import { Download } from "lucide-react";
+
 import {
   downloadCSV,
   useCanAccess,
@@ -295,7 +295,6 @@ const ExportButton = ({
       onClick={exportCsv}
       disabled={busy}
     >
-      <Download className="size-4" />
       {translate("audit.export")}
     </Button>
   );

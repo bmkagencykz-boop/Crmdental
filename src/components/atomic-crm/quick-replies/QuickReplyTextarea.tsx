@@ -1,4 +1,4 @@
-import { User, Zap } from "lucide-react";
+import { User } from "lucide-react";
 import { useTranslate, type Identifier } from "ra-core";
 import {
   useEffect,
@@ -271,9 +271,7 @@ export const QuickReplyTextarea = ({
           aria-expanded={open}
           aria-haspopup="listbox"
           title={translate("quick_replies.picker.open")}
-        >
-          <Zap className="size-4" />
-        </Button>
+        ></Button>
       </div>
       <span id={`${listId}-hint`} className="sr-only">
         {translate("quick_replies.picker.hint")}

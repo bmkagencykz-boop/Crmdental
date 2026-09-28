@@ -1,12 +1,4 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  Building2,
-  Lock,
-  Plus,
-  Trash2,
-  User,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Trash2, User } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -198,10 +190,6 @@ const ReplyRow = ({
             </span>
           ) : null}
           <ScopeBadge personal={personal} />
-          <Lock
-            className="ml-auto size-4 text-muted-foreground"
-            aria-label={translate("quick_replies.readonly")}
-          />
         </div>
         <p className="whitespace-pre-line text-sm text-muted-foreground">
           {reply.text}
@@ -406,7 +394,6 @@ const NewReply = ({
         onClick={add}
         disabled={!title.trim() || !text.trim()}
       >
-        <Plus className="size-4" />
         {translate("quick_replies.add")}
       </Button>
     </section>

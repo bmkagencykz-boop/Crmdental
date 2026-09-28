@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,6 @@ const TemplatesEditor = ({
             })
           }
         >
-          <Plus className="size-4" />
           {translate("automessages.settings.add_template")}
         </Button>
       </div>
@@ -303,7 +302,6 @@ const RulesEditor = ({
             })
           }
         >
-          <Plus className="size-4" />
           {translate("automessages.settings.add_rule")}
         </Button>
         {!templates.length ? (

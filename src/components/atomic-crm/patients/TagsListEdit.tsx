@@ -1,4 +1,3 @@
-import { Edit, Plus } from "lucide-react";
 import {
   useGetMany,
   useRecordContext,
@@ -123,7 +122,6 @@ export const TagsListEdit = ({
               size="sm"
               className="h-9 md:h-6 cursor-pointer"
             >
-              <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
               {translate("resources.tags.action.add")}
             </Button>
           </DropdownMenuTrigger>
@@ -150,7 +148,6 @@ export const TagsListEdit = ({
                 size="sm"
                 className="w-full justify-start p-0 cursor-pointer text-base md:text-sm"
               >
-                <Edit className="w-4 h-4 md:w-3 md:h-3 mr-2" />
                 {translate("resources.tags.action.create")}
               </Button>
             </DropdownMenuItem>

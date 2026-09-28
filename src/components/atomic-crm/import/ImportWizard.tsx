@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Download, Upload } from "lucide-react";
+
 import {
   useCanAccess,
   useDataProvider,
@@ -328,7 +328,6 @@ const UploadStep = ({
         }}
         className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card px-6 py-10 text-center transition-colors hover:bg-muted"
       >
-        <Upload className="size-6 text-muted-foreground" />
         <span className="font-semibold">
           {reading
             ? translate("import.upload.reading")
@@ -355,7 +354,6 @@ const UploadStep = ({
           downloadFile(translate("import.upload.sample_file"), sampleCsv())
         }
       >
-        <Download className="size-4" />
         {translate("import.upload.sample")}
       </Button>
     </div>
@@ -676,14 +674,12 @@ const ReviewStep = ({
                     <td className="px-3 py-2">
                       {errors ? (
                         <span className="flex items-start gap-1 text-destructive">
-                          <AlertCircle className="mt-0.5 size-4 shrink-0" />
                           {errors
                             .map((error) => errorText(translate, error))
                             .join("; ")}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-muted-foreground">
-                          <CheckCircle2 className="size-4" />
                           {translate("import.preview.ok")}
                         </span>
                       )}
@@ -1110,7 +1106,6 @@ const ResultStep = ({
               )
             }
           >
-            <Download className="size-4" />
             {translate("import.actions.download_errors")}
           </Button>
         ) : null}

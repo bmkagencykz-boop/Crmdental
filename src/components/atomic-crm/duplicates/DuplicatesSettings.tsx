@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { GitMerge, RefreshCw } from "lucide-react";
+
 import { useDataProvider, useTranslate, type Identifier } from "ra-core";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -45,7 +45,6 @@ export const DuplicatesSettings = () => {
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className="size-3.5" />
           {translate("duplicates.settings.refresh")}
         </Button>
       </div>
@@ -101,7 +100,6 @@ export const DuplicatesSettings = () => {
                           setPair([first.patient_id, patient.patient_id])
                         }
                       >
-                        <GitMerge className="size-3.5" />
                         {translate("duplicates.merge")}
                       </Button>
                     ) : null}

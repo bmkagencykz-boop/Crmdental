@@ -1,4 +1,3 @@
-import { CalendarDays, CheckSquare } from "lucide-react";
 import { useStore, useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { Card } from "@/components/ui/card";
@@ -13,9 +12,6 @@ export const TasksList = () => {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
-        <div className="mr-3 flex">
-          <CheckSquare className="text-muted-foreground size-4" />
-        </div>
         <h2 className="text-[15px] font-semibold text-foreground flex-1">
           {translate("crm.dashboard.upcoming_tasks", {
             _: "Upcoming Tasks",
@@ -26,7 +22,6 @@ export const TasksList = () => {
           onClick={() => setTasksView("week")}
           className="mr-1 flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand-link hover:bg-accent"
         >
-          <CalendarDays className="size-3.5" />
           {translate("task_calendar.open_calendar")}
         </Link>
         <AddTask display="icon" selectDeal />

@@ -1,5 +1,5 @@
 import { Droppable } from "@hello-pangea/dnd";
-import { Plus } from "lucide-react";
+
 import { useCanAccess, useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
@@ -58,7 +58,6 @@ export const DealColumn = ({
           to={`/deals/create?stage_id=${stage.id}`}
           className="mb-2 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[12px] font-medium text-muted-foreground no-underline transition-colors hover:border-primary/60 hover:text-foreground"
         >
-          <Plus className="size-3.5" />
           {translate("crm.deals.quick_add")}
         </Link>
       ) : null}

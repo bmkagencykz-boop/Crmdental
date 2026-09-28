@@ -1,4 +1,3 @@
-import { Clock } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { Card } from "@/components/ui/card";
 
@@ -9,9 +8,6 @@ export function DashboardActivityLog() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center mb-4 md:mb-2">
-        <div className="mr-3 flex">
-          <Clock className="text-muted-foreground size-4" />
-        </div>
         <h2 className="text-[15px] font-semibold text-foreground">
           {translate("crm.dashboard.latest_activity", {
             _: "Latest Activity",

@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +65,6 @@ export const TaskRulesEditor = () => {
             })
           }
         >
-          <Plus className="size-4" />
           {translate("crm.settings.automations.add")}
         </Button>
       </div>

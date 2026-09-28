@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+
 import {
   useCanAccess,
   useGetOne,
@@ -140,7 +140,6 @@ const Editor = ({ bot }: { bot: Salesbot }) => {
           to="/settings?section=salesbots"
           className="flex items-center gap-1 text-sm text-muted-foreground no-underline hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
           {translate("salesbot.editor.back")}
         </Link>
         <Input

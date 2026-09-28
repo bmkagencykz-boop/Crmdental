@@ -1,4 +1,4 @@
-import { CircleX, Edit, Save, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import {
   Form,
   useDelete,
@@ -167,7 +167,6 @@ export const Note = ({
               type="button"
               className="cursor-pointer"
             >
-              <CircleX className="w-4 h-4" />
               {translate("ra.action.cancel")}
             </Button>
             <Button
@@ -175,7 +174,6 @@ export const Note = ({
               disabled={isPending}
               className="flex items-center gap-2 cursor-pointer"
             >
-              <Save className="w-4 h-4" />
               {translate("resources.notes.action.update")}
             </Button>
           </div>

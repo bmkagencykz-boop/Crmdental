@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Columns3 } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,7 +29,6 @@ export const ColumnsMenu = ({
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-md">
-          <Columns3 className="size-4" />
           {translate("deal_list.columns_menu.button")}
         </Button>
       </PopoverTrigger>

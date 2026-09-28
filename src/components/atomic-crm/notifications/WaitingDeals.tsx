@@ -1,4 +1,3 @@
-import { Flame } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { Card } from "@/components/ui/card";
@@ -18,7 +17,6 @@ export const WaitingDeals = () => {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
-        <Flame className="mr-3 size-4 text-brand-red" />
         <h2 className="text-[15px] font-semibold text-foreground">
           {translate("notifications.waiting.title")}
         </h2>

@@ -1,12 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import {
-  Archive,
-  ArchiveRestore,
-  ChevronLeft,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { ChevronLeft, MoreHorizontal } from "lucide-react";
 import {
   useDataProvider,
   useDelete,
@@ -128,7 +121,6 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
             <Link to={`/deals/${deal.id}`}>
-              <Pencil className="size-4" />
               {translate("crm.deals.page.edit_all")}
             </Link>
           </DropdownMenuItem>
@@ -140,7 +132,6 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
           ) : null}
           {deal.archived_at ? (
             <DropdownMenuItem onClick={() => unarchive.mutate()}>
-              <ArchiveRestore className="size-4" />
               {translate("resources.deals.unarchived.action")}
             </DropdownMenuItem>
           ) : (
@@ -152,7 +143,6 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
                 })
               }
             >
-              <Archive className="size-4" />
               {translate("resources.deals.archived.action")}
             </DropdownMenuItem>
           )}
@@ -169,7 +159,6 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
               )
             }
           >
-            <Trash2 className="size-4" />
             {translate("ra.action.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>

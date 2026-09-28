@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { UserPlus } from "lucide-react";
+
 import { useDataProvider, useGetList, useNotify, useTranslate } from "ra-core";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,6 @@ export const TeamStep = ({ isOwner }: { isOwner: boolean }) => {
             </Select>
           </div>
           <Button type="submit" disabled={!valid || invite.isPending}>
-            <UserPlus className="size-4" />
             {translate("onboarding.team.invite")}
           </Button>
           <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-5">

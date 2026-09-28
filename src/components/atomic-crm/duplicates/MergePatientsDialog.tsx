@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight } from "lucide-react";
+
 import {
   useDataProvider,
   useGetList,
@@ -200,7 +200,6 @@ export const MergePatientsDialog = ({
               setChoices(defaultMergeChoices(swapped[0], swapped[1]));
             }}
           >
-            <ArrowLeftRight className="size-4" />
             {translate("duplicates.dialog.swap")}
           </Button>
           <div className="flex gap-2">

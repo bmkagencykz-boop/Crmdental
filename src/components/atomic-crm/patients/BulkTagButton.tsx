@@ -1,4 +1,3 @@
-import { Plus, Tag as TagIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   useGetMany,
@@ -122,7 +121,6 @@ export function BulkTagButton() {
         className="h-9"
         onClick={() => setOpen(true)}
       >
-        <TagIcon />
         {translate("resources.patients.bulk_tag.action")}
       </Button>
 
@@ -184,7 +182,6 @@ export function BulkTagButton() {
                   disabled={isBusy}
                   onClick={() => setMode("create")}
                 >
-                  <Plus />
                   {translate("resources.tags.action.create")}
                 </Button>
               </div>

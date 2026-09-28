@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useGetList, useNotify, useTranslate, useUpdate } from "ra-core";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,6 @@ export const DealAutomessages = ({ deal }: { deal: Deal }) => {
       data-testid="deal-automessages"
     >
       <h3 className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
-        <Send className="size-4 text-muted-foreground" />
         {translate("automessages.deal.title")}
       </h3>
       <ul className="flex flex-col gap-2.5">

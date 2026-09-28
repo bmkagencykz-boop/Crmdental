@@ -1,4 +1,3 @@
-import { Flame } from "lucide-react";
 import { useTranslate, type Identifier } from "ra-core";
 
 import { useFormatWaiting, useOverdueDeal } from "./useWaitingDeals";
@@ -14,7 +13,6 @@ export const WaitingBadge = ({ dealId }: { dealId: Identifier }) => {
       className="mt-1 flex w-fit items-center gap-1 rounded-sm bg-brand-red/10 px-1.5 py-0.5 text-[11px] font-semibold text-brand-red"
       data-testid="waiting-badge"
     >
-      <Flame className="size-3" />
       {translate("notifications.waiting.badge", {
         time: format(waiting.waiting_minutes),
       })}

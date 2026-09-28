@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Lock, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -111,9 +111,7 @@ export const DictionaryEditor = ({
             <span
               className="flex size-10 shrink-0 items-center justify-center text-muted-foreground"
               title={translate("crm.settings.system_item")}
-            >
-              <Lock className="size-4" />
-            </span>
+            ></span>
           ) : (
             <Button
               variant="ghost"
@@ -136,7 +134,6 @@ export const DictionaryEditor = ({
           aria-label={translate("crm.settings.new_item")}
         />
         <Button onClick={add} disabled={!name.trim()} variant="outline">
-          <Plus className="size-4" />
           {translate("crm.settings.add")}
         </Button>
       </div>

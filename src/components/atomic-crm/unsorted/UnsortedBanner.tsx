@@ -1,4 +1,3 @@
-import { Inbox } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useNavigate } from "react-router";
 
@@ -16,7 +15,6 @@ export const UnsortedBanner = ({ deal }: { deal: Deal }) => {
       data-testid="unsorted-banner"
     >
       <div className="flex items-start gap-2">
-        <Inbox className="mt-0.5 size-4 shrink-0 text-primary" />
         <div>
           <p className="text-sm font-semibold">
             {translate("unsorted.banner.title")}

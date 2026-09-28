@@ -1,4 +1,4 @@
-import { Plus, Users } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useGetIdentity, useGetList, useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -35,9 +35,6 @@ export const HotPatients = () => {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
-        <div className="mr-3 flex">
-          <Users className="text-muted-foreground size-4" />
-        </div>
         <h2 className="text-[15px] font-semibold text-foreground">
           {translate("resources.patients.hot.title")}
         </h2>

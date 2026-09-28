@@ -1,12 +1,10 @@
 import {
-  ChartColumn,
-  FileText,
-  Megaphone,
-  Plug,
-  Settings,
-  User,
-  Users,
-} from "lucide-react";
+  IntegrationsGlyph,
+  MailingsGlyph,
+  ReportsGlyph,
+  SettingsGlyph,
+  TeamGlyph,
+} from "./navGlyphs";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -26,31 +24,31 @@ export const Sidebar = () => {
   const sales: NavItem = {
     to: "/sales",
     match: "/sales/*",
-    icon: Users,
+    icon: TeamGlyph,
     label: translate("resources.sales.name", { smart_count: 2 }),
   };
   const reports: NavItem = {
     to: "/reports",
     match: "/reports",
-    icon: ChartColumn,
+    icon: ReportsGlyph,
     label: translate("reports.title"),
   };
   const mailings: NavItem = {
     to: "/mailings",
     match: "/mailings",
-    icon: Megaphone,
+    icon: MailingsGlyph,
     label: translate("mailings.title"),
   };
   const integrations: NavItem = {
     to: "/integrations",
     match: "/integrations",
-    icon: Plug,
+    icon: IntegrationsGlyph,
     label: translate("market.nav"),
   };
   const settings: NavItem = {
     to: "/settings",
     match: "/settings",
-    icon: Settings,
+    icon: SettingsGlyph,
     label: translate("crm.settings.title"),
   };
   const isActive = (item: NavItem) =>
@@ -129,7 +127,7 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
             : "border border-nav-button-border bg-nav-button text-foreground shadow-card group-hover:border-primary/60 group-hover:text-brand-link",
         )}
       >
-        <Icon className="size-[1.3rem]" strokeWidth={2} />
+        <Icon className="size-[1.35rem]" />
         {item.badge ? (
           <span
             className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-blush px-1 text-[10px] font-bold text-[#1A1517] ring-2 ring-background"
@@ -164,7 +162,6 @@ export const ProfileMenu = () => {
   return (
     <DropdownMenuItem asChild onClick={userMenuContext.onClose}>
       <Link to="/profile" className="flex items-center gap-2">
-        <User />
         {translate("crm.profile.title")}
       </Link>
     </DropdownMenuItem>
@@ -180,7 +177,6 @@ export const ChangelogMenuItem = () => {
   return (
     <DropdownMenuItem asChild onClick={userMenuContext.onClose}>
       <Link to={ChangelogPage.path} className="flex items-center gap-2">
-        <FileText />
         {translate("crm.changelog.title")}
       </Link>
     </DropdownMenuItem>

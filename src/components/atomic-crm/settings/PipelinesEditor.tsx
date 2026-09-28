@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Plus, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Star, Trash2 } from "lucide-react";
 import {
   useDataProvider,
   useNotify,
@@ -151,7 +151,6 @@ export const PipelinesEditor = () => {
             />
             {!pipeline.is_default ? (
               <Button variant="outline" onClick={setDefault}>
-                <Star className="size-4" />
                 {translate("crm.settings.pipelines.make_default")}
               </Button>
             ) : null}
@@ -163,7 +162,6 @@ export const PipelinesEditor = () => {
                   setSelectedId(undefined);
                 }}
               >
-                <Trash2 className="size-4" />
                 {translate("crm.settings.pipelines.delete")}
               </Button>
             ) : null}
@@ -200,7 +198,6 @@ export const PipelinesEditor = () => {
               onClick={addStage}
               disabled={!newStage.trim()}
             >
-              <Plus className="size-4" />
               {translate("crm.settings.add")}
             </Button>
           </div>
@@ -345,7 +342,6 @@ const NewPipelineButton = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost">
-          <Plus className="size-4" />
           {translate("crm.settings.pipelines.new")}
         </Button>
       </PopoverTrigger>

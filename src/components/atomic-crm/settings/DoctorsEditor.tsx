@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -144,7 +144,6 @@ export const DoctorsEditor = () => {
           className="max-w-56"
         />
         <Button onClick={add} disabled={!name.trim()} variant="outline">
-          <Plus className="size-4" />
           {translate("doctors.settings.add")}
         </Button>
       </div>

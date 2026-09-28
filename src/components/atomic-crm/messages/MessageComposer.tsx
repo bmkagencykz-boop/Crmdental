@@ -1,4 +1,4 @@
-import { Paperclip, SendHorizontal, X } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 import { useNotify, useTranslate, type Identifier } from "ra-core";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -109,7 +109,6 @@ export const MessageComposer = ({ dealId }: { dealId: Identifier }) => {
           aria-label={translate("crm.messages.send")}
           className="shrink-0"
         >
-          <SendHorizontal className="size-4" />
           {translate("crm.messages.send")}
         </Button>
       </div>

@@ -1,4 +1,3 @@
-import { Download } from "lucide-react";
 import { useTranslate } from "ra-core";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ export const ReportTable = <Row,>({
           disabled={!rows.length}
           onClick={() => exportCsv(filename, columns, rows)}
         >
-          <Download className="size-4" />
           {translate("reports.export_csv")}
         </Button>
       }

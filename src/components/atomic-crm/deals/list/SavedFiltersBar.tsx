@@ -1,4 +1,4 @@
-import { Building2, Plus, User, X } from "lucide-react";
+import { Building2, User, X } from "lucide-react";
 import {
   useCreate,
   useDelete,
@@ -150,7 +150,6 @@ export const SavedFiltersBar = () => {
           className="h-7 gap-1 rounded-md px-2 text-xs"
           onClick={() => setSaving(true)}
         >
-          <Plus className="size-3.5" />
           {translate("deal_list.saved.save")}
         </Button>
       ) : null}

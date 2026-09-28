@@ -1,4 +1,4 @@
-import { Download, MessageCircle, Trash2, Upload } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { useGetIdentity, useTranslate, type Identifier } from "ra-core";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,6 @@ export const DealFiles = ({ deal }: { deal: Deal }) => {
           onClick={() => input.current?.click()}
           disabled={upload.isPending}
         >
-          <Upload className="size-4" />
           {translate(upload.isPending ? "files.uploading" : "files.upload")}
         </Button>
         <p className="text-xs text-muted-foreground">
@@ -183,8 +182,7 @@ const FileRow = ({ file, dealName }: { file: DealFile; dealName?: string }) => {
           <span>· {author || translate("files.from_patient")}</span>
           {file.message_id != null ? (
             <span className="inline-flex items-center gap-0.5">
-              · <MessageCircle className="size-3" />
-              {translate("files.from_chat")}
+              ·{translate("files.from_chat")}
             </span>
           ) : null}
           {dealName ? <span>· {dealName}</span> : null}

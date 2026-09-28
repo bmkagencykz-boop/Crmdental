@@ -4,7 +4,6 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   StickyNote,
-  Zap,
 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
 import { Fragment, useEffect, useRef } from "react";
@@ -192,7 +191,6 @@ const FeedItem = ({ item }: { item: TimelineItem }) => {
       return (
         <div className="flex justify-center" data-testid="automation-run">
           <div className="flex max-w-[85%] items-start gap-1.5 text-center text-xs text-muted-foreground">
-            <Zap className="mt-0.5 size-3 shrink-0" />
             <span>
               {time(item.date)} · <AutomationRunLine run={item.run} />
             </span>

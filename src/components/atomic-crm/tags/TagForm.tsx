@@ -1,4 +1,3 @@
-import { SaveIcon } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslate } from "ra-core";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -109,7 +108,6 @@ export function TagForm({
             isSubmitting ? "cursor-not-allowed" : "cursor-pointer",
           )}
         >
-          <SaveIcon />
           {translate("ra.action.save")}
         </Button>
       </div>

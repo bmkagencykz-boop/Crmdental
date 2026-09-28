@@ -1,5 +1,5 @@
 import { Draggable } from "@hello-pangea/dnd";
-import { MessageCircle } from "lucide-react";
+
 import { useCanAccess, useRedirect, useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 
@@ -132,7 +132,6 @@ export const DealCardContent = ({
                   smart_count: deal.nb_unread_messages,
                 })}
               >
-                <MessageCircle className="size-3" />
                 {deal.nb_unread_messages}
               </span>
             ) : null}

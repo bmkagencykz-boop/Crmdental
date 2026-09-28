@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+
 import { useDataProvider, useTranslate } from "ra-core";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
@@ -93,7 +93,6 @@ export const ApiDocsPage = () => {
         to="/settings?section=api"
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground no-underline hover:text-foreground"
       >
-        <ArrowLeft className="size-4" />
         {translate("api.settings.section")}
       </Link>
       <header>

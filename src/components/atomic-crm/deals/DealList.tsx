@@ -7,7 +7,7 @@ import {
   type Identifier,
 } from "ra-core";
 import { Link, matchPath, useLocation, useNavigate } from "react-router";
-import { KanbanSquare, List as ListIcon, Plus, Workflow } from "lucide-react";
+import { KanbanSquare, List as ListIcon, Plus } from "lucide-react";
 import { CreateButton } from "@/components/admin/create-button";
 import { ExportButton } from "@/components/admin/export-button";
 import { List } from "@/components/admin/list";
@@ -234,7 +234,6 @@ const DigitalPipelineButton = () => {
       title={translate("pipeline_automation.open_hint")}
       className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium text-foreground no-underline hover:bg-accent"
     >
-      <Workflow className="size-4" />
       {translate("pipeline_automation.open")}
     </Link>
   );

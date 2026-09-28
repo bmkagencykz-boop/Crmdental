@@ -1,4 +1,3 @@
-import { BellRing } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,7 +47,6 @@ export const BrowserNotificationsToggle = ({
     return (
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <BellRing className="size-3.5 text-primary" />
           {translate("notifications.browser.enabled")}
         </span>
         <Button
@@ -78,7 +76,6 @@ export const BrowserNotificationsToggle = ({
           if (result === "granted") save({ browser_enabled: true });
         }}
       >
-        <BellRing className="size-4" />
         {translate("notifications.browser.enable")}
       </Button>
       {compact ? null : (

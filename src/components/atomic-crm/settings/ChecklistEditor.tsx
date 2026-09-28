@@ -1,4 +1,4 @@
-import { ListChecks, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useGetList, useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,6 @@ export const ChecklistEditor = ({ stage }: { stage: Stage }) => {
             stage: stage.name,
           })}
         >
-          <ListChecks className="size-4" />
           <span className="tabular-nums">{items.length}</span>
         </Button>
       </PopoverTrigger>

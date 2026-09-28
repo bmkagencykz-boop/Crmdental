@@ -1,4 +1,3 @@
-import { ExternalLink, MessagesSquare } from "lucide-react";
 import {
   useGetList,
   useGetOne,
@@ -118,7 +117,6 @@ export const InboxPage = () => {
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-            <MessagesSquare className="size-10" />
             <p className="text-sm">{translate("crm.inbox.pick")}</p>
           </div>
         )}
@@ -232,7 +230,6 @@ const Conversation = ({
         </div>
         <Button asChild variant="outline" size="sm">
           <Link to={`/deals/${deal.id}/show`}>
-            <ExternalLink className="size-4" />
             {translate("crm.inbox.open_deal")}
           </Link>
         </Button>

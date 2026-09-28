@@ -97,7 +97,6 @@ export const AddTask = ({
             onClick={handleOpen}
             size="sm"
           >
-            <Plus className="w-4 h-4" />
             {translate("resources.tasks.action.add")}
           </Button>
         </div>

@@ -1,4 +1,3 @@
-import { ScrollText } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,9 +44,7 @@ export const StageScriptEditor = ({ stage }: { stage: Stage }) => {
           )}
           aria-label={title}
           title={title}
-        >
-          <ScrollText className="size-4" />
-        </Button>
+        ></Button>
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col gap-3 p-4" align="end">
         <div>

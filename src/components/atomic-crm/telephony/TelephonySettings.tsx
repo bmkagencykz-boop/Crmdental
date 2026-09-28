@@ -1,11 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CircleAlert,
-  CircleCheck,
-  Copy,
-  PhoneIncoming,
-  RefreshCw,
-} from "lucide-react";
+import { CircleAlert, CircleCheck } from "lucide-react";
 import {
   useDataProvider,
   useGetList,
@@ -229,7 +223,6 @@ export const TelephonySettings = () => {
               className="min-w-64 flex-1 font-mono text-xs"
             />
             <Button variant="outline" onClick={copy}>
-              <Copy className="size-4" />
               {translate("telephony.copy")}
             </Button>
             <Button
@@ -237,7 +230,6 @@ export const TelephonySettings = () => {
               onClick={() => regenerate.mutate()}
               disabled={regenerate.isPending}
             >
-              <RefreshCw className="size-4" />
               {translate("telephony.regenerate")}
             </Button>
           </div>
@@ -247,7 +239,6 @@ export const TelephonySettings = () => {
               onClick={() => testCall.mutate()}
               disabled={testCall.isPending}
             >
-              <PhoneIncoming className="size-4" />
               {translate("telephony.test_call")}
             </Button>
             {testDealId != null ? (

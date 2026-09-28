@@ -1,10 +1,3 @@
-import {
-  ListTodo,
-  MessageSquareText,
-  Plus,
-  SlidersHorizontal,
-  Zap,
-} from "lucide-react";
 import { useGetList, useTranslate, type Identifier } from "ra-core";
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -157,7 +150,6 @@ export const DigitalPipelineSettings = () => {
           size="sm"
           onClick={() => setEditing({ kind: "task_rule", stage: null })}
         >
-          <Plus className="size-4" />
           {translate("pipeline_automation.kinds.task_rule")}
         </Button>
       </section>
@@ -221,7 +213,6 @@ export const DigitalPipelineSettings = () => {
                   size="sm"
                   className="justify-start text-muted-foreground"
                 >
-                  <Plus className="size-4" />
                   {translate("pipeline_automation.add")}
                 </Button>
               </DropdownMenuTrigger>
@@ -231,7 +222,6 @@ export const DigitalPipelineSettings = () => {
                     setEditing({ kind: "trigger", stage: column.stage })
                   }
                 >
-                  <Zap className="size-4" />
                   {translate("pipeline_automation.kinds.trigger")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -239,7 +229,6 @@ export const DigitalPipelineSettings = () => {
                     setEditing({ kind: "task_rule", stage: column.stage })
                   }
                 >
-                  <ListTodo className="size-4" />
                   {translate("pipeline_automation.kinds.task_rule")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -247,7 +236,6 @@ export const DigitalPipelineSettings = () => {
                     setEditing({ kind: "automessage", stage: column.stage })
                   }
                 >
-                  <MessageSquareText className="size-4" />
                   {translate("pipeline_automation.kinds.automessage")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -297,7 +285,6 @@ const useDelayText = () => {
 };
 
 const Card = ({
-  icon,
   kind,
   title,
   subtitle,
@@ -308,7 +295,6 @@ const Card = ({
   badge,
   testId,
 }: {
-  icon: ReactNode;
   kind: string;
   title: string;
   subtitle?: string;
@@ -327,15 +313,15 @@ const Card = ({
       compact && "py-1.5",
     )}
   >
-    <span className="mt-0.5 text-muted-foreground" title={kind}>
-      {icon}
-    </span>
     <button
       type="button"
       onClick={onOpen}
       className="min-w-0 flex-1 text-left"
       aria-label={`${kind}: ${title}`}
     >
+      <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+        {kind}
+      </span>
       <span className="block truncate text-[13px] font-medium">{title}</span>
       {subtitle ? (
         <span className="line-clamp-2 text-xs text-muted-foreground">
@@ -368,7 +354,6 @@ const TaskRuleCard = ({
   return (
     <Card
       testId="automation-task-rule"
-      icon={<ListTodo className="size-4" />}
       kind={translate("pipeline_automation.kinds.task_rule")}
       title={rule.text}
       subtitle={`${translate(`crm.tasks.types.${rule.type}`)} · ${translate(
@@ -401,7 +386,6 @@ const AutomessageRuleCard = ({
   return (
     <Card
       testId="automation-automessage"
-      icon={<MessageSquareText className="size-4" />}
       kind={translate("pipeline_automation.kinds.automessage")}
       title={template?.name ?? "—"}
       subtitle={`${translate(`pipeline_automation.timing.${rule.timing}`, {
@@ -428,7 +412,6 @@ const TriggerCard = ({
   return (
     <Card
       testId="automation-trigger"
-      icon={<Zap className="size-4" />}
       kind={translate("pipeline_automation.kinds.trigger")}
       title={trigger.name || event}
       subtitle={summary(trigger)}
@@ -438,7 +421,6 @@ const TriggerCard = ({
       badge={
         hasConditions(trigger) ? (
           <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-            <SlidersHorizontal className="size-3" />
             {translate("pipeline_automation.conditions.title")}
           </span>
         ) : null

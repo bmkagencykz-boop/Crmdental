@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { CircleX, Pencil, Save } from "lucide-react";
+import { CircleX, Pencil } from "lucide-react";
 import {
   email,
   Form,
@@ -227,7 +227,6 @@ const ProfileForm = ({
 
             {isEditMode && (
               <Button type="submit" disabled={!isDirty} variant="outline">
-                <Save />
                 {translate("ra.action.save")}
               </Button>
             )}

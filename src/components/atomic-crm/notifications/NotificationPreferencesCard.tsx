@@ -169,7 +169,6 @@ const TelegramLink = () => {
         disabled={connect.isPending}
         onClick={() => connect.mutate()}
       >
-        <Send className="size-4" />
         {translate("notifications.telegram.connect")}
       </Button>
     );
@@ -194,7 +193,6 @@ const TelegramLink = () => {
         {link ? (
           <Button type="button" size="sm" asChild>
             <a href={link} target="_blank" rel="noreferrer">
-              <Send className="size-4" />
               {translate("notifications.telegram.open_bot")}
             </a>
           </Button>

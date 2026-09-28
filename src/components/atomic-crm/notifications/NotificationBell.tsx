@@ -2,7 +2,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   AlarmClock,
   Bell,
-  CheckCheck,
   Flame,
   Forward,
   MessageCircle,
@@ -155,7 +154,6 @@ export const NotificationBell = () => {
             disabled={!unread}
             onClick={markAllRead}
           >
-            <CheckCheck className="size-3.5" />
             {translate("notifications.bell.mark_all_read")}
           </Button>
         </div>

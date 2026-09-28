@@ -59,9 +59,9 @@ test("a new clinic is set up with the setup wizard", async ({ page }) => {
 
   // 3. Doctors and 4. Team are skipped
   await expect(stepTitle(page, "Doctors")).toBeVisible();
-  await page.getByRole("button", { name: "Skip" }).click();
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
   await expect(stepTitle(page, "Team")).toBeVisible();
-  await page.getByRole("button", { name: "Skip" }).click();
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
 
   // 5. Pipeline: the default stages are kept, the reminder is on
   await expect(stepTitle(page, "Pipeline")).toBeVisible();
@@ -80,11 +80,11 @@ test("a new clinic is set up with the setup wizard", async ({ page }) => {
   await expect(
     page.getByRole("region", { name: "WhatsApp, Instagram, Telegram" }),
   ).toContainText("Not connected");
-  await page.getByRole("button", { name: "Skip" }).click();
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
 
   // 7. Import is skipped too
   await expect(stepTitle(page, "Import")).toBeVisible();
-  await page.getByRole("button", { name: "Skip" }).click();
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
 
   // 8. Done: the summary of the steps
   await expect(stepTitle(page, "Done")).toBeVisible();

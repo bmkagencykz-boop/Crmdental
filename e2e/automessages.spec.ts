@@ -52,6 +52,8 @@ test.describe("automatic messages", () => {
       "Асель",
     );
     const rules = page.getByTestId("automessage-rule");
+    // The default rules of the clinic are listed before counting
+    await expect(rules.first()).toBeVisible();
     const before = await rules.count();
     await page.getByRole("button", { name: "Add a rule" }).click();
     // The new rule is saved first, then shown: wait for it

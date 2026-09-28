@@ -1,9 +1,16 @@
 import { History } from "lucide-react";
 import { CanAccess, useCanAccess, useTranslate } from "ra-core";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useSearchParams } from "react-router";
+import { ClinicStep } from "../onboarding/ClinicStep";
+import type { NextHandler } from "../onboarding/stepTypes";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 import {
@@ -11,12 +18,6 @@ import {
   useLostReasons,
   useServices,
 } from "../dictionaries/useDictionaries";
-import {
-  useConfigurationContext,
-  useConfigurationUpdater,
-} from "../root/ConfigurationContext";
-import { useDataProvider, useNotify } from "ra-core";
-import type { CrmDataProvider } from "../providers/types";
 import { ImportWizard } from "../import/ImportWizard";
 import { AccessSettings } from "./AccessSettings";
 import { AutomessagesSettings } from "./AutomessagesSettings";
@@ -287,39 +288,29 @@ const Panel = ({
   </section>
 );
 
-/** Name shown in the app (configuration) */
+/**
+ * Clinic profile: name, city, time zone, phone and address — the same form
+ * as the «Клиника» step of the setup wizard (public.save_clinic_profile).
+ */
 const ClinicSettings = () => {
   const translate = useTranslate();
-  const config = useConfigurationContext();
-  const updateConfiguration = useConfigurationUpdater();
-  const dataProvider = useDataProvider<CrmDataProvider>();
-  const notify = useNotify();
-  const [title, setTitle] = useState(config.title);
-
-  const save = async () => {
-    try {
-      const saved = await dataProvider.updateConfiguration({
-        ...config,
-        title,
-      });
-      updateConfiguration({ ...config, ...saved });
-      notify("crm.settings.saved", { type: "info" });
-    } catch {
-      notify("crm.settings.save_error", { type: "error" });
-    }
-  };
-
+  const save = useRef<NextHandler | null>(null);
+  const [saving, setSaving] = useState(false);
+  const register = useCallback((handler: NextHandler | null) => {
+    save.current = handler;
+  }, []);
   return (
-    <div className="flex max-w-md flex-col gap-3">
-      <label className="text-sm font-medium" htmlFor="clinic-title">
-        {translate("crm.settings.app_title")}
-      </label>
-      <Input
-        id="clinic-title"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-      />
-      <Button className="w-fit" onClick={save} disabled={!title.trim()}>
+    <div className="flex flex-col gap-4">
+      <ClinicStep registerNext={register} />
+      <Button
+        className="w-fit"
+        disabled={saving}
+        onClick={async () => {
+          setSaving(true);
+          await save.current?.();
+          setSaving(false);
+        }}
+      >
         {translate("ra.action.save")}
       </Button>
     </div>

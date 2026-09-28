@@ -29,6 +29,7 @@ import { BulkTagButton } from "./BulkTagButton";
 import { patientDisplayName } from "./parsePatientText";
 import { TagsList } from "./TagsList";
 import { customFieldsExporter } from "../custom-fields/exporters";
+import { formatPhone } from "../misc/formatPhone";
 
 const patientExporter = customFieldsExporter("patient");
 
@@ -121,7 +122,7 @@ const PatientTable = () => {
                 onClick={(event) => event.stopPropagation()}
                 className="tabular-nums hover:underline"
               >
-                {patient.phones[0]}
+                {formatPhone(patient.phones[0])}
               </a>
             ) : (
               "—"

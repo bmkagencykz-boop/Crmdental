@@ -29,6 +29,7 @@ import {
   type ColumnSettings,
   type DealColumnId,
 } from "./columns";
+import { formatPhone } from "../../misc/formatPhone";
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const formatDate = (value?: string | null, withTime = false) => {
@@ -269,7 +270,7 @@ const useCellRenderer = () => {
             href={`tel:${deal.patient_phone}`}
             className="whitespace-nowrap tabular-nums text-foreground no-underline hover:underline"
           >
-            {deal.patient_phone}
+            {formatPhone(deal.patient_phone)}
           </a>
         ) : (
           "—"

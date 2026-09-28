@@ -11,6 +11,7 @@ import { TagsListEdit } from "./TagsListEdit";
 import { PatientOptOutToggle } from "../mailings/PatientOptOutToggle";
 import { CustomFieldValue } from "../custom-fields/CustomFieldValue";
 import { useEntityFields } from "../custom-fields/useCustomFields";
+import { formatPhone } from "../misc/formatPhone";
 
 /** Contact card of a patient: phones, messengers, clinic info, tags */
 export const PatientAside = () => {
@@ -32,13 +33,14 @@ export const PatientAside = () => {
         {record.phones?.map((phone) => (
           <Row key={phone} icon={<Phone className="size-4" />}>
             <a href={`tel:${phone}`} className="tabular-nums hover:underline">
-              {phone}
+              {formatPhone(phone)}
             </a>
           </Row>
         ))}
         {record.whatsapp ? (
           <Row icon={<MessageCircle className="size-4" />}>
-            WhatsApp · <span className="tabular-nums">{record.whatsapp}</span>
+            WhatsApp ·{" "}
+            <span className="tabular-nums">{formatPhone(record.whatsapp)}</span>
           </Row>
         ) : null}
         {record.instagram ? (

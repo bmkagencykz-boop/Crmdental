@@ -58,6 +58,7 @@ import { getMisMethods } from "./misMethods";
 import { getSalesbotMethods } from "./salesbotMethods";
 import { getMarketplaceMethods } from "./marketplaceMethods";
 import { getScheduleMethods } from "./scheduleMethods";
+import { getSearchMethods } from "./searchMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -125,6 +126,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getScheduleMethods(),
     // Treatment plans with an estimate (stage 29)
     ...getTreatmentMethods(),
+    // Global search (stage 31)
+    ...getSearchMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

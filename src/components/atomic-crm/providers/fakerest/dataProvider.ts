@@ -119,6 +119,7 @@ import { createSalesbotDemo } from "./salesbot";
 import { createMarketplaceDemo } from "./marketplace";
 import { createScheduleDemo } from "./schedule";
 import { createTreatmentDemo } from "./treatmentPlans";
+import { createSearchDemo } from "./search";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -321,6 +322,11 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     getDataProvider: () => dataProvider,
     logAudit: (row) => logAudit(row),
+  });
+  // Global search (stage 31)
+  const searchDemo = createSearchDemo({
+    all,
+    currentSalesId: () => currentSalesId(),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -797,6 +803,7 @@ export const createDataProvider = ({
     ...marketplaceDemo.methods,
     ...scheduleDemo.methods,
     ...treatmentDemo.methods,
+    ...searchDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();

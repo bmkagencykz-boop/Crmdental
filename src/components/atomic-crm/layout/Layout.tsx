@@ -15,22 +15,33 @@ import { ChangelogMenuItem, ProfileMenu, Sidebar } from "./Sidebar";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { OnboardingMenuItem } from "../onboarding/OnboardingCard";
 import { IntegratorBanner } from "../integrations/IntegratorBanner";
+import { GlobalSearch, useRecentTracker } from "../search/GlobalSearch";
+import { GlobalShortcuts, ShortcutsButton } from "../search/Shortcuts";
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
+  useRecentTracker();
   return (
     <>
       <Sidebar />
       <div className="min-h-screen" style={{ paddingLeft: SIDEBAR_WIDTH }}>
-        <div className="flex h-[5.25rem] items-center justify-between pr-8 pl-2">
+        {/* One compact bar: logo, section title, search, user (stage 31) */}
+        <div className="flex h-[4.25rem] items-center gap-6 pr-8 pl-2">
           <Link
             to="/"
-            className="text-[1.35rem] tracking-[-0.02em] text-foreground no-underline"
+            className="shrink-0 text-[1.35rem] tracking-[-0.02em] text-foreground no-underline"
           >
             <span className="font-bold tracking-[-0.03em]">dental</span>
             <span className="font-bold text-brand-pink">crm</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="w-44 shrink-0 truncate">
+            <PageTitle />
+          </div>
+          <div className="flex min-w-0 flex-1 justify-center">
+            <GlobalSearch />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <ShortcutsButton />
             <NotificationBell />
             <ThemeToggle />
             <UserMenu>
@@ -42,7 +53,6 @@ export const Layout = ({ children }: { children: ReactNode }) => {
         </div>
         <main className="px-8 pt-2 pb-12" id="main-content">
           <IntegratorBanner />
-          <PageTitle />
           <ErrorBoundary FallbackComponent={Error}>
             <Suspense
               fallback={<Skeleton className="h-12 w-12 rounded-full" />}
@@ -53,6 +63,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
         </main>
       </div>
       <Notification />
+      <GlobalShortcuts />
     </>
   );
 };
@@ -80,8 +91,9 @@ const ThemeToggle = () => {
 };
 
 /**
- * Section title above every page ("Сделки", "Пациенты"...), derived from the
- * current route so that pages don't have to repeat it.
+ * Section title of every page ("Сделки", "Пациенты"...) in the top bar,
+ * derived from the current route so that pages don't have to repeat it.
+ * Compact since stage 31: it used to take a 44px line above every page.
  */
 const PageTitle = () => {
   const translate = useTranslate();
@@ -98,15 +110,14 @@ const PageTitle = () => {
     { match: "/audit", label: translate("audit.title") },
     { match: "/mailings", label: translate("mailings.title") },
     { match: "/integrations", label: translate("market.title") },
+    { match: "/search", label: translate("search.page.title") },
   ];
-  // The deal page has its own header
-  if (matchPath("/deals/:id/show", location.pathname)) return null;
   const current = [...items, ...extra].find(
     (item) => matchPath(item.match, location.pathname) != null,
   );
   if (!current) return null;
   return (
-    <h1 className="mb-8 text-[2.75rem] font-medium leading-[1.05] tracking-[-0.04em] text-foreground">
+    <h1 className="truncate text-lg font-semibold leading-tight text-foreground">
       {current.label}
     </h1>
   );

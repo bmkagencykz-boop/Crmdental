@@ -337,7 +337,8 @@ create table public.deal_payments (
     comment text,
     sales_id bigint,
     created_at timestamp with time zone not null default now(),
-    constraint deal_payments_amount_positive check (amount > 0)
+    -- A refund of the cash desk (stage 36) is a negative payment
+    constraint deal_payments_amount_not_zero check (amount <> 0)
 );
 
 -- Deal log: creation, stage changes and edits (who, when, what)

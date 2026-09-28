@@ -1531,10 +1531,13 @@ create or replace trigger call_stage_triggers
     after insert or update of status on public.calls
     for each row execute function private.handle_call_stage_triggers();
 
--- After deal_payment_changed: the deal has its new paid amount
+-- After deal_payment_changed: the deal has its new paid amount. A refund
+-- (negative payment, stage 36) is no «payment added».
 create or replace trigger deal_payment_pipeline
     after insert on public.deal_payments
-    for each row execute function private.handle_payment_pipeline();
+    for each row
+    when (new.amount > 0)
+    execute function private.handle_payment_pipeline();
 
 -- Audit log (secrets and key hashes are never copied)
 create or replace trigger audit_stage_trigger

@@ -244,7 +244,7 @@ const VisitFields = ({ visit }: { visit?: Visit }) => {
     ["patient_id", "deal_id", "doctor_id", "chair_id", "service_id"]
   >({ name: ["patient_id", "deal_id", "doctor_id", "chair_id", "service_id"] });
 
-  const { data: deals = [] } = useGetList<Deal>(
+  const { data: deals = [], isPending: dealsPending } = useGetList<Deal>(
     "deals",
     {
       pagination: { page: 1, perPage: 50 },
@@ -257,14 +257,20 @@ const VisitFields = ({ visit }: { visit?: Visit }) => {
     (deal) => deal.stage_kind === "open" || String(deal.id) === String(dealId),
   );
 
-  // A patient picked in the dialog: their latest open deal, else a new one
+  // A patient picked in the dialog: their latest open deal (once the deals
+  // are loaded), else a new one. The patient of the draft keeps its deal.
   const firstPatient = useRef(patientId);
+  const latestOpenDealId = deals.find((deal) => deal.stage_kind === "open")?.id;
   useEffect(() => {
-    if (patientId == null || patientId === firstPatient.current) return;
-    firstPatient.current = patientId;
-    setValue("deal_id", openDeals[0]?.id ?? NEW_DEAL);
+    if (
+      patientId == null ||
+      String(patientId) === String(firstPatient.current) ||
+      dealsPending
+    )
+      return;
+    setValue("deal_id", latestOpenDealId ?? NEW_DEAL);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, openDeals.length]);
+  }, [patientId, dealsPending, latestOpenDealId]);
 
   // The doctor gives the duration (unless it was chosen) and the service
   // of the deal gives the service

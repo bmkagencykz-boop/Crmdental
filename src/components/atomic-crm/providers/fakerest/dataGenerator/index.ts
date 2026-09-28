@@ -18,6 +18,7 @@ import { generateMisConnectors } from "./misConnectors";
 import { generateMarketplace } from "./marketplace";
 import { generateSchedule } from "./schedule";
 import { generateTreatmentPlans } from "./treatmentPlans";
+import { generateMarketing } from "./marketing";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -43,6 +44,8 @@ export default (): Db => {
   generateOnboarding(db);
   generateMarketplace(db);
   generateSchedule(db);
+  // UTM tags, a «Google» source and the ad spend (stage 32)
+  generateMarketing(db);
   // Last: the price list is appended to the services the other data uses
   generateTreatmentPlans(db);
   db.configuration = [

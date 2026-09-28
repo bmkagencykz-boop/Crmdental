@@ -19,6 +19,8 @@ describe("toLead", () => {
       source: "2gis",
       service: "Имплантация",
       comment: "Перезвоните вечером",
+      referrer: null,
+      landing_page: null,
       utm: { utm_source: "google" },
     });
   });
@@ -41,6 +43,8 @@ describe("toLead", () => {
       source: null,
       service: null,
       comment: "Болит зуб\nУдобное время: после 18:00",
+      referrer: null,
+      landing_page: null,
       utm: { utm_campaign: "implants" },
     });
   });
@@ -66,7 +70,25 @@ describe("toLead", () => {
       source: null,
       service: null,
       comment: null,
+      referrer: null,
+      landing_page: null,
       utm: {},
+    });
+  });
+
+  it("keeps the referrer and the landing page of the form", () => {
+    expect(
+      toLead({
+        phone: "87015551234",
+        Referer: "https://www.google.com/",
+        landing_page: "https://clinic.kz/implant",
+        utm_source: "google",
+      }),
+    ).toMatchObject({
+      referrer: "https://www.google.com/",
+      landing_page: "https://clinic.kz/implant",
+      comment: null,
+      utm: { utm_source: "google" },
     });
   });
 });

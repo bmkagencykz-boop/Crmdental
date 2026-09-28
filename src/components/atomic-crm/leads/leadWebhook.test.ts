@@ -32,6 +32,8 @@ describe("leadFormSnippet", () => {
     expect(snippet).toContain('fetch("https://h/leads_webhook?token=t"');
     expect(snippet).toContain('name="phone" type="tel"');
     expect(snippet).toContain("utm_source");
+    expect(snippet).toContain("data.referrer = document.referrer");
+    expect(snippet).toContain("data.landing_page");
     expect(snippet).toContain("Записаться</button>");
   });
 

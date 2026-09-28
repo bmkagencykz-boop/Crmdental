@@ -1,3 +1,4 @@
+import type { AdSpend } from "../../../marketing/types";
 import type { DeveloperApp } from "../../../integrations/types";
 import type {
   AuditLogEntry,
@@ -147,4 +148,6 @@ export interface Db {
   // Treatment plans with an estimate (stage 29)
   treatment_plans: TreatmentPlan[];
   treatment_plan_items: TreatmentPlanItem[];
+  // Marketing analytics (stage 32)
+  ad_spend: AdSpend[];
 }

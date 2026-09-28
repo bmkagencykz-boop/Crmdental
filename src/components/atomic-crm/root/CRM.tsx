@@ -255,6 +255,7 @@ const DesktopAdmin = (
       <Resource name="stages" />
       <Resource name="services" />
       <Resource name="lead_sources" />
+      <Resource name="ad_spend" />
       <Resource name="lost_reasons" />
       <Resource name="sales" {...sales} />
       <Resource name="tags" />

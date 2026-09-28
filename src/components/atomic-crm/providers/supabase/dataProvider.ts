@@ -49,6 +49,7 @@ import { getSupabaseClient } from "./supabase";
 import { getMailingMethods } from "./mailingMethods";
 import { getFileMethods, uploadToDealFolder } from "./fileMethods";
 import { getTreatmentMethods } from "./treatmentMethods";
+import { getMarketingMethods } from "./marketingMethods";
 import { getUnsortedMethods } from "./unsortedMethods";
 import { getListPlanMethods } from "./listPlanMethods";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
@@ -128,6 +129,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getTreatmentMethods(),
     // Global search (stage 31)
     ...getSearchMethods(),
+    // Marketing analytics (stage 32)
+    ...getMarketingMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

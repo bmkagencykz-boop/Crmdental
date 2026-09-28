@@ -125,6 +125,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "mis_connection",
     "salesbot",
     "service",
+    "ad_spend",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -292,7 +293,10 @@ export const describeAuditChanges = (
       const label =
         special?.label ??
         translate(`audit.fields.${field}`, {
-          _: translate(`treatment.audit.fields.${field}`, { _: field }),
+          _: translate(`treatment.audit.fields.${field}`, {
+            // Ad spend (stage 32)
+            _: translate(`marketing.audit.fields.${field}`, { _: field }),
+          }),
         });
       const format = (value: unknown) =>
         special
@@ -357,13 +361,15 @@ export const auditEntityLabel = (
       ? translate("custom_fields.audit.entity")
       : entry.entity === "mis_connection"
         ? translate("mis_connectors.audit.entity")
-        : SCHEDULE_ENTITIES.includes(entry.entity)
-          ? translate(`schedule.audit.${entry.entity}`)
-          : TREATMENT_ENTITIES.includes(entry.entity)
-            ? translate(`treatment.audit.${entry.entity}`)
-            : translate(`audit.entities.${entry.entity}`, {
-                _: entry.entity,
-              });
+        : entry.entity === "ad_spend"
+          ? translate("marketing.audit.entity")
+          : SCHEDULE_ENTITIES.includes(entry.entity)
+            ? translate(`schedule.audit.${entry.entity}`)
+            : TREATMENT_ENTITIES.includes(entry.entity)
+              ? translate(`treatment.audit.${entry.entity}`)
+              : translate(`audit.entities.${entry.entity}`, {
+                  _: entry.entity,
+                });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {

@@ -59,3 +59,4 @@ node_modules/
 *.lock
 .vitest-attachments/
 .claude/worktrees/
+playwright.local.tmp.config.ts

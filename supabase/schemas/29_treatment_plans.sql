@@ -19,7 +19,8 @@
 --                          (the deal's by default). The patient is the
 --                          deal's (set by the trigger, moved with the deal).
 --   treatment_plan_items   the positions: stage of the treatment (1..n,
---                          «Этап 1, 2…»), the service (optional) and its name
+--                          «Этап 1, 2…»; a real stage since stage 34,
+--                          34_plan_editor.sql), the service (optional) and its name
 --                          (a copy, editable), the tooth as free text
 --                          («36», «11-13»), quantity, unit price, discount,
 --                          done. line_total is computed by the database.
@@ -27,7 +28,9 @@
 -- Totals, in whole tenge (the TS twin is src/components/atomic-crm/treatment/
 -- planMath.ts):
 --   line_total = round(quantity × unit_price × (100 − discount %) / 100)
---   subtotal   = Σ line_total (per stage: public.treatment_plan_stages)
+--   subtotal   = Σ line_total (per stage: public.treatment_plan_stages;
+--                with the stage discounts and cancelled stages since
+--                stage 34: private.treatment_plan_subtotal)
 --   total      = max(0, subtotal − round(subtotal × plan discount % / 100)
 --                − plan discount amount)      (private.treatment_plan_total)
 -- public.treatment_plans_summary gives every plan with its totals and
@@ -215,10 +218,9 @@ begin
   if not found or not plan.is_main then
     return;
   end if;
-  select private.treatment_plan_total(coalesce(sum(i.line_total), 0)::bigint, plan.discount_percent, plan.discount_amount)
-  into total
-  from public.treatment_plan_items i
-  where i.organization_id = plan.organization_id and i.plan_id = plan.id;
+  -- The stages of the plan, cancelled ones aside (stage 34)
+  total := private.treatment_plan_total(private.treatment_plan_subtotal(plan.organization_id, plan.id),
+    plan.discount_percent, plan.discount_amount);
   update public.deals d
   set plan_amount = total
   where d.organization_id = plan.organization_id and d.id = plan.deal_id
@@ -322,9 +324,7 @@ begin
 
   if (tg_op = 'INSERT' and (new.discount_percent > 0 or new.discount_amount > 0))
     or (tg_op = 'UPDATE' and (new.discount_percent <> old.discount_percent or new.discount_amount <> old.discount_amount)) then
-    select coalesce(sum(i.line_total), 0) into subtotal
-    from public.treatment_plan_items i
-    where i.organization_id = new.organization_id and i.plan_id = new.id;
+    subtotal := private.treatment_plan_subtotal(new.organization_id, new.id);
     perform private.check_treatment_discount(new.organization_id, new.discount_percent, subtotal, new.discount_amount);
   end if;
   new.updated_at := now();
@@ -359,10 +359,24 @@ CREATE OR REPLACE FUNCTION "private"."handle_treatment_item_before_write"() RETU
 declare
   role text := private.current_user_role();
   service public.services;
+  stage_position integer;
 begin
   if tg_op = 'UPDATE' and new.plan_id is distinct from old.plan_id then
     raise exception 'Позиция не переносится в другой план' using errcode = '22023';
   end if;
+  -- The stage (stage 34): written by its id, or by its number only (stage
+  -- 29 clients) — the stage with this number, created when missing.
+  -- stage_no follows the number of the stage.
+  if new.stage_id is null
+    or (tg_op = 'UPDATE' and new.stage_no is distinct from old.stage_no and new.stage_id is not distinct from old.stage_id) then
+    new.stage_id := private.treatment_stage_at(new.organization_id, new.plan_id, coalesce(new.stage_no, 1));
+  end if;
+  select s.position into stage_position from public.treatment_stages s
+  where s.organization_id = new.organization_id and s.plan_id = new.plan_id and s.id = new.stage_id;
+  if stage_position is null then
+    raise exception 'Этап не найден в плане' using errcode = '23503';
+  end if;
+  new.stage_no := stage_position;
   if new.service_id is not null then
     select * into service from public.services s
     where s.organization_id = new.organization_id and s.id = new.service_id;
@@ -390,8 +404,9 @@ begin
 end;
 $$;
 
--- After items change: the progress of an agreed plan (some done: in
--- progress, all done: completed) and the plan amount of the deal
+-- After items change: the status of their stages (stage 34), the progress
+-- of an agreed plan (some done: in progress, all done: completed) and the
+-- plan amount of the deal (private.refresh_treatment_plan)
 CREATE OR REPLACE FUNCTION "private"."handle_treatment_item_after_write"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -399,34 +414,14 @@ CREATE OR REPLACE FUNCTION "private"."handle_treatment_item_after_write"() RETUR
 declare
   org_id bigint := coalesce(new.organization_id, old.organization_id);
   target_plan_id bigint := coalesce(new.plan_id, old.plan_id);
-  plan public.treatment_plans;
-  total_items integer;
-  done_items integer;
-  next_status text;
 begin
-  select * into plan from public.treatment_plans p
-  where p.organization_id = org_id and p.id = target_plan_id;
-  if not found then
-    return null;
+  if tg_op <> 'INSERT' and (tg_op = 'DELETE' or new.stage_id is distinct from old.stage_id) then
+    perform private.treatment_stage_progress(org_id, old.stage_id);
   end if;
-  if plan.status in ('agreed', 'in_progress', 'completed') then
-    select count(*), count(*) filter (where i.done) into total_items, done_items
-    from public.treatment_plan_items i
-    where i.organization_id = org_id and i.plan_id = plan.id;
-    next_status := case
-      when total_items > 0 and done_items = total_items then 'completed'
-      when plan.status = 'completed' then 'in_progress'
-      when done_items > 0 and plan.status = 'agreed' then 'in_progress'
-      else plan.status
-    end;
-    if next_status <> plan.status then
-      update public.treatment_plans p set status = next_status
-      where p.organization_id = org_id and p.id = plan.id;
-    end if;
+  if tg_op <> 'DELETE' then
+    perform private.treatment_stage_progress(org_id, new.stage_id);
   end if;
-  if plan.is_main then
-    perform private.sync_treatment_plan_amount(plan.id);
-  end if;
+  perform private.refresh_treatment_plan(org_id, target_plan_id);
   return null;
 end;
 $$;
@@ -444,7 +439,8 @@ begin
 end;
 $$;
 
--- «Дублировать план»: a draft copy with the items (not done). Runs with the
+-- «Дублировать план»: a draft copy with the header, the stages (new, a
+-- cancelled one stays cancelled) and the items (not done). Runs with the
 -- caller's rights; the discounts are copied as they are.
 CREATE OR REPLACE FUNCTION "public"."duplicate_treatment_plan"("source_plan_id" bigint) RETURNS bigint
     LANGUAGE "plpgsql"
@@ -452,7 +448,9 @@ CREATE OR REPLACE FUNCTION "public"."duplicate_treatment_plan"("source_plan_id" 
     AS $$
 declare
   source public.treatment_plans;
+  stage record;
   new_plan_id bigint;
+  new_stage_id bigint;
 begin
   select * into source from public.treatment_plans p
   where p.organization_id = private.current_organization_id() and p.id = source_plan_id;
@@ -460,22 +458,36 @@ begin
     raise exception 'План не найден' using errcode = 'P0002';
   end if;
   perform set_config('crm.treatment_copy', 'on', true);
-  insert into public.treatment_plans (organization_id, deal_id, name, status, discount_percent, discount_amount, note, doctor_id)
+  insert into public.treatment_plans (organization_id, deal_id, name, status, discount_percent, discount_amount, note, doctor_id,
+    plan_type_id, complaints, insurance_policy)
   values (source.organization_id, source.deal_id, left(source.name, 180) || ' (копия)', 'draft',
-    source.discount_percent, source.discount_amount, source.note, source.doctor_id)
+    source.discount_percent, source.discount_amount, source.note, source.doctor_id,
+    source.plan_type_id, source.complaints, source.insurance_policy)
   returning id into new_plan_id;
-  insert into public.treatment_plan_items (organization_id, plan_id, stage_no, service_id, name, tooth, quantity, unit_price, discount_percent, position)
-  select i.organization_id, new_plan_id, i.stage_no, i.service_id, i.name, i.tooth, i.quantity, i.unit_price, i.discount_percent, i.position
-  from public.treatment_plan_items i
-  where i.organization_id = source.organization_id and i.plan_id = source.id
-  order by i.stage_no, i.position, i.id;
+  for stage in
+    select * from public.treatment_stages s
+    where s.organization_id = source.organization_id and s.plan_id = source.id
+    order by s.position, s.id
+  loop
+    insert into public.treatment_stages (organization_id, plan_id, position, name, doctor_id, direction_id, deadline,
+      description, status, discount_percent)
+    values (stage.organization_id, new_plan_id, stage.position, stage.name, stage.doctor_id, stage.direction_id, stage.deadline,
+      stage.description, case when stage.status = 'cancelled' then 'cancelled' else 'new' end, stage.discount_percent)
+    returning id into new_stage_id;
+    insert into public.treatment_plan_items (organization_id, plan_id, stage_id, service_id, name, tooth, quantity, unit_price, discount_percent, position)
+    select i.organization_id, new_plan_id, new_stage_id, i.service_id, i.name, i.tooth, i.quantity, i.unit_price, i.discount_percent, i.position
+    from public.treatment_plan_items i
+    where i.organization_id = source.organization_id and i.stage_id = stage.id
+    order by i.position, i.id;
+  end loop;
   perform set_config('crm.treatment_copy', '', true);
   return new_plan_id;
 end;
 $$;
 
 -- Reports «Деньги» → «Согласованные планы по позициям»: the services of the
--- main plans agreed in the period, by sum (top 20). Same filters as the
+-- main plans agreed in the period, by sum (top 20; cancelled stages aside
+-- since stage 34). Same filters as the
 -- other reports (the branch since stage 33); owner and head only.
 CREATE OR REPLACE FUNCTION "public"."report_plan_services"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_pipeline_id" bigint DEFAULT NULL::bigint, "filter_sales_id" bigint DEFAULT NULL::bigint, "filter_source_id" bigint DEFAULT NULL::bigint, "filter_doctor_id" bigint DEFAULT NULL::bigint, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
@@ -492,6 +504,7 @@ begin
       from public.treatment_plans p
         join public.deals d on d.organization_id = p.organization_id and d.id = p.deal_id
         join public.treatment_plan_items i on i.organization_id = p.organization_id and i.plan_id = p.id
+        join public.treatment_stages st on st.organization_id = i.organization_id and st.id = i.stage_id and st.status <> 'cancelled'
         left join public.services sv on sv.organization_id = i.organization_id and sv.id = i.service_id
       where p.organization_id = private.current_organization_id()
         and p.is_main
@@ -564,57 +577,8 @@ select
     p.preferred_doctor_id
 from public.patients p;
 
--- Plans with their totals and progress (deal page, patient card, estimate)
-create or replace view public.treatment_plans_summary with (security_invoker = on) as
-select
-    tp.id,
-    tp.organization_id,
-    tp.deal_id,
-    tp.patient_id,
-    tp.name,
-    tp.status,
-    tp.is_main,
-    tp.discount_percent,
-    tp.discount_amount,
-    tp.note,
-    tp.doctor_id,
-    tp.created_by,
-    tp.agreed_at,
-    tp.created_at,
-    tp.updated_at,
-    t.items_count,
-    t.done_count,
-    t.gross_amount,
-    t.subtotal_amount,
-    t.done_amount,
-    private.treatment_plan_total(t.subtotal_amount, tp.discount_percent, tp.discount_amount) as total_amount,
-    t.gross_amount - private.treatment_plan_total(t.subtotal_amount, tp.discount_percent, tp.discount_amount) as discount_total,
-    d.name as deal_name,
-    d.paid_amount as deal_paid_amount
-from public.treatment_plans tp
-    join public.deals d on d.organization_id = tp.organization_id and d.id = tp.deal_id
-    cross join lateral (
-        select
-            count(i.id)::integer as items_count,
-            (count(i.id) filter (where i.done))::integer as done_count,
-            coalesce(sum(i.quantity * i.unit_price), 0)::bigint as gross_amount,
-            coalesce(sum(i.line_total), 0)::bigint as subtotal_amount,
-            coalesce(sum(i.line_total) filter (where i.done), 0)::bigint as done_amount
-        from public.treatment_plan_items i
-        where i.organization_id = tp.organization_id and i.plan_id = tp.id
-    ) t;
-
--- Subtotal of every stage of a plan
-create or replace view public.treatment_plan_stages with (security_invoker = on) as
-select
-    i.organization_id,
-    i.plan_id,
-    i.stage_no,
-    count(*)::integer as items_count,
-    (count(*) filter (where i.done))::integer as done_count,
-    sum(i.line_total)::bigint as subtotal_amount
-from public.treatment_plan_items i
-group by i.organization_id, i.plan_id, i.stage_no;
+-- public.treatment_plans_summary and public.treatment_plan_stages: in
+-- 34_plan_editor.sql (they read the stages of the plans)
 
 --
 -- Triggers
@@ -645,7 +609,7 @@ create or replace trigger move_deal_plans_with_patient
 -- Audit log
 create or replace trigger audit_treatment_plan
     after insert or update or delete on public.treatment_plans
-    for each row execute function private.audit_row('treatment_plan', 'name,status,is_main,discount_percent,discount_amount,doctor_id,note');
+    for each row execute function private.audit_row('treatment_plan', 'name,status,is_main,discount_percent,discount_amount,doctor_id,note,plan_type_id,complaints,insurance_policy');
 
 create or replace trigger audit_treatment_plan_item
     after insert or update or delete on public.treatment_plan_items
@@ -714,12 +678,6 @@ revoke all on sequence public.treatment_plan_items_id_seq from anon;
 grant usage on sequence public.treatment_plan_items_id_seq to authenticated;
 grant all on sequence public.treatment_plan_items_id_seq to service_role;
 
-revoke all on table public.treatment_plans_summary from anon;
-grant select on table public.treatment_plans_summary to authenticated;
-grant all on table public.treatment_plans_summary to service_role;
-revoke all on table public.treatment_plan_stages from anon;
-grant select on table public.treatment_plan_stages to authenticated;
-grant all on table public.treatment_plan_stages to service_role;
 
 revoke all on function private.check_treatment_discount(bigint, numeric, bigint, bigint) from public;
 grant execute on function private.check_treatment_discount(bigint, numeric, bigint, bigint) to service_role;

@@ -224,7 +224,7 @@ export const PatientHeader = ({
           </Button>
         ) : null}
         {canPlan ? (
-          <Button variant="outline" asChild>
+          <Button variant="outline" className="bg-background" asChild>
             <Link
               to={`/patients/${patient.id}/plans/new${lastDeal ? `?deal_id=${lastDeal.id}` : ""}`}
             >
@@ -233,12 +233,16 @@ export const PatientHeader = ({
           </Button>
         ) : null}
         {canSeeMoney && payments.canAccept ? (
-          <Button variant="outline" onClick={() => setPaying(true)}>
+          <Button
+            variant="outline"
+            className="bg-background"
+            onClick={() => setPaying(true)}
+          >
             {translate("patient_card.header.actions.pay")}
           </Button>
         ) : null}
         {lastDeal ? (
-          <Button variant="outline" asChild>
+          <Button variant="outline" className="bg-background" asChild>
             <Link
               to={`/deals/${lastDeal.id}/show`}
               title={translate("patient_card.header.actions.write_hint")}

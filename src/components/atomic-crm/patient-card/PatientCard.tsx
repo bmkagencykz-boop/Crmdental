@@ -206,7 +206,6 @@ const OverviewTab = ({
             storeKey={false}
             empty={<NoteCreate reference="patients" />}
           >
-            <NoteCreate reference="patients" />
             <NotesIterator reference="patients" />
           </InfiniteListBase>
         </Card>

@@ -323,6 +323,8 @@ export const generatePatientCard = (db: Db) => {
     const existing = db.patient_teeth.find(
       (row) => same(row.patient_id, patientId) && row.tooth === tooth,
     );
+    // The same state again is not a change (as the database)
+    if (existing && existing.state === state && !note) return;
     db.patient_tooth_history.push({
       id: historyId++,
       patient_id: patientId,

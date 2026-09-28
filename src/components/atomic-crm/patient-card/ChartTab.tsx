@@ -359,7 +359,12 @@ const ToothPanel = ({
             {translate("patient_card.chart.save")}
           </Button>
           {row ? (
-            <Button variant="outline" onClick={clear} disabled={removing}>
+            <Button
+              variant="outline"
+              className="bg-background"
+              onClick={clear}
+              disabled={removing}
+            >
               {translate("patient_card.chart.clear")}
             </Button>
           ) : null}

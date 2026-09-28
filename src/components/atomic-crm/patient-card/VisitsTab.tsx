@@ -81,7 +81,11 @@ export const VisitsTab = ({
           </p>
         </div>
         {rights.canEdit ? (
-          <Button variant="outline" onClick={() => setOpen({})}>
+          <Button
+            variant="outline"
+            className="bg-background"
+            onClick={() => setOpen({})}
+          >
             {translate("patient_card.visits.new_record")}
           </Button>
         ) : null}

@@ -81,7 +81,7 @@ test.describe("attachments", () => {
     await expect(files.getByRole("listitem")).toHaveCount(2);
 
     // The patient card lists the files of the patient's deals
-    await page.goto(`/#/patients/${patient.id}/show`);
+    await page.goto(`/#/patients/${patient.id}/show?tab=files`);
     await expect(page.getByRole("main")).toContainText("План лечения.pdf");
     await expect(page.getByRole("main")).toContainText("Implants");
 

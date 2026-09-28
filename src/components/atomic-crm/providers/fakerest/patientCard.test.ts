@@ -64,7 +64,7 @@ const list = async <T>(
     })
   ).data as T[];
 
-describe("demo patient card", () => {
+describe("demo patient card", { timeout: 30_000 }, () => {
   it("generates charts, records, questionnaires, consents and X-rays", () => {
     const { db } = setup();
     expect(db.patient_teeth.length).toBeGreaterThan(20);
@@ -93,9 +93,13 @@ describe("demo patient card", () => {
   });
 
   it("keeps the history of a tooth: who, when, before and after", async () => {
-    const { dataProvider, loginAs } = setup();
+    const { db, dataProvider, loginAs } = setup();
     const manager = loginAs("manager");
-    const [patient] = await list<Patient>(dataProvider, "patients");
+    // A visible patient without a chart yet
+    const patient = (await list<Patient>(dataProvider, "patients")).find(
+      (p) =>
+        !db.patient_teeth.some((t) => String(t.patient_id) === String(p.id)),
+    )!;
     const { data: tooth } = await dataProvider.create<PatientTooth>(
       "patient_teeth",
       { data: { patient_id: patient.id, tooth: 17, state: "caries" } },

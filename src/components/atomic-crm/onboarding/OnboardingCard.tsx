@@ -56,7 +56,7 @@ const ContinueCard = ({
   return (
     <section
       aria-label={title}
-      className="mb-6 flex flex-wrap items-center gap-4 rounded-lg border bg-card px-5 py-4 shadow-sm"
+      className="mb-4 flex flex-wrap items-center gap-4 rounded-md border bg-card px-4 py-3"
     >
       <div className="flex min-w-48 flex-1 flex-col gap-1.5">
         <div className="flex items-baseline gap-2">

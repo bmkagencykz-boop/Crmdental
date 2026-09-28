@@ -3951,6 +3951,7 @@ export const russianCrmMessages: CrmMessages = {
   },
   ui: {
     filter: "Фильтр",
+    default_pipeline: "основная",
     access: {
       clinic_rules: "Для всей клиники",
       staff_rights: "Права сотрудников",

@@ -50,7 +50,7 @@ const MonthPlanCard = () => {
         <span className="text-xs text-muted-foreground">
           {translate("sales_plan.metrics.paid_amount")}
         </span>
-        <span className="text-xl font-bold tabular-nums">
+        <span className="text-xl font-semibold tabular-nums">
           {format("paid_amount", row.fact)}
         </span>
         {row.target == null ? (

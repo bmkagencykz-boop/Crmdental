@@ -91,8 +91,9 @@ const PatientTable = () => {
   const translate = useTranslate();
   const { data: sources } = useLeadSources();
   return (
-    <div className="glass overflow-hidden rounded-lg px-2 py-1">
+    <div className="glass overflow-hidden rounded-md">
       <DataTable<Patient>
+        className="rounded-none border-0"
         rowClick="show"
         bulkActionButtons={
           <>
@@ -110,8 +111,8 @@ const PatientTable = () => {
           source="last_name"
           label="resources.patients.fields.full_name"
           render={(patient) => (
-            <div className="flex flex-col gap-1 py-1">
-              <span className="font-semibold">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="font-medium">
                 {patientDisplayName(patient as Patient)}
               </span>
               {patient.tags?.length ? <TagsList /> : null}

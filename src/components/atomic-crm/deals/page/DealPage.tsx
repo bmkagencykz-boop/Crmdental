@@ -54,17 +54,17 @@ const DealPageContent = () => {
 
   return (
     <div className="grid h-[calc(100vh-6.5rem)] min-h-[36rem] grid-cols-[27rem_1fr] gap-5">
-      <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
+      <aside className="glass flex min-h-0 flex-col overflow-hidden rounded-md">
         <UnsortedBanner deal={deal} />
         <DealHeader deal={deal} />
-        <div className="flex items-start gap-2 px-6 pb-3">
+        <div className="flex items-start gap-2 px-5 pb-3">
           <MisDealBadge deal={deal} />
           <div className="min-w-0 flex-1">
             <TagsListEdit resource="deals" />
           </div>
         </div>
         <nav
-          className="flex gap-5 border-b border-border px-6 text-sm font-semibold"
+          className="flex gap-5 border-b border-border px-5 text-sm font-medium"
           role="tablist"
         >
           {(
@@ -113,21 +113,21 @@ const DealPageContent = () => {
               <MisVisits patientId={deal.patient_id} compact />
             </>
           ) : tab === "payments" ? (
-            <div className="px-6 py-5">
+            <div className="px-5 py-4">
               <DealPayments deal={deal} />
             </div>
           ) : tab === "treatment" ? (
-            <div className="px-5 py-5">
+            <div className="px-5 py-4">
               <DealTreatmentPlans deal={deal} />
             </div>
           ) : (
-            <div className="px-6 py-5">
+            <div className="px-5 py-4">
               <DealFiles deal={deal} />
             </div>
           )}
         </div>
       </aside>
-      <section className="glass flex min-h-0 flex-col overflow-hidden rounded-lg">
+      <section className="glass flex min-h-0 flex-col overflow-hidden rounded-md">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <DealFeed deal={deal} />
         </div>

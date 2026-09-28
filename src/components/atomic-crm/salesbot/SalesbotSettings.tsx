@@ -255,7 +255,7 @@ export const SalesbotSettings = () => {
             {BOT_TEMPLATES.map((template) => (
               <div
                 key={template.id}
-                className="flex flex-col gap-2 rounded-lg border p-4"
+                className="flex flex-col gap-2 rounded-md border p-4"
                 data-testid="salesbot-template"
               >
                 <h3 className="font-semibold">{template.bot.name}</h3>

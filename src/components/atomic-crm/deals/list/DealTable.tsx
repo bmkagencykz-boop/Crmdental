@@ -110,7 +110,7 @@ export const DealTable = ({ settings }: { settings: ColumnSettings }) => {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
+    <div className="overflow-x-auto rounded-md border bg-card">
       <table
         className="w-full min-w-max text-[13px]"
         aria-label={translate("deal_list.title")}

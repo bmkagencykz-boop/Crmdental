@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import {
   useDataProvider,
   useNotify,
@@ -121,14 +121,16 @@ export const PipelinesEditor = () => {
             className={cn(
               "flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all",
               item.id === pipeline?.id
-                ? "bg-primary text-primary-foreground shadow-soft"
+                ? "bg-primary text-primary-foreground"
                 : "soft text-foreground/80 hover:text-foreground",
             )}
           >
-            {item.is_default ? (
-              <Star className="size-3.5 fill-current" />
-            ) : null}
             {item.name}
+            {item.is_default ? (
+              <span className="text-xs font-normal opacity-70">
+                · {translate("ui.default_pipeline")}
+              </span>
+            ) : null}
           </button>
         ))}
         <NewPipelineButton onCreated={setSelectedId} />

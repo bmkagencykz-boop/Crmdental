@@ -233,7 +233,7 @@ export const TestChat = ({
               key={index}
               data-from={line.from}
               className={cn(
-                "max-w-[85%] whitespace-pre-line break-words rounded-lg px-3 py-2 text-sm",
+                "max-w-[85%] whitespace-pre-line break-words rounded-md px-3 py-2 text-sm",
                 line.from === "bot" && "self-start bg-card shadow-card",
                 line.from === "patient" &&
                   "self-end bg-primary text-primary-foreground",

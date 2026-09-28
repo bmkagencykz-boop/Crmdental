@@ -253,7 +253,7 @@ export const SettingsPage = () => {
                 className={cn(
                   "rounded-md px-4 py-1.5 text-left text-sm font-medium transition-all",
                   section === id
-                    ? "bg-primary font-semibold text-primary-foreground shadow-soft"
+                    ? "bg-primary text-primary-foreground"
                     : "text-foreground/80 hover:bg-[var(--surface-strong)] hover:text-foreground",
                 )}
               >
@@ -347,9 +347,9 @@ const Panel = ({
   hint: string;
   children: ReactNode;
 }) => (
-  <section className="glass flex flex-col gap-6 rounded-lg p-7">
+  <section className="glass flex flex-col gap-5 rounded-md p-5">
     <div>
-      <h2 className="text-xl font-bold tracking-[-0.02em]">{title}</h2>
+      <h2 className="text-lg font-semibold">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
     </div>
     {children}

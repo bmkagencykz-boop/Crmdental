@@ -81,7 +81,7 @@ export const CustomFieldsEditor = () => {
           {translate("custom_fields.settings.empty")}
         </p>
       ) : (
-        <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <div className="flex flex-col divide-y divide-border rounded-md border border-border">
           {fields.map((field, index) => (
             <FieldRow
               key={field.id}
@@ -349,7 +349,7 @@ const NewField = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border p-3">
+    <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={name}

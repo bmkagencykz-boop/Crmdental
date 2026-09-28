@@ -1,13 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlarmClock,
-  Bell,
-  Flame,
-  Forward,
-  MessageCircle,
-  UserPlus,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell } from "lucide-react";
 import {
   useDataProvider,
   useGetIdentity,
@@ -28,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 import { useRelativeDate } from "../misc/RelativeDate";
 import type { CrmDataProvider } from "../providers/types";
-import type { CrmNotification, NotificationKind } from "../types";
+import type { CrmNotification } from "../types";
 import { BrowserNotificationsToggle } from "./BrowserNotificationsToggle";
 import {
   pickBrowserNotifications,
@@ -38,15 +30,6 @@ import { useNotificationPreferences } from "./useNotificationPreferences";
 
 /** Same rhythm as the inbox: the bell asks the database every 20 seconds */
 const POLL_INTERVAL = 20_000;
-
-const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
-  lead_assigned: UserPlus,
-  patient_message: MessageCircle,
-  task_overdue: AlarmClock,
-  response_overdue: Flame,
-  bot_handoff: Forward,
-  visit_reschedule: AlarmClock,
-};
 
 /** Title of a notification in the language of the user */
 const useNotificationTitle = () => {
@@ -194,7 +177,6 @@ const NotificationItem = ({
 }) => {
   const title = useNotificationTitle()(notification);
   const date = useRelativeDate(notification.updated_at);
-  const Icon = KIND_ICONS[notification.kind] ?? Bell;
   const unread = !notification.read_at;
   return (
     <button
@@ -206,22 +188,13 @@ const NotificationItem = ({
       )}
       data-unread={unread ? "true" : undefined}
     >
-      <span
-        className={cn(
-          "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md",
-          notification.kind === "response_overdue"
-            ? "bg-brand-red/10 text-brand-red"
-            : "bg-muted text-muted-foreground",
-        )}
-      >
-        <Icon className="size-4" />
-      </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span
             className={cn(
               "truncate text-sm",
               unread ? "font-semibold text-foreground" : "text-foreground/80",
+              notification.kind === "response_overdue" && "text-brand-red",
             )}
           >
             {title}

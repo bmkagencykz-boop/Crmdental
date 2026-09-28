@@ -112,7 +112,7 @@ export const BulkActions = ({
 
   return (
     <div
-      className="sticky bottom-4 z-20 mt-3 flex flex-wrap items-center gap-3 rounded-lg border bg-card px-4 py-2.5 shadow-lg"
+      className="sticky bottom-4 z-20 mt-3 flex flex-wrap items-center gap-3 rounded-md border bg-card px-3 py-2 shadow-[var(--shadow-soft)]"
       role="region"
       aria-label={translate("deal_list.bulk.title")}
     >

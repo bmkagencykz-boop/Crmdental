@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Building2, Trash2, User } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { useTranslate } from "ra-core";
 import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -156,7 +156,6 @@ const ScopeBadge = ({ personal }: { personal: boolean }) => {
   const translate = useTranslate();
   return (
     <Badge variant={personal ? "secondary" : "outline"}>
-      {personal ? <User /> : <Building2 />}
       {translate(personal ? "quick_replies.personal" : "quick_replies.clinic")}
     </Badge>
   );

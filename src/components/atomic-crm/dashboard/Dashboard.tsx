@@ -24,14 +24,14 @@ const DashboardContent = () => (
   <>
     <OnboardingDashboardCard />
     <DashboardSummary />
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
       <div className="md:col-span-4">
         <TasksList />
       </div>
       <div className="md:col-span-5">
         <DashboardActivityLog />
       </div>
-      <div className="flex flex-col gap-8 md:col-span-3">
+      <div className="flex flex-col gap-5 md:col-span-3">
         <TodayInClinic />
         <MonthPlanWidget />
         <WaitingDeals />

@@ -1,13 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Copy,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Send,
-  Trash2,
-  Webhook as WebhookIcon,
-} from "lucide-react";
+import { Copy, Eye, EyeOff, Trash2 } from "lucide-react";
 import {
   useDataProvider,
   useGetList,
@@ -76,21 +68,18 @@ export const ApiSettings = () => {
         {translate("api.docs_link")}
       </Link>
       <Section
-        icon={<KeyRound className="size-4" />}
         title={translate("api.keys.title")}
         hint={translate("api.keys.hint")}
       >
         <ApiKeys />
       </Section>
       <Section
-        icon={<WebhookIcon className="size-4" />}
         title={translate("api.webhooks.title")}
         hint={translate("api.webhooks.hint")}
       >
         <Webhooks />
       </Section>
       <Section
-        icon={<Send className="size-4" />}
         title={translate("api.deliveries.title")}
         hint={translate("api.deliveries.hint")}
       >
@@ -101,20 +90,17 @@ export const ApiSettings = () => {
 };
 
 const Section = ({
-  icon,
   title,
   hint,
   children,
 }: {
-  icon: ReactNode;
   title: string;
   hint: string;
   children: ReactNode;
 }) => (
   <section className="flex flex-col gap-3">
     <div>
-      <h3 className="flex items-center gap-2 text-base font-semibold">
-        {icon}
+      <h3 className="text-sm font-semibold">
         {title}
       </h3>
       <p className="text-sm text-muted-foreground">{hint}</p>

@@ -143,7 +143,7 @@ export const MailingCreate = ({
 
   return (
     <section
-      className="flex flex-col gap-5 rounded-lg border bg-card p-5"
+      className="flex flex-col gap-4 rounded-md border bg-card p-4"
       aria-labelledby="mailing-create-title"
       data-testid="mailing-create"
     >
@@ -440,7 +440,7 @@ const SegmentPreviewPanel = ({
         </span>
         <p
           className={cn(
-            "text-3xl font-semibold tabular-nums",
+            "text-2xl font-semibold tabular-nums",
             loading && "opacity-60",
           )}
           data-testid="segment-count"

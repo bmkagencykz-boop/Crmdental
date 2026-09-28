@@ -14,7 +14,7 @@ export const PatientVisits = ({ patientId }: { patientId: Identifier }) => {
   if (!visits.length) return null;
   return (
     <section
-      className="glass flex flex-col gap-2 rounded-lg p-6"
+      className="glass flex flex-col gap-2 rounded-md p-4"
       data-testid="patient-visits"
     >
       <h3 className="mb-2 text-[15px] font-semibold">

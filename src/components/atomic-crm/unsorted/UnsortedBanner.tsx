@@ -11,7 +11,7 @@ export const UnsortedBanner = ({ deal }: { deal: Deal }) => {
   if (!deal.unsorted_at) return null;
   return (
     <div
-      className="mx-4 mt-4 flex flex-col gap-2.5 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3"
+      className="mx-4 mt-4 flex flex-col gap-2.5 rounded-md border border-primary/40 bg-primary/5 px-4 py-3"
       data-testid="unsorted-banner"
     >
       <div className="flex items-start gap-2">

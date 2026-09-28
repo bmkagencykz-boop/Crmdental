@@ -1,4 +1,3 @@
-import { User } from "lucide-react";
 import { useTranslate, type Identifier } from "ra-core";
 import {
   useEffect,
@@ -163,7 +162,7 @@ export const QuickReplyTextarea = ({
   return (
     <div className="relative flex-1">
       {open ? (
-        <div className="absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+        <div className="absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-[var(--shadow-soft)]">
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
             <span>
               {trigger.query
@@ -208,10 +207,9 @@ export const QuickReplyTextarea = ({
                         </span>
                       ) : null}
                       {reply.sales_id != null ? (
-                        <User
-                          className="size-3 text-muted-foreground"
-                          aria-label={translate("quick_replies.personal")}
-                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          {translate("quick_replies.personal")}
+                        </span>
                       ) : null}
                     </span>
                     <span className="line-clamp-1 text-xs text-muted-foreground">

@@ -59,7 +59,7 @@ export const DuplicatesSettings = () => {
           return (
             <li
               key={group.id}
-              className="rounded-lg border border-border bg-card/60 p-3"
+              className="rounded-md border border-border bg-card/60 p-3"
             >
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-muted-foreground">
                 {group.reasons

@@ -30,7 +30,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
           className={
             record.role === "manager"
               ? undefined
-              : "border-blue-300 dark:border-blue-700"
+              : "border-primary/50"
           }
         >
           {translate(roleLabelKey(record.role))}
@@ -48,7 +48,7 @@ const OptionsField = (_props: { label?: string | boolean }) => {
       {record.disabled && (
         <Badge
           variant="outline"
-          className="border-orange-300 dark:border-orange-700"
+          className="border-destructive/50 text-destructive"
         >
           {translate("resources.sales.fields.disabled")}
         </Badge>

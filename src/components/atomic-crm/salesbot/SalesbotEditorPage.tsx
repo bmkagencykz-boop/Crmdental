@@ -204,7 +204,7 @@ const Editor = ({ bot }: { bot: Salesbot }) => {
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_26rem] gap-4">
-        <section className="glass min-h-0 overflow-auto rounded-lg p-5">
+        <section className="glass min-h-0 overflow-auto rounded-md p-4">
           <FlowCanvas
             scenario={draft.scenario}
             selected={selected}
@@ -231,7 +231,7 @@ const Editor = ({ bot }: { bot: Salesbot }) => {
             lookups={lookups}
           />
         </section>
-        <aside className="glass flex min-h-0 flex-col gap-4 overflow-y-auto rounded-lg p-5">
+        <aside className="glass flex min-h-0 flex-col gap-4 overflow-y-auto rounded-md p-4">
           {mode === "test" ? (
             <TestChat
               scenario={draft.scenario}

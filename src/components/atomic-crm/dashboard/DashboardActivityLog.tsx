@@ -14,7 +14,7 @@ export function DashboardActivityLog() {
           })}
         </h2>
       </div>
-      <Card className="mb-2 p-6">
+      <Card className="mb-2 p-4">
         <ActivityLog pageSize={10} />
       </Card>
     </div>

@@ -96,7 +96,7 @@ export const ApiDocsPage = () => {
         {translate("api.settings.section")}
       </Link>
       <header>
-        <h1 className="text-2xl font-bold tracking-[-0.02em]">
+        <h1 className="text-xl font-semibold">
           {translate("api.docs.title")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

@@ -90,7 +90,7 @@ export const DealVisits = ({ deal }: { deal: Deal }) => {
   const tomorrow = addDays(todayKey(timeZone), 1);
   return (
     <section
-      className="flex flex-col gap-2 border-t border-border px-6 py-5"
+      className="flex flex-col gap-2 border-t border-border px-5 py-4"
       data-testid="deal-visits"
     >
       <div className="flex items-center justify-between gap-2">

@@ -3929,6 +3929,7 @@ export const englishCrmMessages = {
   },
   ui: {
     filter: "Filter",
+    default_pipeline: "default",
     access: {
       clinic_rules: "For the whole clinic",
       staff_rights: "Employee rights",

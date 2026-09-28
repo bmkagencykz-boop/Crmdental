@@ -161,7 +161,7 @@ export const DigitalPipelineSettings = () => {
             role="listitem"
             aria-label={column.stage.name}
             data-testid="automation-column"
-            className="flex w-64 shrink-0 flex-col gap-2 rounded-lg border bg-muted/30 p-2"
+            className="flex w-64 shrink-0 flex-col gap-2 rounded-md border bg-muted/30 p-2"
           >
             <header
               className="rounded-md border-t-4 bg-card px-3 py-2"

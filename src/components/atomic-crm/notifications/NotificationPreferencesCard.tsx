@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send } from "lucide-react";
 import { useDataProvider, useNotify, useTranslate } from "ra-core";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,7 +50,7 @@ export const NotificationPreferencesCard = () => {
     <Card>
       <CardContent className="flex flex-col gap-6">
         <div>
-          <h2 className="text-xl font-semibold text-muted-foreground">
+          <h2 className="text-base font-semibold">
             {translate("notifications.preferences.title")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -139,7 +138,6 @@ const TelegramLink = () => {
     return (
       <div className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
         <span className="flex items-center gap-2">
-          <Send className="size-4 text-primary" />
           {preferences.telegram_username
             ? translate("notifications.telegram.connected_as", {
                 username: preferences.telegram_username,

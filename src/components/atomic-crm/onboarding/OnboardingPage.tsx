@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useAuthenticated, useTranslate } from "ra-core";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
@@ -154,7 +154,6 @@ export const OnboardingPage = () => {
           onClick={onLater}
           disabled={busy}
         >
-          {complete ? <X className="size-4" /> : null}
           {translate(complete ? "onboarding.close" : "onboarding.later")}
         </Button>
       </header>
@@ -163,7 +162,7 @@ export const OnboardingPage = () => {
         <StepList progress={progress} current={current} onSelect={go} />
 
         <section
-          className="flex min-h-[28rem] flex-col rounded-lg border bg-card shadow-sm"
+          className="flex min-h-[28rem] flex-col rounded-md border bg-card shadow-sm"
           aria-labelledby="onboarding-step-title"
         >
           <div className="border-b px-6 py-4">
@@ -177,7 +176,7 @@ export const OnboardingPage = () => {
             </p>
             <h2
               id="onboarding-step-title"
-              className="text-xl font-bold tracking-[-0.02em]"
+              className="text-lg font-semibold"
             >
               {translate(`onboarding.steps.${current}.title`)}
             </h2>
@@ -194,7 +193,6 @@ export const OnboardingPage = () => {
               onClick={() => go(previousStep(current))}
               disabled={current === ONBOARDING_STEPS[0] || busy}
             >
-              <ChevronLeft className="size-4" />
               {translate("onboarding.actions.back")}
             </Button>
             {current !== "done" ? (
@@ -210,7 +208,6 @@ export const OnboardingPage = () => {
                 <Button onClick={onNext} disabled={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                   {translate("onboarding.actions.next")}
-                  <ChevronRight className="size-4" />
                 </Button>
               </>
             ) : null}

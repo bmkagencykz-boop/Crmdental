@@ -49,7 +49,7 @@ export const DealFiles = ({ deal }: { deal: Deal }) => {
           add(event.dataTransfer.files);
         }}
         className={cn(
-          "flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-5 text-center text-sm transition-colors",
+          "flex flex-col items-center gap-2 rounded-md border-2 border-dashed px-4 py-5 text-center text-sm transition-colors",
           dragging
             ? "border-primary bg-primary/5"
             : "border-border text-muted-foreground",

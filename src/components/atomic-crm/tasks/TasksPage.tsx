@@ -116,17 +116,17 @@ export const TasksPage = () => {
   const shown = filterTasksByTab(tasks, tab);
 
   return (
-    <div className={cn("flex flex-col gap-6", isList && "max-w-4xl")}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={cn("flex flex-col gap-3", isList && "max-w-5xl")}>
+      <div className="flex flex-wrap items-center gap-3">
         <div
-          className="flex flex-wrap gap-1 rounded-lg bg-muted p-1"
+          className="flex rounded-md border bg-card p-0.5"
           role="group"
           aria-label={translate("task_calendar.view_label")}
         >
           {VIEWS.map((value) => (
             <Pill
               key={value}
-              small
+              segment
               active={view === value}
               onClick={() => setView(value)}
             >
@@ -134,32 +134,33 @@ export const TasksPage = () => {
             </Pill>
           ))}
         </div>
-        <AddTask selectDeal />
+        {isList ? (
+          <div className="flex flex-wrap gap-1.5" role="tablist">
+            {TABS.map((value) => (
+              <Pill
+                key={value}
+                role="tab"
+                active={tab === value}
+                onClick={() => setTab(value)}
+                alert={value === "overdue" && counts.overdue > 0}
+              >
+                {translate(`crm.tasks.tabs.${value}`)}
+                {value !== "done" ? (
+                  <span className="ml-1.5 tabular-nums opacity-70">
+                    {counts[value]}
+                  </span>
+                ) : null}
+              </Pill>
+            ))}
+          </div>
+        ) : null}
+        <div className="ml-auto">
+          <AddTask selectDeal />
+        </div>
       </div>
 
-      {isList ? (
-        <div className="flex flex-wrap gap-2" role="tablist">
-          {TABS.map((value) => (
-            <Pill
-              key={value}
-              role="tab"
-              active={tab === value}
-              onClick={() => setTab(value)}
-              alert={value === "overdue" && counts.overdue > 0}
-            >
-              {translate(`crm.tasks.tabs.${value}`)}
-              {value !== "done" ? (
-                <span className="ml-1.5 tabular-nums opacity-70">
-                  {counts[value]}
-                </span>
-              ) : null}
-            </Pill>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs text-muted-foreground">
           {translate("crm.tasks.owner")}
         </span>
         <Pill small active={owner === "me"} onClick={() => setOwner("me")}>
@@ -187,9 +188,9 @@ export const TasksPage = () => {
       ) : null}
 
       {isList ? (
-        <section className="glass rounded-lg p-6">
+        <section className="glass rounded-md px-4 py-3">
           {isPending ? null : shown.length ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2.5">
               {shown.map((task, index) => (
                 <Fragment key={task.id}>
                   <Task task={task} showDeal showResponsible={owner !== "me"} />
@@ -214,22 +215,31 @@ const Pill = ({
   active,
   alert,
   small,
+  segment,
   className,
   ...props
 }: React.ComponentProps<"button"> & {
   active: boolean;
   alert?: boolean;
   small?: boolean;
+  /** An item of a segmented switch (no own border) */
+  segment?: boolean;
 }) => (
   <button
     type="button"
     aria-pressed={active}
     className={cn(
-      "rounded-md font-semibold transition-all",
-      small ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
+      "inline-flex items-center font-medium transition-colors",
+      segment
+        ? "h-7 rounded-sm px-3 text-sm"
+        : small
+          ? "h-7 rounded-sm border px-2.5 text-xs"
+          : "h-8 rounded-md border px-3 text-sm",
       active
-        ? "bg-primary text-primary-foreground shadow-soft"
-        : "soft text-foreground/80 hover:text-foreground",
+        ? "border-primary bg-primary text-primary-foreground"
+        : segment
+          ? "text-muted-foreground hover:text-foreground"
+          : "border-input bg-card text-foreground/80 hover:bg-[var(--surface-strong)] hover:text-foreground",
       alert && !active && "text-brand-red",
       className,
     )}

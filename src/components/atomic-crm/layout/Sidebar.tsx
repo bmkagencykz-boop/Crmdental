@@ -62,7 +62,7 @@ export const Sidebar = () => {
     >
       <Link
         to="/"
-        className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+        className="flex size-11 items-center justify-center rounded-md bg-primary text-primary-foreground"
         aria-label="Dental CRM"
       >
         <LogoMark />
@@ -117,11 +117,11 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
     <Link
       to={item.to}
       aria-current={active ? "page" : undefined}
-      className="group flex w-[4.75rem] flex-col items-center gap-1 rounded-lg no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex w-[4.75rem] flex-col items-center gap-1 rounded-md no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span
         className={cn(
-          "relative flex size-10 items-center justify-center rounded-lg transition-all duration-200",
+          "relative flex size-10 items-center justify-center rounded-md transition-all duration-200",
           active
             ? "bg-primary text-primary-foreground shadow-[0_8px_22px_-10px_rgba(239,59,110,0.7)]"
             : "border border-nav-button-border bg-nav-button text-foreground shadow-card group-hover:border-primary/60 group-hover:text-brand-link",

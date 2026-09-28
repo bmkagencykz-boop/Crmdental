@@ -27,7 +27,7 @@ export const PatientBlock = ({ deal }: { deal: Deal }) => {
     : (patient.phone_jsonb?.map((p) => p.number) ?? []);
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border px-6 py-5">
+    <div className="flex flex-col gap-3 border-t border-border px-5 py-4">
       <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
           {initials(name)}

@@ -326,7 +326,7 @@ const UploadStep = ({
           event.preventDefault();
           read(event.dataTransfer.files?.[0]);
         }}
-        className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card px-6 py-10 text-center transition-colors hover:bg-muted"
+        className="flex cursor-pointer flex-col items-center gap-3 rounded-md border border-dashed border-border bg-card px-6 py-10 text-center transition-colors hover:bg-muted"
       >
         <span className="font-semibold">
           {reading
@@ -430,7 +430,7 @@ const MappingStep = ({
           ))}
         </RadioGroup>
       </fieldset>
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>
@@ -627,7 +627,7 @@ const ReviewStep = ({
 
       <section className="flex flex-col gap-3">
         <h3 className="font-semibold">{translate("import.preview.title")}</h3>
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-muted-foreground">
               <tr>
@@ -1124,11 +1124,11 @@ const Stat = ({
   value: number;
   alert?: boolean;
 }): ReactNode => (
-  <div className="rounded-lg bg-card px-4 py-3">
+  <div className="rounded-md bg-card px-4 py-3">
     <dt className="text-xs text-muted-foreground">{label}</dt>
     <dd
       className={cn(
-        "text-2xl font-bold tabular-nums",
+        "text-xl font-semibold tabular-nums",
         alert && "text-destructive",
       )}
     >

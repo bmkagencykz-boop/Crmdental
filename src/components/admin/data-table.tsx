@@ -111,7 +111,7 @@ export function DataTable<RecordType extends RaRecord = RaRecord>(
       empty={<DataTableEmpty />}
       {...rest}
     >
-      <div className={cn("rounded-md border", className)}>
+      <div className={cn("rounded-md border bg-card", className)}>
         <Table>
           <DataTableRenderContext.Provider value="header">
             <DataTableHead>{columns}</DataTableHead>
@@ -383,7 +383,7 @@ function DataTableHeadCell<
               <Button
                 variant="ghost"
                 size="sm"
-                className="-ml-3 -mr-3 h-8 data-[state=open]:bg-accent cursor-pointer"
+                className="-ml-2 -mr-2 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground data-[state=open]:bg-accent cursor-pointer"
                 data-field={source}
                 onClick={handleSort}
               >

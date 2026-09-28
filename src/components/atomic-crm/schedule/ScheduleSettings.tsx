@@ -9,6 +9,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +31,7 @@ import {
 import { todayKey } from "../tasks/calendarLayout";
 import { useClinicTimeZone } from "../tasks/useClinicTimeZone";
 import type { Doctor } from "../types";
+import { DOCTOR_COLORS, doctorColor } from "./doctorColors";
 import { DURATION_CHOICES, parseHm } from "./scheduleLayout";
 import {
   VISIT_STATUSES,
@@ -294,13 +300,23 @@ const DoctorHoursEditor = () => {
         </p>
       ) : null}
       {active.map((doctor) => (
-        <DoctorHoursRow key={doctor.id} doctor={doctor} />
+        <DoctorHoursRow
+          key={doctor.id}
+          doctor={doctor}
+          color={doctorColor(doctor, doctors)}
+        />
       ))}
     </Block>
   );
 };
 
-const DoctorHoursRow = ({ doctor }: { doctor: Doctor }) => {
+const DoctorHoursRow = ({
+  doctor,
+  color,
+}: {
+  doctor: Doctor;
+  color: string;
+}) => {
   const translate = useTranslate();
   const notify = useNotify();
   const queryClient = useQueryClient();
@@ -341,6 +357,7 @@ const DoctorHoursRow = ({ doctor }: { doctor: Doctor }) => {
       data-doctor-id={doctor.id}
     >
       <div className="flex flex-wrap items-center gap-2">
+        <DoctorColorPicker doctor={doctor} color={color} />
         <span className="font-semibold">{doctor.name}</span>
         {doctor.specialty ? (
           <span className="text-sm text-muted-foreground">
@@ -452,6 +469,78 @@ const DoctorHoursRow = ({ doctor }: { doctor: Doctor }) => {
       </div>
       <DoctorExceptions doctorId={doctor.id} />
     </div>
+  );
+};
+
+/** The color of the doctor's column in the schedule, saved when picked */
+const DoctorColorPicker = ({
+  doctor,
+  color,
+}: {
+  doctor: Doctor;
+  color: string;
+}) => {
+  const translate = useTranslate();
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const dataProvider = useDataProvider<CrmDataProvider>();
+  const [open, setOpen] = useState(false);
+  const pick = async (value: string | null) => {
+    setOpen(false);
+    try {
+      await dataProvider.update<Doctor>("doctors", {
+        id: doctor.id,
+        data: { color: value },
+        previousData: doctor,
+      });
+      queryClient.invalidateQueries({ queryKey: ["doctors"] });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error), {
+        type: "error",
+      });
+    }
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="size-6 rounded-md border border-border"
+          style={{ backgroundColor: color }}
+          aria-label={`${translate("schedule.settings.color")}: ${doctor.name}`}
+          title={translate("schedule.settings.color")}
+        />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-3">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          {translate("schedule.settings.color")}
+        </p>
+        <div className="grid grid-cols-5 gap-2">
+          {DOCTOR_COLORS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => pick(value)}
+              className={cn(
+                "size-8 rounded-md border-2",
+                doctor.color?.toUpperCase() === value
+                  ? "border-foreground"
+                  : "border-transparent",
+              )}
+              style={{ backgroundColor: value }}
+              aria-label={value}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => pick(null)}
+          className="mt-3 text-xs font-medium text-brand-link hover:underline"
+        >
+          {translate("schedule.settings.color_auto")}
+        </button>
+      </PopoverContent>
+    </Popover>
   );
 };
 

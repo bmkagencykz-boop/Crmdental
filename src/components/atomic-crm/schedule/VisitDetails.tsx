@@ -24,13 +24,9 @@ import type { Patient } from "../types";
 import { visitDuration } from "./scheduleLayout";
 import type { Visit, VisitStatus } from "./types";
 import { useChairs } from "./useSchedule";
+import { StatusGlyph } from "./StatusGlyph";
 import { useVisitStatus } from "./useVisitStatus";
-import {
-  formatDateTime,
-  formatTime,
-  STATUS_ACTIONS,
-  STATUS_DOT,
-} from "./visitStyles";
+import { formatDateTime, formatTime, STATUS_ACTIONS } from "./visitStyles";
 
 /** Status of a visit as a small badge */
 export const VisitStatusBadge = ({
@@ -49,7 +45,7 @@ export const VisitStatusBadge = ({
       )}
       data-status={status}
     >
-      <span className={cn("size-2 rounded-sm", STATUS_DOT[status])} />
+      <StatusGlyph status={status} className="size-3.5" />
       {translate(`schedule.statuses.${status}`)}
     </span>
   );

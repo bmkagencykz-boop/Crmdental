@@ -124,7 +124,11 @@ test.describe("schedule", () => {
       .getByTestId("visit-block")
       .filter({ hasText: "Akhmetov Daulet" });
     await expect(block).toContainText("10:00");
-    await expect(block).toHaveAttribute("title", /\+77015551234/);
+    // Pointing at it shows the patient's phone and the doctor
+    await block.hover();
+    const hover = page.getByTestId("visit-hover");
+    await expect(hover).toContainText("+77015551234");
+    await expect(hover).toContainText("Ivanov Ivan");
 
     // Drag it to 11:00 of the same doctor
     await block.dragTo(

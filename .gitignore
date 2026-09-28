@@ -57,5 +57,5 @@ node_modules/
 /playwright/.auth/
 
 *.lock
- .vitest-attachments/
+.vitest-attachments/
 .claude/worktrees/

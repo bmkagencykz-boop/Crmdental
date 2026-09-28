@@ -15,6 +15,7 @@ import {
   findFreeSlots,
   clinicHours,
   overlaps,
+  parseHm,
 } from "../../../schedule/scheduleLayout";
 import type {
   Chair,
@@ -331,6 +332,97 @@ export const generateSchedule = (db: Db) => {
         index < 3 ? "no_show" : "cancelled",
       );
     });
+
+  // A full book around today, like a real clinic: regular patients fill
+  // most of every doctor's hours (visits of their treatment, without a
+  // deal), with the comments the front desk leaves
+  const NOTES = [
+    "Удобнее после обеда",
+    "Фото протокол, скан",
+    "Контроль после имплантации",
+    "Слепок после ИМП",
+    "Консультация по брекетам",
+    "Просит напомнить за час",
+    "Придёт с ребёнком",
+    "Оплата по QR",
+  ];
+  const fillDays = [-2, -1, 0, 1, 2, 3].map((n) => addDays(today, n));
+  fillDays.forEach((d) => {
+    db.doctors.forEach((doctor) => {
+      const hours = doctorHoursOn(doctor, d, db.doctor_exceptions, clinic);
+      if (!hours) return;
+      const pauses = hours.breaks.map((pause) => ({
+        start: parseHm(pause.start) ?? 0,
+        end: parseHm(pause.end) ?? 0,
+      }));
+      let minute = hours.start;
+      while (minute < hours.end) {
+        const duration = random.arrayElement([30, 30, 30, 60, 60, 90]);
+        const slot = { start: minute, end: minute + duration };
+        const taken = busyIntervals(
+          visits,
+          d,
+          (visit) => visit.doctor_id === doctor.id,
+          timeZone,
+        );
+        if (
+          slot.end > hours.end ||
+          taken.some((interval) => overlaps(interval, slot)) ||
+          pauses.some((pause) => overlaps(pause, slot)) ||
+          random.number(9) < 3
+        ) {
+          minute += 30;
+          continue;
+        }
+        const patient = random.arrayElement(db.patients);
+        const starts = zonedMoment(d, minute, timeZone);
+        const past = d < today || (d === today && slot.end <= nowMinute);
+        const current = d === today && !past && minute <= nowMinute;
+        const status: VisitStatus = past
+          ? random.arrayElement([
+              "completed",
+              "completed",
+              "completed",
+              "completed",
+              "no_show",
+            ])
+          : current
+            ? "arrived"
+            : random.arrayElement([
+                "scheduled",
+                "confirmed",
+                "confirmed",
+                "scheduled",
+                "cancelled",
+              ]);
+        const visit: Visit = {
+          id: nextId++,
+          patient_id: patient.id,
+          // Regular patients: visits of their treatment, not of a sale
+          deal_id: null,
+          doctor_id: doctor.id,
+          chair_id: null,
+          service_id: db.services.length
+            ? random.arrayElement(db.services).id
+            : null,
+          starts_at: starts.toISOString(),
+          ends_at: new Date(
+            starts.getTime() + duration * 60 * 1000,
+          ).toISOString(),
+          status,
+          note: random.number(9) < 3 ? random.arrayElement(NOTES) : null,
+          source: "crm",
+          created_by: patient.sales_id ?? null,
+          created_at: new Date(
+            now.getTime() - 3 * 24 * 3600 * 1000,
+          ).toISOString(),
+        };
+        visit.updated_at = visit.created_at;
+        visits.push(visit);
+        minute = slot.end;
+      }
+    });
+  });
 
   db.visits = visits.sort(
     (a, b) =>

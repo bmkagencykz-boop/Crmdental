@@ -1,15 +1,30 @@
 import {
   useDataProvider,
+  useGetList,
   useGetMany,
   useLocaleState,
   useNotify,
   useRefresh,
+  useStore,
   useTranslate,
   type Identifier,
 } from "ra-core";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,8 +44,10 @@ import {
   type DayKey,
 } from "../tasks/calendarLayout";
 import { useClinicTimeZone } from "../tasks/useClinicTimeZone";
-import type { Patient } from "../types";
-import { ScheduleGrid, type GridColumn } from "./ScheduleGrid";
+import { SettingsGlyph } from "../layout/navGlyphs";
+import type { Patient, Sale } from "../types";
+import { doctorColor, NEUTRAL_COLOR } from "./doctorColors";
+import { ScheduleGrid, type GridColumn, type VisitInfo } from "./ScheduleGrid";
 import {
   columnKeyOf,
   columnsFor,
@@ -53,7 +70,7 @@ import {
   useVisits,
 } from "./useSchedule";
 import { VisitDialog, type VisitDraft } from "./VisitDialog";
-import { STATUS_DOT } from "./visitStyles";
+import { StatusGlyph } from "./StatusGlyph";
 
 const useNow = () => {
   const [now, setNow] = useState(() => new Date());
@@ -116,6 +133,21 @@ export const SchedulePage = () => {
   const selectedId =
     params.get("id") ??
     (activeResources[0] ? String(activeResources[0].id) : "");
+  // Doctors hidden from the day view, remembered per user
+  const [hiddenDoctors, setHiddenDoctors] = useStore<string[]>(
+    "schedule.hidden_doctors",
+    [],
+  );
+  const { data: sales = [] } = useGetList<Sale>("sales", {
+    pagination: { page: 1, perPage: 200 },
+    sort: { field: "last_name", order: "ASC" },
+  });
+  const colorOf = (resourceId: Identifier | null | undefined) => {
+    if (resourceId == null) return NEUTRAL_COLOR;
+    return groupBy === "doctor"
+      ? doctorColor(findById(doctors, resourceId), doctors)
+      : doctorColor(findById(chairs, resourceId), chairs);
+  };
 
   const days = useMemo(
     () =>
@@ -183,32 +215,42 @@ export const SchedulePage = () => {
               ? "schedule.grid.no_doctor"
               : "schedule.grid.no_chair",
           ),
-        ).map((column) => ({
-          key: column.key,
-          day: anchor,
-          resourceId: column.id,
-          title: column.name,
-          hours:
-            groupBy === "doctor" && column.id != null
-              ? hoursOf(column.id, anchor)
-              : undefined,
-          subtitle:
-            column.id != null && groupBy === "doctor"
-              ? hoursLabel(column.id, anchor)
-              : undefined,
-          visits: visits.filter(
-            (visit) => columnKeyOf(visit, groupBy) === column.key,
-          ),
-          busy: busyOf(column.id),
-        }))
+        )
+          .filter(
+            (column) =>
+              groupBy !== "doctor" ||
+              column.id == null ||
+              !hiddenDoctors.includes(String(column.id)),
+          )
+          .map((column) => ({
+            key: column.key,
+            day: anchor,
+            resourceId: column.id,
+            title: column.name,
+            color: colorOf(column.id),
+            badge: column.id != null ? initials(column.name) : undefined,
+            hours:
+              groupBy === "doctor" && column.id != null
+                ? hoursOf(column.id, anchor)
+                : undefined,
+            subtitle:
+              column.id != null && groupBy === "doctor"
+                ? hoursLabel(column.id, anchor)
+                : undefined,
+            visits: visits.filter(
+              (visit) => columnKeyOf(visit, groupBy) === column.key,
+            ),
+            busy: busyOf(column.id),
+          }))
       : days.map((day) => {
           const resourceId = selectedId || null;
           return {
             key: day,
             day,
             resourceId,
+            color: colorOf(resourceId),
             title: (
-              <span className={cn(day === today && "text-brand-link")}>
+              <span className={cn(day === today && "underline")}>
                 {formatDay(day, locale, {
                   weekday: "short",
                   day: "numeric",
@@ -237,6 +279,23 @@ export const SchedulePage = () => {
     days,
     timeZone,
   );
+
+  const info = (visit: Visit, column: GridColumn): VisitInfo => {
+    const author = findById(sales, visit.created_by);
+    const doctor = findById(doctors, visit.doctor_id);
+    return {
+      patient: patients.get(String(visit.patient_id)),
+      service: findById(services, visit.service_id)?.name,
+      doctor: doctor?.name,
+      chair: findById(chairs, visit.chair_id)?.name,
+      author: author ? `${author.first_name} ${author.last_name}` : undefined,
+      // The doctor's color, whatever the columns
+      color: doctor ? doctorColor(doctor, doctors) : column.color,
+    };
+  };
+  const shownDoctors = doctors.filter(
+    (doctor) => doctor.is_active && !hiddenDoctors.includes(String(doctor.id)),
+  ).length;
 
   const [draft, setDraft] = useState<VisitDraft | null>(null);
   const [editing, setEditing] = useState<Visit | null>(null);
@@ -313,72 +372,46 @@ export const SchedulePage = () => {
 
   const title =
     view === "day"
+      ? `${formatDay(anchor, locale, { day: "numeric", month: "long", year: "numeric" })} (${formatDay(anchor, locale, { weekday: "long" })})`
+      : `${formatDay(days[0], locale, { day: "numeric", month: "short" })} – ${formatDay(days[6], locale, { day: "numeric", month: "short", year: "numeric" })}`;
+  const dateLabel =
+    view === "day"
       ? formatDay(anchor, locale, {
-          weekday: "long",
           day: "numeric",
           month: "long",
           year: "numeric",
         })
-      : `${formatDay(days[0], locale, { day: "numeric", month: "short" })} – ${formatDay(days[6], locale, { day: "numeric", month: "short", year: "numeric" })}`;
+      : title;
+  const newVisit = () =>
+    setDraft({
+      day: anchor,
+      time: toHm(Math.max(clinic.start, 9 * 60)),
+      ...(view === "week" && selectedId
+        ? groupBy === "doctor"
+          ? { doctor_id: selectedId }
+          : { chair_id: selectedId }
+        : {}),
+    });
 
   return (
-    <div className="flex flex-col gap-3" data-testid="schedule-page">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 px-0"
-          onClick={() =>
-            update({ day: addDays(anchor, view === "day" ? -1 : -7) })
-          }
-          aria-label={translate("schedule.toolbar.previous")}
-        >
-          ‹
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8"
-          onClick={() => update({ day: null })}
-        >
-          {translate("schedule.toolbar.today")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 px-0"
-          onClick={() =>
-            update({ day: addDays(anchor, view === "day" ? 1 : 7) })
-          }
-          aria-label={translate("schedule.toolbar.next")}
-        >
-          ›
-        </Button>
-        <input
-          type="date"
-          value={anchor}
-          onChange={(event) =>
-            isDay(event.target.value) && update({ day: event.target.value })
-          }
-          aria-label={translate("schedule.toolbar.date")}
-          className="field h-8 rounded-md border border-input px-2 text-sm"
-        />
-        <h2 className="ml-1 text-base font-semibold first-letter:uppercase">
-          {title}
-        </h2>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Segmented
+    <div className="flex flex-col gap-4" data-testid="schedule-page">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="text-base font-semibold">
+            {translate("schedule.toolbar.label")}
+          </span>
+          <Choice
             label={translate("schedule.toolbar.view")}
             value={view}
             options={[
-              { value: "day", label: translate("schedule.toolbar.day") },
-              { value: "week", label: translate("schedule.toolbar.week") },
+              { value: "day", label: translate("schedule.toolbar.per_day") },
+              { value: "week", label: translate("schedule.toolbar.per_week") },
             ]}
             onChange={(value) =>
               update({ view: value === "day" ? null : value })
             }
           />
-          <Segmented
+          <Choice
             label={translate("schedule.toolbar.group")}
             value={groupBy}
             options={[
@@ -390,44 +423,103 @@ export const SchedulePage = () => {
             }
           />
           {view === "week" ? (
-            <select
-              value={selectedId}
-              onChange={(event) => update({ id: event.target.value })}
-              aria-label={translate(
+            <Choice
+              label={translate(
                 groupBy === "doctor"
                   ? "schedule.fields.doctor"
                   : "schedule.fields.chair",
               )}
-              className="field h-8 max-w-56 rounded-md border border-input px-2 text-sm"
-            >
-              {resources
+              value={selectedId}
+              options={resources
                 .filter(
                   (item) => item.is_active || String(item.id) === selectedId,
                 )
-                .map((item) => (
-                  <option key={item.id} value={String(item.id)}>
-                    {item.name}
-                  </option>
-                ))}
-            </select>
+                .map((item) => ({ value: String(item.id), label: item.name }))}
+              onChange={(value) => update({ id: value })}
+            />
           ) : null}
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {view === "day" && groupBy === "doctor" && doctors.length > 0 ? (
+            <DoctorFilter
+              doctors={doctors.filter((doctor) => doctor.is_active)}
+              hidden={hiddenDoctors}
+              onChange={setHiddenDoctors}
+              label={translate("schedule.toolbar.doctors_shown", {
+                count: shownDoctors,
+              })}
+              colorOf={(doctor) => doctorColor(doctor, doctors)}
+            />
+          ) : null}
+          <div className="flex h-9 items-center rounded-full border border-border bg-card">
+            <button
+              type="button"
+              className="flex h-full w-9 items-center justify-center rounded-l-full text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={() =>
+                update({ day: addDays(anchor, view === "day" ? -1 : -7) })
+              }
+              aria-label={translate("schedule.toolbar.previous")}
+            >
+              ‹
+            </button>
+            <label className="relative flex h-full min-w-40 cursor-pointer items-center justify-center px-2 text-sm font-medium tabular-nums hover:bg-accent">
+              {dateLabel}
+              <input
+                type="date"
+                value={anchor}
+                onChange={(event) =>
+                  isDay(event.target.value) &&
+                  update({ day: event.target.value })
+                }
+                onClick={(event) => {
+                  try {
+                    event.currentTarget.showPicker();
+                  } catch {
+                    // Older browsers: the field itself takes the date
+                  }
+                }}
+                aria-label={translate("schedule.toolbar.date")}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </label>
+            <button
+              type="button"
+              className="flex h-full w-9 items-center justify-center rounded-r-full text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={() =>
+                update({ day: addDays(anchor, view === "day" ? 1 : 7) })
+              }
+              aria-label={translate("schedule.toolbar.next")}
+            >
+              ›
+            </button>
+          </div>
           <Button
-            size="sm"
-            className="h-8"
-            disabled={readOnly}
-            onClick={() =>
-              setDraft({
-                day: anchor,
-                time: toHm(Math.max(clinic.start, 9 * 60)),
-                ...(view === "week" && selectedId
-                  ? groupBy === "doctor"
-                    ? { doctor_id: selectedId }
-                    : { chair_id: selectedId }
-                  : {}),
-              })
-            }
+            variant="outline"
+            className="h-9 rounded-full"
+            disabled={anchor === today}
+            onClick={() => update({ day: null })}
           >
-            {translate("schedule.toolbar.book")}
+            {translate("schedule.toolbar.today")}
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="size-9 rounded-full p-0"
+            title={translate("schedule.toolbar.settings")}
+          >
+            <Link
+              to="/settings?section=schedule"
+              aria-label={translate("schedule.toolbar.settings")}
+            >
+              <SettingsGlyph className="size-4" />
+            </Link>
+          </Button>
+          <Button
+            className="h-9 rounded-full px-5 font-semibold"
+            disabled={readOnly}
+            onClick={newVisit}
+          >
+            + {translate("schedule.toolbar.new_visit")}
           </Button>
         </div>
       </div>
@@ -443,44 +535,63 @@ export const SchedulePage = () => {
         </p>
       ) : null}
 
-      {columns.length === 0 ? (
-        <p className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
-          {translate(
-            groupBy === "doctor"
-              ? "schedule.grid.no_doctors"
-              : "schedule.grid.no_chairs",
-          )}
-        </p>
-      ) : (
-        <ScheduleGrid
-          columns={columns}
-          range={range}
-          timeZone={timeZone}
-          now={now}
-          today={today}
-          readOnly={readOnly}
-          patients={patients}
-          serviceName={(id) => findById(services, id)?.name}
-          onCreate={onCreate}
-          onMove={onMove}
-          onEdit={setEditing}
-        />
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <ul className="flex flex-wrap items-center gap-3">
-          {VISIT_STATUSES.map((status) => (
-            <li key={status} className="flex items-center gap-1.5">
-              <span className={cn("size-2.5 rounded-sm", STATUS_DOT[status])} />
-              {translate(`schedule.statuses.${status}`)}
+      <section className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border px-4 py-3">
+          <h2 className="text-base font-bold first-letter:uppercase">
+            {title}
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            {translate("schedule.grid.count", {
+              smart_count: columns.reduce(
+                (sum, column) =>
+                  sum +
+                  column.visits.filter((visit) => visit.status !== "cancelled")
+                    .length,
+                0,
+              ),
+            })}
+          </span>
+          <ul className="ml-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
+            {VISIT_STATUSES.map((status) => (
+              <li key={status} className="flex items-center gap-1.5">
+                <StatusGlyph status={status} className="size-3.5" />
+                {translate(`schedule.statuses.${status}`)}
+              </li>
+            ))}
+            <li className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-warn" />
+              {translate("schedule.grid.unconfirmed")}
             </li>
-          ))}
-          <li className="flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-warn" />
-            {translate("schedule.grid.unconfirmed")}
-          </li>
-        </ul>
-        <span>{translate("schedule.grid.hint")}</span>
-      </div>
+          </ul>
+        </div>
+        {columns.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-muted-foreground">
+            {translate(
+              groupBy === "doctor"
+                ? view === "day" && doctors.some((doctor) => doctor.is_active)
+                  ? "schedule.grid.all_hidden"
+                  : "schedule.grid.no_doctors"
+                : "schedule.grid.no_chairs",
+            )}
+          </p>
+        ) : (
+          <ScheduleGrid
+            columns={columns}
+            range={range}
+            timeZone={timeZone}
+            now={now}
+            today={today}
+            readOnly={readOnly}
+            info={info}
+            onCreate={onCreate}
+            onMove={onMove}
+            onEdit={setEditing}
+          />
+        )}
+      </section>
+      <p className="text-xs text-muted-foreground">
+        {translate("schedule.grid.hint")}
+      </p>
 
       {draft ? (
         <VisitDialog open draft={draft} onClose={() => setDraft(null)} />
@@ -509,7 +620,8 @@ export const SchedulePage = () => {
 
 SchedulePage.path = "/schedule";
 
-const Segmented = ({
+/** «На день ▾»: the current choice as a link, the others in a menu */
+const Choice = ({
   label,
   value,
   options,
@@ -520,26 +632,101 @@ const Segmented = ({
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
 }) => (
-  <div
-    role="group"
-    aria-label={label}
-    className="flex h-8 overflow-hidden rounded-md border border-border"
-  >
-    {options.map((option) => (
-      <button
-        key={option.value}
-        type="button"
-        aria-pressed={value === option.value}
-        onClick={() => onChange(option.value)}
-        className={cn(
-          "px-2.5 text-sm transition-colors",
-          value === option.value
-            ? "bg-primary font-semibold text-primary-foreground"
-            : "bg-card hover:bg-accent",
-        )}
-      >
-        {option.label}
-      </button>
-    ))}
-  </div>
+  <DropdownMenu>
+    <DropdownMenuTrigger
+      className="flex items-center gap-1 text-base font-medium text-brand-link outline-none hover:underline focus-visible:underline"
+      aria-label={label}
+    >
+      {options.find((option) => option.value === value)?.label ?? label}
+      <span className="text-xs" aria-hidden>
+        ▾
+      </span>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="start" className="max-h-80 min-w-44">
+      <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+        {options.map((option) => (
+          <DropdownMenuRadioItem key={option.value} value={option.value}>
+            {option.label}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </DropdownMenuContent>
+  </DropdownMenu>
 );
+
+/** «Выбрано врачей: 6»: which doctors the day shows */
+const DoctorFilter = ({
+  doctors,
+  hidden,
+  onChange,
+  label,
+  colorOf,
+}: {
+  doctors: { id: Identifier; name: string; color?: string | null }[];
+  hidden: string[];
+  onChange: (hidden: string[]) => void;
+  label: string;
+  colorOf: (doctor: { id: Identifier; color?: string | null }) => string;
+}) => {
+  const translate = useTranslate();
+  const toggle = (id: string, shown: boolean) =>
+    onChange(shown ? hidden.filter((item) => item !== id) : [...hidden, id]);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-9 rounded-full px-4 font-normal">
+          {label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-2">
+        <div className="flex items-center justify-between px-2 pt-1 pb-2 text-xs">
+          <button
+            type="button"
+            className="font-medium text-brand-link hover:underline"
+            onClick={() => onChange([])}
+          >
+            {translate("schedule.toolbar.show_all")}
+          </button>
+          <button
+            type="button"
+            className="text-muted-foreground hover:underline"
+            onClick={() => onChange(doctors.map((doctor) => String(doctor.id)))}
+          >
+            {translate("schedule.toolbar.hide_all")}
+          </button>
+        </div>
+        <ul className="flex max-h-80 flex-col overflow-y-auto">
+          {doctors.map((doctor) => {
+            const id = String(doctor.id);
+            const shown = !hidden.includes(id);
+            return (
+              <li key={id}>
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
+                  <Checkbox
+                    checked={shown}
+                    onCheckedChange={(checked) => toggle(id, checked === true)}
+                  />
+                  <span
+                    className="size-3 shrink-0 rounded-sm"
+                    style={{ backgroundColor: colorOf(doctor) }}
+                  />
+                  <span className="truncate">{doctor.name}</span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+/** «Мухамеджанова Дана» → «МД» */
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();

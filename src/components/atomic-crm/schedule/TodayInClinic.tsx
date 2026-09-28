@@ -2,7 +2,6 @@ import { useCanAccess, useGetMany, useTranslate } from "ra-core";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 import { patientDisplayName } from "../patients/parsePatientText";
 import {
@@ -16,7 +15,8 @@ import type { Patient } from "../types";
 import { countByStatus } from "./scheduleLayout";
 import { VISIT_STATUSES } from "./types";
 import { useVisits } from "./useSchedule";
-import { formatTime, STATUS_DOT } from "./visitStyles";
+import { StatusGlyph } from "./StatusGlyph";
+import { formatTime } from "./visitStyles";
 
 /** Visits of tomorrow listed before «ещё N» */
 const PREVIEW = 4;
@@ -91,7 +91,7 @@ const TodayInClinicCard = () => {
           <ul className="flex flex-col gap-0.5 text-xs">
             {VISIT_STATUSES.filter((status) => counts[status]).map((status) => (
               <li key={status} className="flex items-center gap-1.5">
-                <span className={cn("size-2 rounded-sm", STATUS_DOT[status])} />
+                <StatusGlyph status={status} className="size-3.5" />
                 <span className="flex-1">
                   {translate(`schedule.statuses.${status}`)}
                 </span>

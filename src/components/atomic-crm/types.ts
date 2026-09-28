@@ -184,6 +184,8 @@ export type Doctor = {
   /** Weekly hours and default visit duration (schedule, stage 28) */
   working_hours?: WeeklyHours | null;
   visit_minutes?: number | null;
+  /** Color of the schedule column, "#RRGGBB" (null: by position) */
+  color?: string | null;
 } & Pick<RaRecord, "id">;
 
 /** Custom fields (stage 19), «Дополнительные поля» of deals and patients */

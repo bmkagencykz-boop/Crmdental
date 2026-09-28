@@ -3339,6 +3339,14 @@ export const englishCrmMessages = {
       doctors: "Doctors",
       chairs: "Chairs",
       book: "Book",
+      label: "Schedule:",
+      per_day: "Day",
+      per_week: "Week",
+      doctors_shown: "Doctors shown: %{count}",
+      show_all: "Show all",
+      hide_all: "Hide all",
+      settings: "Schedule settings",
+      new_visit: "New visit",
     },
     grid: {
       new_visit_at: "Book at %{time}",
@@ -3352,6 +3360,8 @@ export const englishCrmMessages = {
       unconfirmed: "Tomorrow, not confirmed",
       moved: "Visit moved to %{time}",
       hint: "Drag a visit to another time, doctor or chair. Click an empty slot to book.",
+      count: "%{smart_count} visit |||| %{smart_count} visits",
+      all_hidden: "Every doctor is hidden: pick them in «Doctors shown»",
     },
     fields: {
       patient: "Patient",
@@ -3482,12 +3492,22 @@ export const englishCrmMessages = {
       confirmation_rules:
         "Numbers only count at the start of the reply, words as whole words. When a salesbot runs on the deal, it handles the reply. The message itself is switched on in",
       open_automessages: "Auto messages",
+      color: "Column color",
+      color_auto: "Automatic",
     },
     audit: {
       visit: "Visit",
       chair: "Chair",
       doctor_exception: "Special day of a doctor",
       schedule_settings: "Schedule settings",
+    },
+    hover: {
+      time: "Time",
+      phone: "Phone",
+      status: "Status",
+      author: "Booked by",
+      card: "Patient card",
+      note: "Visit comment",
     },
   },
   treatment: {

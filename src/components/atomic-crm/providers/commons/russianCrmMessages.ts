@@ -3359,6 +3359,14 @@ export const russianCrmMessages: CrmMessages = {
       doctors: "Врачи",
       chairs: "Кресла",
       book: "Записать",
+      label: "Расписание:",
+      per_day: "На день",
+      per_week: "На неделю",
+      doctors_shown: "Выбрано врачей: %{count}",
+      show_all: "Показать всех",
+      hide_all: "Скрыть всех",
+      settings: "Настройки расписания",
+      new_visit: "Новый визит",
     },
     grid: {
       new_visit_at: "Записать на %{time}",
@@ -3372,6 +3380,9 @@ export const russianCrmMessages: CrmMessages = {
       unconfirmed: "Завтра, не подтвердил",
       moved: "Запись перенесена на %{time}",
       hint: "Запись можно перетащить на другое время, врача или кресло. Клик по пустой клетке — новая запись.",
+      count:
+        "%{smart_count} запись |||| %{smart_count} записи |||| %{smart_count} записей",
+      all_hidden: "Все врачи скрыты — выберите их в «Выбрано врачей»",
     },
     fields: {
       patient: "Пациент",
@@ -3501,12 +3512,22 @@ export const russianCrmMessages: CrmMessages = {
       confirmation_rules:
         "Цифры считаются только в начале ответа, слова — целиком. Если в сделке работает салесбот, ответ обрабатывает он. Само сообщение включается в разделе",
       open_automessages: "Автосообщения",
+      color: "Цвет колонки",
+      color_auto: "Автоматически",
     },
     audit: {
       visit: "Запись",
       chair: "Кресло",
       doctor_exception: "Особый день врача",
       schedule_settings: "Настройки расписания",
+    },
+    hover: {
+      time: "Время",
+      phone: "Телефон",
+      status: "Статус",
+      author: "Добавил(а)",
+      card: "Номер карточки",
+      note: "Комментарий визита",
     },
   },
   treatment: {

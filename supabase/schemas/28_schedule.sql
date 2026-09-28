@@ -76,6 +76,9 @@ alter table public.doctors add column working_hours jsonb not null default '{}':
 alter table public.doctors add column visit_minutes integer not null default 30;
 alter table public.doctors add constraint doctors_working_hours_is_object check (jsonb_typeof(working_hours) = 'object');
 alter table public.doctors add constraint doctors_visit_minutes_check check (visit_minutes between 5 and 480);
+-- Color of the doctor's column in the schedule (null: picked by position)
+alter table public.doctors add column color text;
+alter table public.doctors add constraint doctors_color_check check (color is null or color ~ '^#[0-9A-Fa-f]{6}$');
 
 -- A day of a doctor that differs from the weekly template: off (no hours)
 -- or custom hours

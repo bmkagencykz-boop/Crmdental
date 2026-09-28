@@ -84,7 +84,10 @@ describe("the schedule of the demo", () => {
       (status) => expect(statuses.has(status as Visit["status"])).toBe(true),
     );
     expect(db.visits.length).toBeGreaterThan(20);
-    expect(db.visits.every((visit) => visit.deal_id != null)).toBe(true);
+    // Sales visits have their deal; regular patients fill the rest of the book
+    expect(
+      db.visits.filter((visit) => visit.deal_id != null).length,
+    ).toBeGreaterThan(20);
     expect(db.visits.filter((visit) => visit.source === "mis")).toHaveLength(4);
     // No two active CRM visits collide
     db.visits
@@ -95,6 +98,7 @@ describe("the schedule of the demo", () => {
       .filter(
         (visit) =>
           visit.source === "crm" &&
+          visit.deal_id != null &&
           ["scheduled", "confirmed"].includes(visit.status),
       )
       .forEach((visit) => {

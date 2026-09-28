@@ -11,6 +11,7 @@ import { generateDealFiles } from "./files";
 import { generateCustomFields } from "./customFields";
 import { generateDigitalPipeline } from "./digitalPipeline";
 import { generateSales } from "./sales";
+import { generateSalesbot } from "./salesbot";
 import { generateTags } from "./tags";
 import { generateUnsorted } from "./unsorted";
 import { generateMisConnectors } from "./misConnectors";
@@ -35,6 +36,7 @@ export default (): Db => {
   generateListsPlans(db);
   generateDigitalPipeline(db);
   generateMisConnectors(db);
+  generateSalesbot(db);
   generateOnboarding(db);
   db.configuration = [
     {

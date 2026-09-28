@@ -60,6 +60,7 @@ export const createDigitalPipelineDemo = ({
   currentSalesId,
   getDataProvider,
   renderTemplate,
+  startSalesbot,
 }: {
   baseDataProvider: DataProvider;
   all: <T>(resource: string) => Promise<T[]>;
@@ -68,6 +69,11 @@ export const createDigitalPipelineDemo = ({
   getDataProvider: () => DataProvider;
   /** Text of a template for a deal (same as the auto-messages) */
   renderTemplate: (deal: Deal, templateId: Identifier) => Promise<string>;
+  /** «Запустить салесбот» (stage 26): the session, null when not started */
+  startSalesbot: (
+    dealId: Identifier,
+    botId: Identifier,
+  ) => Promise<{ id: Identifier } | null>;
 }) => {
   /** Nesting of the automatic actions (crm.automation_depth) */
   let depth = 0;
@@ -330,6 +336,11 @@ export const createDigitalPipelineDemo = ({
         );
         if (!queued) throw new Error("Вебхук выключен");
         return { webhook_id: trigger.webhook_id! };
+      }
+      case "start_salesbot": {
+        const session = await startSalesbot(deal.id, trigger.salesbot_id!);
+        if (!session) throw new Error("Бот не запущен");
+        return { salesbot_id: trigger.salesbot_id!, session_id: session.id };
       }
       case "set_field": {
         const field = trigger.field_name!;

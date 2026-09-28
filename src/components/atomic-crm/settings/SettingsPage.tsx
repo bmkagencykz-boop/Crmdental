@@ -38,10 +38,12 @@ import { UnsortedSettings } from "../unsorted/UnsortedSettings";
 import { DuplicatesSettings } from "../duplicates/DuplicatesSettings";
 import { DigitalPipelineSettings } from "../pipeline-automation/DigitalPipelineSettings";
 import { ApiSettings } from "../pipeline-automation/ApiSettings";
+import { SalesbotSettings } from "../salesbot/SalesbotSettings";
 
 const SECTIONS = [
   "pipelines",
   "pipeline_automation",
+  "salesbots",
   "services",
   "sources",
   "lost_reasons",
@@ -73,6 +75,7 @@ const GROUPS: { id: string; sections: Section[] }[] = [
     sections: [
       "pipelines",
       "pipeline_automation",
+      "salesbots",
       "automations",
       "automessages",
       "distribution",
@@ -105,27 +108,29 @@ const isSection = (value: string | null): value is Section =>
 
 /** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
-  section === "custom_fields"
-    ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
-    : section === "pipeline_automation" || section === "api"
-      ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-      : section === "quick_replies"
-        ? `quick_replies.${kind}`
-        : section === "automessages" ||
-            section === "recalls" ||
-            section === "doctors" ||
-            section === "unsorted" ||
-            section === "duplicates"
-          ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-          : section === "leads"
-            ? `leads.${kind === "title" ? "section" : "hint"}`
-            : section === "import" || section === "mis"
-              ? `${section}.${kind}`
-              : section === "telephony"
-                ? `telephony.${kind === "title" ? "section" : "hint"}`
-                : section === "response"
-                  ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-                  : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+  section === "salesbots"
+    ? `salesbot.${kind === "title" ? "section" : "hint"}`
+    : section === "custom_fields"
+      ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
+      : section === "pipeline_automation" || section === "api"
+        ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+        : section === "quick_replies"
+          ? `quick_replies.${kind}`
+          : section === "automessages" ||
+              section === "recalls" ||
+              section === "doctors" ||
+              section === "unsorted" ||
+              section === "duplicates"
+            ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+            : section === "leads"
+              ? `leads.${kind === "title" ? "section" : "hint"}`
+              : section === "import" || section === "mis"
+                ? `${section}.${kind}`
+                : section === "telephony"
+                  ? `telephony.${kind === "title" ? "section" : "hint"}`
+                  : section === "response"
+                    ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+                    : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -236,6 +241,7 @@ export const SettingsPage = () => {
       >
         {section === "pipelines" ? <PipelinesEditor /> : null}
         {section === "pipeline_automation" ? <DigitalPipelineSettings /> : null}
+        {section === "salesbots" ? <SalesbotSettings /> : null}
         {section === "services" ? (
           <DictionaryEditor resource="services" items={services} />
         ) : null}

@@ -427,7 +427,7 @@ select tests.logout();
 select tests.login_as(current_setting('t.m1')::uuid);
 select tests.assert(
   public.get_notification_preferences() = jsonb_build_object(
-    'kinds', jsonb_build_array('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue'),
+    'kinds', jsonb_build_array('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff'),
     'browser_enabled', false, 'telegram_enabled', true, 'telegram_linked', false,
     'telegram_username', null, 'telegram_link_code', null, 'telegram_link_expires_at', null),
   'defaults when never saved');

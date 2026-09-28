@@ -54,6 +54,7 @@ import { applyTaskStateFilter } from "../../deals/list/dealFilters";
 import { getPipelineAutomationMethods } from "./pipelineAutomationMethods";
 import { getOnboardingMethods } from "./onboardingMethods";
 import { getMisMethods } from "./misMethods";
+import { getSalesbotMethods } from "./salesbotMethods";
 
 const getBaseDataProvider = () =>
   supabaseDataProvider({
@@ -113,6 +114,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getOnboardingMethods(),
     // MIS connectors (stage 27)
     ...getMisMethods(),
+    // «Салесбот» (stage 26)
+    ...getSalesbotMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

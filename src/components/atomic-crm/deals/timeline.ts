@@ -1,4 +1,5 @@
 import type { StageTriggerRun } from "../pipeline-automation/types";
+import type { SalesbotLog } from "../salesbot/types";
 import type {
   Call,
   DealEvent,
@@ -15,7 +16,8 @@ export type TimelineItem =
   | { kind: "event"; date: string; key: string; event: DealEvent }
   | { kind: "message"; date: string; key: string; message: Message }
   | { kind: "file"; date: string; key: string; file: DealFile }
-  | { kind: "automation"; date: string; key: string; run: StageTriggerRun };
+  | { kind: "automation"; date: string; key: string; run: StageTriggerRun }
+  | { kind: "salesbot"; date: string; key: string; log: SalesbotLog };
 
 /**
  * One feed for the deal card (spec §4.2): messages, notes, completed tasks,
@@ -31,6 +33,7 @@ export const buildTimeline = ({
   messages = [],
   files = [],
   automations = [],
+  salesbotLogs = [],
 }: {
   notes?: DealNote[];
   tasks?: Task[];
@@ -39,6 +42,8 @@ export const buildTimeline = ({
   messages?: Message[];
   files?: DealFile[];
   automations?: StageTriggerRun[];
+  /** What a salesbot did (stage 26) */
+  salesbotLogs?: SalesbotLog[];
 }): TimelineItem[] =>
   [
     ...messages.map(
@@ -99,6 +104,14 @@ export const buildTimeline = ({
         date: run.created_at,
         key: `automation-${run.id}`,
         run,
+      }),
+    ),
+    ...salesbotLogs.map(
+      (log): TimelineItem => ({
+        kind: "salesbot",
+        date: log.created_at,
+        key: `salesbot-${log.id}`,
+        log,
       }),
     ),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -525,6 +525,8 @@ export type Automessage = {
   rule_id?: Identifier | null;
   /** Queued by a stage trigger (stage 20): its template, no rule */
   template_id?: Identifier | null;
+  /** Queued by a salesbot (stage 26): its text is ready */
+  salesbot_session_id?: Identifier | null;
   stage_id: Identifier;
   timing: AutomessageRule["timing"];
   send_at: string;
@@ -713,7 +715,8 @@ export type NotificationKind =
   | "lead_assigned"
   | "patient_message"
   | "task_overdue"
-  | "response_overdue";
+  | "response_overdue"
+  | "bot_handoff";
 
 export type CrmNotification = {
   organization_id?: Identifier;

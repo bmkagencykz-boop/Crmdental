@@ -40,6 +40,11 @@ export const AutomationRunLine = ({ run }: { run: StageTriggerRun }) => {
     { pagination: listAll, sort: { field: "position", order: "ASC" } },
     { ...options, enabled: run.action === "send_template" },
   );
+  const { data: salesbots = [] } = useGetList<{ id: Identifier; name: string }>(
+    "salesbots",
+    { pagination: listAll, sort: { field: "position", order: "ASC" } },
+    { ...options, enabled: run.action === "start_salesbot" },
+  );
   const name = (
     items: { id: Identifier; name: string }[],
     id: Identifier | null | undefined,
@@ -57,6 +62,7 @@ export const AutomationRunLine = ({ run }: { run: StageTriggerRun }) => {
           },
           tagName: (id) => findById(tags, id)?.name,
           templateName: (id) => name(templates, id),
+          salesbotName: (id) => name(salesbots, id),
           fieldValue: (field, value) =>
             field === "plan_amount"
               ? formatMoney(Number(value ?? 0), currency)

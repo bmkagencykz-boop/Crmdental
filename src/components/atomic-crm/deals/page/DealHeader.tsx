@@ -37,6 +37,7 @@ import {
 import type { CrmDataProvider } from "../../providers/types";
 import type { Deal } from "../../types";
 import { LostReasonDialog } from "../LostReasonDialog";
+import { DealBotIndicator, StartBotDialog } from "../../salesbot/DealBot";
 import { useDealUpdate } from "./useDealUpdate";
 
 /** Title, actions, pipeline and stage with its progress bar (amoCRM style) */
@@ -90,6 +91,7 @@ export const DealHeader = ({ deal }: { deal: Deal }) => {
         </div>
         <DealMenu deal={deal} />
       </div>
+      <DealBotIndicator deal={deal} />
       <StageBar deal={deal} />
     </div>
   );
@@ -102,6 +104,7 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
   const dataProvider = useDataProvider<CrmDataProvider>();
   const { save } = useDealUpdate(deal);
   const [remove] = useDelete();
+  const [startingBot, setStartingBot] = useState(false);
   const unarchive = useMutation({
     mutationFn: () => dataProvider.unarchiveDeal(deal),
     onSuccess: () =>
@@ -109,56 +112,69 @@ const DealMenu = ({ deal }: { deal: Deal }) => {
   });
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-card"
-        aria-label={translate("crm.deals.page.actions")}
-      >
-        <MoreHorizontal className="size-5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link to={`/deals/${deal.id}`}>
-            <Pencil className="size-4" />
-            {translate("crm.deals.page.edit_all")}
-          </Link>
-        </DropdownMenuItem>
-        {deal.archived_at ? (
-          <DropdownMenuItem onClick={() => unarchive.mutate()}>
-            <ArchiveRestore className="size-4" />
-            {translate("resources.deals.unarchived.action")}
+    <>
+      <StartBotDialog
+        deal={deal}
+        open={startingBot}
+        onClose={() => setStartingBot(false)}
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-card"
+          aria-label={translate("crm.deals.page.actions")}
+        >
+          <MoreHorizontal className="size-5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link to={`/deals/${deal.id}`}>
+              <Pencil className="size-4" />
+              {translate("crm.deals.page.edit_all")}
+            </Link>
           </DropdownMenuItem>
-        ) : (
+          {!deal.archived_at && !deal.unsorted_at ? (
+            <DropdownMenuItem onClick={() => setStartingBot(true)}>
+              <span className="size-4" aria-hidden />
+              {translate("salesbot.deal.start")}
+            </DropdownMenuItem>
+          ) : null}
+          {deal.archived_at ? (
+            <DropdownMenuItem onClick={() => unarchive.mutate()}>
+              <ArchiveRestore className="size-4" />
+              {translate("resources.deals.unarchived.action")}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() =>
+                save({ archived_at: new Date().toISOString() }, () => {
+                  notify("resources.deals.archived.success", { type: "info" });
+                  redirect("/deals");
+                })
+              }
+            >
+              <Archive className="size-4" />
+              {translate("resources.deals.archived.action")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
+            className="text-destructive"
             onClick={() =>
-              save({ archived_at: new Date().toISOString() }, () => {
-                notify("resources.deals.archived.success", { type: "info" });
-                redirect("/deals");
-              })
+              remove(
+                "deals",
+                { id: deal.id, previousData: deal },
+                {
+                  mutationMode: "pessimistic",
+                  onSuccess: () => redirect("/deals"),
+                },
+              )
             }
           >
-            <Archive className="size-4" />
-            {translate("resources.deals.archived.action")}
+            <Trash2 className="size-4" />
+            {translate("ra.action.delete")}
           </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          className="text-destructive"
-          onClick={() =>
-            remove(
-              "deals",
-              { id: deal.id, previousData: deal },
-              {
-                mutationMode: "pessimistic",
-                onSuccess: () => redirect("/deals"),
-              },
-            )
-          }
-        >
-          <Trash2 className="size-4" />
-          {translate("ra.action.delete")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 };
 

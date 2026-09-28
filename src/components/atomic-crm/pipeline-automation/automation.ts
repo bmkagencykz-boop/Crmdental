@@ -46,6 +46,7 @@ export const STAGE_TRIGGER_ACTIONS: StageTriggerAction[] = [
   "send_template",
   "send_webhook",
   "set_field",
+  "start_salesbot",
 ];
 
 /** A chain of automatic actions stops at this depth (crm.automation_depth) */
@@ -138,6 +139,9 @@ export const missingTriggerFields = (
     case "send_webhook":
       if (trigger.webhook_id == null) missing.push("webhook_id");
       break;
+    case "start_salesbot":
+      if (trigger.salesbot_id == null) missing.push("salesbot_id");
+      break;
     case "set_field":
       if (trigger.field_name === "plan_amount") {
         if (!(Number(trigger.plan_amount) >= 0) || trigger.plan_amount == null)
@@ -177,6 +181,7 @@ export const cleanTrigger = (
     plan_amount: null,
     doctor_id: null,
     service_id: null,
+    salesbot_id: null,
   };
   const keep: Record<StageTriggerAction, (keyof StageTrigger)[]> = {
     move_stage: ["target_stage_id"],
@@ -187,6 +192,7 @@ export const cleanTrigger = (
     send_template: ["template_id", "message_mode"],
     send_webhook: ["webhook_id"],
     set_field: ["field_name", "plan_amount", "doctor_id", "service_id"],
+    start_salesbot: ["salesbot_id"],
   };
   const result: Partial<StageTrigger> = { ...trigger, ...cleared };
   for (const key of trigger.action ? keep[trigger.action] : []) {
@@ -365,7 +371,15 @@ export type RunLookups = {
   tagName: (id: Identifier | null | undefined) => string | undefined;
   templateName: (id: Identifier | null | undefined) => string | undefined;
   fieldValue: (field: string | undefined, value: unknown) => string | undefined;
+  /** «Запустить салесбот» (stage 26) */
+  salesbotName?: (id: Identifier | null | undefined) => string | undefined;
 };
+
+/** Label of an action (the salesbot one lives in its own namespace) */
+export const actionLabelKey = (action: StageTriggerAction) =>
+  action === "start_salesbot"
+    ? "salesbot.pipeline.action"
+    : `pipeline_automation.actions.${action}`;
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -387,7 +401,7 @@ export const describeRun = (
     : "";
   if (run.status !== "done") {
     return translate(`pipeline_automation.feed.${run.status}`, {
-      action: translate(`pipeline_automation.actions.${run.action}`),
+      action: translate(actionLabelKey(run.action)),
       error: run.error ?? "",
       rule,
     }).trim();
@@ -422,6 +436,11 @@ export const describeRun = (
       what = translate("pipeline_automation.feed.set_field", {
         field: translate(`pipeline_automation.fields.${details.field}`),
         value: lookups.fieldValue(details.field, details.to) ?? "—",
+      });
+      break;
+    case "start_salesbot":
+      what = translate("salesbot.pipeline.feed", {
+        name: lookups.salesbotName?.(details.salesbot_id) ?? "—",
       });
       break;
     default:

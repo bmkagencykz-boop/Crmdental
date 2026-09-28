@@ -21,7 +21,8 @@ export type StageTriggerAction =
   | "create_task"
   | "send_template"
   | "send_webhook"
-  | "set_field";
+  | "set_field"
+  | "start_salesbot";
 
 export type StageTriggerField = "plan_amount" | "doctor_id" | "service_id";
 
@@ -56,6 +57,8 @@ export type StageTrigger = {
   plan_amount?: number | null;
   doctor_id?: Identifier | null;
   service_id?: Identifier | null;
+  /** start_salesbot (stage 26) */
+  salesbot_id?: Identifier | null;
   is_active: boolean;
   position: number;
   created_at?: string;
@@ -86,6 +89,8 @@ export type StageTriggerRun = {
     from?: unknown;
     to?: unknown;
     unchanged?: boolean;
+    salesbot_id?: Identifier;
+    session_id?: Identifier;
   };
   error?: string | null;
   created_at: string;

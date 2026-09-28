@@ -538,6 +538,15 @@ export const englishCrmMessages = {
         },
         text: "Task text",
       },
+      groups: {
+        sales: "Pipelines and automation",
+        channels: "Channels",
+        data: "Dictionaries and fields",
+        patients: "Patients",
+        clinic: "Clinic and access",
+      },
+      search: "Find a setting",
+      search_empty: "Nothing found",
     },
     theme: {
       dark: "Dark",

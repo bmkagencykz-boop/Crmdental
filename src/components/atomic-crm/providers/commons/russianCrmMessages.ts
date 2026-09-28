@@ -545,6 +545,15 @@ export const russianCrmMessages: CrmMessages = {
         },
         text: "Текст задачи",
       },
+      groups: {
+        sales: "Воронки и автоматизация",
+        channels: "Каналы связи",
+        data: "Справочники и поля",
+        patients: "Пациенты",
+        clinic: "Клиника и доступ",
+      },
+      search: "Найти настройку",
+      search_empty: "Ничего не найдено",
     },
     theme: {
       dark: "Тёмная",

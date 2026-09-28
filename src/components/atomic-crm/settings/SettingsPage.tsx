@@ -64,6 +64,38 @@ const SECTIONS = [
   "mis",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+
+/** Sections grouped like amoCRM's settings menu */
+const GROUPS: { id: string; sections: Section[] }[] = [
+  {
+    id: "sales",
+    sections: [
+      "pipelines",
+      "pipeline_automation",
+      "automations",
+      "automessages",
+      "distribution",
+      "unsorted",
+      "response",
+    ],
+  },
+  {
+    id: "channels",
+    sections: ["messengers", "leads", "telephony", "quick_replies"],
+  },
+  {
+    id: "data",
+    sections: [
+      "services",
+      "sources",
+      "lost_reasons",
+      "doctors",
+      "custom_fields",
+    ],
+  },
+  { id: "patients", sections: ["recalls", "duplicates", "import"] },
+  { id: "clinic", sections: ["clinic", "access", "api", "mis"] },
+];
 // Every employee manages their own quick replies; the rest is for the owner
 // and the head (the database enforces the same rules)
 const EVERYONE_SECTIONS: Section[] = ["quick_replies"];
@@ -115,6 +147,18 @@ export const SettingsPage = () => {
     if (isSection(requested)) setSection(requested);
   }, [requested]);
   const section = sections.includes(chosen) ? chosen : sections[0];
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const matches = (id: Section) =>
+    !needle ||
+    translate(sectionLabel(id, "title")).toLowerCase().includes(needle) ||
+    translate(sectionLabel(id, "hint")).toLowerCase().includes(needle);
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    sections: group.sections.filter(
+      (id) => sections.includes(id) && matches(id),
+    ),
+  })).filter((group) => group.sections.length > 0);
   const { data: services } = useServices();
   const { data: sources } = useLeadSources();
   const { data: lostReasons } = useLostReasons();
@@ -123,25 +167,57 @@ export const SettingsPage = () => {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <nav
-        className="flex flex-row flex-wrap gap-1 lg:flex-col"
+        className="flex flex-col gap-1"
         aria-label={translate("crm.settings.title")}
       >
-        {sections.map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setSection(id)}
-            aria-current={section === id ? "page" : undefined}
-            className={cn(
-              "rounded-md px-4 py-2 text-left text-sm font-semibold transition-all",
-              section === id
-                ? "bg-primary text-primary-foreground shadow-soft"
-                : "text-muted-foreground hover:bg-[var(--surface-strong)] hover:text-foreground",
-            )}
+        {sections.length > 4 ? (
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={translate("crm.settings.search")}
+            aria-label={translate("crm.settings.search")}
+            className="field mb-2 h-9 w-full rounded-md border border-input px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        ) : null}
+        {groups.map((group) => (
+          <div
+            key={group.id}
+            role="group"
+            aria-labelledby={`settings-group-${group.id}`}
+            className="flex flex-row flex-wrap gap-0.5 lg:mb-3 lg:flex-col"
           >
-            {translate(sectionLabel(id, "title"))}
-          </button>
+            {sections.length > 4 ? (
+              <p
+                id={`settings-group-${group.id}`}
+                className="hidden px-4 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:block"
+              >
+                {translate(`crm.settings.groups.${group.id}`)}
+              </p>
+            ) : null}
+            {group.sections.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSection(id)}
+                aria-current={section === id ? "page" : undefined}
+                className={cn(
+                  "rounded-md px-4 py-1.5 text-left text-sm font-medium transition-all",
+                  section === id
+                    ? "bg-primary font-semibold text-primary-foreground shadow-soft"
+                    : "text-foreground/80 hover:bg-[var(--surface-strong)] hover:text-foreground",
+                )}
+              >
+                {translate(sectionLabel(id, "title"))}
+              </button>
+            ))}
+          </div>
         ))}
+        {groups.length === 0 ? (
+          <p className="px-4 text-sm text-muted-foreground">
+            {translate("crm.settings.search_empty")}
+          </p>
+        ) : null}
         <CanAccess resource="audit_log" action="list">
           <Link
             to="/audit"

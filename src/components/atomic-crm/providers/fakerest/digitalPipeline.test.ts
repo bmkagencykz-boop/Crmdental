@@ -79,11 +79,12 @@ describe("demo digital pipeline", () => {
     expect(
       (await list<StageTriggerRun>(dataProvider, "stage_trigger_runs")).length,
     ).toBeGreaterThan(0);
-    expect(await list<Webhook>(dataProvider, "webhooks")).toHaveLength(1);
+    // The clinic's MIS, and the app installed by the integrator (stage 25)
+    expect(await list<Webhook>(dataProvider, "webhooks")).toHaveLength(2);
     expect(
       (await list<WebhookDelivery>(dataProvider, "webhook_deliveries")).length,
     ).toBeGreaterThan(3);
-    expect(await dataProvider.listApiKeys()).toHaveLength(1);
+    expect(await dataProvider.listApiKeys()).toHaveLength(2);
   });
 
   it("a payment moves the deal, logs the run and notifies the webhook", async () => {
@@ -119,10 +120,12 @@ describe("demo digital pipeline", () => {
       dataProvider,
       "webhook_deliveries",
     );
+    // Deliveries to the MIS webhook (the demo app of stage 25 has its own)
     const mine = deliveries.filter(
       (d) =>
+        String(d.webhook_id) === "1" &&
         String((d.payload.data as { deal_id?: unknown })?.deal_id) ===
-        String(deal.id),
+          String(deal.id),
     );
     expect(mine.map((d) => d.event).sort()).toEqual([
       "deal.created",

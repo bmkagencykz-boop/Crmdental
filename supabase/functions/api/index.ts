@@ -34,10 +34,15 @@ const fail = (status: number, code: string, message: string) =>
  *   Authorization: Bearer <API key from Settings → API и вебхуки>
  *   GET /api/deals, GET /api/deals/:id, POST /api/deals, PATCH /api/deals/:id,
  *   POST /api/deals/:id/notes, GET /api/patients, POST /api/patients,
- *   GET /api/pipelines
+ *   GET /api/pipelines, and for the configuration of the clinic (stage 25):
+ *   GET /api/account, POST /api/pipelines, PATCH /api/pipelines/:id,
+ *   GET|POST /api/stages, PATCH /api/stages/:id, GET|POST /api/stage_triggers,
+ *   PATCH|DELETE /api/stage_triggers/:id, GET|POST /api/custom_fields,
+ *   GET|POST /api/tasks, GET|POST /api/messages
  * The database functions public.api_* resolve the clinic from the key hash,
  * check the scope and the rate limit (60 requests per minute per key) and
- * only touch that clinic. Documentation: docs/stages/20-digital-pipeline.md.
+ * only touch that clinic. Documentation: docs/stages/20-digital-pipeline.md
+ * and docs/stages/25-marketplace.md.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

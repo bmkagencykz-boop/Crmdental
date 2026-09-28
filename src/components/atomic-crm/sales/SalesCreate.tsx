@@ -8,6 +8,7 @@ import type { CrmDataProvider } from "../providers/types";
 import type { SalesFormData } from "../types";
 import { getSalesErrorNotification } from "./salesErrorNotification";
 import { SalesInputs } from "./SalesInputs";
+import { toAccessExpiry } from "./roleLabel";
 
 export function SalesCreate() {
   const dataProvider = useDataProvider<CrmDataProvider>();
@@ -18,7 +19,17 @@ export function SalesCreate() {
   const { mutate } = useMutation({
     mutationKey: ["signup"],
     mutationFn: async (data: SalesFormData) => {
-      return dataProvider.salesCreate(data);
+      const { access_expires_at, can_read_messages, ...fields } = data;
+      const sale = await dataProvider.salesCreate(fields);
+      // The access of an integrator (stage 25) has its own function (owner)
+      if (data.role === "integrator" && sale?.id != null) {
+        await dataProvider.setIntegratorAccess(
+          sale.id,
+          toAccessExpiry(access_expires_at),
+          !!can_read_messages,
+        );
+      }
+      return sale;
     },
     onSuccess: () => {
       notify("resources.sales.create.success", {

@@ -1,3 +1,4 @@
+import type { DeveloperApp } from "../../../integrations/types";
 import type {
   AuditLogEntry,
   Call,
@@ -126,4 +127,6 @@ export interface Db {
   mis_doctors: MisDoctor[];
   mis_appointments: MisAppointment[];
   mis_sync_log: MisSyncLogEntry[];
+  // Marketplace: developer apps (stage 25)
+  developer_apps: DeveloperApp[];
 }

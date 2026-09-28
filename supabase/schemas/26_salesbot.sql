@@ -58,7 +58,8 @@ CREATE OR REPLACE FUNCTION "private"."can_configure"() RETURNS boolean
     SET "search_path" TO ''
     AS $$
 begin
-  return coalesce(private.current_user_role() in ('owner', 'head'), false);
+  -- The integrator (stage 25) configures bots too
+  return coalesce(private.current_user_role() in ('owner', 'head', 'integrator'), false);
 end;
 $$;
 

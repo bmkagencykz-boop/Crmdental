@@ -236,7 +236,7 @@ CREATE OR REPLACE FUNCTION "public"."telephony_status"() RETURNS TABLE("provider
   select i.provider, i.webhook_token, i.secret is not null, i.api_key is not null, i.created_at, i.last_event_at
   from public.telephony_integrations i
   where i.organization_id = private.current_organization_id()
-    and private.current_user_role() in ('owner', 'head')
+    and private.current_user_role() in ('owner', 'head', 'integrator')
 $$;
 
 -- Connects the clinic's PBX or changes its settings (owner and head). A null
@@ -247,7 +247,7 @@ CREATE OR REPLACE FUNCTION "public"."save_telephony"("telephony_provider" "text"
     AS $$
 begin
   if private.current_organization_id() is null
-    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head manage telephony' using errcode = '42501';
   end if;
   if telephony_provider is null or telephony_provider not in ('binotel', 'zadarma', 'mango', 'sipuni', 'generic') then
@@ -276,7 +276,7 @@ declare
   new_token text;
 begin
   if private.current_organization_id() is null
-    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head manage telephony' using errcode = '42501';
   end if;
   update public.telephony_integrations
@@ -297,7 +297,7 @@ CREATE OR REPLACE FUNCTION "public"."disconnect_telephony"() RETURNS "void"
     AS $$
 begin
   if private.current_organization_id() is null
-    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head manage telephony' using errcode = '42501';
   end if;
   delete from public.telephony_integrations
@@ -315,7 +315,7 @@ declare
   token text;
 begin
   if private.current_organization_id() is null
-    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head manage telephony' using errcode = '42501';
   end if;
   select i.webhook_token into token
@@ -342,7 +342,7 @@ CREATE OR REPLACE FUNCTION "public"."set_sales_phone_extension"("target_sales_id
     AS $$
 begin
   if private.current_organization_id() is null
-    or private.current_user_role() is distinct from 'owner' and private.current_user_role() is distinct from 'head' then
+    or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head set internal numbers' using errcode = '42501';
   end if;
   update public.sales s

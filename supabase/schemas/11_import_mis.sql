@@ -436,8 +436,8 @@ declare
   org_id bigint := private.current_organization_id();
   saved_status text;
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
-    raise exception 'Заявку оставляет владелец или руководитель клиники'
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
+    raise exception 'Заявку оставляет владелец, руководитель или интегратор клиники'
       using errcode = 'insufficient_privilege';
   end if;
   insert into public.integrations (organization_id, kind)

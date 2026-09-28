@@ -380,18 +380,21 @@ begin
       where a.id = job.id;
       continue;
     end if;
-    -- A row queued by a stage trigger (stage 20) has its template, no rule
-    if job.salesbot_session_id is null and job.template_id is null
-      and (job_rule.id is null or not job_rule.is_active) then
-      update public.automessages a
-      set status = 'cancelled', error = 'Правило выключено или удалено', processed_at = now()
-      where a.id = job.id;
-      continue;
-    end if;
-
+    -- A salesbot row (stage 26) and a message of the public API (stage 25)
+    -- carry their ready text; a row queued by a stage trigger (stage 20) has
+    -- its template and no rule
     if job.salesbot_session_id is not null then
       rendered := job.text;
+    elsif job.rule_id is null and job.template_id is null and coalesce(btrim(job.text), '') <> '' then
+      rendered := job.text;
     else
+      if job.template_id is null and (job_rule.id is null or not job_rule.is_active) then
+        update public.automessages a
+        set status = 'cancelled', error = 'Правило выключено или удалено', processed_at = now()
+        where a.id = job.id;
+        continue;
+      end if;
+
       select t.body into template_body from public.message_templates t
       where t.organization_id = job.organization_id and t.id = coalesce(job.template_id, job_rule.template_id);
       rendered := private.render_template(template_body, private.automessage_vars(job_deal));

@@ -17,6 +17,9 @@ const getBaseAuthProvider = () =>
         id: sale.id,
         fullName: `${sale.first_name} ${sale.last_name}`,
         avatar: sale.avatar?.src,
+        // Integrator (stage 25): the banner shows the end of the access
+        role: sale.role,
+        access_expires_at: sale.access_expires_at ?? null,
       };
     },
   });
@@ -69,7 +72,9 @@ const getSale = async () => {
 
   const { data: dataSale, error: errorSale } = await getSupabaseClient()
     .from("sales")
-    .select("id, organization_id, first_name, last_name, avatar, role")
+    .select(
+      "id, organization_id, first_name, last_name, avatar, role, access_expires_at",
+    )
     .match({ user_id: dataSession?.session?.user.id })
     .single();
 
@@ -101,7 +106,14 @@ export const getAuthProvider = (): AuthProvider => {
         }
         return;
       }
-      return baseAuthProvider.login(params);
+      await baseAuthProvider.login(params);
+      // A disabled account, or an integrator whose access expired (stage
+      // 25), has no clinic: the database gives it no staff row
+      clearCache();
+      if ((await getSale()) == null) {
+        await getSupabaseClient().auth.signOut();
+        throw new Error("market.integrator.no_access");
+      }
     },
     logout: async (params) => {
       clearCache();

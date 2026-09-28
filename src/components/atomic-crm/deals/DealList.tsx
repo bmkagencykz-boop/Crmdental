@@ -1,4 +1,5 @@
 import {
+  CanAccess,
   useCanAccess,
   useGetIdentity,
   useStore,
@@ -185,9 +186,14 @@ const DealDialogs = ({
   const location = useLocation();
   const matchCreate = matchPath("/deals/create", location.pathname);
   const matchEdit = matchPath("/deals/:id", location.pathname);
+  // The integrator (stage 25) only reads the deals
+  const { canAccess: canCreate } = useCanAccess({
+    resource: "deals",
+    action: "create",
+  });
   return (
     <>
-      {fab ? (
+      {fab && canCreate ? (
         <Link
           to="/deals/create"
           className="fixed right-8 bottom-8 z-20 flex size-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_14px_40px_-10px_rgba(239,59,110,0.6)] transition-transform hover:scale-105"
@@ -207,7 +213,9 @@ const DealActions = () => (
     <FilterButton iconOnly />
     <ExportButton iconOnly />
     <DigitalPipelineButton />
-    <CreateButton label="resources.deals.action.new" />
+    <CanAccess resource="deals" action="create">
+      <CreateButton label="resources.deals.action.new" />
+    </CanAccess>
   </TopToolbar>
 );
 

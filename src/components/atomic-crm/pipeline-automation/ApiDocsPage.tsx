@@ -7,27 +7,28 @@ import { Link } from "react-router";
 import type { CrmDataProvider } from "../providers/types";
 import { WEBHOOK_EVENTS } from "./types";
 import { curlExamples, eventLabelKey } from "./webhooks";
+import { ROUTE_SCOPES, scopeLabelKey } from "../integrations/manifest";
+import {
+  CONFIG_ENDPOINTS,
+  configCurlExamples,
+} from "../integrations/apiExamples";
 
 const ENDPOINTS = [
-  { method: "GET", path: "/deals", key: "list_deals", scope: "read" },
-  { method: "GET", path: "/deals/:id", key: "get_deal", scope: "read" },
-  { method: "POST", path: "/deals", key: "create_deal", scope: "write" },
-  { method: "PATCH", path: "/deals/:id", key: "update_deal", scope: "write" },
-  {
-    method: "POST",
-    path: "/deals/:id/notes",
-    key: "add_deal_note",
-    scope: "write",
-  },
-  { method: "GET", path: "/patients", key: "list_patients", scope: "read" },
-  { method: "POST", path: "/patients", key: "create_patient", scope: "write" },
-  { method: "GET", path: "/pipelines", key: "list_pipelines", scope: "read" },
+  { method: "GET", path: "/deals", key: "list_deals" },
+  { method: "GET", path: "/deals/:id", key: "get_deal" },
+  { method: "POST", path: "/deals", key: "create_deal" },
+  { method: "PATCH", path: "/deals/:id", key: "update_deal" },
+  { method: "POST", path: "/deals/:id/notes", key: "add_deal_note" },
+  { method: "GET", path: "/patients", key: "list_patients" },
+  { method: "POST", path: "/patients", key: "create_patient" },
+  { method: "GET", path: "/pipelines", key: "list_pipelines" },
 ] as const;
 
 const ERRORS = [
   { status: 400, code: "invalid_input" },
   { status: 401, code: "invalid_key" },
   { status: 403, code: "read_only_key" },
+  { status: 403, code: "insufficient_scope" },
   { status: 404, code: "not_found" },
   { status: 422, code: "invalid_reference" },
   { status: 422, code: "rule_violation" },
@@ -79,6 +80,9 @@ export const ApiDocsPage = () => {
   const examples = curlExamples(
     baseUrl || "https://<project>.supabase.co/functions/v1/api",
   );
+  const configExamples = configCurlExamples(
+    baseUrl || "https://<project>.supabase.co/functions/v1/api",
+  );
 
   return (
     <article
@@ -109,6 +113,7 @@ export const ApiDocsPage = () => {
         <p>{translate("api.docs.auth_text")}</p>
         <Code>{"Authorization: Bearer dcrm_…"}</Code>
         <p>{translate("api.docs.scopes_text")}</p>
+        <p>{translate("market.api_docs.scopes_text")}</p>
         <p>{translate("api.docs.limit_text")}</p>
       </DocSection>
 
@@ -130,15 +135,49 @@ export const ApiDocsPage = () => {
                   <td className="px-3 py-2">
                     {translate(`api.docs.endpoints.${endpoint.key}`)}
                   </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                    {translate(`api.keys.scopes.${endpoint.scope}`)}
-                  </td>
+                  <ScopeCell scope={ROUTE_SCOPES[endpoint.key]} />
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p>{translate("api.docs.lists_text")}</p>
+      </DocSection>
+
+      <DocSection title={translate("market.api_docs.title")}>
+        <p>{translate("market.api_docs.intro")}</p>
+        <div className="overflow-x-auto rounded-md border bg-card">
+          <table className="w-full text-sm" data-testid="api-docs-config">
+            <tbody>
+              {CONFIG_ENDPOINTS.map((endpoint) => (
+                <tr
+                  key={`${endpoint.method} ${endpoint.path}`}
+                  className="border-b last:border-0"
+                >
+                  <td className="px-3 py-2 font-mono text-xs font-semibold whitespace-nowrap">
+                    {endpoint.method}
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+                    /api{endpoint.path}
+                  </td>
+                  <td className="px-3 py-2">
+                    {translate(`market.api_docs.endpoints.${endpoint.key}`)}
+                  </td>
+                  <ScopeCell scope={ROUTE_SCOPES[endpoint.key]} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>{translate("market.api_docs.messages_text")}</p>
+        {CONFIG_ENDPOINTS.map((endpoint) => (
+          <div key={endpoint.key} className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {translate(`market.api_docs.endpoints.${endpoint.key}`)}
+            </span>
+            <Code>{configExamples[endpoint.key]}</Code>
+          </div>
+        ))}
       </DocSection>
 
       <DocSection title={translate("api.docs.examples_title")}>
@@ -172,7 +211,12 @@ export const ApiDocsPage = () => {
               <span className="font-mono text-xs font-semibold">
                 {error.status} {error.code}
               </span>{" "}
-              — {translate(`api.docs.errors.${error.code}`)}
+              —{" "}
+              {translate(
+                error.code === "insufficient_scope"
+                  ? "market.api_docs.insufficient_scope"
+                  : `api.docs.errors.${error.code}`,
+              )}
             </li>
           ))}
         </ul>
@@ -217,3 +261,14 @@ const Code = ({ children }: { children: ReactNode }) => (
     <code>{children}</code>
   </pre>
 );
+
+/** The scope a method needs (stage 25), with its name */
+const ScopeCell = ({ scope }: { scope: string }) => {
+  const translate = useTranslate();
+  return (
+    <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
+      <span className="font-mono">{scope}</span>
+      <span className="block">{translate(scopeLabelKey(scope))}</span>
+    </td>
+  );
+};

@@ -197,6 +197,15 @@ const ApiKeys = () => {
               <span className="rounded-md border px-1.5 py-0.5 text-xs">
                 {translate(`api.keys.scopes.${key.scope}`)}
               </span>
+              {key.app_id != null ? (
+                // Key of a developer app (stage 25): its fine scopes
+                <span
+                  className="rounded-md bg-muted px-1.5 py-0.5 text-xs"
+                  title={(key.scopes ?? []).join(", ")}
+                >
+                  {translate("market.apps.key_badge")}
+                </span>
+              ) : null}
               <span className="text-xs text-muted-foreground">
                 {translate("api.keys.created_at", {
                   date: formatTime(key.created_at),

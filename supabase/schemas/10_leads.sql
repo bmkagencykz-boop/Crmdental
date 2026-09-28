@@ -235,7 +235,7 @@ declare
   org_id bigint := private.current_organization_id();
   result text;
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head manage the lead webhook' using errcode = '42501';
   end if;
   insert into public.lead_integrations (organization_id) values (org_id)
@@ -254,7 +254,7 @@ declare
   org_id bigint := private.current_organization_id();
   result text;
 begin
-  if org_id is null or private.current_user_role() not in ('owner', 'head') then
+  if org_id is null or private.current_user_role() not in ('owner', 'head', 'integrator') then
     raise exception 'Only the owner and the head manage the lead webhook' using errcode = '42501';
   end if;
   insert into public.lead_integrations (organization_id) values (org_id)
@@ -274,7 +274,7 @@ CREATE OR REPLACE FUNCTION "public"."telegram_bot_status"() RETURNS TABLE("conne
   select b.bot_token is not null, b.username, b.name, b.connected_at, b.last_error
   from public.telegram_bots b
   where b.organization_id = private.current_organization_id()
-    and private.current_user_role() in ('owner', 'head')
+    and private.current_user_role() in ('owner', 'head', 'integrator')
 $$;
 
 -- A Telegram user shared their phone number with the bot: the number goes

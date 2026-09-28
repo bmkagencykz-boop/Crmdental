@@ -219,3 +219,100 @@ describe("successStatus", () => {
     expect(successStatus("list_deals", {})).toBe(200);
   });
 });
+
+describe("configuration API (stage 25)", () => {
+  it("maps the new methods", () => {
+    expect(matchApiRoute("POST", "/api/pipelines")).toEqual({
+      route: "create_pipeline",
+    });
+    expect(matchApiRoute("PATCH", "/api/pipelines/3")).toEqual({
+      route: "update_pipeline",
+      id: 3,
+    });
+    expect(matchApiRoute("GET", "/api/stages")).toEqual({
+      route: "list_stages",
+    });
+    expect(matchApiRoute("PATCH", "/api/stages/7")).toEqual({
+      route: "update_stage",
+      id: 7,
+    });
+    expect(matchApiRoute("DELETE", "/api/stage_triggers/5")).toEqual({
+      route: "delete_stage_trigger",
+      id: 5,
+    });
+    expect(matchApiRoute("POST", "/api/custom_fields")).toEqual({
+      route: "create_custom_field",
+    });
+    expect(matchApiRoute("GET", "/api/tasks")).toEqual({
+      route: "list_tasks",
+    });
+    expect(matchApiRoute("POST", "/api/messages")).toEqual({
+      route: "send_message",
+    });
+    expect(matchApiRoute("GET", "/functions/v1/api/account")).toEqual({
+      route: "get_account",
+    });
+  });
+
+  it("refuses what does not exist", () => {
+    expect(matchApiRoute("DELETE", "/api/pipelines/3")).toEqual({
+      error: "method_not_allowed",
+    });
+    expect(matchApiRoute("GET", "/api/account/1")).toEqual({
+      error: "not_found",
+    });
+    expect(matchApiRoute("GET", "/api/stages/1/triggers")).toEqual({
+      error: "not_found",
+    });
+  });
+
+  it("passes the ids, bodies and filters to the database", () => {
+    expect(
+      rpcCall("update_stage_trigger", "k", { id: 4, body: { name: "x" } }),
+    ).toEqual({
+      fn: "api_update_stage_trigger",
+      args: { api_key: "k", trigger_id: 4, body: { name: "x" } },
+    });
+    expect(rpcCall("delete_stage_trigger", "k", { id: 4 })).toEqual({
+      fn: "api_delete_stage_trigger",
+      args: { api_key: "k", trigger_id: 4 },
+    });
+    expect(rpcCall("update_pipeline", "k", { id: 2, body: {} })).toEqual({
+      fn: "api_update_pipeline",
+      args: { api_key: "k", pipeline_id: 2, body: {} },
+    });
+    expect(
+      rpcCall("list_tasks", "k", {
+        search: new URLSearchParams("deal_id=8&done=false&x=1"),
+      }),
+    ).toEqual({
+      fn: "api_list_tasks",
+      args: { api_key: "k", params: { deal_id: 8, done: "false" } },
+    });
+    expect(rpcCall("get_account", "k", {})).toEqual({
+      fn: "api_get_account",
+      args: { api_key: "k" },
+    });
+    expect(
+      listParams("list_custom_fields", new URLSearchParams("entity=patient")),
+    ).toEqual({ entity: "patient" });
+    expect(() =>
+      listParams("list_custom_fields", new URLSearchParams("entity=company")),
+    ).toThrow(ApiInputError);
+    expect(() =>
+      listParams("list_tasks", new URLSearchParams("done=yes")),
+    ).toThrow("done: ожидается true или false");
+  });
+
+  it("names a missing scope and answers 201 / 202", () => {
+    expect(
+      mapDbError({ code: "PT403", hint: "insufficient_scope", message: "m" }),
+    ).toEqual({ status: 403, code: "insufficient_scope", message: "m" });
+    expect(mapDbError({ code: "PT403", hint: "read_only_key" }).code).toBe(
+      "read_only_key",
+    );
+    expect(successStatus("create_stage_trigger", {})).toBe(201);
+    expect(successStatus("send_message", {})).toBe(202);
+    expect(successStatus("update_stage", {})).toBe(200);
+  });
+});

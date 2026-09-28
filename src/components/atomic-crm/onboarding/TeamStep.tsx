@@ -16,6 +16,7 @@ import {
 import type { CrmDataProvider } from "../providers/types";
 import { getSalesErrorNotification } from "../sales/salesErrorNotification";
 import type { AssignableSaleRole, Sale } from "../types";
+import { roleLabelKey } from "../sales/roleLabel";
 
 const ROLES: AssignableSaleRole[] = ["manager", "head"];
 const EMPTY = { first_name: "", last_name: "", email: "" };
@@ -141,7 +142,7 @@ export const TeamStep = ({ isOwner }: { isOwner: boolean }) => {
                 {sale.email}
               </span>
               <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {translate(`crm.roles.${sale.role}`)}
+                {translate(roleLabelKey(sale.role))}
               </span>
             </li>
           ))}

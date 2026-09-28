@@ -7,6 +7,7 @@ import { SearchInput } from "@/components/admin/search-input";
 import { Badge } from "@/components/ui/badge";
 
 import { TopToolbar } from "../layout/TopToolbar";
+import { roleLabelKey } from "./roleLabel";
 
 const SalesListActions = () => (
   <TopToolbar>
@@ -32,9 +33,18 @@ const OptionsField = (_props: { label?: string | boolean }) => {
               : "border-blue-300 dark:border-blue-700"
           }
         >
-          {translate(`crm.roles.${record.role}`)}
+          {translate(roleLabelKey(record.role))}
         </Badge>
       )}
+      {record.role === "integrator" && record.access_expires_at ? (
+        <Badge variant="outline">
+          {translate("market.integrator.until", {
+            date: new Date(record.access_expires_at).toLocaleDateString(
+              "ru-RU",
+            ),
+          })}
+        </Badge>
+      ) : null}
       {record.disabled && (
         <Badge
           variant="outline"

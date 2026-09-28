@@ -84,6 +84,51 @@ describe("canAccess", () => {
     );
   });
 
+  it("lets the integrator configure the clinic and only read the deals", () => {
+    const can = (resource: string, action: string) =>
+      canAccess("integrator", { resource, action });
+    expect(can("configuration", "edit")).toBe(true);
+    expect(can("integrations", "list")).toBe(true);
+    expect(can("deals", "list")).toBe(true);
+    expect(can("deals", "show")).toBe(true);
+    expect(can("deals", "menu")).toBe(true);
+    expect(can("deals", "edit")).toBe(false);
+    expect(can("deals", "create")).toBe(false);
+    expect(can("deals", "delete")).toBe(false);
+    expect(can("patients", "show")).toBe(true);
+    expect(can("patients", "delete")).toBe(false);
+    expect(can("patients", "menu")).toBe(false);
+    for (const resource of [
+      "sales",
+      "reports",
+      "audit_log",
+      "mailings",
+      "duplicates",
+      "import",
+      "organization",
+      "tasks",
+      "messages",
+      "dashboard",
+    ]) {
+      expect(can(resource, "list")).toBe(false);
+    }
+  });
+
+  it("shows the marketplace to the owner and the head only", () => {
+    expect(
+      canAccess("owner", { resource: "integrations", action: "list" }),
+    ).toBe(true);
+    expect(
+      canAccess("head", { resource: "integrations", action: "list" }),
+    ).toBe(true);
+    expect(
+      canAccess("manager", { resource: "integrations", action: "list" }),
+    ).toBe(false);
+    expect(canAccess("manager", { resource: "deals", action: "menu" })).toBe(
+      true,
+    );
+  });
+
   it("denies everything without a role", () => {
     expect(canAccess(undefined, { resource: "deals", action: "list" })).toBe(
       false,

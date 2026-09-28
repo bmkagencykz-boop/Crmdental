@@ -19,6 +19,8 @@ export type NavItem = {
   match: string;
   icon: LucideIcon;
   label: string;
+  /** canAccess resource of the section, asked with the action "menu" */
+  resource?: string;
   /** Counter shown on the icon (unread conversations, unsorted leads) */
   badge?: number;
   /** What the counter counts (screen readers, tooltip) */
@@ -62,12 +64,14 @@ export const useNavItems = (): NavItem[] => {
       match: "/",
       icon: LayoutGrid,
       label: translate("crm.navigation.dashboard", { _: "Рабочий стол" }),
+      resource: "dashboard",
     },
     {
       to: "/deals",
       match: "/deals/*",
       icon: Columns3,
       label: translate("resources.deals.name", { smart_count: 2 }),
+      resource: "deals",
       badge: unsorted ?? 0,
       badgeLabel: translate("unsorted.nav_badge", { count: unsorted ?? 0 }),
     },
@@ -76,6 +80,7 @@ export const useNavItems = (): NavItem[] => {
       match: "/inbox",
       icon: MessagesSquare,
       label: translate("crm.navigation.inbox"),
+      resource: "messages",
       badge: unread ?? 0,
     },
     {
@@ -83,12 +88,14 @@ export const useNavItems = (): NavItem[] => {
       match: "/tasks",
       icon: ListChecks,
       label: translate("resources.tasks.name", { smart_count: 2 }),
+      resource: "tasks",
     },
     {
       to: "/patients",
       match: "/patients/*",
       icon: UsersRound,
       label: translate("resources.patients.name", { smart_count: 2 }),
+      resource: "patients",
     },
   ];
 };

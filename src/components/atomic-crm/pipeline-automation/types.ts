@@ -122,6 +122,8 @@ export type Webhook = {
   last_failure_at?: string | null;
   /** Switched off by the dispatcher after too many failures */
   disabled_at?: string | null;
+  /** Subscription of a developer app (stage 25), removed with it */
+  app_id?: Identifier | null;
   created_at: string;
 };
 
@@ -155,6 +157,10 @@ export type ApiKey = {
   name: string;
   prefix: string;
   scope: ApiKeyScope;
+  /** Fine scopes (stage 25); empty: the read / write rights of stage 20 */
+  scopes?: string[];
+  /** The developer app that owns the key (stage 25) */
+  app_id?: Identifier | null;
   created_by?: Identifier | null;
   created_at: string;
   last_used_at?: string | null;

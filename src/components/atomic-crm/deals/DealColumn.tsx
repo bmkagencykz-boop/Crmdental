@@ -1,6 +1,6 @@
 import { Droppable } from "@hello-pangea/dnd";
 import { Plus } from "lucide-react";
-import { useTranslate } from "ra-core";
+import { useCanAccess, useTranslate } from "ra-core";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,11 @@ export const DealColumn = ({
   isFirst?: boolean;
 }) => {
   const translate = useTranslate();
+  // The integrator (stage 25) only reads the deals
+  const { canAccess: canCreate } = useCanAccess({
+    resource: "deals",
+    action: "create",
+  });
   const { currency } = useConfigurationContext();
   const totalAmount = deals.reduce(
     (sum, deal) => sum + (deal.plan_amount ?? 0),
@@ -48,7 +53,7 @@ export const DealColumn = ({
           </span>
         </p>
       </header>
-      {isFirst ? (
+      {isFirst && canCreate ? (
         <Link
           to={`/deals/create?stage_id=${stage.id}`}
           className="mb-2 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[12px] font-medium text-muted-foreground no-underline transition-colors hover:border-primary/60 hover:text-foreground"

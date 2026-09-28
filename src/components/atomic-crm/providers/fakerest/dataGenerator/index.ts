@@ -15,6 +15,7 @@ import { generateSalesbot } from "./salesbot";
 import { generateTags } from "./tags";
 import { generateUnsorted } from "./unsorted";
 import { generateMisConnectors } from "./misConnectors";
+import { generateMarketplace } from "./marketplace";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -38,6 +39,7 @@ export default (): Db => {
   generateMisConnectors(db);
   generateSalesbot(db);
   generateOnboarding(db);
+  generateMarketplace(db);
   db.configuration = [
     {
       id: 1,

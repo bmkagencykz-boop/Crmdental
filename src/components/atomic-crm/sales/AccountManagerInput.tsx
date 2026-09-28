@@ -26,7 +26,8 @@ export const AccountManagerInput = ({
     <ReferenceInput
       source={source}
       reference="sales"
-      filter={{ "disabled@neq": true }}
+      // The integrator (stage 25) is a technical account, never responsible
+      filter={{ "disabled@neq": true, "role@neq": "integrator" }}
       sort={{ field: "last_name", order: "ASC" }}
     >
       <AutocompleteInput
@@ -54,7 +55,11 @@ export const AccountManagerFilter = ({
     {
       pagination: { page: 1, perPage: MAX_DISPLAYED_SALES },
       sort: { field: "last_name", order: "ASC" },
-      filter: { "disabled@neq": true, "id@neq": identity?.id },
+      filter: {
+        "disabled@neq": true,
+        "id@neq": identity?.id,
+        "role@neq": "integrator",
+      },
     },
     { enabled: canAccess === true && identity?.id != null },
   );

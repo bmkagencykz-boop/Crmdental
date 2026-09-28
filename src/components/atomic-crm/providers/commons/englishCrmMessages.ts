@@ -3087,6 +3087,215 @@ export const englishCrmMessages = {
       deal: "Deal not found",
     },
   },
+  market: {
+    title: "Integrations",
+    nav: "Integrations",
+    settings_link: "Integrations marketplace",
+    search: "Search: WhatsApp, Sipuni, MIS…",
+    empty: "Nothing found. Try another word or category.",
+    filters: {
+      label: "Integration categories",
+      all: "All",
+      connected: "Connected",
+    },
+    categories: {
+      messengers: "Messengers",
+      telephony: "Telephony",
+      mis: "MIS",
+      leads: "Website and leads",
+      api: "API and webhooks",
+      import: "Import",
+      apps: "Developer apps",
+    },
+    badges: {
+      connected: "Connected",
+      available: "Available",
+      beta: "Beta",
+      coming: "Soon",
+    },
+    detail: {
+      vendor: "Vendor",
+      features: "What it does",
+      connect: "Connection",
+      disconnect: "Disconnect",
+      disconnect_title: "Disconnect “%{name}”?",
+      disconnect_content:
+        "The integration stops working. You can connect it again at any time.",
+      disconnected: "Integration disconnected",
+    },
+    coming: {
+      title: "Soon",
+      text: "The %{name} connector is in development. Leave a request and we will tell you when it can be connected.",
+      request: "Request",
+      requested: "Request sent",
+      request_sent: "Request received, we will let you know",
+    },
+    apps: {
+      register: "Register an app",
+      import: "Install from a manifest",
+      empty:
+        "No apps yet. An integrator can register their app or install it from a manifest exported in another clinic.",
+      hint: "An app works through the clinic API with the chosen scopes and receives events by webhook. Removing the app revokes its key.",
+      developer: "Developer",
+      website: "Website",
+      settings_url: "App settings",
+      open_settings: "Open the app settings",
+      scopes: "Scopes",
+      webhook: "Webhook",
+      no_webhook: "No webhook",
+      state: "Status",
+      installed_at: "Installed on %{date}",
+      not_installed: "Not installed",
+      install: "Install",
+      uninstall_content:
+        "The API key of the app is revoked and its webhooks are removed. You can install the app again at any time with a new key.",
+      export: "Export the manifest",
+      export_hint:
+        "Copy the JSON and install the same app in another clinic: Integrations → “Install from a manifest”.",
+      copy: "Copy",
+      copied: "Copied",
+      download: "Download",
+      edit: "Edit",
+      edit_title: "App",
+      delete: "Delete the app",
+      delete_title: "Delete “%{name}”?",
+      delete_content: "The app disappears from the catalog of the clinic.",
+      installed_title: "App installed",
+      installed_hint:
+        "Give the key and the webhook secret to the developer of the app. They are shown once.",
+      key: "API key of the app",
+      webhook_secret: "Webhook secret (HMAC signature)",
+      done: "Done",
+      key_badge: "App",
+      locked:
+        "The app is installed: uninstall it first to change its scopes or its webhook.",
+      form: {
+        title: "New app",
+        hint: "The app gets an API key with the chosen scopes and, if needed, a webhook with the events of the clinic.",
+        name: "Name",
+        slug: "Identifier",
+        slug_hint:
+          "Latin letters, the same in every clinic: a manifest updates the app by it",
+        description: "What the app does",
+        developer_name: "Developer",
+        developer_contact: "Developer contact",
+        website_url: "Website",
+        settings_url: "App settings address",
+        settings_url_hint:
+          "Optional: the page where the clinic sets the app up",
+        scopes: "Scopes",
+        webhook: "Webhook",
+        webhook_url: "Webhook address",
+        webhook_hint:
+          "Events are POSTed to the address with a signature. Needs the “Webhooks” scope.",
+        save: "Register",
+        errors: {
+          name: "Enter a name",
+          developer: "Enter the developer",
+          slug: "Identifier: latin letters, digits, “-” and “_”, 2 characters or more",
+          url: "Addresses must start with http:// or https://",
+          scopes: "Choose at least one scope",
+          webhook: "Events need a webhook address and the “Webhooks” scope",
+        },
+      },
+    },
+    manifest: {
+      title: "Install from a manifest",
+      hint: "Paste the JSON manifest of the app, review its scopes and install it: this is how one app goes to several clinics.",
+      check: "Check",
+      review: "The app will get these scopes:",
+      webhook: "Webhook %{url}: %{events}",
+      install: "Install",
+      errors: {
+        empty: "Paste the manifest",
+        json: "This is not JSON: check the brackets and quotes",
+        not_object: "A manifest is a JSON object { ... }",
+        version: "Unknown manifest version: %{version}",
+        id: "id: latin letters, digits, “-” and “_”, 2 characters or more",
+        name: "No name",
+        developer: "No developer (developer.name)",
+        url: "The %{field} address must start with http:// or https://",
+        scopes: "No scopes",
+        unknown_scopes: "Unknown scopes: %{scopes}",
+        unknown_events: "Unknown events: %{events}",
+        webhook: "webhook: needs a url and a list of events",
+        webhook_scope: "A webhook needs the “webhooks” scope",
+      },
+    },
+    scopes: {
+      deals_read: "Deals: read",
+      deals_write: "Deals: write",
+      patients_read: "Patients: read",
+      patients_write: "Patients: write",
+      messages_read: "Conversations: read",
+      messages_write: "Send messages",
+      tasks: "Tasks",
+      settings_read: "Settings: read",
+      settings_write: "Settings: write",
+      pipelines_write: "Pipelines and digital pipeline",
+      salesbot_write: "Salesbot",
+      webhooks: "Webhooks",
+    },
+    integrator: {
+      role: "Integrator",
+      role_hint:
+        "Technical account of an agency: sets up pipelines, automations, fields and integrations; only views deals and patients. Money reports and staff are not available to it.",
+      banner: "Technical integrator access until %{date}",
+      banner_unlimited: "Technical integrator access without end date",
+      banner_hint:
+        "Settings and integrations: full access; deals and patients: view only",
+      expires_at: "Access until",
+      expires_hint:
+        "Empty: no end date. After this date the account is disabled",
+      can_read_messages: "Access to conversations",
+      can_read_messages_hint:
+        "The integrator sees the texts of patient messages (e.g. to test a salesbot)",
+      until: "until %{date}",
+      no_access:
+        "Access closed: the account is disabled or the technical access expired",
+    },
+    errors: {
+      forbidden: "For the owner, the head and the integrator",
+      not_found: "Not found",
+      installed: "The app is already installed",
+      read_only: "The integrator only views deals and patients",
+    },
+    api_docs: {
+      title: "Configuring the clinic through the API",
+      intro:
+        "Methods for integrators: pipelines, stages, digital pipeline, fields, tasks and messages. Every method needs its own scope; an app key gets the scopes chosen when it is installed.",
+      scopes_text:
+        "An app key (Integrations → Developer apps) only works with its scopes: without the needed one a method answers 403 insufficient_scope. “Read” and “Read and write” keys work as before.",
+      messages_text:
+        'POST /api/messages puts the message in the auto-message queue: it is sent within a minute through the patient’s channel (Wazzup24 or the Telegram bot) and appears in the deal feed. Answer 202 { status: "queued" }.',
+      insufficient_scope: "the key lacks the scope of the method",
+      endpoints: {
+        get_account:
+          "The clinic: name, time zone, staff, pipelines with stages",
+        create_pipeline:
+          "New pipeline: name and stages [{ name, kind, color }] (without stages: “New lead”, “Won”, “Lost”)",
+        update_pipeline: "Update a pipeline: name, position, is_default",
+        list_stages: "Stages, filter pipeline_id",
+        create_stage:
+          "New stage: pipeline_id, name, kind (open, won, lost), color, script; without position, before the won and lost stages",
+        update_stage: "Update a stage: name, kind, color, position, script",
+        list_stage_triggers:
+          "Digital pipeline triggers, filters pipeline_id, stage_id",
+        create_stage_trigger:
+          "New trigger: stage_id, event, action and the fields of the action (as in the digital pipeline settings)",
+        update_stage_trigger: "Update a trigger: only the given fields change",
+        delete_stage_trigger: "Delete a trigger",
+        list_custom_fields: "Custom fields, filter entity (deal, patient)",
+        create_custom_field:
+          "New field: entity, name, type, options, required, show_on_card",
+        list_tasks: "Tasks: filters deal_id, done; page, per_page",
+        create_task:
+          "New task of a deal: deal_id, type, text, due_date; without sales_id, for the deal’s responsible",
+        list_messages: "Conversation of a deal: deal_id; page, per_page",
+        send_message: "Message to the patient of a deal: { deal_id, text }",
+      },
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

@@ -61,7 +61,7 @@ async function createSales({
   last_name: string;
   email: string;
   password: string;
-  role?: "owner" | "head" | "manager";
+  role?: "owner" | "head" | "manager" | "integrator";
 }) {
   // The handle_new_user trigger creates the clinic for the first user (its
   // owner) and attaches the next ones to it (app_metadata is set by the

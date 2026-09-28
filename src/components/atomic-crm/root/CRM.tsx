@@ -35,6 +35,7 @@ import { ImportPage } from "../import/ImportPage";
 import { ApiDocsPage } from "../pipeline-automation/ApiDocsPage";
 import { SalesbotEditorPage } from "../salesbot/SalesbotEditorPage";
 import { OnboardingPage } from "../onboarding/OnboardingPage";
+import { IntegrationsPage } from "../integrations/IntegrationsPage";
 import {
   CONFIGURATION_STORE_KEY,
   type ConfigurationContextValue,
@@ -227,6 +228,7 @@ const DesktopAdmin = (
           path={SalesbotEditorPage.path}
           element={<SalesbotEditorPage />}
         />
+        <Route path={IntegrationsPage.path} element={<IntegrationsPage />} />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />
@@ -262,6 +264,7 @@ const DesktopAdmin = (
       <Resource name="salesbots" />
       <Resource name="salesbot_sessions" />
       <Resource name="salesbot_logs" />
+      <Resource name="developer_apps" />
     </Admin>
   );
 };

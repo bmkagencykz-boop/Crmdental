@@ -33,7 +33,11 @@ async function getUser(email: string) {
   }
 
   const user = sales.data.find((sale) => sale.email === email);
-  if (!user || user.disabled) {
+  // An integrator whose access expired behaves as disabled (stage 25)
+  const expired =
+    user?.access_expires_at != null &&
+    new Date(user.access_expires_at).getTime() <= Date.now();
+  if (!user || user.disabled || expired) {
     return { ...DEFAULT_USER };
   }
   return user;
@@ -80,6 +84,9 @@ export const authProvider: AuthProvider = {
       id: user?.id ?? 0,
       fullName: user ? `${user.first_name} ${user.last_name}` : "Jane Doe",
       avatar: user?.avatar?.src,
+      // Integrator (stage 25): the banner shows the end of the access
+      role: user?.role,
+      access_expires_at: user?.access_expires_at ?? null,
     });
   },
   async getAuthorizationDetails() {

@@ -24,8 +24,10 @@ async function updateSaleDisabled(
 }
 
 // Roles an owner can give to an employee. There is exactly one owner per
-// organization: the person who signed the clinic up.
-const ASSIGNABLE_ROLES = ["head", "manager"] as const;
+// organization: the person who signed the clinic up. The integrator (stage
+// 25) is the technical account of an agency; its expiry and access to the
+// conversations are set by the owner with public.set_integrator_access.
+const ASSIGNABLE_ROLES = ["head", "manager", "integrator"] as const;
 type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
 
 const isAssignableRole = (role: unknown): role is AssignableRole =>

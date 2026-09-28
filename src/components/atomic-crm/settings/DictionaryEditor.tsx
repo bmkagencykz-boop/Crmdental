@@ -22,7 +22,12 @@ export const DictionaryEditor = ({
   resource,
   items,
 }: {
-  resource: "services" | "lead_sources" | "lost_reasons";
+  resource:
+    | "services"
+    | "lead_sources"
+    | "lost_reasons"
+    | "treatment_plan_types"
+    | "treatment_directions";
   items: Item[];
 }) => {
   const translate = useTranslate();

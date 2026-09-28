@@ -42,7 +42,7 @@ import {
   usePlanRights,
   usePlanStages,
   usePlanTypes,
-  usePlans,
+  usePlan,
 } from "./useTreatmentPlans";
 
 const tenge = (amount: number) => `${formatTenge(amount)} ₸`;
@@ -76,14 +76,15 @@ export const PlanPage = () => {
     resource: "treatment_plans",
     action: "list",
   });
+  const isNew = planId === "new";
+  const { data: plan, isPending } = usePlan(isNew ? undefined : planId);
+  // The patient of the plan (an old link may name another one)
+  const ownerId = plan?.patient_id ?? patientId;
   const { data: patient } = useGetOne<Patient>(
     "patients",
-    { id: patientId },
-    { enabled: !!patientId },
+    { id: ownerId },
+    { enabled: !!ownerId },
   );
-  const { data: plans = [], isPending } = usePlans({ patient_id: patientId });
-  const plan = plans.find((p) => String(p.id) === String(planId));
-  const isNew = planId === "new";
 
   const patientName =
     patientDisplayName(patient) || translate("crm.deals.untitled");
@@ -115,7 +116,7 @@ export const PlanPage = () => {
         </Link>
         <span aria-hidden>/</span>
         <Link
-          to={`/patients/${patientId}/show`}
+          to={`/patients/${ownerId}/show`}
           className="text-muted-foreground no-underline hover:text-foreground"
         >
           {patientName}
@@ -130,7 +131,7 @@ export const PlanPage = () => {
       ) : plan ? (
         <PlanEditorBody
           key={String(plan.id)}
-          patientId={patientId}
+          patientId={String(ownerId)}
           plan={plan}
         />
       ) : null}

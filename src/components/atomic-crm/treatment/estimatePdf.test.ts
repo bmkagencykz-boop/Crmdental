@@ -125,6 +125,46 @@ describe("buildEstimatePdf", () => {
     );
     expect(pdf.match(/\/Type \/Page\b/g)?.length).toBeGreaterThan(1);
   });
+
+  it("prints the stages with their names, doctors and deadlines (stage 34)", () => {
+    const keys: string[] = [];
+    const spy = (key: string, options: Record<string, unknown> = {}) => {
+      keys.push(key);
+      return translate(key, options);
+    };
+    const bytes = buildEstimatePdf(
+      {
+        ...data,
+        plan: { ...data.plan, discount_percent: 10, discount_amount: 0 },
+        items: data.items.map((i) => ({ ...i, stage_id: i.stage_no })),
+        stages: [
+          {
+            id: 1,
+            position: 1,
+            status: "new",
+            discount_percent: 5,
+            name: "Хирургия",
+            doctor: "Ахметова Айгуль",
+            deadline: "2026-10-15",
+          },
+          {
+            id: 2,
+            position: 2,
+            status: "cancelled",
+            discount_percent: 0,
+            name: "Отменённый",
+          },
+        ],
+      },
+      fonts,
+      spy,
+    );
+    expect(bytes.length).toBeGreaterThan(5000);
+    expect(keys).toContain("plan_editor.pdf.deadline");
+    expect(keys).toContain("plan_editor.pdf.stage_discount");
+    expect(keys).toContain("plan_editor.totals.extra_discount");
+    expect(keys).toContain("plan_editor.totals.total_with_discount");
+  });
 });
 
 describe("estimate helpers", () => {

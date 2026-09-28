@@ -37,6 +37,20 @@ export const usePlans = (filter: {
     { enabled: filter.deal_id != null || filter.patient_id != null },
   );
 
+/** One plan with its totals, by its id (the plan page) */
+export const usePlan = (planId: Identifier | undefined) => {
+  const { data, ...rest } = useGetList<TreatmentPlanSummary>(
+    "treatment_plans_summary",
+    {
+      filter: { id: planId },
+      pagination: { page: 1, perPage: 1 },
+      sort: { field: "id", order: "ASC" },
+    },
+    { enabled: planId != null },
+  );
+  return { ...rest, data: data?.[0] };
+};
+
 export const usePlanItems = (planId: Identifier | undefined) =>
   useGetList<TreatmentPlanItem>(
     "treatment_plan_items",

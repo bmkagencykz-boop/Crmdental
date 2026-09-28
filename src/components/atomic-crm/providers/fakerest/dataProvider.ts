@@ -122,6 +122,8 @@ import { createTreatmentDemo } from "./treatmentPlans";
 import { createSearchDemo } from "./search";
 import { createMarketingDemo } from "./marketing";
 import { createAccessRightsDemo } from "./accessRights";
+import { createBranchesDemo } from "./branches";
+import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
   db?: Db;
@@ -148,6 +150,7 @@ const DEAL_VIEW_COLUMNS = [
   "last_message_at",
   "last_message_text",
   "doctor_name",
+  "branch_name",
   "prepayment_amount",
   "last_activity_at",
   "next_task_text",
@@ -344,12 +347,19 @@ export const createDataProvider = ({
     all,
     currentSalesId: () => currentSalesId(),
   });
+  // Branches (stage 33)
+  const branchesDemo = createBranchesDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+  });
   // Access rights (stage 30)
   const accessDemo = createAccessRightsDemo({
     baseDataProvider,
     all,
     currentSalesId: () => currentSalesId(),
     logAudit: (row) => logAudit(row),
+    myBranchIds: () => branchesDemo.myBranchIds(),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -685,16 +695,25 @@ export const createDataProvider = ({
   };
 
   const dealsSummary = async () => {
-    const [deals, stages, patients, tasks, messages, doctors, payments] =
-      await Promise.all([
-        all<Deal>("deals"),
-        all<Stage>("stages"),
-        all<Patient>("patients"),
-        all<Task>("tasks"),
-        all<Message>("messages"),
-        all<Doctor>("doctors"),
-        all<DealPayment>("deal_payments"),
-      ]);
+    const [
+      deals,
+      stages,
+      patients,
+      tasks,
+      messages,
+      doctors,
+      payments,
+      branches,
+    ] = await Promise.all([
+      all<Deal>("deals"),
+      all<Stage>("stages"),
+      all<Patient>("patients"),
+      all<Task>("tasks"),
+      all<Message>("messages"),
+      all<Doctor>("doctors"),
+      all<DealPayment>("deal_payments"),
+      all<Branch>("branches"),
+    ]);
     const kind = new Map(stages.map((stage) => [stage.id, stage.kind]));
     const patientsById = new Map(patients.map((p) => [p.id, p]));
     const doctorsById = new Map(doctors.map((d) => [d.id, d]));
@@ -734,6 +753,11 @@ export const createDataProvider = ({
             ? (doctorsById.get(deal.doctor_id)?.name ?? null)
             : null,
         consultation_amount: deal.consultation_amount ?? null,
+        // Branches (stage 33)
+        branch_id: deal.branch_id ?? null,
+        branch_name:
+          branches.find((b) => String(b.id) === String(deal.branch_id))?.name ??
+          null,
         prepayment_amount: payments
           .filter((p) => p.deal_id === deal.id && p.kind === "prepayment")
           .reduce((sum, p) => sum + Number(p.amount), 0),
@@ -830,6 +854,7 @@ export const createDataProvider = ({
     ...searchDemo.methods,
     ...marketingDemo.methods,
     ...accessDemo.methods,
+    ...branchesDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -982,13 +1007,20 @@ export const createDataProvider = ({
       const [settings] = await all<OrganizationSettings>(
         "organization_settings",
       );
+      // Among the chosen employees of the deal's branch (stage 33)
+      const candidates = settings?.lead_distribution_sales_ids.length
+        ? settings.lead_distribution_sales_ids
+        : (await all<Sale>("sales"))
+            .filter((sale) => !sale.disabled)
+            .map((sale) => sale.id);
       const takesLead =
         deal.sales_id == null &&
         settings?.lead_distribution === "first_response" &&
-        (!settings.lead_distribution_sales_ids.length ||
-          settings.lead_distribution_sales_ids.some(
-            (id) => String(id) === String(data.sales_id),
-          ));
+        branchPool(
+          candidates,
+          deal.branch_id,
+          await branchesDemo.salesBranches(),
+        ).some((id) => String(id) === String(data.sales_id));
       if (!deal.first_response_at || takesLead) {
         await dataProvider.update("deals", {
           id: deal.id,
@@ -1495,6 +1527,7 @@ export const createDataProvider = ({
         "services",
         "lost_reasons",
         "doctors",
+        "sales_branches",
       ] as const;
       const rows = await Promise.all(resources.map((r) => all<any>(r)));
       return computeReport(
@@ -1746,6 +1779,8 @@ export const createDataProvider = ({
       ...marketplaceDemo.callbacks,
       // Before the deal rules: the source of a deal comes from its utm_source
       ...marketingDemo.callbacks,
+      // Branches (stage 33): the branch of a deal, a task, a visit
+      ...branchesDemo.callbacks,
       ...mailingDemo.callbacks,
       ...listPlanDemo.callbacks,
       ...onboardingDemo.callbacks,

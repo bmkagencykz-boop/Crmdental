@@ -11,6 +11,8 @@ import { DealTable } from "./DealTable";
 import { SavedFiltersBar } from "./SavedFiltersBar";
 import { useDealFilters } from "./useDealFilters";
 import { SORTED_FILTER } from "../../unsorted/unsorted";
+import { branchFilter } from "../../branches/branches";
+import { useCurrentBranch } from "../../branches/useBranches";
 
 export const DEAL_LIST_STORE_KEY = "deals.list";
 export const DEAL_COLUMNS_STORE_KEY = "deals.list.columns";
@@ -34,6 +36,8 @@ export const DealListView = ({
   exporter?: Exporter;
 }) => {
   const filters = useDealFilters({});
+  // Branches (stage 33): the branch chosen in the top bar
+  const { currentId: branchId } = useCurrentBranch();
   return (
     <List<Deal>
       resource="deals"
@@ -41,7 +45,7 @@ export const DealListView = ({
       storeKey={DEAL_LIST_STORE_KEY}
       perPage={50}
       sort={{ field: "created_at", order: "DESC" }}
-      filter={PERMANENT_FILTER}
+      filter={{ ...PERMANENT_FILTER, ...branchFilter(branchId) }}
       filters={filters}
       actions={actions}
       exporter={exporter}

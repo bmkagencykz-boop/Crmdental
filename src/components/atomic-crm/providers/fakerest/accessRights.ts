@@ -43,6 +43,7 @@ export const createAccessRightsDemo = ({
   all,
   currentSalesId,
   logAudit,
+  myBranchIds = async () => [],
 }: {
   baseDataProvider: DataProvider;
   all: <T>(resource: string) => Promise<T[]>;
@@ -50,6 +51,8 @@ export const createAccessRightsDemo = ({
   logAudit: (
     row: Omit<AuditLogEntry, "id" | "at" | "sales_id" | "source">,
   ) => Promise<unknown>;
+  /** The branches of the signed-in employee (stage 33, «Мой филиал») */
+  myBranchIds?: () => Promise<Identifier[]>;
 }) => {
   const visibility = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0]
@@ -66,17 +69,34 @@ export const createAccessRightsDemo = ({
   };
   const myRights = async () => {
     const sale = await me();
-    return { sale, rights: await matrixOf(sale) };
+    return {
+      sale,
+      rights: await matrixOf(sale),
+      branches: await myBranchIds(),
+    };
   };
 
-  /** Same as the USING clauses: may the employee act on the row */
+  /**
+   * Same as the USING clauses: may the employee act on the row (its
+   * responsible and, for «Мой филиал», its branch)
+   */
   const allowed = (
     rights: AccessMatrix,
     entity: AccessEntity,
     action: "view" | "edit" | "delete",
     responsible: Identifier | null | undefined,
     salesId: Identifier | undefined,
-  ) => inScope(rights[entity][action] as AccessScope, responsible, salesId);
+    branch?: {
+      id: Identifier | null | undefined;
+      mine: Identifier[];
+    },
+  ) =>
+    inScope(
+      rights[entity][action] as AccessScope,
+      responsible,
+      salesId,
+      branch ? { id: branch.id ?? null, mine: branch.mine } : undefined,
+    );
 
   /** Same as the patients policy: own, of an own deal, of a visible deal */
   const patientAllowed = (
@@ -106,10 +126,15 @@ export const createAccessRightsDemo = ({
   };
 
   /** Filters of the views and lists (the select policies) */
-  const filterDeals = async <T extends Pick<Deal, "sales_id">>(list: T[]) => {
-    const { sale, rights } = await myRights();
+  const filterDeals = async <T extends Pick<Deal, "sales_id" | "branch_id">>(
+    list: T[],
+  ) => {
+    const { sale, rights, branches } = await myRights();
     return list.filter((deal) =>
-      allowed(rights, "deals", "view", deal.sales_id, sale?.id),
+      allowed(rights, "deals", "view", deal.sales_id, sale?.id, {
+        id: deal.branch_id,
+        mine: branches,
+      }),
     );
   };
   const filterPatients = async <T extends Pick<Patient, "id" | "sales_id">>(
@@ -123,7 +148,7 @@ export const createAccessRightsDemo = ({
     );
   };
   const filterTasks = async (list: Task[]) => {
-    const { sale, rights } = await myRights();
+    const { sale, rights, branches } = await myRights();
     const visible = new Set(
       (await filterDeals(await all<Deal>("deals"))).map((deal) =>
         String((deal as Deal).id),
@@ -132,7 +157,10 @@ export const createAccessRightsDemo = ({
     return list.filter(
       (task) =>
         visible.has(String(task.deal_id)) &&
-        allowed(rights, "tasks", "view", task.sales_id, sale?.id),
+        allowed(rights, "tasks", "view", task.sales_id, sale?.id, {
+          id: task.branch_id,
+          mine: branches,
+        }),
     );
   };
 
@@ -167,10 +195,14 @@ export const createAccessRightsDemo = ({
     action: "edit" | "delete",
     id: Identifier,
   ) => {
-    const { sale, rights } = await myRights();
+    const { sale, rights, branches } = await myRights();
     if (rights[entity][action] === "all") return;
     const [row] = (
-      await all<{ id: Identifier; sales_id?: Identifier | null }>(entity)
+      await all<{
+        id: Identifier;
+        sales_id?: Identifier | null;
+        branch_id?: Identifier | null;
+      }>(entity)
     ).filter((r) => same(r.id, id));
     if (!row) return;
     const ok =
@@ -182,7 +214,10 @@ export const createAccessRightsDemo = ({
             await all<Deal>("deals"),
             sale?.id,
           )
-        : allowed(rights, entity, action, row.sales_id, sale?.id);
+        : allowed(rights, entity, action, row.sales_id, sale?.id, {
+            id: row.branch_id,
+            mine: branches,
+          });
     if (!ok) throw forbidden();
   };
 
@@ -204,6 +239,7 @@ export const createAccessRightsDemo = ({
         role,
         rights: accessMatrix(role, row?.rights, await visibility()),
         customized: !!row && isConfigurable(role),
+        branch_ids: await myBranchIds(),
       };
     },
     /** Same as public.save_access_rights: the owner only */

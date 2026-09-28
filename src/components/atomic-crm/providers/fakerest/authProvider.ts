@@ -90,7 +90,13 @@ export const authProvider: AuthProvider = {
       localUser.role === "head" || localUser.role === "manager"
         ? await myRights.get()
         : null;
-    return canAccess(localUser.role, params, rights?.rights, localUser.id);
+    return canAccess(
+      localUser.role,
+      params,
+      rights?.rights,
+      localUser.id,
+      rights?.branch_ids,
+    );
   },
   getIdentity: () => {
     const userItem = localStorage.getItem(USER_STORAGE_KEY);

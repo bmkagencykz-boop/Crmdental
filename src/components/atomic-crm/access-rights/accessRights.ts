@@ -22,7 +22,16 @@ export const ACCESS_ACTIONS = [
   "export",
 ] as const;
 export type AccessAction = (typeof ACCESS_ACTIONS)[number];
-export type AccessScope = "all" | "own_and_unassigned" | "own" | "none";
+/**
+ * «branch» («Мой филиал», stage 33): own rows, rows of the employee's
+ * branches and rows without a branch (deals and tasks)
+ */
+export type AccessScope =
+  | "all"
+  | "branch"
+  | "own_and_unassigned"
+  | "own"
+  | "none";
 /** The cells of the matrix: the three entities, and the reports toggle */
 export type AccessCell =
   | { entity: AccessEntity; action: AccessAction }
@@ -53,6 +62,8 @@ export type MyAccessRights = {
   role: SaleRole;
   rights: AccessMatrix;
   customized: boolean;
+  /** The branches the employee works in (stage 33) */
+  branch_ids?: Identifier[];
 };
 
 type Visibility = OrganizationSettings["manager_deal_visibility"];
@@ -70,7 +81,10 @@ export const accessScopes = (
     return null;
   }
   if (action === "create") return ["all", "none"];
-  if (entity === "deals") return ["all", "own_and_unassigned", "own", "none"];
+  if (entity === "deals") {
+    return ["all", "branch", "own_and_unassigned", "own", "none"];
+  }
+  if (entity === "tasks") return ["all", "branch", "own", "none"];
   return ["all", "own", "none"];
 };
 
@@ -220,17 +234,30 @@ export const cleanOverrides = (rights: unknown): AccessOverrides => {
  * Whether a row with this responsible is in a scope for the employee `me`
  * (the USING clauses of the policies). Patients: the server also counts
  * the patients of the employee's deals, the interface cannot: «own» lets
- * the action through and the database decides.
+ * the action through and the database decides. «Мой филиал»: `branch` is
+ * the row's branch and the employee's branches; without it (a record that
+ * does not carry its branch) the action is let through, the database
+ * decides.
  */
 export const inScope = (
   scope: AccessScope,
   responsibleId: Identifier | null | undefined,
   me: Identifier | null | undefined,
+  branch?: {
+    id: Identifier | null | undefined;
+    mine: Identifier[] | null | undefined;
+  },
 ) => {
   if (scope === "all") return true;
   if (scope === "none") return false;
   const mine =
     responsibleId != null && me != null && String(responsibleId) === String(me);
+  if (scope === "branch") {
+    if (mine || !branch || branch.id === undefined || branch.id === null) {
+      return true;
+    }
+    return (branch.mine ?? []).some((id) => String(id) === String(branch.id));
+  }
   return mine || (scope === "own_and_unassigned" && responsibleId == null);
 };
 
@@ -252,8 +279,12 @@ export const rightsAllow = (
   rights: AccessMatrix,
   resource: string,
   action: string,
-  record?: { sales_id?: Identifier | null } | null,
+  record?: {
+    sales_id?: Identifier | null;
+    branch_id?: Identifier | null;
+  } | null,
   me?: Identifier | null,
+  myBranches?: Identifier[] | null,
 ): boolean | undefined => {
   if (resource === "reports") {
     return rights.reports.view === "all";
@@ -264,7 +295,10 @@ export const rightsAllow = (
   const checked = (scope: AccessScope) => {
     if (scope === "none") return false;
     if (!record || entity === "patients") return true;
-    return inScope(scope, record.sales_id, me);
+    return inScope(scope, record.sales_id, me, {
+      id: record.branch_id,
+      mine: myBranches,
+    });
   };
   switch (action) {
     case "list":
@@ -288,15 +322,24 @@ export const rightsAllow = (
 };
 
 /**
- * The rows an employee may export: all of them, or only their own
- * (client-side CSV of what they see; the export scope «own»).
+ * The rows an employee may export: all of them, only their own, or those of
+ * their branches (client-side CSV of what they see; the export scope).
  */
-export const exportableRows = <T extends { sales_id?: Identifier | null }>(
+export const exportableRows = <
+  T extends { sales_id?: Identifier | null; branch_id?: Identifier | null },
+>(
   rows: T[],
   scope: AccessScope,
   me: Identifier | null | undefined,
+  myBranches?: Identifier[] | null,
 ): T[] => {
   if (scope === "all") return rows;
-  // Patients «own»: the responsible only (their deals are not loaded here)
-  return rows.filter((row) => inScope(scope, row.sales_id, me));
+  // Patients «own»: the responsible only (their deals are not loaded here);
+  // «Мой филиал»: a row without a branch, or of one of the employee's
+  return rows.filter((row) =>
+    inScope(scope, row.sales_id, me, {
+      id: row.branch_id ?? null,
+      mine: myBranches ?? [],
+    }),
+  );
 };

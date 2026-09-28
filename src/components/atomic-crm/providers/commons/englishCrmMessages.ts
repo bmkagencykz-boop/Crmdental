@@ -3927,6 +3927,74 @@ export const englishCrmMessages = {
       denied: "You have no right to do this",
     },
   },
+  // Branches (stage 33)
+  branches: {
+    scope: "My branch",
+    switcher: {
+      label: "Branch",
+      all: "All branches",
+    },
+    reports: {
+      filter: "Branch",
+    },
+    deal: {
+      field: "Branch",
+      none: "No branch",
+    },
+    audit: {
+      entity: "Branch",
+      fields: {
+        address: "Address",
+        phone: "Phone",
+      },
+    },
+    errors: {
+      forbidden: "Only the owner and the head manage the branches",
+    },
+    settings: {
+      section: "Branches",
+      hint: "Addresses of the clinic network: staff, doctors, chairs and lead channels per branch.",
+      single_hint:
+        "While one branch is active everything looks as before. The branch switcher, the deal's «Branch» field and the report filter appear with the second branch.",
+      list: "Branches",
+      list_hint:
+        "A switched-off branch is hidden from the pickers. A branch with deals cannot be deleted — switch it off.",
+      empty: "No branches: the clinic works at one address.",
+      name: "Name",
+      address: "Address",
+      phone: "Phone",
+      active: "Active",
+      new_name: "New branch",
+      add: "Add a branch",
+      in_use:
+        "The branch has deals or visits — switch it off instead of deleting it",
+      staff: "Staff",
+      staff_hint:
+        "Where an employee works: the leads of a branch are distributed among its staff, the right «My branch» opens the deals and tasks of their branches.",
+      employee: "Employee",
+      all_branches: "All branches",
+      resources: "Doctors and chairs",
+      resources_hint:
+        "The schedule of a branch shows its doctors and chairs and the shared ones («All branches»).",
+      doctors: "Doctors",
+      chairs: "Chairs",
+      leads: "Where the leads land",
+      leads_hint:
+        "A new deal from a channel lands in its branch. Without a branch the deal belongs to the whole network.",
+      no_channels: "No messenger channel is connected yet.",
+      forms_hint:
+        "Website forms: send a branch field with the branch's name (or number) — the lead lands in that branch.",
+      calls_hint:
+        "Calls: when the PBX sends the number that was called, the call lands in the branch with that phone; else in the branch of the employee who answered.",
+      assign: "Attach to a branch",
+      assign_hint:
+        "Deals and visits without a branch (e.g. created before the second address opened) move to the chosen branch.",
+      assign_button: "Attach the deals without a branch",
+      assign_confirm:
+        "Every deal and visit without a branch moves to the chosen branch. Continue?",
+      assigned: "Attached: %{deals} deals, %{visits} visits",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

@@ -14,6 +14,8 @@ import { AddTask } from "./AddTask";
 import type { CalendarView } from "./calendarLayout";
 import { Task } from "./Task";
 import { TaskCalendar } from "./TaskCalendar";
+import { branchFilter } from "../branches/branches";
+import { useCurrentBranch } from "../branches/useBranches";
 import { isDueToday, isOverdue } from "./tasksPredicate";
 
 export type TasksTab = "today" | "overdue" | "open" | "done";
@@ -74,12 +76,16 @@ export const TasksPage = () => {
     { enabled: !!canSeeStaff },
   );
 
-  const salesFilter =
-    owner === "me"
+  // Branches (stage 33): the tasks of the deals of the chosen branch
+  const { currentId: branchId } = useCurrentBranch();
+  const salesFilter = {
+    ...(owner === "me"
       ? { sales_id: identity?.id }
       : owner === "all"
         ? {}
-        : { sales_id: owner };
+        : { sales_id: owner }),
+    ...branchFilter(branchId),
+  };
   const done = tab === "done";
   const { data: tasks = [], isPending } = useGetList<TaskRecord>(
     "tasks",

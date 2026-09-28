@@ -32,6 +32,8 @@ export type ReportFilters = {
   sales_id?: Identifier | null;
   source_id?: Identifier | null;
   doctor_id?: Identifier | null;
+  /** Branch (stage 33): the deals of that branch */
+  branch_id?: Identifier | null;
 };
 
 export type ReportData = {
@@ -47,6 +49,8 @@ export type ReportData = {
   services: Service[];
   lost_reasons: LostReason[];
   doctors?: Doctor[];
+  /** Who works in which branch (stage 33): the speed report of a branch */
+  sales_branches?: Array<{ sales_id: Identifier; branch_id: Identifier }>;
   /** Clinic time zone: the dates of the payments are local dates */
   timeZone?: string;
 };
@@ -257,7 +261,7 @@ export const dealProgress = (
   data: ReportData,
   filters: Pick<
     ReportFilters,
-    "pipeline_id" | "sales_id" | "source_id" | "doctor_id"
+    "pipeline_id" | "sales_id" | "source_id" | "doctor_id" | "branch_id"
   >,
 ): DealProgress[] => {
   const stagesById = new Map(data.stages.map((s) => [String(s.id), s]));
@@ -284,7 +288,9 @@ export const dealProgress = (
         (filters.sales_id == null || same(deal.sales_id, filters.sales_id)) &&
         (filters.source_id == null ||
           same(deal.source_id, filters.source_id)) &&
-        (filters.doctor_id == null || same(deal.doctor_id, filters.doctor_id)),
+        (filters.doctor_id == null ||
+          same(deal.doctor_id, filters.doctor_id)) &&
+        (filters.branch_id == null || same(deal.branch_id, filters.branch_id)),
     )
     .map((deal) => {
       const stage = stagesById.get(String(deal.stage_id));
@@ -519,6 +525,8 @@ export const speedReport = (
       continue;
     if (filters.doctor_id != null && !same(deal.doctor_id, filters.doctor_id))
       continue;
+    if (filters.branch_id != null && !same(deal.branch_id, filters.branch_id))
+      continue;
     const sorted = [...rows].sort(
       (a, b) =>
         time(a.created_at) - time(b.created_at) || Number(a.id) - Number(b.id),
@@ -595,12 +603,20 @@ export const speedReport = (
             ),
         ).length,
         _disabled: !!sale.disabled,
+        // A branch: its employees, and the others with activity in it
+        _in_branch:
+          filters.branch_id == null ||
+          (data.sales_branches ?? []).some(
+            (row) =>
+              same(row.sales_id, sale.id) &&
+              same(row.branch_id, filters.branch_id),
+          ),
         _last_name: sale.last_name ?? "",
       };
     })
     .filter(
       (row) =>
-        !row._disabled ||
+        (!row._disabled && row._in_branch) ||
         row.deals +
           row.tasks_created +
           row.tasks_done +
@@ -615,7 +631,7 @@ export const speedReport = (
         (r) => num(r.id),
       ),
     )
-    .map(({ _disabled, _last_name, ...row }) => row);
+    .map(({ _disabled, _in_branch, _last_name, ...row }) => row);
 
   return {
     first_response: {

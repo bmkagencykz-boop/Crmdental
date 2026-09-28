@@ -20,6 +20,7 @@ import { generateSchedule } from "./schedule";
 import { generateTreatmentPlans } from "./treatmentPlans";
 import { generateMarketing } from "./marketing";
 import { generateAccessRights } from "./accessRights";
+import { generateBranches } from "./branches";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -50,6 +51,8 @@ export default (): Db => {
   generateMarketing(db);
   // Last: the price list is appended to the services the other data uses
   generateTreatmentPlans(db);
+  // Branches (stage 33): after the deals, the tasks and the visits
+  generateBranches(db);
   db.configuration = [
     {
       id: 1,

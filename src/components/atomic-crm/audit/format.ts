@@ -126,6 +126,7 @@ export const AUDIT_ENTITY_GROUPS = {
     "salesbot",
     "service",
     "ad_spend",
+    "branch",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -263,7 +264,10 @@ const accessRightsChange = (field: string, translate: Translate) => {
         : translate(
             entity === "reports" || action === "create"
               ? `access_rights.scopes.${value === "all" ? "yes" : "no"}`
-              : `access_rights.scopes.${value}`,
+              : // «Мой филиал» (stage 33)
+                value === "branch"
+                ? "branches.scope"
+                : `access_rights.scopes.${value}`,
             { _: String(value) },
           ),
   };
@@ -316,8 +320,10 @@ export const describeAuditChanges = (
         special?.label ??
         translate(`audit.fields.${field}`, {
           _: translate(`treatment.audit.fields.${field}`, {
-            // Ad spend (stage 32)
-            _: translate(`marketing.audit.fields.${field}`, { _: field }),
+            // Ad spend (stage 32), branches (stage 33)
+            _: translate(`marketing.audit.fields.${field}`, {
+              _: translate(`branches.audit.fields.${field}`, { _: field }),
+            }),
           }),
         });
       const format = (value: unknown) =>
@@ -391,13 +397,15 @@ export const auditEntityLabel = (
           ? translate("mis_connectors.audit.entity")
           : entry.entity === "ad_spend"
             ? translate("marketing.audit.entity")
-            : SCHEDULE_ENTITIES.includes(entry.entity)
-              ? translate(`schedule.audit.${entry.entity}`)
-              : TREATMENT_ENTITIES.includes(entry.entity)
-                ? translate(`treatment.audit.${entry.entity}`)
-                : translate(`audit.entities.${entry.entity}`, {
-                    _: entry.entity,
-                  });
+            : entry.entity === "branch"
+              ? translate("branches.audit.entity")
+              : SCHEDULE_ENTITIES.includes(entry.entity)
+                ? translate(`schedule.audit.${entry.entity}`)
+                : TREATMENT_ENTITIES.includes(entry.entity)
+                  ? translate(`treatment.audit.${entry.entity}`)
+                  : translate(`audit.entities.${entry.entity}`, {
+                      _: entry.entity,
+                    });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {

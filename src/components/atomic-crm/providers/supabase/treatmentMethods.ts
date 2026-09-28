@@ -32,6 +32,7 @@ export const getTreatmentMethods = () => ({
         filter_sales_id: filters.sales_id ?? null,
         filter_source_id: filters.source_id ?? null,
         filter_doctor_id: filters.doctor_id ?? null,
+        filter_branch_id: filters.branch_id ?? null,
       },
     );
     if (error) throw error;

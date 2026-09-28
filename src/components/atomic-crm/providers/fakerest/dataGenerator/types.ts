@@ -1,4 +1,5 @@
 import type { AdSpend } from "../../../marketing/types";
+import type { Branch, SalesBranch } from "../../../branches/branches";
 import type { Identifier } from "ra-core";
 import type { DeveloperApp } from "../../../integrations/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
@@ -154,4 +155,7 @@ export interface Db {
   treatment_plan_items: TreatmentPlanItem[];
   // Marketing analytics (stage 32)
   ad_spend: AdSpend[];
+  // Branches (stage 33)
+  branches: Branch[];
+  sales_branches: SalesBranch[];
 }

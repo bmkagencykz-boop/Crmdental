@@ -72,6 +72,8 @@ import {
 } from "./useSchedule";
 import { VisitDialog, type VisitDraft } from "./VisitDialog";
 import { StatusGlyph } from "./StatusGlyph";
+import { inBranch } from "../branches/branches";
+import { useCurrentBranch } from "../branches/useBranches";
 
 const useNow = () => {
   const [now, setNow] = useState(() => new Date());
@@ -129,7 +131,18 @@ export const SchedulePage = () => {
   const { data: doctors } = useDoctors();
   const { data: chairs } = useChairs();
   const { data: services } = useServices();
-  const resources = groupBy === "doctor" ? doctors : chairs;
+  // Branches (stage 33): the doctors and chairs of the chosen branch and
+  // the shared ones; colors stay those of the whole clinic
+  const { currentId: branchId } = useCurrentBranch();
+  const branchDoctors = useMemo(
+    () => inBranch(doctors, branchId),
+    [doctors, branchId],
+  );
+  const branchChairs = useMemo(
+    () => inBranch(chairs, branchId),
+    [chairs, branchId],
+  );
+  const resources = groupBy === "doctor" ? branchDoctors : branchChairs;
   const activeResources = resources.filter((item) => item.is_active);
   const selectedId =
     params.get("id") ??
@@ -165,7 +178,11 @@ export const SchedulePage = () => {
     () => zonedMoment(addDays(days[days.length - 1], 1), 0, timeZone),
     [days, timeZone],
   );
-  const { data: visits } = useVisits(from, to);
+  const { data: allVisits } = useVisits(from, to);
+  const visits = useMemo(
+    () => inBranch(allVisits, branchId),
+    [allVisits, branchId],
+  );
   const busy = useScheduleBusy(from, to);
   const { data: exceptions } = useDoctorExceptions(
     days[0],
@@ -333,7 +350,7 @@ export const SchedulePage = () => {
       color: doctor ? doctorColor(doctor, doctors) : column.color,
     };
   };
-  const shownDoctors = doctors.filter(
+  const shownDoctors = branchDoctors.filter(
     (doctor) => doctor.is_active && !hiddenDoctors.includes(String(doctor.id)),
   ).length;
 
@@ -480,9 +497,11 @@ export const SchedulePage = () => {
           ) : null}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {view === "day" && groupBy === "doctor" && doctors.length > 0 ? (
+          {view === "day" &&
+          groupBy === "doctor" &&
+          branchDoctors.length > 0 ? (
             <DoctorFilter
-              doctors={doctors.filter((doctor) => doctor.is_active)}
+              doctors={branchDoctors.filter((doctor) => doctor.is_active)}
               hidden={hiddenDoctors}
               onChange={setHiddenDoctors}
               label={translate("schedule.toolbar.doctors_shown", {
@@ -608,7 +627,8 @@ export const SchedulePage = () => {
           <p className="px-4 py-6 text-sm text-muted-foreground">
             {translate(
               groupBy === "doctor"
-                ? view === "day" && doctors.some((doctor) => doctor.is_active)
+                ? view === "day" &&
+                  branchDoctors.some((doctor) => doctor.is_active)
                   ? "schedule.grid.all_hidden"
                   : "schedule.grid.no_doctors"
                 : "schedule.grid.no_chairs",

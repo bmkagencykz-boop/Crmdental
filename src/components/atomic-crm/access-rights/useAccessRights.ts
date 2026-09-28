@@ -32,10 +32,12 @@ export const useExportScope = (entity: AccessEntity) => {
   const { data } = useMyAccessRights();
   const scope: AccessScope = data?.rights[entity].export ?? "all";
   const me = data?.sales_id;
+  const myBranches = data?.branch_ids;
   const restrict = useCallback(
-    <T extends { sales_id?: Identifier | null }>(rows: T[]): T[] =>
-      exportableRows(rows, scope, me),
-    [scope, me],
+    <T extends { sales_id?: Identifier | null; branch_id?: Identifier | null }>(
+      rows: T[],
+    ): T[] => exportableRows(rows, scope, me, myBranches),
+    [scope, me, myBranches],
   );
   return { canExport: scope !== "none", scope, restrict };
 };

@@ -188,6 +188,8 @@ export type Doctor = {
   visit_minutes?: number | null;
   /** Color of the schedule column, "#RRGGBB" (null: by position) */
   color?: string | null;
+  /** Branch (stage 33); null: works in every branch */
+  branch_id?: Identifier | null;
 } & Pick<RaRecord, "id">;
 
 /** Custom fields (stage 19), «Дополнительные поля» of deals and patients */
@@ -264,6 +266,10 @@ export type Deal = {
   utm_term?: string | null;
   referrer?: string | null;
   landing_page?: string | null;
+  /** Branch the patient goes to (stage 33); null: the whole network */
+  branch_id?: Identifier | null;
+  /** deals_summary: the branch's name */
+  branch_name?: string | null;
   // deals_summary
   stage_kind?: StageKind;
   patient_first_name?: string | null;
@@ -340,6 +346,8 @@ export type MessengerChannel = {
   transport: MessengerTransport;
   name?: string | null;
   state?: string | null;
+  /** New leads of the channel land in this branch (stage 33) */
+  branch_id?: Identifier | null;
 } & Pick<RaRecord, "id">;
 
 export type MessengerStatus = {
@@ -635,6 +643,8 @@ export type Task = {
   duration_minutes?: number | null;
   /** «Результат», written when the task is completed */
   result?: string | null;
+  /** The branch of the task's deal, kept by the database (stage 33) */
+  branch_id?: Identifier | null;
 } & Pick<RaRecord, "id">;
 
 export type ActivityPatientCreated = {

@@ -50,6 +50,7 @@ import { getMailingMethods } from "./mailingMethods";
 import { getFileMethods, uploadToDealFolder } from "./fileMethods";
 import { getTreatmentMethods } from "./treatmentMethods";
 import { getMarketingMethods } from "./marketingMethods";
+import { getBranchMethods } from "./branchMethods";
 import { getUnsortedMethods } from "./unsortedMethods";
 import { getListPlanMethods } from "./listPlanMethods";
 import { applyTaskStateFilter } from "../../deals/list/dealFilters";
@@ -132,6 +133,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getSearchMethods(),
     // Marketing analytics (stage 32)
     ...getMarketingMethods(),
+    // Branches (stage 33)
+    ...getBranchMethods(),
     // Access rights (stage 30)
     ...getAccessRightsMethods(),
     async getList(resource: string, params: GetListParams) {
@@ -562,6 +565,7 @@ const getDataProviderWithCustomMethods = () => {
         filter_sales_id: filters.sales_id ?? null,
         filter_source_id: filters.source_id ?? null,
         filter_doctor_id: filters.doctor_id ?? null,
+        filter_branch_id: filters.branch_id ?? null,
       });
       if (error) throw error;
       return data as ReportResult[Name];
@@ -781,6 +785,7 @@ const DEAL_VIEW_COLUMNS = [
   "prepayment_amount",
   "last_activity_at",
   "next_task_text",
+  "branch_name",
 ];
 
 const withoutKeys = <T extends Record<string, any>>(data: T, keys: string[]) =>

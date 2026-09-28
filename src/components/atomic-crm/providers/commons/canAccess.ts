@@ -30,7 +30,8 @@ type CanAccessParams<
  * Access rights (stage 30): for a head or a manager, the deals, patients,
  * tasks, their export and the reports follow the employee's matrix
  * (`rights`, from public.my_access_rights) when it is given; `me` is the
- * employee's id, to check the scope «own» against a record.
+ * employee's id, to check the scope «own» against a record; `myBranches`
+ * the branches they work in, for «Мой филиал» (stage 33).
  */
 export const canAccess = <
   RecordType extends Record<string, any> = Record<string, any>,
@@ -39,6 +40,7 @@ export const canAccess = <
   params: CanAccessParams<RecordType>,
   rights?: AccessMatrix | null,
   me?: Identifier | null,
+  myBranches?: Identifier[] | null,
 ) => {
   if (role === "owner") {
     return true;
@@ -55,6 +57,7 @@ export const canAccess = <
       params.action,
       params.record,
       me,
+      myBranches,
     );
     if (allowed !== undefined) return allowed;
   }
@@ -72,6 +75,11 @@ export const canAccess = <
   // Only the owner manages the staff; heads can see it (e.g. to filter deals)
   if (params.resource === "sales") {
     return role === "head" && ["list", "show"].includes(params.action);
+  }
+
+  // Branches (stage 33): the owner and the head manage the dictionary
+  if (params.resource === "branches") {
+    return role === "head" || ["list", "show"].includes(params.action);
   }
 
   // Access rights (stage 30): the owner edits them, the head reads them

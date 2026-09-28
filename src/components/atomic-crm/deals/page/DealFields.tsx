@@ -17,6 +17,8 @@ import { formatMoney } from "../kanbanFormat";
 import { InlineField } from "./InlineField";
 import { DealCustomFields } from "../../custom-fields/DealCustomFields";
 import { useDealUpdate } from "./useDealUpdate";
+import { branchChoices, branchName } from "../../branches/branches";
+import { useBranches } from "../../branches/useBranches";
 
 export const formatDateTime = (value?: string | null) =>
   value
@@ -53,6 +55,8 @@ export const DealFields = ({ deal }: { deal: Deal }) => {
   const { data: pipelines } = usePipelines();
   const { data: stages } = useStages();
   const { data: doctors } = useDoctors();
+  // Branches (stage 33): the field appears from the second branch on
+  const { branches, enabled: branchesOn } = useBranches();
   const { data: sales = [] } = useGetList<Sale>("sales", {
     filter: { "disabled@neq": true },
     sort: { field: "last_name", order: "ASC" },
@@ -83,6 +87,23 @@ export const DealFields = ({ deal }: { deal: Deal }) => {
         }}
         onSave={(sales_id) => save({ sales_id: sales_id as Deal["sales_id"] })}
       />
+      {branchesOn || deal.branch_id != null ? (
+        <InlineField
+          label={translate("branches.deal.field")}
+          value={deal.branch_id}
+          display={
+            branchName(branches, deal.branch_id) ?? deal.branch_name ?? null
+          }
+          editor={{
+            kind: "select",
+            choices: branchChoices(branches, deal.branch_id),
+            emptyLabel: translate("branches.deal.none"),
+          }}
+          onSave={(branch_id) =>
+            save({ branch_id: branch_id as Deal["branch_id"] })
+          }
+        />
+      ) : null}
       <InlineField
         label={field("doctor_id")}
         value={deal.doctor_id}

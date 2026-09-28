@@ -40,6 +40,7 @@ import { SalesbotSettings } from "../salesbot/SalesbotSettings";
 import { ChairsEditor, ScheduleSettings } from "../schedule/ScheduleSettings";
 import { PriceListEditor } from "../treatment/PriceListEditor";
 import { AccessRightsSettings } from "../access-rights/AccessRightsSettings";
+import { BranchesSettings } from "../branches/BranchesSettings";
 
 const SECTIONS = [
   "pipelines",
@@ -65,6 +66,7 @@ const SECTIONS = [
   "access",
   "access_rights",
   "clinic",
+  "branches",
   "duplicates",
   "import",
   "mis",
@@ -106,7 +108,7 @@ const GROUPS: { id: string; sections: Section[] }[] = [
   { id: "patients", sections: ["recalls", "duplicates", "import"] },
   {
     id: "clinic",
-    sections: ["clinic", "access", "access_rights", "api", "mis"],
+    sections: ["clinic", "branches", "access", "access_rights", "api", "mis"],
   },
 ];
 // Every employee manages their own quick replies; the rest is for the owner
@@ -117,35 +119,37 @@ const isSection = (value: string | null): value is Section =>
 
 /** Some sections keep their texts in their own namespaces */
 const sectionLabel = (section: Section, kind: "title" | "hint") =>
-  section === "access_rights"
-    ? `access_rights.settings.${kind === "title" ? "section" : "hint"}`
-    : section === "schedule" || section === "chairs"
-      ? `schedule.settings.sections.${section}.${kind}`
-      : section === "services"
-        ? `treatment.price_list.${kind === "title" ? "section" : "hint"}`
-        : section === "salesbots"
-          ? `salesbot.${kind === "title" ? "section" : "hint"}`
-          : section === "custom_fields"
-            ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
-            : section === "pipeline_automation" || section === "api"
-              ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-              : section === "quick_replies"
-                ? `quick_replies.${kind}`
-                : section === "automessages" ||
-                    section === "recalls" ||
-                    section === "doctors" ||
-                    section === "unsorted" ||
-                    section === "duplicates"
-                  ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
-                  : section === "leads"
-                    ? `leads.${kind === "title" ? "section" : "hint"}`
-                    : section === "import" || section === "mis"
-                      ? `${section}.${kind}`
-                      : section === "telephony"
-                        ? `telephony.${kind === "title" ? "section" : "hint"}`
-                        : section === "response"
-                          ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
-                          : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
+  section === "branches"
+    ? `branches.settings.${kind === "title" ? "section" : "hint"}`
+    : section === "access_rights"
+      ? `access_rights.settings.${kind === "title" ? "section" : "hint"}`
+      : section === "schedule" || section === "chairs"
+        ? `schedule.settings.sections.${section}.${kind}`
+        : section === "services"
+          ? `treatment.price_list.${kind === "title" ? "section" : "hint"}`
+          : section === "salesbots"
+            ? `salesbot.${kind === "title" ? "section" : "hint"}`
+            : section === "custom_fields"
+              ? `custom_fields.settings.${kind === "title" ? "section" : "hint"}`
+              : section === "pipeline_automation" || section === "api"
+                ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+                : section === "quick_replies"
+                  ? `quick_replies.${kind}`
+                  : section === "automessages" ||
+                      section === "recalls" ||
+                      section === "doctors" ||
+                      section === "unsorted" ||
+                      section === "duplicates"
+                    ? `${section}.settings.${kind === "title" ? "section" : "hint"}`
+                    : section === "leads"
+                      ? `leads.${kind === "title" ? "section" : "hint"}`
+                      : section === "import" || section === "mis"
+                        ? `${section}.${kind}`
+                        : section === "telephony"
+                          ? `telephony.${kind === "title" ? "section" : "hint"}`
+                          : section === "response"
+                            ? `notifications.settings.${kind === "title" ? "section" : "hint"}`
+                            : `crm.settings.${kind === "title" ? "sections" : "hints"}.${section}`;
 
 /**
  * Clinic settings (spec §4.7): pipelines and stages, dictionaries, access
@@ -179,7 +183,13 @@ export const SettingsPage = () => {
     resource: "access_rights",
     action: "list",
   });
+  // Branches (stage 33): the owner and the head
+  const { canAccess: canManageBranches } = useCanAccess({
+    resource: "branches",
+    action: "edit",
+  });
   const hidden: Section[] = [
+    ...(canManageBranches ? [] : (["branches"] as const)),
     ...(canSeeRights ? [] : (["access_rights"] as const)),
     ...(canImport ? [] : (["import"] as const)),
     ...(canMerge ? [] : (["duplicates"] as const)),
@@ -317,6 +327,7 @@ export const SettingsPage = () => {
         {section === "access" ? <AccessSettings /> : null}
         {section === "access_rights" ? <AccessRightsSettings /> : null}
         {section === "clinic" ? <ClinicSettings /> : null}
+        {section === "branches" ? <BranchesSettings /> : null}
         {section === "import" ? <ImportWizard /> : null}
         {section === "mis" ? <MisSettings /> : null}
       </Panel>

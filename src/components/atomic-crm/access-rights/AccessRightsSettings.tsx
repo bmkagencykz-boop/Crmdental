@@ -27,6 +27,7 @@ import {
   type AccessScope,
 } from "./accessRights";
 import { ACCESS_RIGHTS_KEY, MY_ACCESS_RIGHTS_KEY } from "./useAccessRights";
+import { useBranches } from "../branches/useBranches";
 
 type Draft = { matrix: AccessMatrix; settings: boolean };
 // Stable empty lists: the draft is reset when its sources change
@@ -365,7 +366,11 @@ const ScopeSelect = ({
   onChange: (scope: AccessScope) => void;
 }) => {
   const translate = useTranslate();
-  const scopes = accessScopes(entity, action) ?? [];
+  // «Мой филиал» (stage 33): offered from the second branch on
+  const { enabled: branchesOn } = useBranches();
+  const scopes = (accessScopes(entity, action) ?? []).filter(
+    (scope) => scope !== "branch" || branchesOn || value === "branch",
+  );
   const binary = scopes.length === 2;
   return (
     <select
@@ -380,7 +385,9 @@ const ScopeSelect = ({
           {translate(
             binary
               ? `access_rights.scopes.${scope === "all" ? "yes" : "no"}`
-              : `access_rights.scopes.${scope}`,
+              : scope === "branch"
+                ? "branches.scope"
+                : `access_rights.scopes.${scope}`,
           )}
         </option>
       ))}

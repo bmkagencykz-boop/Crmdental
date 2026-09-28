@@ -164,7 +164,13 @@ export const getAuthProvider = (): AuthProvider => {
         sale.role === "head" || sale.role === "manager"
           ? await myRights.get()
           : null;
-      return canAccess(sale.role, params, rights?.rights, sale.id);
+      return canAccess(
+        sale.role,
+        params,
+        rights?.rights,
+        sale.id,
+        rights?.branch_ids,
+      );
     },
     getAuthorizationDetails(authorizationId: string) {
       return getSupabaseClient().auth.oauth.getAuthorizationDetails(

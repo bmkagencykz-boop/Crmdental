@@ -64,6 +64,8 @@ export type ReportFilterState = {
   sales_id?: string | null;
   source_id?: string | null;
   doctor_id?: string | null;
+  /** Branch (stage 33) */
+  branch_id?: string | null;
 };
 
 const startOfLocalDay = (date: string) => {
@@ -98,5 +100,6 @@ export const toReportFilters = (
     sales_id: state.sales_id || null,
     source_id: state.source_id || null,
     doctor_id: state.doctor_id || null,
+    branch_id: state.branch_id || null,
   };
 };

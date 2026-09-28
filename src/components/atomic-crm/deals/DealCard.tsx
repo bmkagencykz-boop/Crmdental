@@ -22,6 +22,7 @@ import {
   useCustomFields,
   useCustomValueText,
 } from "../custom-fields/useCustomFields";
+import { useBranches } from "../branches/useBranches";
 
 export const DealCard = ({ deal, index }: { deal: Deal; index: number }) => {
   // The integrator (stage 25) only reads the deals: no drag; the access
@@ -68,6 +69,8 @@ export const DealCardContent = ({
     .map((id) => allTags?.find((tag) => tag.id === id))
     .filter((tag) => tag != null);
   const translate = useTranslate();
+  // Branches (stage 33): the branch of the deal, from the second branch on
+  const { enabled: branchesOn } = useBranches();
   const redirect = useRedirect();
   const handleClick = () => {
     redirect(`/deals/${deal.id}/show`, undefined, undefined, undefined, {
@@ -152,6 +155,16 @@ export const DealCardContent = ({
             >
               {" · "}
               {deal.doctor_name}
+            </span>
+          ) : null}
+          {branchesOn && deal.branch_name ? (
+            <span
+              className="text-[11px]"
+              title={translate("branches.deal.field")}
+              data-branch
+            >
+              {" · "}
+              {deal.branch_name}
             </span>
           ) : null}
         </p>

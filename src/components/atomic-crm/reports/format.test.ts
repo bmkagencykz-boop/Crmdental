@@ -39,6 +39,7 @@ describe("toReportFilters", () => {
       sales_id: null,
       source_id: null,
       doctor_id: null,
+      branch_id: null,
     });
     expect(toReportFilters({ period: "all" }, now).from).toBeNull();
   });
@@ -62,6 +63,7 @@ describe("toReportFilters", () => {
       sales_id: null,
       source_id: null,
       doctor_id: "3",
+      branch_id: null,
     });
   });
 });

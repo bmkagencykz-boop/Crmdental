@@ -30,6 +30,8 @@ export type Visit = {
   created_at?: string;
   updated_at?: string;
   status_changed_at?: string | null;
+  /** Branch (stage 33): of the chair, else the doctor, else the deal */
+  branch_id?: Identifier | null;
 };
 
 /** Dictionary «Кресла» */
@@ -38,6 +40,8 @@ export type Chair = {
   name: string;
   is_active: boolean;
   position: number;
+  /** Branch (stage 33); null: shared by every branch */
+  branch_id?: Identifier | null;
 };
 
 /** "09:00" … "18:00" */

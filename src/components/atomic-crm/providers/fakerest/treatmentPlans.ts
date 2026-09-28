@@ -403,6 +403,12 @@ export const createTreatmentDemo = ({
         ) {
           continue;
         }
+        if (
+          filters.branch_id != null &&
+          !same(deal.branch_id, filters.branch_id)
+        ) {
+          continue;
+        }
         for (const item of items.filter((i) => same(i.plan_id, plan.id))) {
           const name =
             services.find((s) => same(s.id, item.service_id))?.name ??

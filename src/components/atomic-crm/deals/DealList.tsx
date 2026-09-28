@@ -30,6 +30,8 @@ import { useDealFilters } from "./list/useDealFilters";
 import { customFieldsExporter } from "../custom-fields/exporters";
 import { useScopedExporter } from "../access-rights/useAccessRights";
 import { SORTED_FILTER } from "../unsorted/unsorted";
+import { branchFilter } from "../branches/branches";
+import { useCurrentBranch } from "../branches/useBranches";
 
 const dealExporter = customFieldsExporter("deal");
 
@@ -52,6 +54,8 @@ export const useCurrentPipeline = () => {
 const DealList = () => {
   const { identity } = useGetIdentity();
   const { current } = useCurrentPipeline();
+  // Branches (stage 33): the branch chosen in the top bar
+  const { currentId: branchId } = useCurrentBranch();
   const [view] = useStore<DealView>(DEAL_VIEW_STORE_KEY, "kanban");
   const filters = useDealFilters({ pipelineId: current?.id });
   // Access rights (stage 30): the export scope «own» keeps own deals
@@ -80,6 +84,7 @@ const DealList = () => {
             "archived_at@is": null,
             ...SORTED_FILTER,
             pipeline_id: current.id,
+            ...branchFilter(branchId),
           }}
           title={false}
           exporter={exporter}

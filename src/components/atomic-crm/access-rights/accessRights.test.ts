@@ -19,7 +19,15 @@ describe("access rights: scopes and defaults", () => {
   it("knows the scopes of every cell", () => {
     expect(accessScopes("deals", "view")).toEqual([
       "all",
+      "branch",
       "own_and_unassigned",
+      "own",
+      "none",
+    ]);
+    // «Мой филиал» (stage 33): deals and tasks, not the shared patients
+    expect(accessScopes("tasks", "edit")).toEqual([
+      "all",
+      "branch",
       "own",
       "none",
     ]);

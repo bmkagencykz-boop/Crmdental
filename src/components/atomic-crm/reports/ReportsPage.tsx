@@ -30,6 +30,8 @@ import {
 import { RecallsTab } from "../mailings/RecallsTab";
 import { SalesPlanTab } from "./SalesPlanTab";
 import { MarketingTab } from "../marketing/MarketingTab";
+import { activeBranches } from "../branches/branches";
+import { useCurrentBranch } from "../branches/useBranches";
 
 const TABS = [
   "conversion",
@@ -52,9 +54,21 @@ export const ReportsPage = () => {
     resource: "reports",
     action: "list",
   });
-  const [state, setState] = useStore<ReportFilterState>("reports.filters", {
+  const [stored, setState] = useStore<ReportFilterState>("reports.filters", {
     period: "month",
   });
+  // Branches (stage 33): the report's own branch filter, the top bar's
+  // branch until one is chosen here; none while the clinic has one branch
+  const { enabled: branchesOn, currentId: branchId } = useCurrentBranch();
+  const state = useMemo<ReportFilterState>(
+    () =>
+      !branchesOn
+        ? { ...stored, branch_id: null }
+        : stored.branch_id === undefined
+          ? { ...stored, branch_id: branchId == null ? null : String(branchId) }
+          : stored,
+    [stored, branchesOn, branchId],
+  );
   const [tab, setTab] = useStore<(typeof TABS)[number]>(
     "reports.tab",
     "conversion",
@@ -140,6 +154,7 @@ const ReportFiltersBar = ({
   const { data: pipelines } = usePipelines();
   const { data: sources } = useLeadSources();
   const { data: doctors } = useDoctors();
+  const { branches, enabled: branchesOn } = useCurrentBranch();
   const { data: sales = [] } = useGetList<Sale>("sales", {
     pagination: { page: 1, perPage: 200 },
     sort: { field: "last_name", order: "ASC" },
@@ -231,6 +246,18 @@ const ReportFiltersBar = ({
           value={state.doctor_id}
           choices={doctors.map((d) => ({ id: String(d.id), name: d.name }))}
           onChange={(doctor_id) => set({ doctor_id })}
+        />
+      )}
+      {sourceOnly || !branchesOn ? null : (
+        <ChoiceFilter
+          label={translate("branches.reports.filter")}
+          allLabel={translate("branches.switcher.all")}
+          value={state.branch_id}
+          choices={activeBranches(branches).map((b) => ({
+            id: String(b.id),
+            name: b.name,
+          }))}
+          onChange={(branch_id) => set({ branch_id })}
         />
       )}
     </div>

@@ -57,10 +57,11 @@ const list = async <T>(dataProvider: CrmDataProvider, resource: string) =>
   ).data as T[];
 
 describe("demo access rights", () => {
-  it("has two administrators with narrowed rights", async () => {
+  it("has two administrators with narrowed rights (and one of a branch)", async () => {
     const { db, dataProvider } = setup();
     const rows = await dataProvider.getAccessRights();
-    expect(rows).toHaveLength(2);
+    // Stage 33: the employee of «Филиал на Абая» has «Мой филиал»
+    expect(rows).toHaveLength(3);
     expect(db.sales.some((s) => s.email === DEMO_RESTRICTED_EMAIL)).toBe(true);
     expect(db.sales.some((s) => s.email === DEMO_REPORTS_EMAIL)).toBe(true);
   }, 60_000);

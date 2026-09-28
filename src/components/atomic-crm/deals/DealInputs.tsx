@@ -23,6 +23,8 @@ import { PatientInput } from "../patients/PatientInput";
 import { CustomFieldInputs } from "../custom-fields/CustomFieldInputs";
 import { AccountManagerInput } from "../sales/AccountManagerInput";
 import type { Deal } from "../types";
+import { branchChoices } from "../branches/branches";
+import { useCurrentBranch } from "../branches/useBranches";
 
 /**
  * Fields of a deal (spec §3): patient, pipeline and stage, source, service,
@@ -54,6 +56,7 @@ export const DealInputs = () => {
       <section className="flex flex-col gap-4">
         <SectionTitle>{translate("crm.deals.sections.pipeline")}</SectionTitle>
         <PipelineAndStageInputs />
+        <BranchInput />
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">
             {translate("resources.deals.fields.sales_id")}
@@ -95,6 +98,27 @@ const ServiceAndSourceInputs = () => {
         helperText={false}
       />
     </div>
+  );
+};
+
+/**
+ * The branch the patient goes to (stage 33), from the second branch on; a
+ * new deal starts in the branch chosen in the top bar
+ */
+const BranchInput = () => {
+  const translate = useTranslate();
+  const { branches, enabled, currentId } = useCurrentBranch();
+  const branchId = useWatch({ name: "branch_id" });
+  if (!enabled && branchId == null) return null;
+  return (
+    <SelectInput
+      source="branch_id"
+      label={translate("branches.deal.field")}
+      choices={branchChoices(branches, branchId)}
+      defaultValue={currentId ?? undefined}
+      emptyText="branches.deal.none"
+      helperText={false}
+    />
   );
 };
 

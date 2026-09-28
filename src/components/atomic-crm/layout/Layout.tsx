@@ -17,6 +17,7 @@ import { OnboardingMenuItem } from "../onboarding/OnboardingCard";
 import { IntegratorBanner } from "../integrations/IntegratorBanner";
 import { GlobalSearch, useRecentTracker } from "../search/GlobalSearch";
 import { GlobalShortcuts, ShortcutsButton } from "../search/Shortcuts";
+import { BranchSwitcher } from "../branches/BranchSwitcher";
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
@@ -41,6 +42,8 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             <GlobalSearch />
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {/* Branches (stage 33): only for a clinic with 2+ branches */}
+            <BranchSwitcher />
             <ShortcutsButton />
             <NotificationBell />
             <ThemeToggle />

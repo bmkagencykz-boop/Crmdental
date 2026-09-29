@@ -22,6 +22,7 @@ import {
   usePaymentRights,
   useRefreshMoney,
 } from "./usePayments";
+import { CountUp } from "../misc/CountUp";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const thisMonth = () => {
@@ -115,7 +116,7 @@ export const ExpensesTab = ({ onExpense }: { onExpense?: () => void }) => {
             className="mt-auto text-[48px] leading-none font-light tracking-[-0.04em] tabular-nums"
             data-testid="expenses-total"
           >
-            {money(total)}
+            <CountUp>{money(total)}</CountUp>
           </p>
           <Sphere3D tone="soft" size={96} style={{ right: -18, top: -18 }} />
         </section>

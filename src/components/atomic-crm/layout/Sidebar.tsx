@@ -15,6 +15,7 @@ import { CanAccess, useTranslate, useUserMenu } from "ra-core";
 import { Link, matchPath, useLocation, useNavigate } from "react-router";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { NavTooltip } from "./NavTooltip";
 
 import { ChangelogPage } from "../misc/ChangelogPage";
 import {
@@ -160,26 +161,27 @@ const BackButton = () => {
   const translate = useTranslate();
   const navigate = useNavigate();
   return (
-    <button
-      type="button"
-      onClick={() => navigate(-1)}
-      className="flex size-12 items-center justify-center rounded-full bg-card text-foreground transition-colors hover:bg-pill"
-      aria-label={translate("ra.action.back")}
-      title={translate("ra.action.back")}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        className="size-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
+    <NavTooltip label={translate("ra.action.back")}>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="press flex size-12 items-center justify-center rounded-full bg-card text-foreground hover:bg-pill"
+        aria-label={translate("ra.action.back")}
       >
-        <path d="M19 12H5M11 6l-6 6 6 6" />
-      </svg>
-    </button>
+        <svg
+          viewBox="0 0 24 24"
+          className="size-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M19 12H5M11 6l-6 6 6 6" />
+        </svg>
+      </button>
+    </NavTooltip>
   );
 };
 
@@ -187,45 +189,42 @@ const BackButton = () => {
 const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
   const Icon = item.icon;
   return (
-    <Link
-      to={item.to}
-      aria-current={active ? "page" : undefined}
-      title={item.label}
-      className="group relative flex items-center no-underline outline-none"
+    <NavTooltip
+      label={item.label}
+      hint={item.badge ? item.badgeLabel : undefined}
     >
-      <span
-        className={cn(
-          "relative flex size-12 items-center justify-center rounded-full transition-colors duration-200 group-focus-visible:ring-2 group-focus-visible:ring-ring",
-          active
-            ? "bg-primary text-primary-foreground"
-            : "bg-card text-foreground group-hover:bg-pill",
-        )}
+      <Link
+        to={item.to}
+        aria-current={active ? "page" : undefined}
+        className="group relative flex items-center no-underline outline-none"
       >
-        <Icon className="size-[1.3rem]" />
-        {item.badge ? (
-          <span
-            className={cn(
-              "absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ring-2 ring-background",
-              item.badgeAccent
-                ? "bg-neon text-neon-ink"
-                : "bg-foreground text-background",
-            )}
-            data-testid="nav-badge"
-            title={item.badgeLabel}
-            aria-hidden
-          >
-            {item.badge > 99 ? "99+" : item.badge}
-          </span>
-        ) : null}
-      </span>
-      <span className="sr-only">{item.label}</span>
-      <span
-        className="pointer-events-none absolute left-full z-50 ml-3 hidden rounded-full bg-foreground px-3 py-1.5 text-xs font-medium whitespace-nowrap text-background shadow-soft group-hover:block"
-        aria-hidden
-      >
-        {item.label}
-      </span>
-    </Link>
+        <span
+          className={cn(
+            "press relative flex size-12 items-center justify-center rounded-full group-hover:scale-[1.06] group-focus-visible:ring-2 group-focus-visible:ring-ring",
+            active
+              ? "bg-primary text-primary-foreground"
+              : "bg-card text-foreground group-hover:bg-pill",
+          )}
+        >
+          <Icon className="size-[1.3rem]" />
+          {item.badge ? (
+            <span
+              className={cn(
+                "absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ring-2 ring-background",
+                item.badgeAccent
+                  ? "animate-soft-ping bg-neon text-neon-ink"
+                  : "bg-foreground text-background",
+              )}
+              data-testid="nav-badge"
+              aria-hidden
+            >
+              {item.badge > 99 ? "99+" : item.badge}
+            </span>
+          ) : null}
+        </span>
+        <span className="sr-only">{item.label}</span>
+      </Link>
+    </NavTooltip>
   );
 };
 

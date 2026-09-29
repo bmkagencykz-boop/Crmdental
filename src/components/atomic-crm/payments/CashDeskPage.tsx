@@ -40,6 +40,7 @@ import {
   type PatientAccount,
 } from "./types";
 import { money, usePaymentRights, useRefreshMoney } from "./usePayments";
+import { CountUp } from "../misc/CountUp";
 
 const TABS = ["day", "expenses", "debtors", "shifts"] as const;
 type Tab = (typeof TABS)[number];
@@ -310,7 +311,7 @@ const DayTab = () => {
             data-testid="cash-net"
           >
             <span className="text-[52px] leading-none font-light tracking-[-0.04em] tabular-nums">
-              {value}
+              <CountUp>{value}</CountUp>
             </span>
             <span className="text-lg font-light">{unit}</span>
           </p>
@@ -495,7 +496,7 @@ const ShiftCard = ({ className }: { className?: string }) => {
             {translate("payments.shift.expected")}
           </p>
           <p className="text-[36px] leading-none font-light tracking-[-0.04em] tabular-nums">
-            {money(expected ?? shift.opening_cash)}
+            <CountUp>{money(expected ?? shift.opening_cash)}</CountUp>
           </p>
           <Button
             className="mt-auto"
@@ -735,7 +736,7 @@ const DebtorsTab = () => {
           className="mt-auto pt-10 text-[52px] leading-none font-light tracking-[-0.04em] tabular-nums"
           data-testid="debt-total"
         >
-          {money(totalDebt)}
+          <CountUp>{money(totalDebt)}</CountUp>
         </p>
         <p className="mt-3 text-sm opacity-80">
           {translate("payments.debtors.hint")}

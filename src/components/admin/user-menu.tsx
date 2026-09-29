@@ -16,6 +16,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type UserMenuProps = {
   children?: React.ReactNode;
@@ -51,19 +56,31 @@ export function UserMenu({ children }: UserMenuProps) {
   return (
     <UserMenuContext.Provider value={{ onClose: handleClose }}>
       <DropdownMenu open={open} onOpenChange={handleToggleOpen}>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label={translate("ra.auth.user_menu")}
-            title={identity?.fullName}
-            className="flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={translate("ra.auth.user_menu")}
+                className="flex items-center rounded-full outline-none transition-transform duration-200 hover:scale-[1.06] focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+              >
+                <Avatar className="size-12">
+                  <AvatarImage src={identity?.avatar} role="presentation" />
+                  <AvatarFallback>
+                    {identity?.fullName?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            sideOffset={10}
+            className="rounded-2xl bg-foreground px-3.5 py-2 text-[13px] text-background [&>span]:hidden"
           >
-            <Avatar className="size-12">
-              <AvatarImage src={identity?.avatar} role="presentation" />
-              <AvatarFallback>{identity?.fullName?.charAt(0)}</AvatarFallback>
-            </Avatar>
-          </button>
-        </DropdownMenuTrigger>
+            {identity?.fullName ?? translate("ra.auth.user_menu")}
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenuContent
           className="w-56"
           align="end"

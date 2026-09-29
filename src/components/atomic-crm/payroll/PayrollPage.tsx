@@ -33,6 +33,7 @@ import {
 } from "./usePayroll";
 import { employeeKey, monthLabel, monthTotals, topLines } from "./payrollMath";
 import type { PayrollEmployee } from "./types";
+import { CountUp } from "../misc/CountUp";
 
 /**
  * «Зарплаты» (stage 39): a card per doctor and employee for the month —
@@ -104,7 +105,7 @@ export const PayrollPage = () => {
               data-testid="payroll-total"
             >
               <span className="text-[52px] leading-none font-light tracking-[-0.04em] tabular-nums">
-                {money(totals.accrued).replace(" ₸", "")}
+                <CountUp>{money(totals.accrued).replace(" ₸", "")}</CountUp>
               </span>
               <span className="text-lg font-light">₸</span>
             </p>
@@ -183,7 +184,7 @@ const SummaryTile = ({
       {label}
     </h2>
     <p className="mt-auto text-[40px] leading-none font-light tracking-[-0.04em] tabular-nums">
-      {value}
+      <CountUp>{value}</CountUp>
     </p>
   </section>
 );

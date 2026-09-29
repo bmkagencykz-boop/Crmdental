@@ -27,6 +27,7 @@ import {
   showBrowserNotification,
 } from "./browserNotifications";
 import { useNotificationPreferences } from "./useNotificationPreferences";
+import { NavTooltip } from "../layout/NavTooltip";
 
 /** Same rhythm as the inbox: the bell asks the database every 20 seconds */
 const POLL_INTERVAL = 20_000;
@@ -111,28 +112,37 @@ export const NotificationBell = () => {
   const label = translate("notifications.bell.label");
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="relative flex size-12 items-center justify-center rounded-full bg-card text-foreground transition-colors hover:bg-pill"
-          aria-label={
-            unread
-              ? `${label}: ${translate("notifications.bell.unread", { smart_count: unread })}`
-              : label
-          }
-          title={label}
-        >
-          <Bell className="size-5" />
-          {unread ? (
-            <span
-              className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background"
-              data-testid="notifications-badge"
-            >
-              {unread > 99 ? "99+" : unread}
-            </span>
-          ) : null}
-        </button>
-      </PopoverTrigger>
+      <NavTooltip
+        side="bottom"
+        label={label}
+        hint={
+          unread
+            ? translate("notifications.bell.unread", { smart_count: unread })
+            : undefined
+        }
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="press relative flex size-12 items-center justify-center rounded-full bg-card text-foreground hover:bg-pill"
+            aria-label={
+              unread
+                ? `${label}: ${translate("notifications.bell.unread", { smart_count: unread })}`
+                : label
+            }
+          >
+            <Bell className="size-5" />
+            {unread ? (
+              <span
+                className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 animate-in zoom-in-50 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background"
+                data-testid="notifications-badge"
+              >
+                {unread > 99 ? "99+" : unread}
+              </span>
+            ) : null}
+          </button>
+        </PopoverTrigger>
+      </NavTooltip>
       <PopoverContent align="end" className="w-96 p-0">
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="text-sm font-semibold">{label}</h2>

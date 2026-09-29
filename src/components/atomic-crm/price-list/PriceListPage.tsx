@@ -23,6 +23,7 @@ import { ServiceDialog } from "./ServiceDialog";
 import { isPriceListEmpty, STARTER_PRICE_LIST } from "./starterPriceList";
 import { usePriceList, usePriceListWrites } from "./usePriceList";
 import { usePriceListFiles } from "./usePriceListFiles";
+import { CountUp } from "../misc/CountUp";
 
 /**
  * «Прайс» (stage 35): the price list of the clinic as a section of its own,
@@ -330,7 +331,7 @@ const Summary = ({
           className="absolute -top-3 right-2 h-32 opacity-95"
         />
         <span className="relative text-[44px] leading-none font-light tracking-[-0.04em] tabular-nums">
-          {active.length}
+          <CountUp>{active.length}</CountUp>
         </span>
         <span className="relative mt-1 text-sm">
           {translate("price_list.stats.services")}
@@ -342,7 +343,7 @@ const Summary = ({
           className="flex min-h-36 flex-col justify-end rounded-[28px] bg-card p-6"
         >
           <span className="text-[44px] leading-none font-light tracking-[-0.04em] tabular-nums">
-            {value}
+            <CountUp>{value}</CountUp>
           </span>
           <span className="mt-1 text-sm text-muted-foreground">{label}</span>
         </div>

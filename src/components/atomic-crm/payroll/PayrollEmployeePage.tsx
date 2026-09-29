@@ -47,6 +47,7 @@ import type {
   PayrollEmployee,
   PayrollLine,
 } from "./types";
+import { CountUp } from "../misc/CountUp";
 
 /**
  * The payroll of one doctor or employee for a month: the scheme, the
@@ -264,7 +265,7 @@ const Totals = ({ employee }: { employee: PayrollEmployee }) => {
             className="text-[40px] leading-none font-light tracking-[-0.04em] tabular-nums"
             data-testid="payroll-employee-accrued"
           >
-            {money(employee.accrued)}
+            <CountUp>{money(employee.accrued)}</CountUp>
           </p>
         </div>
         <div className="relative z-10 text-right">

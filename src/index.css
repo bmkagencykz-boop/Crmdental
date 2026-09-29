@@ -261,3 +261,143 @@ body {
     overscroll-behavior-y: none;
   }
 }
+
+/* Motion: pages slide in, cards rise one after another, charts grow, the
+   buttons answer the hand. Off for «reduce motion» and for automated
+   browsers (html.no-motion, see misc/motion.ts) */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes soft-ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--neon) 70%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@utility animate-page-in {
+  animation: page-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@utility animate-rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  &:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  &:nth-child(3) {
+    animation-delay: 100ms;
+  }
+  &:nth-child(4) {
+    animation-delay: 150ms;
+  }
+  &:nth-child(5) {
+    animation-delay: 200ms;
+  }
+  &:nth-child(6) {
+    animation-delay: 250ms;
+  }
+  &:nth-child(n + 7) {
+    animation-delay: 300ms;
+  }
+}
+@utility animate-grow-y {
+  transform-origin: bottom;
+  animation: grow-y 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@utility animate-grow-x {
+  transform-origin: left;
+  animation: grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@utility animate-draw {
+  stroke-dasharray: 1;
+  animation: draw 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s both;
+}
+@utility animate-soft-ping {
+  animation: soft-ping 2.2s ease-out infinite;
+}
+@utility animate-float {
+  animation: float-y 5s ease-in-out infinite;
+}
+/* A control that lifts under the pointer and gives way when pressed */
+@utility press {
+  transition:
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+  &:hover {
+    transform: translateY(-1px);
+  }
+  &:active {
+    transform: translateY(0) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+html.no-motion *,
+html.no-motion *::before,
+html.no-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}

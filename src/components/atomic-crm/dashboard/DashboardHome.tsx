@@ -25,6 +25,7 @@ import { accent } from "../misc/accent";
 import { Molar3D } from "../misc/Dental3D";
 import type { Deal, Sale, Task, TaskType } from "../types";
 import { ArrowButton } from "./StudioCards";
+import { CountUp } from "../misc/CountUp";
 
 const startOfToday = () => {
   const date = new Date();
@@ -168,7 +169,7 @@ const Figure = ({
           accent ? "text-brand-link" : "text-foreground",
         )}
       >
-        {value}
+        <CountUp>{value}</CountUp>
       </span>
       <span className="flex flex-col items-start gap-1 pb-0.5">
         {chip ? (

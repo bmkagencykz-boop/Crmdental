@@ -14,6 +14,7 @@ import {
   type MonthRange,
   type PeriodPreset,
 } from "./useFinance";
+import { CountUp } from "../misc/CountUp";
 
 /** «1 234 567», a negative with «−» */
 export const num = (value: number | null | undefined) => {
@@ -287,7 +288,7 @@ export const Tile = ({
             tone === "negative" && !accent && "text-tone-red",
           )}
         >
-          {figure}
+          <CountUp>{figure}</CountUp>
         </span>
         <span
           className={cn(
@@ -561,20 +562,22 @@ export const FinanceChart = ({
               <div className="flex w-full flex-1 items-end justify-center gap-1">
                 <div
                   className={cn(
-                    "w-1/2 max-w-7 rounded-[10px]",
+                    "animate-grow-y w-1/2 max-w-7 rounded-[10px]",
                     i === peak
                       ? "hatch border border-foreground/15 bg-neon-soft"
                       : "hatch border border-foreground/10 bg-pill",
                   )}
                   style={{
                     height: `${Math.max(3, (Math.abs(a[i]) / max) * 100)}%`,
+                    animationDelay: `${i * 45}ms`,
                   }}
                   title={`${label}: ${num(a[i])} ₸`}
                 />
                 <div
-                  className="w-1/2 max-w-7 rounded-[10px] bg-muted-foreground/25"
+                  className="animate-grow-y w-1/2 max-w-7 rounded-[10px] bg-muted-foreground/25"
                   style={{
                     height: `${Math.max(3, (Math.abs(b[i]) / max) * 100)}%`,
+                    animationDelay: `${i * 45 + 80}ms`,
                   }}
                   title={`${label}: ${num(b[i])} ₸`}
                 />
@@ -593,6 +596,7 @@ export const FinanceChart = ({
             aria-hidden
           >
             <polyline
+              className="animate-in fade-in-0 duration-1000"
               points={points}
               fill="none"
               stroke="var(--neon)"

@@ -25,6 +25,7 @@ import type {
   LabSettlementRow,
 } from "./types";
 import { useLabDictionaries } from "./useLab";
+import { CountUp } from "../misc/CountUp";
 
 /**
  * «Сумма лаборатории» (owner, head): what the clinic owes each lab for the
@@ -193,7 +194,7 @@ export const LabSettlement = () => {
             className="mt-auto text-[48px] leading-none font-light tracking-[-0.04em] tabular-nums"
             data-testid="lab-settlement-total"
           >
-            {tenge(total)}
+            <CountUp>{tenge(total)}</CountUp>
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
             <span className="rounded-full bg-white/45 px-3 py-1.5">

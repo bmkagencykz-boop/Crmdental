@@ -7,6 +7,7 @@ import { useLeadSources } from "../dictionaries/useDictionaries";
 import { DentalCloud } from "../misc/Dental3D";
 import type { Visit } from "../schedule/types";
 import type { Deal, DealPayment } from "../types";
+import { CountUp } from "../misc/CountUp";
 
 const DAY = 86_400_000;
 const startOfDay = (date: Date) => {
@@ -66,7 +67,7 @@ export const ArrowButton = ({
     aria-label={label}
     title={label}
     className={cn(
-      "flex size-14 items-center justify-center rounded-full no-underline transition-colors",
+      "group/arrow flex size-14 items-center justify-center rounded-full no-underline transition-colors duration-200",
       dark
         ? "bg-primary text-primary-foreground"
         : "bg-card text-foreground hover:bg-primary hover:text-primary-foreground",
@@ -75,7 +76,7 @@ export const ArrowButton = ({
   >
     <svg
       viewBox="0 0 24 24"
-      className="size-5"
+      className="size-5 transition-transform duration-300 group-hover/arrow:rotate-45 group-hover/card:-translate-y-0.5 group-hover/card:translate-x-0.5"
       fill="none"
       stroke="currentColor"
       strokeWidth={1.6}
@@ -146,7 +147,10 @@ export const StudioCard = ({
   className?: string;
   children: ReactNode;
 }) => (
-  <section className={cn("relative", className)} aria-label={title}>
+  <section
+    className={cn("group/card animate-rise relative", className)}
+    aria-label={title}
+  >
     <div
       className={cn(
         "flex h-full flex-col rounded-[28px] bg-card p-6",
@@ -180,7 +184,7 @@ export const StudioCard = ({
 const Big = ({ value, unit }: { value: string; unit?: string }) => (
   <p className="flex items-baseline gap-1.5 whitespace-nowrap">
     <span className="text-[44px] leading-none font-light tracking-[-0.04em] tabular-nums">
-      {value}
+      <CountUp>{value}</CountUp>
     </span>
     {unit ? (
       <span className="text-base font-light text-muted-foreground">{unit}</span>
@@ -340,7 +344,7 @@ export const ActivityCard = ({ className }: { className?: string }) => {
                 ) : null}
                 <div
                   className={cn(
-                    "w-full rounded-[14px]",
+                    "animate-grow-y w-full rounded-[14px]",
                     highlighted
                       ? "hatch border border-foreground/15 bg-pill"
                       : "bg-muted",
@@ -348,6 +352,7 @@ export const ActivityCard = ({ className }: { className?: string }) => {
                   style={{
                     height: `${Math.max(12, (count / max) * 100)}%`,
                     minHeight: 18,
+                    animationDelay: `${day * 60}ms`,
                   }}
                   title={`${labels[day]}: ${count}`}
                 />
@@ -446,8 +451,14 @@ export const RevenueCard = ({ className }: { className?: string }) => {
               />
             </pattern>
           </defs>
-          <polygon points={band} fill="url(#revenue-hatch)" />
+          <polygon
+            points={band}
+            fill="url(#revenue-hatch)"
+            className="animate-in fade-in-0 duration-700"
+          />
           <polyline
+            pathLength={1}
+            className="animate-draw"
             points={line(last)}
             fill="none"
             stroke="#121214"
@@ -455,6 +466,8 @@ export const RevenueCard = ({ className }: { className?: string }) => {
             strokeWidth="1.2"
           />
           <polyline
+            pathLength={1}
+            className="animate-draw"
             points={line(current)}
             fill="none"
             stroke="#121214"
@@ -580,7 +593,14 @@ export const PaymentsCard = ({ className }: { className?: string }) => {
         <div className="relative min-w-0 flex-1 self-end">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
             <title>{translate("studio.payments")}</title>
-            <path d={path} fill="none" stroke="#121214" strokeWidth="1.6" />
+            <path
+              d={path}
+              fill="none"
+              stroke="#121214"
+              strokeWidth="1.6"
+              pathLength={1}
+              className="animate-draw"
+            />
             {perDay.map((value, i) => (
               <circle key={i} cx={x(i)} cy={y(value)} r="4" fill="#121214" />
             ))}

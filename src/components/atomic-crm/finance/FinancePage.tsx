@@ -28,14 +28,10 @@ export const FinancePage = () => {
   const tab = tabs.includes(stored) ? stored : tabs[0];
   return (
     <div className="flex flex-col gap-5" data-testid="finance-page">
-      <div>
-        <h1 className="text-[30px] leading-tight font-normal tracking-[-0.03em]">
-          {translate("finance.title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {translate(`finance.subtitles.${tab}`)}
-        </p>
-      </div>
+      {/* The title is the page title of the layout */}
+      <p className="-mt-4 text-sm text-muted-foreground">
+        {translate(`finance.subtitles.${tab}`)}
+      </p>
       <TabBar
         tabs={tabs.map((value) => ({ value, label: value }))}
         value={tab}

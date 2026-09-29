@@ -59,6 +59,7 @@ import {
   type FreeSlot,
   type Slot,
 } from "./waitingMatch";
+import { CountUp } from "../misc/CountUp";
 
 const ALL = "all";
 /** How far ahead the nearest slots are looked for */
@@ -359,7 +360,7 @@ const HeroNumber = ({
       className="text-[52px] leading-none font-light tracking-[-0.04em] tabular-nums"
       data-testid={testId}
     >
-      {value}
+      <CountUp>{value}</CountUp>
     </span>
     <span className="text-base font-light">{label}</span>
   </p>

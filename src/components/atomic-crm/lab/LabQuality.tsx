@@ -11,6 +11,7 @@ import { PillTabs } from "./LabBits";
 import { localDay, shortDay, tenge } from "./labMath";
 import { qualityRange, type QualityPeriod } from "./labPlusMath";
 import type { LabQualityReport, LabQualityRow } from "./types";
+import { CountUp } from "../misc/CountUp";
 
 const PERIODS: QualityPeriod[] = ["30d", "90d", "month", "last_month"];
 
@@ -88,7 +89,7 @@ const QualityBody = ({ report }: { report: LabQualityReport }) => {
             className="mt-auto text-[56px] leading-none font-light tracking-[-0.04em] tabular-nums"
             data-testid="lab-quality-on-time"
           >
-            {pct(totals.on_time_pct)}
+            <CountUp>{pct(totals.on_time_pct)}</CountUp>
           </p>
           <Molar3D className="pointer-events-none absolute -top-3 -right-5 size-32 opacity-90" />
         </section>
@@ -278,7 +279,7 @@ const Kpi = ({
       )}
       data-testid={testId}
     >
-      {value}
+      <CountUp>{value}</CountUp>
     </p>
     {children ? <div className="mt-3">{children}</div> : null}
   </section>

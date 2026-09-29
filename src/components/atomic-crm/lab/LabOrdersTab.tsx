@@ -54,6 +54,7 @@ import {
   useLabRights,
   useRefreshLab,
 } from "./useLab";
+import { CountUp } from "../misc/CountUp";
 
 type View = "board" | "list";
 type ChipKind = "doctorIds" | "technicianIds" | "labIds";
@@ -213,7 +214,7 @@ const KpiRow = ({
             className="text-[64px] leading-none font-light tracking-[-0.04em] tabular-nums"
             data-testid="lab-kpi-in-work"
           >
-            {kpis.inWork}
+            <CountUp>{kpis.inWork}</CountUp>
           </span>
           <span className="mb-2 rounded-full bg-white/50 px-3 py-1.5 text-sm tabular-nums">
             ↑ {translate("lab.kpi.new_in_work", { count: kpis.newInWork })}
@@ -235,7 +236,7 @@ const KpiRow = ({
               className="text-[52px] leading-none font-light tracking-[-0.04em] tabular-nums"
               data-testid="lab-kpi-done"
             >
-              {kpis.done}
+              <CountUp>{kpis.done}</CountUp>
             </span>
             <span className="w-fit rounded-lg bg-neon px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-neon-ink">
               {translate("lab.kpi.done_change", {
@@ -251,12 +252,15 @@ const KpiRow = ({
               >
                 <div
                   className={cn(
-                    "w-full rounded-[10px]",
+                    "animate-grow-y w-full rounded-[10px]",
                     i === perMonth.length - 1
                       ? "hatch border border-foreground/15 bg-pill"
                       : "bg-muted",
                   )}
-                  style={{ height: `${Math.max(10, (count / max) * 100)}%` }}
+                  style={{
+                    height: `${Math.max(10, (count / max) * 100)}%`,
+                    animationDelay: `${i * 70}ms`,
+                  }}
                   title={`${monthLabel(months[i])}: ${count}`}
                 />
                 <span className="text-[10px] text-muted-foreground">
@@ -280,7 +284,7 @@ const KpiRow = ({
             )}
             data-testid="lab-kpi-overdue"
           >
-            {kpis.overdue}
+            <CountUp>{kpis.overdue}</CountUp>
           </span>
           <span className="w-fit rounded-full bg-muted px-3 py-1.5 text-sm">
             {translate("lab.kpi.due_week", { count: kpis.dueThisWeek })}

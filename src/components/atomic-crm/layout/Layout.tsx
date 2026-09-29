@@ -2,6 +2,8 @@ import { Suspense, type ReactNode } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { CanAccess, useGetList, useLocaleState, useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
+import { markMotion } from "../misc/motion";
+import { NavTooltip, NavTooltipProvider } from "./NavTooltip";
 import { Link, matchPath, useLocation } from "react-router";
 import { Notification } from "@/components/admin/notification";
 import { Error } from "@/components/admin/error";
@@ -20,11 +22,16 @@ import { GlobalSearch, useRecentTracker } from "../search/GlobalSearch";
 import { GlobalShortcuts, ShortcutsButton } from "../search/Shortcuts";
 import { BranchSwitcher } from "../branches/BranchSwitcher";
 
+markMotion();
+
 export const Layout = ({ children }: { children: ReactNode }) => {
   useConfigurationLoader();
   useRecentTracker();
+  const location = useLocation();
+  // A new section slides in; tabs and cards inside one section do not
+  const section = location.pathname.split("/")[1] ?? "";
   return (
-    <>
+    <NavTooltipProvider>
       {/* Top: the mark, the main sections as pills, the team, the user */}
       <header className="fixed inset-x-0 top-0 z-40 flex h-24 items-center gap-5 bg-background pr-8">
         <Link
@@ -66,7 +73,9 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             <Suspense
               fallback={<Skeleton className="h-12 w-12 rounded-full" />}
             >
-              {children}
+              <div key={section} className="animate-page-in">
+                {children}
+              </div>
             </Suspense>
           </ErrorBoundary>
         </main>
@@ -76,7 +85,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
       <div className="fixed right-6 bottom-6 z-30">
         <ShortcutsButton />
       </div>
-    </>
+    </NavTooltipProvider>
   );
 };
 
@@ -119,19 +128,21 @@ const TopTabs = () => {
             to={item.to}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex h-12 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-medium no-underline transition-colors",
+              "press relative flex h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium no-underline min-[1480px]:px-5",
               active
                 ? "bg-primary text-primary-foreground"
                 : "bg-card text-foreground hover:bg-pill",
             )}
           >
             <Icon className="size-[18px]" />
-            {item.label}
+            {/* Narrow screens: icons only, the name in the tooltip */}
+            <span className="sr-only min-[1480px]:not-sr-only">
+              {item.label}
+            </span>
             {item.badge ? (
               <span
                 className="flex h-5 min-w-5 items-center justify-center rounded-full bg-neon px-1.5 text-[11px] font-bold text-neon-ink"
                 data-testid="nav-badge"
-                title={item.badgeLabel}
                 aria-hidden
               >
                 {item.badge > 99 ? "99+" : item.badge}
@@ -139,12 +150,22 @@ const TopTabs = () => {
             ) : null}
           </Link>
         );
+        const withHint = (
+          <NavTooltip
+            key={item.to}
+            side="bottom"
+            label={item.label}
+            hint={item.badge ? item.badgeLabel : undefined}
+          >
+            {tab}
+          </NavTooltip>
+        );
         return item.resource ? (
           <CanAccess key={item.to} resource={item.resource} action="menu">
-            {tab}
+            {withHint}
           </CanAccess>
         ) : (
-          tab
+          withHint
         );
       })}
     </nav>
@@ -162,34 +183,43 @@ const TeamStack = () => {
   if (sales.length === 0) return null;
   const shown = sales.slice(0, 3);
   return (
-    <Link
-      to="/sales"
-      className="flex items-center no-underline"
-      title={translate("resources.sales.name", { smart_count: 2 })}
+    <NavTooltip
+      side="bottom"
+      label={translate("resources.sales.name", { smart_count: 2 })}
+      hint={sales
+        .slice(0, 6)
+        .map((sale) => `${sale.first_name} ${sale.last_name}`.trim())
+        .join(", ")}
     >
-      {shown.map((sale, index) => (
-        <span
-          key={sale.id}
-          className="-ml-3 flex size-12 items-center justify-center overflow-hidden rounded-full border-[3px] border-background bg-card text-xs font-semibold text-foreground first:ml-0"
-          style={{ zIndex: 10 - index }}
-        >
-          {sale.avatar?.src ? (
-            <img
-              src={sale.avatar.src}
-              alt=""
-              className="size-full object-cover"
-            />
-          ) : (
-            `${sale.first_name[0] ?? ""}${sale.last_name[0] ?? ""}`
-          )}
-        </span>
-      ))}
-      {sales.length > shown.length ? (
-        <span className="-ml-3 flex size-12 items-center justify-center rounded-full border-[3px] border-background bg-primary text-sm font-semibold text-primary-foreground">
-          +{sales.length - shown.length}
-        </span>
-      ) : null}
-    </Link>
+      <Link
+        to="/sales"
+        className="press flex items-center no-underline"
+        aria-label={translate("resources.sales.name", { smart_count: 2 })}
+      >
+        {shown.map((sale, index) => (
+          <span
+            key={sale.id}
+            className="-ml-3 flex size-12 items-center justify-center overflow-hidden rounded-full border-[3px] border-background bg-card text-xs font-semibold text-foreground first:ml-0"
+            style={{ zIndex: 10 - index }}
+          >
+            {sale.avatar?.src ? (
+              <img
+                src={sale.avatar.src}
+                alt=""
+                className="size-full object-cover"
+              />
+            ) : (
+              `${sale.first_name[0] ?? ""}${sale.last_name[0] ?? ""}`
+            )}
+          </span>
+        ))}
+        {sales.length > shown.length ? (
+          <span className="-ml-3 flex size-12 items-center justify-center rounded-full border-[3px] border-background bg-primary text-sm font-semibold text-primary-foreground">
+            +{sales.length - shown.length}
+          </span>
+        ) : null}
+      </Link>
+    </NavTooltip>
   );
 };
 
@@ -202,16 +232,17 @@ const TodayPill = () => {
     month: "short",
   }).format(new Date());
   return (
-    <Link
-      to="/schedule"
-      className="flex h-12 shrink-0 items-center gap-2 rounded-full bg-card pr-1.5 pl-4 text-sm font-medium whitespace-nowrap text-foreground no-underline hover:bg-pill"
-      title={translate("schedule.nav")}
-    >
-      {label}
-      <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-        <ScheduleGlyph className="size-4" />
-      </span>
-    </Link>
+    <NavTooltip side="bottom" label={translate("schedule.nav")}>
+      <Link
+        to="/schedule"
+        className="press flex h-12 shrink-0 items-center gap-2 rounded-full bg-card pr-1.5 pl-4 text-sm font-medium whitespace-nowrap text-foreground no-underline hover:bg-pill"
+      >
+        {label}
+        <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <ScheduleGlyph className="size-4" />
+        </span>
+      </Link>
+    </NavTooltip>
   );
 };
 
@@ -236,6 +267,7 @@ const PageTitle = () => {
     { match: "/cash", label: translate("payments.title") },
     { match: "/payroll/*", label: translate("payroll.title") },
     { match: "/lab", label: translate("lab.title") },
+    { match: "/finance", label: translate("finance.title") },
     { match: "/waiting-list", label: translate("waiting_list.title") },
     { match: "/audit", label: translate("audit.title") },
     { match: "/mailings", label: translate("mailings.title") },

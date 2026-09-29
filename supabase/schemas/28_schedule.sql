@@ -157,7 +157,7 @@ alter table public.doctor_exceptions
 alter table public.schedule_settings
     add constraint schedule_settings_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.visits
-    add constraint visits_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint visits_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.visits
     add constraint visits_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete set null (deal_id);
 alter table public.visits

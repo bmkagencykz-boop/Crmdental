@@ -117,8 +117,12 @@ export type Patient = {
   preferred_doctor_id?: Identifier | null;
   /** The Kazakh IIN, 12 digits (stage 37) */
   iin?: string | null;
-  /** The number of the paper card (stage 37); the id when empty */
+  /** The number of the paper card (stage 37); the next number of the
+   * clinic when not given (stage 41) */
   card_number?: string | null;
+  /** «В архиве» since (stage 41): hidden from the lists and the search */
+  archived_at?: string | null;
+  archived_by?: Identifier | null;
   // patients_summary
   nb_deals?: number;
   nb_open_deals?: number;

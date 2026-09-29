@@ -4,7 +4,6 @@ import { CanAccess, useCanAccess, useGetIdentity, useTranslate } from "ra-core";
 
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { BulkDeleteButton } from "@/components/admin/bulk-delete-button";
 import { BulkExportButton } from "@/components/admin/bulk-export-button";
 import { CreateButton } from "@/components/admin/create-button";
 import { DataTable } from "@/components/admin/data-table";
@@ -31,6 +30,11 @@ import { TagsList } from "./TagsList";
 import { customFieldsExporter } from "../custom-fields/exporters";
 import { formatPhone } from "../misc/formatPhone";
 import { useScopedExporter } from "../access-rights/useAccessRights";
+import {
+  ArchivedBadge,
+  ArchivedFilterToggle,
+  BulkArchiveButton,
+} from "../data-safety/PatientArchive";
 
 const patientExporter = customFieldsExporter("patient");
 
@@ -101,9 +105,8 @@ const PatientTable = () => {
             <CanAccess resource="patients" action="export">
               <BulkExportButton />
             </CanAccess>
-            <CanAccess resource="patients" action="delete">
-              <BulkDeleteButton />
-            </CanAccess>
+            {/* Stage 41: to the archive (or back), never deleted in bulk */}
+            <BulkArchiveButton />
           </>
         }
       >
@@ -115,6 +118,7 @@ const PatientTable = () => {
               <span className="font-medium">
                 {patientDisplayName(patient as Patient)}
               </span>
+              <ArchivedBadge patient={patient as Patient} />
               {patient.tags?.length ? <TagsList /> : null}
             </div>
           )}
@@ -180,6 +184,7 @@ const SalesName = ({ id }: { id?: Patient["sales_id"] }) => {
 
 const PatientListActions = () => (
   <TopToolbar className="items-center">
+    <ArchivedFilterToggle />
     <FilterButton iconOnly />
     <CanAccess resource="patients" action="export">
       <ExportButton iconOnly />

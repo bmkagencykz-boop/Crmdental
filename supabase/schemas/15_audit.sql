@@ -174,7 +174,8 @@ begin
   end if;
 
   if entity_name = 'patient' then
-    row_patient_id := (row_data ->> 'id')::bigint;
+    -- The patient, or the medical data of a patient (patient_medical, stage 41)
+    row_patient_id := coalesce(row_data ->> 'patient_id', row_data ->> 'id')::bigint;
   elsif entity_name = 'deal' then
     row_deal_id := (row_data ->> 'id')::bigint;
     row_patient_id := (row_data ->> 'patient_id')::bigint;
@@ -198,7 +199,8 @@ begin
   end if;
 
   insert into public.audit_log (organization_id, sales_id, source, entity, entity_id, action, changes, deal_id, patient_id)
-  values (org_id, actor.actor_id, actor.actor_source, entity_name, (row_data ->> 'id')::bigint,
+  values (org_id, actor.actor_id, actor.actor_source, entity_name,
+    case when entity_name = 'patient' then row_patient_id else (row_data ->> 'id')::bigint end,
     row_action, diff, row_deal_id, row_patient_id);
   return null;
 end;

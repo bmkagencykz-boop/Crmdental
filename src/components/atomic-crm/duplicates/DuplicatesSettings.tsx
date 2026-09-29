@@ -63,7 +63,13 @@ export const DuplicatesSettings = () => {
             >
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-muted-foreground">
                 {group.reasons
-                  .map((reason) => translate(`duplicates.reasons.${reason}`))
+                  .map((reason) =>
+                    translate(
+                      reason === "iin"
+                        ? "data_safety.duplicate_reason_iin"
+                        : `duplicates.reasons.${reason}`,
+                    ),
+                  )
                   .join(" · ")}
               </p>
               <ul className="flex flex-col divide-y divide-border">

@@ -240,6 +240,9 @@ select tests.assert(
 -- Deleting a deal: one row, not one per task or payment
 select tests.login_as(current_setting('t.owner')::uuid);
 insert into public.deal_payments (deal_id, amount) select id, 1000 from public.deals where name = 'Виниры';
+-- Stage 41: a deal with payments is not deleted; without them it is
+select tests.throws($$delete from public.deals where name = 'Виниры'$$, '23503', 'a deal with payments is not deleted');
+delete from public.deal_payments where deal_id = (select id from public.deals where name = 'Виниры');
 select set_config('t.before_delete', (select max(id) from public.audit_log)::text, true);
 delete from public.deals where name = 'Виниры';
 select tests.logout();

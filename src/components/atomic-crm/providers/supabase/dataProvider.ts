@@ -44,6 +44,13 @@ import type {
 } from "../../reports/reportMath";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
+import { applyArchivedFilter } from "../../data-safety/dataSafety";
+import {
+  signRecordFiles,
+  signedUrlOf,
+  storedUrlOf,
+  unsignFile,
+} from "./attachmentUrls";
 import { getCurrentOrganizationId, getIsInitialized } from "./authProvider";
 import { getSupabaseClient } from "./supabase";
 import { getMailingMethods } from "./mailingMethods";
@@ -155,7 +162,11 @@ const getDataProviderWithCustomMethods = () => {
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {
-        return baseDataProvider.getList("patients_summary", params);
+        // Archived patients (stage 41) only with the «Архив» filter
+        return baseDataProvider.getList(
+          "patients_summary",
+          applyArchivedFilter(params),
+        );
       }
       if (resource === "deals") {
         // Quick filter «Ждут ответа»: the overdue deals of deals_waiting
@@ -178,13 +189,15 @@ const getDataProviderWithCustomMethods = () => {
         );
         // Rename snake_case view columns to camelCase to match Activity type
         return {
-          data: data.map((row: any) => ({
-            ...row,
-            patientNote: row.patient_note ?? undefined,
-            dealNote: row.deal_note ?? undefined,
-            patient_note: undefined,
-            deal_note: undefined,
-          })),
+          data: await signRecordFiles(
+            data.map((row: any) => ({
+              ...row,
+              patientNote: row.patient_note ?? undefined,
+              dealNote: row.deal_note ?? undefined,
+              patient_note: undefined,
+              deal_note: undefined,
+            })),
+          ),
           total,
         };
       }
@@ -661,7 +674,13 @@ const getDataProviderWithCustomMethods = () => {
         sort: { field: "id", order: "ASC" },
         filter: {},
       });
-      return (data[0]?.config as ConfigurationContextValue) ?? {};
+      const config = (data[0]?.config as ConfigurationContextValue) ?? {};
+      // Logos in the private bucket (stage 41): signed links
+      return {
+        ...config,
+        lightModeLogo: (await signedUrlOf(config.lightModeLogo)) as string,
+        darkModeLogo: (await signedUrlOf(config.darkModeLogo)) as string,
+      };
     },
     async updateConfiguration(
       config: ConfigurationContextValue,
@@ -690,7 +709,7 @@ export type CrmDataProvider = ReturnType<
 >;
 
 const processConfigLogo = async (logo: any): Promise<string> => {
-  if (typeof logo === "string") return logo;
+  if (typeof logo === "string") return unsignFile({ src: logo }).src ?? logo;
   if (logo?.rawFile instanceof File) {
     await uploadToBucket(logo);
     return logo.src;
@@ -710,6 +729,28 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
       return params;
     },
   },
+  // Files in the private bucket (stage 41): signed links on read
+  ...["patient_notes", "deal_notes", "sales", "patients"].map(
+    (resource): ResourceCallbacks => ({
+      resource,
+      afterGetList: async (result) => ({
+        ...result,
+        data: await signRecordFiles(result.data),
+      }),
+      afterGetManyReference: async (result) => ({
+        ...result,
+        data: await signRecordFiles(result.data),
+      }),
+      afterGetMany: async (result) => ({
+        ...result,
+        data: await signRecordFiles(result.data),
+      }),
+      afterGetOne: async (result) => ({
+        ...result,
+        data: (await signRecordFiles([result.data]))[0],
+      }),
+    }),
+  ),
   {
     resource: "patient_notes",
     beforeSave: async (data: PatientNote, _, __) => {
@@ -750,10 +791,24 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
         ["last_name", "first_name", "middle_name"],
         "phone_fts",
       )(params),
-    // The view's computed columns cannot be written
-    beforeUpdate: async (params) => ({
-      ...params,
-      data: withoutKeys(params.data, PATIENT_VIEW_COLUMNS),
+    // The view's computed columns cannot be written; a signed avatar link
+    // goes back to its stable address
+    beforeUpdate: async (params) => {
+      const data = withoutKeys(params.data, PATIENT_VIEW_COLUMNS);
+      if (data.avatar) data.avatar = unsignFile(data.avatar);
+      return { ...params, data };
+    },
+    // Stage 41: the medical data is stored in patient_medical (the patients
+    // row keeps null): the saved patient is read back from the summary
+    afterCreate: async (result, dataProvider) => ({
+      ...result,
+      data: (await dataProvider.getOne("patients", { id: result.data.id }))
+        .data,
+    }),
+    afterUpdate: async (result, dataProvider) => ({
+      ...result,
+      data: (await dataProvider.getOne("patients", { id: result.data.id }))
+        .data,
     }),
   },
   {
@@ -832,6 +887,8 @@ const uploadToBucket = async (fi: RAFile) => {
         .createSignedUrl(fi.path, 60);
 
       if (!error) {
+        // Stored with its stable address, not the signed link it was read with
+        fi.src = storedUrlOf(fi.path);
         return fi;
       }
     }
@@ -871,12 +928,10 @@ const uploadToBucket = async (fi: RAFile) => {
     throw new Error("Failed to upload attachment");
   }
 
-  const { data } = getSupabaseClient()
-    .storage.from(ATTACHMENTS_BUCKET)
-    .getPublicUrl(filePath);
-
+  // The bucket is private (stage 41): the stable address is stored, the app
+  // reads the file through a signed link
   fi.path = filePath;
-  fi.src = data.publicUrl;
+  fi.src = storedUrlOf(filePath);
 
   // save MIME type
   const mimeType = file.type;

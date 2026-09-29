@@ -126,6 +126,7 @@ import { createBranchesDemo } from "./branches";
 import { createPriceListDemo } from "./priceList";
 import { createPaymentsDemo } from "./payments";
 import { createPatientCardDemo } from "./patientCard";
+import { createDataSafetyDemo } from "./dataSafety";
 import { createPayrollDemo } from "./payroll";
 import { createWaitingListDemo } from "./waitingList";
 import { createLabOrdersDemo } from "./labOrders";
@@ -375,6 +376,13 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     logAudit: (row) => logAudit(row),
     myBranchIds: () => branchesDemo.myBranchIds(),
+  });
+  // Data safety (stage 41): the archive, protected rows, medical data
+  const dataSafetyDemo = createDataSafetyDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getMyAccessRights: () => accessDemo.methods.getMyAccessRights(),
   });
   // Payments, deposits and the cash desk (stage 36)
   const paymentsDemo = createPaymentsDemo({
@@ -770,6 +778,9 @@ export const createDataProvider = ({
       const ids = new Set(own.map((deal) => deal.id));
       return {
         ...patient,
+        // The archive (stage 41)
+        archived_at: patient.archived_at ?? null,
+        archived_by: patient.archived_by ?? null,
         phone_fts: (patient.phones ?? []).join(" "),
         nb_deals: own.length,
         nb_open_deals: own.filter((deal) => kind.get(deal.stage_id) === "open")
@@ -913,7 +924,11 @@ export const createDataProvider = ({
 
   // The views follow the access rights of the employee, like RLS (stage 30)
   const views: Record<string, () => Promise<any[]>> = {
-    patients: async () => accessDemo.filterPatients(await patientsSummary()),
+    // Stage 41: no medical data for the integrator (patient_medical)
+    patients: async () =>
+      dataSafetyDemo.hideMedical(
+        await accessDemo.filterPatients(await patientsSummary()),
+      ),
     deals: async () => accessDemo.filterDeals(await dealsSummary()),
     audit_log: auditLogSummary,
     deals_waiting: async () => accessDemo.filterDeals(await dealsWaitingView()),
@@ -1889,6 +1904,8 @@ export const createDataProvider = ({
       ...paymentsDemo.callbacks,
       // The patient card (stage 37): IIN, the chart and its history, records
       ...patientCardDemo.callbacks,
+      // Data safety (stage 41): archive, deletion guards, IIN, card numbers
+      ...dataSafetyDemo.callbacks,
       // Payroll (stage 39): the owner and the head, closed months, audit
       ...payrollDemo.callbacks,
       // Lab work orders (stage 40): numbers, links, statuses, prices, rights

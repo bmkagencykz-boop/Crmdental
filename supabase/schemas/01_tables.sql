@@ -589,7 +589,7 @@ alter table public.deal_notes
     add constraint deal_notes_sales_id_fkey foreign key (organization_id, sales_id) references public.sales(organization_id, id);
 
 alter table public.deal_payments
-    add constraint deal_payments_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete cascade;
+    add constraint deal_payments_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete restrict;
 alter table public.deal_payments
     add constraint deal_payments_sales_id_fkey foreign key (organization_id, sales_id) references public.sales(organization_id, id);
 

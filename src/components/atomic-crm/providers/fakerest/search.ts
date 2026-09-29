@@ -78,6 +78,7 @@ export const createSearchDemo = ({
           sales,
           external_refs: refs,
           canSeeDeal,
+          canSeeMedical: me?.role !== "integrator",
         },
         q,
         maxPerKind,

@@ -734,6 +734,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/supabase/attachmentUrls.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/supabase/accessRightsMethods.ts",
           "type": "registry:component"
         },
@@ -815,6 +819,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/digitalPipeline.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataSafety.ts",
           "type": "registry:component"
         },
         {
@@ -971,6 +979,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/dictionaries.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/dataSafety.ts",
           "type": "registry:component"
         },
         {
@@ -2031,6 +2043,14 @@
         },
         {
           "path": "src/components/atomic-crm/deals/list/BulkActions.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/data-safety/dataSafety.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/data-safety/PatientArchive.tsx",
           "type": "registry:component"
         },
         {

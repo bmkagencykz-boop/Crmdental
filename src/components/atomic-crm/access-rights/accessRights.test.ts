@@ -75,7 +75,7 @@ describe("access rights: scopes and defaults", () => {
         view: "all",
         create: "all",
         edit: "all",
-        delete: "all",
+        delete: "none",
         export: "all",
       },
       tasks: {

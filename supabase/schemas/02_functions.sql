@@ -708,11 +708,24 @@ $$;
 -- from them, so nothing still points at the staff, pipelines or dictionaries
 -- that the organization cascade removes afterwards (cascades run in no
 -- guaranteed order, and foreign keys to those tables are checked right away).
+-- The money and medical rows refuse the deletion of their patient or deal
+-- (stage 41, ON DELETE RESTRICT): they go first.
 CREATE OR REPLACE FUNCTION "private"."delete_organization_data"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 begin
+  delete from public.account_operations where organization_id = old.id;
+  delete from public.deal_payments where organization_id = old.id;
+  delete from public.lab_orders where organization_id = old.id;
+  delete from public.visit_records where organization_id = old.id;
+  delete from public.patient_consents where organization_id = old.id;
+  delete from public.patient_files where organization_id = old.id;
+  delete from public.patient_teeth where organization_id = old.id;
+  delete from public.patient_tooth_history where organization_id = old.id;
+  delete from public.patient_questionnaires where organization_id = old.id;
+  delete from public.treatment_plans where organization_id = old.id;
+  delete from public.visits where organization_id = old.id;
   delete from public.patients where organization_id = old.id;
   return old;
 end;

@@ -26,6 +26,7 @@ import type { Deal, Patient, Sale } from "../types";
 import { ruDate } from "./consents";
 import { neverCame } from "./cardLogic";
 import { ageOn, ageText, formatIin } from "./iin";
+import { ArchivedBadge } from "../data-safety/PatientArchive";
 
 /** wa.me link of a Kazakh number */
 const whatsappLink = (phone: string) =>
@@ -94,6 +95,7 @@ export const PatientHeader = ({
             <h1 className="min-w-0 text-[34px] leading-tight font-light tracking-[-0.03em]">
               {name}
             </h1>
+            <ArchivedBadge patient={patient} />
             {firstVisit ? (
               <span
                 className="rounded-full bg-neon px-3 py-1 text-xs font-semibold text-neon-ink"

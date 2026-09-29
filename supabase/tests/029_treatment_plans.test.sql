@@ -354,7 +354,7 @@ insert into public.treatment_plans (deal_id, name) select id, 'План дубл
 select public.merge_patients(current_setting('t.patient')::bigint, (select id from public.patients where last_name = 'Дубль'), '{}'::jsonb);
 select tests.assert(
   (select allergies = E'Лидокаин\nПенициллин' and chronic_diseases = 'Диабет 2 типа'
-   from public.patients where id = current_setting('t.patient')::bigint),
+   from public.patients_summary where id = current_setting('t.patient')::bigint),
   'merging patients keeps the medical notes of both');
 select tests.assert(
   (select patient_id = current_setting('t.patient')::bigint from public.treatment_plans where name = 'План дубля'),

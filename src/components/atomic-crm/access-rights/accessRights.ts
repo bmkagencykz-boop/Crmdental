@@ -100,7 +100,12 @@ export const accessDefault = (
   if (role === "integrator") {
     return action === "view" && entity !== "reports" ? "all" : "none";
   }
-  if (entity === "reports" || (entity === "deals" && action === "delete")) {
+  // Stage 41: the patients «delete» right (the archive) is the owner's
+  // choice for a manager, none by default
+  if (
+    entity === "reports" ||
+    ((entity === "deals" || entity === "patients") && action === "delete")
+  ) {
     return "none";
   }
   if (entity === "deals" && (action === "view" || action === "edit")) {

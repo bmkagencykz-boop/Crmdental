@@ -72,7 +72,13 @@ export const DuplicateWarning = ({
             <span className="text-muted-foreground">
               (
               {duplicate.reasons
-                .map((reason) => translate(`duplicates.reasons.${reason}`))
+                .map((reason) =>
+                  translate(
+                    reason === "iin"
+                      ? "data_safety.duplicate_reason_iin"
+                      : `duplicates.reasons.${reason}`,
+                  ),
+                )
                 .join(", ")}
               )
             </span>

@@ -225,5 +225,6 @@ describe("demo duplicates", () => {
       changes: { merged_patient_id: [merge, keep] },
     });
     expect(await owner.getPatientDuplicates(keep)).toEqual([]);
-  });
+    // Two demo databases and a merge that moves the rows of every stage
+  }, 30_000);
 });

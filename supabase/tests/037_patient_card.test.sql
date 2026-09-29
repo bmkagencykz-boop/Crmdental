@@ -56,7 +56,7 @@ values ('Асель', 'Нурланова', '9005 1540 0123', ' 1024 ');
 select set_config('t.p', (select id from public.patients where first_name = 'Асель')::text, true);
 select tests.assert(
   (select iin = '900515400123' and birth_date = date '1990-05-15' and gender = 'female' and card_number = '1024'
-   from public.patients where id = current_setting('t.p')::bigint),
+   from public.patients_summary where id = current_setting('t.p')::bigint),
   'the IIN without spaces gives the birth date and the sex; the card number is trimmed');
 select tests.assert(
   (select iin = '900515400123' and card_number = '1024' from public.patients_summary where id = current_setting('t.p')::bigint),

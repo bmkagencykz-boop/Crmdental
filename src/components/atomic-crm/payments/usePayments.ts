@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useDataProvider,
+  useGetList,
   useGetOne,
   useNotify,
   useTranslate,
@@ -14,7 +15,7 @@ import type { CrmDataProvider } from "../providers/types";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { formatTenge } from "../onboarding/servicePresets";
 import { paymentRights } from "./paymentMath";
-import type { PatientAccount } from "./types";
+import type { CashExpenseCategory, PatientAccount } from "./types";
 
 /** «12 500 ₸» (a negative amount with «−») */
 export const money = (amount: number | null | undefined) => {
@@ -37,6 +38,13 @@ export const usePaymentRights = () => {
     ),
   };
 };
+
+/** The expense expense categories of the clinic, in their order */
+export const useExpenseCategories = () =>
+  useGetList<CashExpenseCategory>("cash_expense_categories", {
+    pagination: { page: 1, perPage: 200 },
+    sort: { field: "position", order: "ASC" },
+  });
 
 /** «Счёт» of a patient (public.patient_accounts) */
 export const usePatientAccount = (patientId: Identifier | null | undefined) =>

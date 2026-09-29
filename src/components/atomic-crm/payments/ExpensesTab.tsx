@@ -13,11 +13,15 @@ import { cn } from "@/lib/utils";
 
 import { StudioCard } from "../dashboard/StudioCards";
 import { Sphere3D } from "../misc/Dental3D";
-import { useExpenseCategories } from "./ExpenseDialog";
 import { OperationsList } from "./OperationsList";
 import { expenseTotals } from "./paymentMath";
 import type { AccountOperationSummary, CashExpenseCategory } from "./types";
-import { money, usePaymentRights, useRefreshMoney } from "./usePayments";
+import {
+  money,
+  useExpenseCategories,
+  usePaymentRights,
+  useRefreshMoney,
+} from "./usePayments";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const thisMonth = () => {

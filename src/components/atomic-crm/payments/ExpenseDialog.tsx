@@ -23,18 +23,15 @@ import { checkExpense, parseAmount } from "./paymentMath";
 import {
   EXPENSE_METHODS,
   type AccountOperation,
-  type CashExpenseCategory,
   type CashShift,
   type ExpenseMethod,
 } from "./types";
-import { money, usePaymentRights, useRefreshMoney } from "./usePayments";
-
-/** The active expense categories of the clinic, in their order */
-export const useExpenseCategories = () =>
-  useGetList<CashExpenseCategory>("cash_expense_categories", {
-    pagination: { page: 1, perPage: 200 },
-    sort: { field: "position", order: "ASC" },
-  });
+import {
+  money,
+  useExpenseCategories,
+  usePaymentRights,
+  useRefreshMoney,
+} from "./usePayments";
 
 /**
  * «Расход» (stage 42): money out of the till without a patient — the

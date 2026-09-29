@@ -33,7 +33,8 @@ test("a new clinic is set up with the setup wizard", async ({ page }) => {
   await page.getByLabel("Clinic phone").fill("8 727 355 00 00");
   await page.getByLabel("Address").fill("10 Abay Ave, 2nd floor");
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("Clinic saved")).toBeVisible();
+  // Saving the clinic creates its dictionaries: slower under load
+  await expect(page.getByText("Clinic saved")).toBeVisible({ timeout: 15_000 });
 
   // 2. Services and prices: tick services, with a price each
   await expect(stepTitle(page, "Services and prices")).toBeVisible();

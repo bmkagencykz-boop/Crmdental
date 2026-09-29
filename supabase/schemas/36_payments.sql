@@ -111,6 +111,7 @@ create table public.account_operations (
             when kind = 'correction' and account = 'services' then amount
             else 0
         end) stored,
+    -- Redefined by 42_cash_outflows.sql (an expense is money out)
     till_delta bigint generated always as (
         case
             when method = 'deposit' or kind = 'correction' then 0
@@ -675,7 +676,8 @@ end;
 $$;
 
 -- Reports «Деньги» → «Поступления по способам оплаты»: money in and out of
--- the till by method in the period (the ledger), with the branch filter
+-- the till by method in the period (the ledger), with the branch filter;
+-- the expenses (stage 42) apart from the refunds
 CREATE OR REPLACE FUNCTION "public"."report_cash_methods"("period_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "period_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "filter_branch_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
@@ -684,14 +686,16 @@ begin
   perform private.report_check_access();
   return coalesce((
     select jsonb_agg(jsonb_build_object('method', r.method, 'income', r.income, 'refunds', r.refunds,
-      'net', r.income - r.refunds, 'operations', r.operations) order by r.income - r.refunds desc, r.method)
+      'expenses', r.expenses, 'net', r.income - r.refunds - r.expenses, 'operations', r.operations)
+      order by r.income - r.refunds - r.expenses desc, r.method)
     from (
       select m.method,
         coalesce(sum(m.amount) filter (where m.sign > 0), 0)::bigint as income,
-        coalesce(sum(m.amount) filter (where m.sign < 0), 0)::bigint as refunds,
+        coalesce(sum(m.amount) filter (where m.sign < 0 and m.kind <> 'expense'), 0)::bigint as refunds,
+        coalesce(sum(m.amount) filter (where m.kind = 'expense'), 0)::bigint as expenses,
         count(distinct m.id) as operations
       from (
-        select o.id, sign(o.till_delta) as sign, x.method, x.amount
+        select o.id, o.kind, sign(o.till_delta) as sign, x.method, x.amount
         from public.account_operations o
           cross join lateral (
             select p ->> 'method' as method, (p ->> 'amount')::bigint as amount
@@ -886,7 +890,7 @@ create or replace trigger audit_account_operation
     after insert or update or delete on public.account_operations
     for each row
     when (coalesce(current_setting('crm.ledger_sync', true), '') not in ('deal', 'system'))
-    execute function private.audit_row('account_operation', 'kind,account,amount,method,parts,occurred_at,comment,deal_id,plan_id,visit_id,shift_id');
+    execute function private.audit_row('account_operation', 'kind,account,amount,method,parts,occurred_at,comment,deal_id,plan_id,visit_id,shift_id,category_id');
 
 create or replace trigger audit_cash_shift
     after insert or update on public.cash_shifts

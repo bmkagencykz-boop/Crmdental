@@ -570,6 +570,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/root/lazyPages.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/root/defaultConfiguration.ts",
           "type": "registry:component"
         },

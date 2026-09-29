@@ -1027,7 +1027,9 @@ CREATE OR REPLACE FUNCTION "private"."save_patient_medical"("org_id" bigint, "ta
 declare
   new_iin text := nullif(regexp_replace(coalesce(given ->> 'iin', ''), '[\s-]', '', 'g'), '');
 begin
-  if given ? 'iin' and new_iin is not null then
+  -- The same IIN written again (a whole form saved) is not checked again
+  if given ? 'iin' and new_iin is not null and new_iin is distinct from (
+    select m.iin from public.patient_medical m where m.patient_id = target_patient_id) then
     if not private.iin_valid(new_iin) then
       raise exception 'Неверный ИИН: 12 цифр с контрольной суммой' using errcode = '22023', hint = 'patient_iin_invalid';
     end if;

@@ -23,6 +23,10 @@ import {
   type CashShift,
   type ShiftClosing,
 } from "../../payments/types";
+import {
+  SHIFT_CLOSED_MESSAGE,
+  operationLocked,
+} from "../../data-safety/dataSafety";
 import type { Branch } from "../../branches/branches";
 import type { Visit } from "../../schedule/types";
 import type { TreatmentPlan, TreatmentPlanItem } from "../../treatment/types";
@@ -439,6 +443,18 @@ export const createPaymentsDemo = ({
     }
   };
 
+  // Stage 41: the operations of a closed shift are neither changed nor
+  // cancelled (private.handle_account_operation_shift_lock)
+  const requireOpenShift = async (op?: AccountOperation | null) => {
+    if (operationLocked(op, await shifts())) {
+      throw fail(SHIFT_CLOSED_MESSAGE);
+    }
+  };
+  const requireOpenShiftOfPayment = async (paymentId: Identifier) =>
+    requireOpenShift(
+      (await ops()).find((op) => same(op.deal_payment_id, paymentId)),
+    );
+
   const callbacks: ResourceCallbacks[] = [
     {
       resource: "account_operations",
@@ -462,6 +478,8 @@ export const createPaymentsDemo = ({
         }
         const previous = (await ops()).find((op) => same(op.id, params.id));
         if (!previous) throw fail("Операция не найдена", "P0002");
+        // Stage 41: an operation of a closed shift stays as it was counted
+        await requireOpenShift(previous);
         // Only the comment, the time and the method change
         const changes = params.data as Partial<AccountOperation>;
         const next = {
@@ -531,6 +549,7 @@ export const createPaymentsDemo = ({
           );
         }
         const op = (await ops()).find((row) => same(row.id, params.id));
+        await requireOpenShift(op);
         if (op && operationDeltas(op).deposit > 0) {
           const { deposit } = await balances(op.patient_id, null);
           if (deposit - operationDeltas(op).deposit < 0) {
@@ -574,6 +593,7 @@ export const createPaymentsDemo = ({
             "42501",
           );
         }
+        if (sync !== "ledger") await requireOpenShiftOfPayment(params.id);
         return params;
       },
       beforeDelete: async (params) => {
@@ -583,6 +603,7 @@ export const createPaymentsDemo = ({
             "42501",
           );
         }
+        if (sync !== "ledger") await requireOpenShiftOfPayment(params.id);
         return params;
       },
       afterCreate: async (result) => {

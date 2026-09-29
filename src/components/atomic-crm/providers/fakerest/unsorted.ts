@@ -177,8 +177,43 @@ export const createUnsortedDemo = ({
       "mailing_messages",
       "patient_chats",
       "lead_submissions",
+      // Stages 28–40: the schedule, plans, money, the patient card, the
+      // waiting list, the lab (private.merge_patient_rows moves every row)
+      "visits",
+      "treatment_plans",
+      "account_operations",
+      "patient_tooth_history",
+      "visit_records",
+      "patient_consents",
+      "patient_files",
+      "deal_files",
+      "waiting_list",
+      "lab_orders",
+      "mis_appointments",
     ]) {
       await moveRows<any>(resource, ofMerged, { patient_id: keepId });
+    }
+    // One row per tooth and one questionnaire: the kept patient's own wins
+    for (const [resource, sameRow] of [
+      ["patient_teeth", (a: any, b: any) => a.tooth === b.tooth],
+      ["patient_questionnaires", () => true],
+    ] as const) {
+      const rows = await all<any>(resource).catch(() => [] as any[]);
+      const kept = rows.filter((row) => same(row.patient_id, keepId));
+      for (const row of rows.filter(ofMerged)) {
+        if (kept.some((k) => sameRow(k, row))) {
+          await baseDataProvider.delete(resource, {
+            id: row.id,
+            previousData: row,
+          });
+        } else {
+          await baseDataProvider.update(resource, {
+            id: row.id,
+            data: { patient_id: keepId },
+            previousData: row,
+          });
+        }
+      }
     }
     for (const deal of (await all<Deal>("deals")).filter(ofMerged)) {
       await getDataProvider().update("deals", {

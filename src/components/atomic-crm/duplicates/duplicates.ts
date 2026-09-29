@@ -10,7 +10,7 @@ import { mergeMedical } from "../treatment/medical";
  * for the app and the demo provider. Keep both in sync.
  */
 
-export type DuplicateReason = "phone" | "chat" | "name_birth";
+export type DuplicateReason = "phone" | "chat" | "name_birth" | "iin";
 
 /** Who a patient is in a messenger (table patient_chats) */
 export type PatientChat = {
@@ -30,6 +30,7 @@ type MatchPatient = Pick<
   | "phones"
   | "telegram"
   | "instagram"
+  | "iin"
 >;
 
 /** A row of public.patient_duplicates */
@@ -124,6 +125,10 @@ export const matchKeys = (
       key: `${normalizePersonName(patient.last_name, patient.first_name, patient.middle_name)}|${patient.birth_date.slice(0, 10)}`,
     });
   }
+  // Stage 41: the IIN
+  if (patient.iin) {
+    keys.push({ kind: "iin", key: patient.iin });
+  }
   const seen = new Set<string>();
   return keys.filter(({ kind, key }) => {
     const id = `${kind}\u0000${key}`;
@@ -133,7 +138,7 @@ export const matchKeys = (
   });
 };
 
-const REASON_ORDER: DuplicateReason[] = ["chat", "name_birth", "phone"];
+const REASON_ORDER: DuplicateReason[] = ["chat", "iin", "name_birth", "phone"];
 const sortReasons = (reasons: Iterable<DuplicateReason>) =>
   [...new Set(reasons)].sort(
     (a, b) => REASON_ORDER.indexOf(a) - REASON_ORDER.indexOf(b),
@@ -379,6 +384,8 @@ export const mergePatientRecords = <T extends Patient>(
       keep.messaging_opt_out_at ?? merge.messaging_opt_out_at ?? null,
     // The light patient card (stage 29)
     ...mergeMedical(keep, merge),
+    // Stage 41: the kept patient's IIN wins
+    iin: keep.iin ?? merge.iin ?? null,
   };
 };
 

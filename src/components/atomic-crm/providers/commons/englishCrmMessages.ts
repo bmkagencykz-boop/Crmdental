@@ -5596,6 +5596,33 @@ export const englishCrmMessages = {
       lab_work_type_price: "Lab price",
     },
   },
+  data_safety: {
+    archive: {
+      action: "Archive",
+      restore: "Restore from the archive",
+      badge: "Archived",
+      since: "Archived since %{date}",
+      filter: "Archive",
+      confirm_title: "Move the patient to the archive?",
+      confirm_text:
+        "The patient leaves the lists, the search and the patient pickers. The card, payments, visits and medical records are kept; the owner or the head can restore the patient.",
+      done: "The patient is archived",
+      restored: "The patient is restored",
+      done_many: "Archived: %{smart_count}",
+      restored_many: "Restored: %{smart_count}",
+    },
+    delete: {
+      action: "Delete for good",
+      confirm_title: "Delete the patient for good?",
+      confirm_text:
+        "Only a patient without payments, visits or medical records can be deleted — one created by mistake, for instance. Archive the others.",
+      done: "The patient is deleted",
+    },
+    duplicate_reason_iin: "same IIN",
+    errors: {
+      generic: "The changes could not be saved",
+    },
+  },
 } as const;
 
 type MessageSchema<T> = {

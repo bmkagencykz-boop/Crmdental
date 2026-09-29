@@ -4,6 +4,7 @@ import { supabaseAuthProvider } from "ra-supabase-core";
 import type { MyAccessRights } from "../../access-rights/accessRights";
 import { createRightsCache } from "../../access-rights/rightsCache";
 import { canAccess } from "../commons/canAccess";
+import { signedUrlOf } from "./attachmentUrls";
 import { getSupabaseClient } from "./supabase";
 
 // Access rights of the signed-in employee (stage 30, public.my_access_rights)
@@ -25,7 +26,8 @@ const getBaseAuthProvider = () =>
       return {
         id: sale.id,
         fullName: `${sale.first_name} ${sale.last_name}`,
-        avatar: sale.avatar?.src,
+        // The private bucket (stage 41): a signed link
+        avatar: await signedUrlOf(sale.avatar?.src),
         // Integrator (stage 25): the banner shows the end of the access
         role: sale.role,
         access_expires_at: sale.access_expires_at ?? null,

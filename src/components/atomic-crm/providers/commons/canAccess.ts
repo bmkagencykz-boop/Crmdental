@@ -50,6 +50,30 @@ export const canAccess = <
     return integratorCanAccess(params);
   }
 
+  // Stage 41: a patient goes to the archive with the patients «delete»
+  // right, comes back with the owner or the head, and is deleted for good by
+  // the owner only (the owner returned above)
+  if (params.resource === "patients") {
+    if (params.action === "delete") return false;
+    if (params.action === "restore") return role === "head";
+    if (params.action === "archive") {
+      if (role !== "head" && role !== "manager") return false;
+      if (rights) {
+        return (
+          rightsAllow(
+            rights,
+            "patients",
+            "delete",
+            params.record,
+            me,
+            myBranches,
+          ) ?? false
+        );
+      }
+      return role === "head";
+    }
+  }
+
   if (rights && (role === "head" || role === "manager")) {
     const allowed = rightsAllow(
       rights,

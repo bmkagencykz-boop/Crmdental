@@ -240,6 +240,10 @@ insert into public.deals (organization_id, patient_id, name) values (current_set
 insert into public.visits (organization_id, patient_id, starts_at, ends_at)
 values (current_setting('t.org')::bigint, tests.pid('Нурланова-Дубль'), now() - interval '3 days', now() - interval '3 days' + interval '1 hour');
 select tests.login_as(current_setting('t.head')::uuid);
+-- A whole form saved again (the same IIN) works for a flagged duplicate
+update public.patients set iin = '900515400123', city = 'Астана' where id = tests.pid('Нурланова-Дубль');
+select tests.assert((select iin_duplicate from public.patient_medical where patient_id = tests.pid('Нурланова-Дубль')),
+  'saving the same IIN keeps a legacy duplicate as it is');
 select tests.assert(
   (select reasons @> array['iin'] from public.patient_duplicates(tests.pid('Нурланова')) where patient_id = tests.pid('Нурланова-Дубль')),
   'patients sharing an IIN are proposed as duplicates');

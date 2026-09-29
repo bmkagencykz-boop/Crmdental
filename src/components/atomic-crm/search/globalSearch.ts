@@ -291,6 +291,8 @@ export type SearchData = {
   external_refs?: ExternalRef[];
   /** Row level security of deals */
   canSeeDeal?: (deal: Deal) => boolean;
+  /** Stage 41: the IIN is searched unless the medical data is hidden */
+  canSeeMedical?: boolean;
 };
 
 const time = (value?: string | null) => (value ? Date.parse(value) : 0);
@@ -331,10 +333,19 @@ export const globalSearchInMemory = (
       .map((ref) => String(ref.entity_id)),
   );
 
+  // Stage 41: the IIN (12 digits) of the staff; archived patients are
+  // found on the patient list's «Архив» only
+  const iinDigits = query.raw.replace(/[\s-]/g, "");
+  const iin =
+    data.canSeeMedical !== false && /^\d{12}$/.test(iinDigits)
+      ? iinDigits
+      : null;
   const patients = data.patients
+    .filter((patient) => !patient.archived_at)
     .map((patient) => {
       const card = cards.get(String(patient.id)) ?? null;
       let rank = matchPatient(patient, query, card);
+      if (iin && patient.iin === iin && (rank == null || rank > 1)) rank = 1;
       if (rank == null && cardHits.has(String(patient.id))) rank = 1;
       return rank == null ? null : { patient, card, rank };
     })

@@ -1,6 +1,5 @@
-import { CanAccess, useRecordContext, useTranslate } from "ra-core";
+import { useRecordContext, useTranslate } from "ra-core";
 import type { ReactNode } from "react";
-import { DeleteButton } from "@/components/admin";
 import { EditButton } from "@/components/admin/edit-button";
 
 import { findById, useLeadSources } from "../dictionaries/useDictionaries";
@@ -11,6 +10,7 @@ import { PatientOptOutToggle } from "../mailings/PatientOptOutToggle";
 import { CustomFieldValue } from "../custom-fields/CustomFieldValue";
 import { useEntityFields } from "../custom-fields/useCustomFields";
 import { formatPhone } from "../misc/formatPhone";
+import { PatientArchiveActions } from "../data-safety/PatientArchive";
 
 /** Contact card of a patient: phones, messengers, clinic info, tags */
 export const PatientAside = () => {
@@ -91,14 +91,8 @@ export const PatientAside = () => {
         <PatientOptOutToggle patientId={record.id} />
       </Section>
 
-      <CanAccess resource="patients" action="delete" record={record}>
-        <div className="border-t border-border pt-4">
-          <DeleteButton
-            size="sm"
-            className="text-destructive! hover:bg-destructive/10!"
-          />
-        </div>
-      </CanAccess>
+      {/* Stage 41: the archive; the owner deletes a patient without history */}
+      <PatientArchiveActions />
     </aside>
   );
 };

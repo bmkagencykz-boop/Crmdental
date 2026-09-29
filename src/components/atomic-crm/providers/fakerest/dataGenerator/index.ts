@@ -27,6 +27,7 @@ import { generatePatientCard } from "./patientCard";
 import { generatePayroll } from "./payroll";
 import { generateWaitingList } from "./waitingList";
 import { generateLabOrders } from "./labOrders";
+import { generateDataSafety } from "./dataSafety";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -72,6 +73,8 @@ export default (): Db => {
   // Lab work orders (stage 40): after the plans, the patient files and the
   // notifications
   generateLabOrders(db);
+  // Data safety (stage 41): card numbers, the archive — last
+  generateDataSafety(db);
   db.configuration = [
     {
       id: 1,

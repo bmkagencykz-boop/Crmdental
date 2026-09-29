@@ -103,7 +103,17 @@ test.describe("lab module: prices, terms, remakes, quality, act", () => {
     // Ready: the work and the paid remake are billed this month
     await card.getByRole("button", { name: "Change the status" }).click();
     await page.getByRole("menuitem", { name: "Ready" }).click();
-    await expect(card.getByTestId("lab-status")).toHaveText("Ready");
+    // A ready order leaves «In work» for «Ready»
+    await expect(
+      page.getByText(/Work order No\. \d+: Ready/).first(),
+    ).toBeVisible();
+    await page
+      .getByRole("tablist", { name: "In work" })
+      .getByRole("tab", { name: "Ready", exact: true })
+      .click();
+    await expect(
+      page.getByTestId("lab-order-card").first().getByTestId("lab-status"),
+    ).toHaveText("Ready");
     await page.getByRole("tab", { name: "Lab settlement" }).click();
     await expect(page.getByTestId("lab-settlement-total")).toContainText(
       "40 000",
@@ -116,7 +126,7 @@ test.describe("lab module: prices, terms, remakes, quality, act", () => {
     await expect(act.getByTestId("lab-act-lines")).toContainText(
       "Remake No. 1",
     );
-    await act.getByRole("button", { name: "Close" }).click();
+    await act.getByRole("button", { name: "Close" }).first().click();
 
     // Quality: the remake at the clinic's fault
     await page.getByRole("tab", { name: "Quality" }).click();

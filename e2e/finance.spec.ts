@@ -120,7 +120,9 @@ test.describe("finance", () => {
     await expect(page.getByTestId("finance-accounts")).toBeVisible();
     await expect(page.getByTestId("finance-articles-out")).toBeVisible();
 
-    // An administrator without «Reports» has no Finance
+    // An administrator without «Reports» has no Finance: sign out first
+    await page.evaluate(() => localStorage.clear());
+    await page.context().clearCookies();
     await login("admin@smile.kz");
     await page.goto("/#/");
     await expect(page.getByRole("link", { name: "Finance" })).toHaveCount(0);

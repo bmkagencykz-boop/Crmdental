@@ -99,7 +99,7 @@ test.describe("cash desk expenses", () => {
     await page.getByTestId("cash-expense-button").click();
     const expense = page.getByTestId("expense-dialog");
     await expense.getByLabel("Amount", { exact: true }).fill("12000");
-    await expense.getByRole("radio", { name: "Cash" }).click();
+    await expense.getByRole("radio", { name: "Cash", exact: true }).click();
     await expense
       .getByLabel("Expense category")
       .selectOption({ label: "Материалы" });
@@ -121,7 +121,7 @@ test.describe("cash desk expenses", () => {
     const payout = page.getByRole("dialog");
     await payout.getByLabel("Amount, ₸").fill("20000");
     await payout.getByRole("radio", { name: "Pay from the cash desk" }).click();
-    await payout.getByRole("radio", { name: "Cash" }).click();
+    await payout.getByRole("radio", { name: "Cash", exact: true }).click();
     await payout.getByTestId("payroll-adjustment-save").click();
     await expect(page.getByTestId("payroll-adjustments")).toContainText(
       "from the cash desk",
@@ -141,7 +141,7 @@ test.describe("cash desk expenses", () => {
       "10000",
     );
     await labPayment.getByRole("radio", { name: "From the cash desk" }).click();
-    await labPayment.getByRole("radio", { name: "Cash" }).click();
+    await labPayment.getByRole("radio", { name: "Cash", exact: true }).click();
     await labPayment.getByTestId("lab-payment-save").click();
     await expect(page.getByTestId("lab-payments")).toContainText("10 000");
     await expect(page.getByTestId("lab-settlement-due")).toContainText("0 ₸");

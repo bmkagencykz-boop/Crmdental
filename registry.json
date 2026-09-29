@@ -42,6 +42,38 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/waiting-list/waitingMatch.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/useWaitingList.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/format.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/WaitingListPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/WaitingListBlock.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/WaitingEntryDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/waiting-list/OfferDialog.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/unsorted/unsorted.ts",
           "type": "registry:component"
         },
@@ -638,6 +670,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/supabase/payrollMethods.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/supabase/paymentMethods.ts",
           "type": "registry:component"
         },
@@ -694,6 +730,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/fakerest/waitingList.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/fakerest/unsorted.ts",
           "type": "registry:component"
         },
@@ -715,6 +755,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/priceList.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/payroll.ts",
           "type": "registry:component"
         },
         {
@@ -806,6 +850,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/waitingList.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/utils.ts",
           "type": "registry:component"
         },
@@ -843,6 +891,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/plans.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/payroll.ts",
           "type": "registry:component"
         },
         {
@@ -1047,6 +1099,34 @@
         },
         {
           "path": "src/components/atomic-crm/pipeline-automation/ApiDocsPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/usePayroll.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/payrollMath.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/PayrollSchemesPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/PayrollParts.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/PayrollPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payroll/PayrollEmployeePage.tsx",
           "type": "registry:component"
         },
         {

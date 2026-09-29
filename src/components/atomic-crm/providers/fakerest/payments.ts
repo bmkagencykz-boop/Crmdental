@@ -6,7 +6,9 @@ import type {
 } from "ra-core";
 
 import {
+  checkExpense,
   checkOperation,
+  expenseTotals,
   normalizeOperation,
   operationDeltas,
   patientCharged,
@@ -19,10 +21,14 @@ import {
 import {
   PAYMENT_METHODS,
   type AccountOperation,
+  type CashExpenseCategory,
+  type CashExpenseRow,
   type CashMethodRow,
   type CashShift,
   type ShiftClosing,
 } from "../../payments/types";
+import type { LabPayment } from "../../lab/types";
+import type { PayrollAdjustment } from "../../payroll/types";
 import type { Branch } from "../../branches/branches";
 import type { Visit } from "../../schedule/types";
 import type { TreatmentPlan, TreatmentPlanItem } from "../../treatment/types";
@@ -30,6 +36,7 @@ import type {
   AuditLogEntry,
   Deal,
   DealPayment,
+  OrganizationSettings,
   Patient,
   Sale,
   Service,
@@ -52,6 +59,9 @@ const MESSAGES: Record<string, string> = {
   "payments.errors.cash_short": "Получено наличными меньше, чем к оплате",
   "payments.errors.deposit_insufficient": "На депозите меньше суммы операции",
   "payments.errors.refund_exceeds_paid": "Вернуть можно не больше оплаченного",
+  "cash_out.errors.method":
+    "Расход проводится наличными, картой, Kaspi или переводом",
+  "cash_out.errors.category": "Укажите статью расхода",
 };
 
 const AUDITED = [
@@ -66,6 +76,7 @@ const AUDITED = [
   "plan_id",
   "visit_id",
   "shift_id",
+  "category_id",
 ] as const;
 
 const clinicDate = (at: string) => {
@@ -81,6 +92,9 @@ const clinicDate = (at: string) => {
  * services of a deal (and the ledger row of a deal payment written
  * directly), the balances, the cashier's shift and branch, the refunds for
  * the owner and the head, the corrections for the owner, the audit log.
+ * Expenses (stage 42, 42_cash_outflows.sql): no patient, a category, the
+ * owner and the head (an administrator when the clinic allows it), their
+ * payout or lab payment deleted with them.
  */
 export const createPaymentsDemo = ({
   baseDataProvider,
@@ -103,6 +117,25 @@ export const createPaymentsDemo = ({
   /** 'ledger': a deal payment written by an operation; 'deal': the reverse */
   let sync: "" | "ledger" | "deal" = "";
   const previousOps = new Map<string, AccountOperation>();
+  /** Expenses being cancelled by their payout or lab payment (stage 42) */
+  const linkDeleting = new Set<string>();
+  /** The payout or the lab payment of an expense */
+  const linkOf = async (
+    opId: Identifier,
+  ): Promise<
+    | { kind: "payout"; row: PayrollAdjustment }
+    | { kind: "lab"; row: LabPayment }
+    | null
+  > => {
+    const payout = (await all<PayrollAdjustment>("payroll_adjustments")).find(
+      (a) => same(a.account_operation_id, opId),
+    );
+    if (payout) return { kind: "payout", row: payout };
+    const lab = (await all<LabPayment>("lab_payments")).find((l) =>
+      same(l.account_operation_id, opId),
+    );
+    return lab ? { kind: "lab", row: lab } : null;
+  };
 
   const me = async () => {
     const id = await currentSalesId();
@@ -148,27 +181,62 @@ export const createPaymentsDemo = ({
 
   // --- views ------------------------------------------------------------
 
+  /** Who may record an expense: owner, head; a manager when allowed */
+  const canExpense = async () => {
+    const role = await myRole();
+    if (role === "owner" || role === "head") return true;
+    if (role !== "manager") return false;
+    const [settings] = await all<OrganizationSettings>("organization_settings");
+    return !!settings?.manager_cash_expenses;
+  };
+  /**
+   * Expenses are read by the owner and the head, a manager with the
+   * «Отчёты» right, and the manager who recorded them
+   */
+  const expenseFilter = async () => {
+    const role = await myRole();
+    if (role === "owner" || role === "head") return () => true;
+    if (role !== "manager") return () => false;
+    if (await reportsAllowed()) return () => true;
+    const id = await currentSalesId();
+    return (op: AccountOperation) => same(op.sales_id, id);
+  };
+  const visibleOps = async () => {
+    const seesExpense = await expenseFilter();
+    return (await ops()).filter(
+      (op) => op.kind !== "expense" || seesExpense(op),
+    );
+  };
+  const categories = () =>
+    all<CashExpenseCategory>("cash_expense_categories");
+
   const operationsSummary = async () => {
-    const [rows, patients, sales, deals, plans, branches] = await Promise.all([
-      ops(),
-      all<Patient>("patients"),
-      all<Sale>("sales"),
-      all<Deal>("deals"),
-      all<TreatmentPlan>("treatment_plans"),
-      all<Branch>("branches"),
-    ]);
+    const [rows, patients, sales, deals, plans, branches, cats, payouts, labs] =
+      await Promise.all([
+        visibleOps(),
+        all<Patient>("patients"),
+        all<Sale>("sales"),
+        all<Deal>("deals"),
+        all<TreatmentPlan>("treatment_plans"),
+        all<Branch>("branches"),
+        categories(),
+        all<PayrollAdjustment>("payroll_adjustments"),
+        all<LabPayment>("lab_payments"),
+      ]);
     return rows.flatMap((op) => {
       const patient = patients.find((p) => same(p.id, op.patient_id));
-      if (!patient) return [];
+      if (!patient && op.kind !== "expense") return [];
       const cashier = sales.find((s) => same(s.id, op.sales_id));
+      const category = cats.find((c) => same(c.id, op.category_id));
       return [
         {
           ...op,
-          patient_name:
-            [patient.last_name, patient.first_name, patient.middle_name]
-              .filter((part) => part?.trim())
-              .join(" ") || null,
-          patient_phone: patient.phones?.[0] ?? null,
+          patient_name: patient
+            ? [patient.last_name, patient.first_name, patient.middle_name]
+                .filter((part) => part?.trim())
+                .join(" ") || null
+            : null,
+          patient_phone: patient?.phones?.[0] ?? null,
           cashier_name:
             [cashier?.first_name, cashier?.last_name]
               .filter(Boolean)
@@ -177,6 +245,14 @@ export const createPaymentsDemo = ({
           plan_name: plans.find((p) => same(p.id, op.plan_id))?.name ?? null,
           branch_name:
             branches.find((b) => same(b.id, op.branch_id))?.name ?? null,
+          category_id: op.category_id ?? null,
+          category_name: category?.name ?? null,
+          category_code: category?.code ?? null,
+          payroll_adjustment_id:
+            payouts.find((a) => same(a.account_operation_id, op.id))?.id ??
+            null,
+          lab_payment_id:
+            labs.find((l) => same(l.account_operation_id, op.id))?.id ?? null,
         },
       ];
     });
@@ -307,7 +383,65 @@ export const createPaymentsDemo = ({
     };
   };
 
+  /** An expense: no patient, a category, a real method (stage 42) */
+  const prepareExpense = async (input: Partial<AccountOperation>) => {
+    if (!(await canExpense())) {
+      throw fail("Расходы из кассы проводят владелец и руководитель", "42501");
+    }
+    if (
+      input.patient_id != null ||
+      input.deal_id != null ||
+      input.plan_id != null ||
+      input.visit_id != null ||
+      (input.plan_item_ids ?? []).length
+    ) {
+      throw fail("Расход не связан с пациентом, сделкой или визитом");
+    }
+    const amount = Math.round(Number(input.amount ?? 0));
+    const method = input.method ?? "cash";
+    const category = (await categories()).find((c) =>
+      same(c.id, input.category_id),
+    );
+    const problem = checkExpense({
+      amount,
+      method,
+      category_id: category?.id ?? null,
+    });
+    if (problem) throw fail(MESSAGES[problem] ?? problem);
+    if (!category!.is_active) throw fail("Статья расхода в архиве");
+    const salesId = (await currentSalesId()) ?? null;
+    const shift = await openShiftOf(salesId);
+    const now = new Date().toISOString();
+    return withDeltas({
+      kind: "expense" as const,
+      account: "services" as const,
+      amount,
+      method,
+      parts: null,
+      cash_received: null,
+      prepayment: false,
+      occurred_at: input.occurred_at ?? now,
+      sales_id: salesId,
+      branch_id: input.branch_id ?? shift?.branch_id ?? null,
+      shift_id: shift?.id ?? null,
+      patient_id: null,
+      deal_id: null,
+      plan_id: null,
+      plan_item_ids: [],
+      visit_id: null,
+      comment: input.comment?.trim() || null,
+      source: "cash_desk" as const,
+      deal_payment_id: null,
+      category_id: category!.id,
+      created_at: now,
+    });
+  };
+
   const prepare = async (input: Partial<AccountOperation>) => {
+    if (input.kind === "expense") return prepareExpense(input);
+    if (input.category_id != null) {
+      throw fail("Статья расхода указывается только у расхода");
+    }
     const role = await myRole();
     if (!["owner", "head", "manager"].includes(role)) {
       throw fail("Нет права на операции по счёту пациента", "42501");
@@ -473,7 +607,32 @@ export const createPaymentsDemo = ({
           occurred_at: changes.occurred_at ?? previous.occurred_at,
           method: changes.method ?? previous.method,
           parts: changes.parts !== undefined ? changes.parts : previous.parts,
+          category_id:
+            changes.category_id !== undefined
+              ? changes.category_id
+              : (previous.category_id ?? null),
         };
+        if (previous.kind === "expense") {
+          const problem = checkExpense(next);
+          if (problem) throw fail(MESSAGES[problem] ?? problem);
+          if (!same(next.category_id, previous.category_id)) {
+            const category = (await categories()).find((c) =>
+              same(c.id, next.category_id),
+            );
+            if (!category) throw fail("Укажите статью расхода");
+            if (!category.is_active) throw fail("Статья расхода в архиве");
+            if (await linkOf(previous.id)) {
+              throw fail(
+                "Это выплата зарплаты или оплата лаборатории: статья не меняется",
+              );
+            }
+            next.category_id = category.id;
+          }
+          previousOps.set(String(previous.id), previous);
+          return { ...params, data: withDeltas(next) };
+        } else if (next.category_id != null) {
+          throw fail("Статья расхода указывается только у расхода");
+        }
         if (
           next.method !== previous.method &&
           [previous.method, next.method].some((m) =>
@@ -519,6 +678,28 @@ export const createPaymentsDemo = ({
             }
           }
         }
+        // The payout or the lab payment follows the method and the time
+        if (
+          previous &&
+          op.kind === "expense" &&
+          (op.method !== previous.method ||
+            op.occurred_at !== previous.occurred_at)
+        ) {
+          const link = await linkOf(op.id);
+          if (link?.kind === "payout") {
+            await baseDataProvider.update("payroll_adjustments", {
+              id: link.row.id,
+              data: { occurred_on: clinicDate(op.occurred_at) },
+              previousData: link.row,
+            });
+          } else if (link?.kind === "lab") {
+            await baseDataProvider.update("lab_payments", {
+              id: link.row.id,
+              data: { method: op.method, paid_at: op.occurred_at },
+              previousData: link.row,
+            });
+          }
+        }
         if (previous) await audit("update", op, previous);
         return result;
       },
@@ -559,7 +740,19 @@ export const createPaymentsDemo = ({
             }
           }
         }
-        if (sync !== "deal") await audit("delete", op);
+        // An expense takes its payout or lab payment along (a cascade: not
+        // in the audit log); unless they are what is being deleted
+        const fromLink = linkDeleting.has(String(op.id));
+        if (op.kind === "expense" && !fromLink) {
+          const link = await linkOf(op.id);
+          if (link) {
+            await baseDataProvider.delete(
+              link.kind === "payout" ? "payroll_adjustments" : "lab_payments",
+              { id: link.row.id, previousData: link.row },
+            );
+          }
+        }
+        if (sync !== "deal" && !fromLink) await audit("delete", op);
         return result;
       },
     } satisfies ResourceCallbacks<AccountOperation>,
@@ -659,6 +852,17 @@ export const createPaymentsDemo = ({
         return result;
       },
     } satisfies ResourceCallbacks<DealPayment>,
+    // Expenses: the owner, the head, the managers allowed (stage 42)
+    {
+      resource: "account_operations",
+      afterGetList: async (result: GetListResult) => {
+        const seesExpense = await expenseFilter();
+        const data = result.data.filter(
+          (op) => op.kind !== "expense" || seesExpense(op),
+        );
+        return { ...result, data, total: data.length };
+      },
+    } satisfies ResourceCallbacks,
     // The integrator sees no money (stage 25)
     ...[
       "account_operations",
@@ -807,11 +1011,31 @@ export const createPaymentsDemo = ({
         method,
         income: byMethod[method].income,
         refunds: byMethod[method].refunds,
+        expenses: byMethod[method].expenses,
         net: byMethod[method].net,
         operations: byMethod[method].count,
       }))
         .filter((row) => row.operations > 0)
         .sort((a, b) => b.net - a.net || a.method.localeCompare(b.method));
+    },
+    /** Reports «Расходы по статьям» (public.report_cash_expenses) */
+    async getCashExpensesReport(filters: {
+      from?: string | null;
+      to?: string | null;
+      branch_id?: Identifier | null;
+    }): Promise<CashExpenseRow[]> {
+      const role = await myRole();
+      if (role !== "owner" && role !== "head" && !(await reportsAllowed())) {
+        throw new Error("reports.forbidden");
+      }
+      const rows = (await ops()).filter(
+        (op) =>
+          op.kind === "expense" &&
+          (!filters.from || op.occurred_at >= filters.from) &&
+          (!filters.to || op.occurred_at < filters.to) &&
+          (filters.branch_id == null || same(op.branch_id, filters.branch_id)),
+      );
+      return expenseTotals(rows, await categories());
     },
   };
 
@@ -821,5 +1045,23 @@ export const createPaymentsDemo = ({
     methods,
     /** A deal payment being written by an operation (logged as the operation) */
     isLedgerWriting: () => sync === "ledger",
+    /**
+     * Cancel the expense of a deleted payout or lab payment (a cascade of
+     * the database: not in the audit log)
+     */
+    cancelLinkedExpense: async (opId: Identifier) => {
+      const op = (await ops()).find((row) => same(row.id, opId));
+      if (!op) return;
+      linkDeleting.add(String(op.id));
+      try {
+        await getDataProvider().delete("account_operations", {
+          id: op.id,
+          previousData: op,
+        });
+      } finally {
+        linkDeleting.delete(String(op.id));
+      }
+    },
+    canExpense,
   };
 };

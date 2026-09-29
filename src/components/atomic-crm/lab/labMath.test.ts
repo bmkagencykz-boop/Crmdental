@@ -198,6 +198,7 @@ describe("money", () => {
         cost({ id: 3, order_id: 2, lab_id: 2, price: 5000 }),
         cost({ id: 4, order_id: 3, ready_at: "2026-08-31" }),
         cost({ id: 5, order_id: 4, ready_at: null }),
+        cost({ id: 6, order_id: 5, ready_at: "2026-10-02" }),
       ],
       labs,
       "2026-09-01",
@@ -210,6 +211,9 @@ describe("money", () => {
         orders_count: 1,
         items_count: 4,
         amount: 52000,
+        paid: 0,
+        balance: 52000,
+        total_balance: 70000,
       },
       {
         lab_id: 2,
@@ -218,7 +222,51 @@ describe("money", () => {
         orders_count: 1,
         items_count: 1,
         amount: 5000,
+        paid: 0,
+        balance: 5000,
+        total_balance: 5000,
       },
+    ]);
+  });
+  it("shows what was paid and the balance (stage 42)", () => {
+    const labs = [
+      { id: 1, name: "Дентал-Арт", is_own: false },
+      { id: 2, name: "Своя", is_own: true },
+      { id: 3, name: "Архив", is_own: false },
+    ];
+    const costs = [
+      cost({ id: 1, order_id: 1, qty: 2, price: 18000 }),
+      cost({ id: 2, order_id: 2, ready_at: "2026-08-10", price: 10000 }),
+    ];
+    const payments = [
+      { lab_id: 1, month: "2026-09-01", amount: 30000 },
+      { lab_id: 1, month: "2026-08-01", amount: 4000 },
+      { lab_id: 2, month: "2026-09-01", amount: 5000 },
+      { lab_id: 1, month: "2026-10-01", amount: 99999 },
+    ];
+    const rows = labSettlement(costs, labs, "2026-09-01", payments);
+    expect(
+      rows.map((row) => [
+        row.lab_name,
+        row.amount,
+        row.paid,
+        row.balance,
+        row.total_balance,
+      ]),
+    ).toEqual([
+      ["Дентал-Арт", 36000, 30000, 6000, 12000],
+      ["Своя", 0, 5000, -5000, -5000],
+    ]);
+    // The next month: nothing owed, the balance carried over
+    expect(
+      labSettlement(costs, labs, "2026-10-01", payments).map((row) => [
+        row.lab_name,
+        row.amount,
+        row.total_balance,
+      ]),
+    ).toEqual([
+      ["Дентал-Арт", 0, 12000 - 99999],
+      ["Своя", 0, -5000],
     ]);
   });
   it("gives the lab cost of a doctor in a month (payroll)", () => {

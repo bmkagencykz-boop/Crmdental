@@ -3,6 +3,7 @@ import type { Identifier } from "ra-core";
 import { lineTotal, planTotal } from "../treatment/planMath";
 import type { TreatmentPlan, TreatmentPlanItem } from "../treatment/types";
 import {
+  EXPENSE_METHODS,
   PAYMENT_METHODS,
   type AccountOperation,
   type MethodPart,
@@ -16,7 +17,8 @@ import {
  * account_operations, private.operation_method_amount,
  * private.plan_done_charge, private.cash_shift_expected, the views
  * patient_accounts and treatment_plan_payments, the checks of
- * private.handle_account_operation_before_write).
+ * private.handle_account_operation_before_write) and of the expenses of
+ * 42_cash_outflows.sql (money out of the till, no patient, a category).
  */
 
 type OperationLike = Pick<
@@ -54,6 +56,7 @@ export const normalizeOperation = <T extends OperationLike>(op: T): T => {
     next.account = "services";
     next.method = "deposit";
   } else if (next.kind === "correction") next.method = "other";
+  else if (next.kind === "expense") next.account = "services";
   if (next.method !== "mixed") next.parts = null;
   return next;
 };
@@ -90,7 +93,7 @@ export const operationDeltas = ({
       ? 0
       : kind === "payment" || kind === "deposit"
         ? amount
-        : kind === "refund"
+        : kind === "refund" || kind === "expense"
           ? -amount
           : 0;
   return { deposit, paid, till };
@@ -325,47 +328,103 @@ export const shiftExpected = (openingCash: number, ops: OperationLike[]) =>
 export type MethodTotals = {
   income: number;
   refunds: number;
+  /** Expenses (stage 42), apart from the refunds */
+  expenses: number;
   net: number;
   count: number;
 };
 
+const emptyTotals = (): MethodTotals => ({
+  income: 0,
+  refunds: 0,
+  expenses: 0,
+  net: 0,
+  count: 0,
+});
+
 /**
  * Money in and out of the till by method (report_cash_methods): payments
- * and deposits in, refunds out; payments from the deposit, refunds to the
- * deposit and corrections move no money
+ * and deposits in, refunds and expenses out; payments from the deposit,
+ * refunds to the deposit and corrections move no money
  */
 export const tillTotals = (ops: OperationLike[]) => {
   const byMethod = Object.fromEntries(
-    PAYMENT_METHODS.map((method) => [
-      method,
-      { income: 0, refunds: 0, net: 0, count: 0 },
-    ]),
+    PAYMENT_METHODS.map((method) => [method, emptyTotals()]),
   ) as Record<PaymentMethod, MethodTotals>;
-  const total: MethodTotals = { income: 0, refunds: 0, net: 0, count: 0 };
+  const total = emptyTotals();
   for (const op of ops) {
     const till = operationDeltas(op).till;
     if (till === 0) continue;
     total.count++;
+    const out = op.kind === "expense" ? "expenses" : "refunds";
     for (const part of methodParts(op)) {
       const line = byMethod[part.method];
       if (till > 0) line.income += part.amount;
-      else line.refunds += part.amount;
+      else line[out] += part.amount;
       line.count++;
     }
     if (till > 0) total.income += Math.abs(till);
-    else total.refunds += Math.abs(till);
+    else total[out] += Math.abs(till);
   }
   for (const line of [...Object.values(byMethod), total]) {
-    line.net = line.income - line.refunds;
+    line.net = line.income - line.refunds - line.expenses;
   }
   return { byMethod, total };
+};
+
+/**
+ * Expenses by category (report_cash_expenses): the amount, the cash part
+ * and the count, the biggest first
+ */
+export const expenseTotals = <
+  C extends { id: Identifier; name: string; code?: string | null },
+>(
+  ops: (OperationLike & { category_id?: Identifier | null })[],
+  categories: C[],
+) =>
+  categories
+    .map((category) => {
+      const own = ops.filter(
+        (op) => op.kind === "expense" && same(op.category_id, category.id),
+      );
+      return {
+        category_id: category.id,
+        name: category.name,
+        code: category.code ?? null,
+        amount: own.reduce((sum, op) => sum + Math.abs(op.amount), 0),
+        cash: own.reduce((sum, op) => sum + methodAmount(op, "cash"), 0),
+        operations: own.length,
+      };
+    })
+    .filter((row) => row.operations > 0)
+    .sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
+
+/**
+ * Why an expense is refused (the checks of
+ * private.handle_account_operation_expense), or null
+ */
+export const checkExpense = (op: {
+  amount: number;
+  method: string;
+  category_id?: Identifier | null;
+}): string | null => {
+  if (!(op.amount > 0) || !Number.isInteger(op.amount)) {
+    return "payments.errors.amount";
+  }
+  if (!(EXPENSE_METHODS as readonly string[]).includes(op.method)) {
+    return "cash_out.errors.method";
+  }
+  if (op.category_id == null || op.category_id === "") {
+    return "cash_out.errors.category";
+  }
+  return null;
 };
 
 /** Operations that only the owner / the head may write */
 export const kindNeedsRole = (kind: OperationKind) =>
   kind === "correction"
     ? ["owner"]
-    : kind === "refund"
+    : kind === "refund" || kind === "expense"
       ? ["owner", "head"]
       : ["owner", "head", "manager"];
 
@@ -437,10 +496,13 @@ export const daysSince = (at: string | null | undefined, now = new Date()) =>
  * cancellations: owner and head; corrections: the owner. The cash desk of
  * the whole clinic, every shift and the reports: owner, head and employees
  * with the «Отчёты» right; a cashier without it sees their own operations.
+ * Expenses (stage 42): the owner and the head; an administrator when the
+ * clinic allows it (organization_settings.manager_cash_expenses).
  */
 export const paymentRights = (
   role: string | null | undefined,
   reportsView?: string | null,
+  managerExpenses?: boolean | null,
 ) => {
   const staff = role === "owner" || role === "head" || role === "manager";
   const senior = role === "owner" || role === "head";
@@ -449,6 +511,7 @@ export const paymentRights = (
     canRefund: senior,
     canEdit: senior,
     canCorrect: role === "owner",
+    canExpense: senior || (role === "manager" && !!managerExpenses),
     seesAll: senior || (role === "manager" && reportsView === "all"),
   };
 };

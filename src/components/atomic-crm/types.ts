@@ -503,6 +503,8 @@ export type OrganizationSettings = {
   clinic_address?: string | null;
   /** Discount above this percent: owner and head only (stage 29) */
   max_discount_percent?: number;
+  /** Administrators record expenses of the cash desk (stage 42) */
+  manager_cash_expenses?: boolean;
 };
 
 /** Status of a step of the setup wizard (stage 24) */

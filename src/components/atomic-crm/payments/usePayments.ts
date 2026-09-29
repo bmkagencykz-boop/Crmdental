@@ -25,11 +25,16 @@ export const money = (amount: number | null | undefined) => {
 /** The money rights of the signed-in employee (see paymentRights) */
 export const usePaymentRights = () => {
   const { data, isPending } = useMyAccessRights();
+  const { data: settings } = useOrganizationSettings();
   return {
     isPending,
     me: data?.sales_id ?? null,
     role: data?.role ?? null,
-    ...paymentRights(data?.role, data?.rights.reports.view),
+    ...paymentRights(
+      data?.role,
+      data?.rights.reports.view,
+      settings?.manager_cash_expenses,
+    ),
   };
 };
 
@@ -51,6 +56,13 @@ const TOUCHED = [
   "deals",
   "cash_shifts",
   "audit_log",
+  // Expenses, payouts, lab payments (stage 42)
+  "payroll_month",
+  "payroll_adjustments",
+  "lab_payments",
+  "lab_payments_summary",
+  "lab_settlement",
+  "cash_expenses_report",
 ];
 
 export const useRefreshMoney = () => {

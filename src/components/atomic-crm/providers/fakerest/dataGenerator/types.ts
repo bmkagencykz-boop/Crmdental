@@ -229,4 +229,7 @@ export interface Db {
   lab_orders: LabOrder[];
   lab_order_items: LabOrderItem[];
   lab_order_item_prices: LabOrderItemPrice[];
+  // Money going out of the cash desk (stage 42)
+  cash_expense_categories: CashExpenseCategory[];
+  lab_payments: LabPayment[];
 }

@@ -5,6 +5,7 @@ import type {
   Lab,
   LabOrder,
   LabOrderCost,
+  LabPayment,
   LabSettlementRow,
   LabStatus,
 } from "./types";
@@ -233,18 +234,20 @@ export const orderCost = (
 
 /**
  * «Сумма лаборатории»: per lab, the orders, works and sum of the lines of
- * the works ready in the month (public.report_lab_settlement)
+ * the works ready in the month, what was paid for the month (lab payments,
+ * stage 42), the balance of the month and of every month up to it
+ * (public.report_lab_settlement). `costs` may hold the earlier months too:
+ * they only count in total_balance. Labs with works, payments or a balance.
  */
 export const labSettlement = (
   costs: LabOrderCost[],
   labs: Pick<Lab, "id" | "name" | "is_own">[],
   month: string,
+  payments: Pick<LabPayment, "lab_id" | "month" | "amount">[] = [],
 ): LabSettlementRow[] => {
+  const start = monthStart(month);
   const rows = new Map<string, LabSettlementRow & { orders: Set<string> }>();
-  for (const line of costs) {
-    if (line.lab_id == null || !sameMonth(line.ready_at, month)) continue;
-    const lab = labs.find((l) => String(l.id) === String(line.lab_id));
-    if (!lab) continue;
+  const rowOf = (lab: Pick<Lab, "id" | "name" | "is_own">) => {
     const key = String(lab.id);
     const row = rows.get(key) ?? {
       lab_id: lab.id,
@@ -253,15 +256,43 @@ export const labSettlement = (
       orders_count: 0,
       items_count: 0,
       amount: 0,
+      paid: 0,
+      balance: 0,
+      total_balance: 0,
       orders: new Set<string>(),
     };
+    rows.set(key, row);
+    return row;
+  };
+  const labOf = (id: Identifier | null | undefined) =>
+    labs.find((l) => String(l.id) === String(id));
+  for (const line of costs) {
+    const lab = labOf(line.lab_id);
+    if (!lab || !line.ready_at || monthStart(line.ready_at) > start) continue;
+    const row = rowOf(lab);
+    const sum = Number(line.qty) * Number(line.price);
+    row.total_balance += sum;
+    if (!sameMonth(line.ready_at, start)) continue;
     row.orders.add(String(line.order_id));
     row.items_count += Number(line.qty);
-    row.amount += Number(line.qty) * Number(line.price);
-    rows.set(key, row);
+    row.amount += sum;
+  }
+  for (const payment of payments) {
+    const lab = labOf(payment.lab_id);
+    if (!lab || monthStart(payment.month) > start) continue;
+    const row = rowOf(lab);
+    row.total_balance -= Number(payment.amount);
+    if (sameMonth(payment.month, start)) row.paid += Number(payment.amount);
   }
   return [...rows.values()]
-    .map(({ orders, ...row }) => ({ ...row, orders_count: orders.size }))
+    .map(({ orders, ...row }) => ({
+      ...row,
+      orders_count: orders.size,
+      balance: row.amount - row.paid,
+    }))
+    .filter(
+      (row) => row.orders_count > 0 || row.paid > 0 || row.total_balance !== 0,
+    )
     .sort(
       (a, b) => b.amount - a.amount || a.lab_name.localeCompare(b.lab_name),
     );

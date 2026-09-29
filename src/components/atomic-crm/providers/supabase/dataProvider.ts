@@ -51,6 +51,7 @@ import { getFileMethods, uploadToDealFolder } from "./fileMethods";
 import { getTreatmentMethods } from "./treatmentMethods";
 import { getPaymentMethods } from "./paymentMethods";
 import { getPayrollMethods } from "./payrollMethods";
+import { getCashOutflowMethods } from "./cashOutflowMethods";
 import { getPatientCardMethods } from "./patientCardMethods";
 import { getMarketingMethods } from "./marketingMethods";
 import { getBranchMethods } from "./branchMethods";
@@ -149,6 +150,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getPatientCardMethods(),
     // Payroll of the doctors and the staff (stage 39)
     ...getPayrollMethods(),
+    // Money going out of the cash desk (stage 42)
+    ...getCashOutflowMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

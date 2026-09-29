@@ -321,6 +321,39 @@ describe("demo cash outflows (stage 42)", () => {
     ).toBe(false);
   });
 
+  it("saves the doctor of a plan item and copies it with the plan", async () => {
+    const { db, dataProvider } = setup();
+    const item = db.treatment_plan_items.find((i) => !i.done)!;
+    const doctor = db.doctors[db.doctors.length - 1];
+    await dataProvider.update("treatment_plan_items", {
+      id: item.id,
+      data: { doctor_id: doctor.id },
+      previousData: item,
+    });
+    const items = await list<{
+      id: unknown;
+      doctor_id?: unknown;
+      plan_id: unknown;
+      name: string;
+    }>(dataProvider, "treatment_plan_items");
+    expect(items.find((i) => i.id === item.id)?.doctor_id).toBe(doctor.id);
+    const copyId = await dataProvider.duplicateTreatmentPlan(item.plan_id);
+    const copies = (
+      await list<{ doctor_id?: unknown; plan_id: unknown; name: string }>(
+        dataProvider,
+        "treatment_plan_items",
+      )
+    ).filter((i) => i.plan_id === copyId && i.name === item.name);
+    expect(copies.some((i) => i.doctor_id === doctor.id)).toBe(true);
+    await expect(
+      dataProvider.update("treatment_plan_items", {
+        id: item.id,
+        data: { doctor_id: 99999 },
+        previousData: item,
+      }),
+    ).rejects.toThrow(/Врач/);
+  });
+
   it("keeps the system categories", async () => {
     const { db, dataProvider } = setup();
     const rent = db.cash_expense_categories.find((c) => c.code === "rent")!;

@@ -150,17 +150,39 @@ export const generateCashOutflows = (db: Db) => {
   // The external lab: last month paid — by transfer, and a part in cash
   const lastMonth = shiftMonth(monthStart(dayOf(new Date())), -1);
   const owed = new Map<string, number>();
+  // Stage 43: the orders billed last month (first ready) and their cost,
+  // the paid remakes back last month too
+  const lastMonthOrders: Array<{ id: Identifier; lab: string; cost: number }> =
+    [];
+  const costOf = (orderId: Identifier) =>
+    db.lab_order_items
+      .filter((i) => same(i.order_id, orderId))
+      .reduce(
+        (sum, item) =>
+          sum +
+          item.qty *
+            (db.lab_order_item_prices.find((p) => same(p.item_id, item.id))
+              ?.price ?? 0),
+        0,
+      );
   for (const order of db.lab_orders) {
-    if (!order.ready_at || monthStart(order.ready_at) !== lastMonth) continue;
-    for (const item of db.lab_order_items.filter((i) =>
-      same(i.order_id, order.id),
-    )) {
-      const price =
-        db.lab_order_item_prices.find((p) => same(p.item_id, item.id))?.price ??
-        0;
-      const key = String(order.lab_id);
-      owed.set(key, (owed.get(key) ?? 0) + item.qty * price);
+    const billed = order.first_ready_at ?? order.ready_at;
+    let cost =
+      billed && monthStart(billed) === lastMonth ? costOf(order.id) : 0;
+    for (const remake of db.lab_order_remakes ?? []) {
+      if (
+        remake.is_paid &&
+        same(remake.order_id, order.id) &&
+        remake.ready_at &&
+        monthStart(remake.ready_at) === lastMonth
+      ) {
+        cost += costOf(order.id);
+      }
     }
+    if (!cost) continue;
+    const key = String(order.lab_id);
+    owed.set(key, (owed.get(key) ?? 0) + cost);
+    lastMonthOrders.push({ id: order.id, lab: key, cost });
   }
   const external = db.labs.find((lab) => !lab.is_own);
   if (external) {
@@ -188,6 +210,24 @@ export const generateCashOutflows = (db: Db) => {
         account_operation_id: null,
         created_at: moment.toISOString(),
       });
+      // Stage 43: the invoice pays the orders it lists (the cash part to
+      // the courier stays a payment of the month)
+      const paymentId = db.lab_payments[db.lab_payments.length - 1].id;
+      let left = transfer;
+      for (const order of lastMonthOrders.filter(
+        (o) => o.lab === String(external.id),
+      )) {
+        if (left <= 0) break;
+        const amount = Math.min(left, order.cost);
+        db.lab_payment_allocations.push({
+          id: db.lab_payment_allocations.length + 1,
+          payment_id: paymentId,
+          order_id: order.id,
+          amount,
+          created_at: moment.toISOString(),
+        });
+        left -= amount;
+      }
     }
     if (cashPart > 0) {
       const moment = at(0, 17, 40);

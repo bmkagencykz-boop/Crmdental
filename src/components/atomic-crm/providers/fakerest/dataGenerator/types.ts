@@ -7,6 +7,11 @@ import type {
   LabWorkType,
   LabWorkTypePrice,
   LabPayment,
+  LabWorkTypeTerm,
+  LabRemakeReason,
+  LabOrderRemake,
+  LabOrderEvent,
+  LabPaymentAllocation,
 } from "../../../lab/types";
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
@@ -234,6 +239,12 @@ export interface Db {
   lab_orders: LabOrder[];
   lab_order_items: LabOrderItem[];
   lab_order_item_prices: LabOrderItemPrice[];
+  // The lab module strengthened (stage 43)
+  lab_work_type_terms: LabWorkTypeTerm[];
+  lab_remake_reasons: LabRemakeReason[];
+  lab_order_remakes: LabOrderRemake[];
+  lab_order_events: LabOrderEvent[];
+  lab_payment_allocations: LabPaymentAllocation[];
   // Money going out of the cash desk (stage 42)
   cash_expense_categories: CashExpenseCategory[];
   lab_payments: LabPayment[];

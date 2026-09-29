@@ -67,8 +67,8 @@ export const getCashOutflowMethods = () => ({
     return data as CashLinkResult;
   },
   /**
-   * «Оплатить» a lab for a month; fromCash — the expense «Лаборатория»
-   * (public.record_lab_payment)
+   * «Оплатить» a lab for a month; fromCash — the expense «Лаборатория»;
+   * allocations — the orders it pays, stage 43 (public.record_lab_payment)
    */
   async recordLabPayment(input: {
     lab_id: Identifier;
@@ -78,6 +78,7 @@ export const getCashOutflowMethods = () => ({
     day?: string | null;
     comment?: string | null;
     fromCash?: boolean;
+    allocations?: Array<{ order_id: Identifier; amount: number }>;
   }): Promise<CashLinkResult> {
     const { data, error } = await getSupabaseClient().rpc(
       "record_lab_payment",
@@ -89,6 +90,9 @@ export const getCashOutflowMethods = () => ({
         payment_day: input.day ?? null,
         payment_comment: input.comment ?? null,
         from_cash: !!input.fromCash,
+        payment_allocations: input.allocations?.length
+          ? input.allocations
+          : null,
       },
     );
     if (error) throw error;

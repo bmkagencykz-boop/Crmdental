@@ -6,7 +6,12 @@ import type {
 } from "ra-core";
 
 import { monthStart } from "../../lab/labMath";
-import type { Lab, LabPayment, LabPaymentMethod } from "../../lab/types";
+import type {
+  Lab,
+  LabPayment,
+  LabPaymentAllocation,
+  LabPaymentMethod,
+} from "../../lab/types";
 import type {
   AccountOperation,
   CashExpenseCategory,
@@ -374,6 +379,25 @@ export const createCashOutflowsDemo = ({
         if (data.comment !== undefined) {
           data.comment = data.comment?.trim() || null;
         }
+        // Stage 43: the orders it pays keep their part, in the same lab
+        const allocations = (
+          await all<LabPaymentAllocation>("lab_payment_allocations")
+        ).filter((a) => same(a.payment_id, previous.id));
+        if (
+          data.amount != null &&
+          Number(data.amount) < previous.amount &&
+          Number(data.amount) <
+            allocations.reduce((sum, a) => sum + a.amount, 0)
+        ) {
+          throw fail("Оплата распределена по нарядам на большую сумму");
+        }
+        if (
+          data.lab_id != null &&
+          !same(data.lab_id, previous.lab_id) &&
+          allocations.length
+        ) {
+          throw fail("Оплата распределена по нарядам этой лаборатории");
+        }
         previousRows.set(`lab_payment${params.id}`, previous);
         return { ...params, data };
       },
@@ -410,6 +434,15 @@ export const createCashOutflowsDemo = ({
         const previous = previousRows.get(key) as LabPayment | undefined;
         previousRows.delete(key);
         if (previous) {
+          // Its allocations to the orders go with it (stage 43)
+          for (const allocation of (
+            await all<LabPaymentAllocation>("lab_payment_allocations")
+          ).filter((a) => same(a.payment_id, previous.id))) {
+            await baseDataProvider.delete("lab_payment_allocations", {
+              id: allocation.id,
+              previousData: allocation,
+            });
+          }
           await logAudit({
             entity: "lab_payment",
             entity_id: previous.id,
@@ -596,7 +629,10 @@ export const createCashOutflowsDemo = ({
         throw error;
       }
     },
-    /** «Оплатить» a lab; fromCash — the expense (public.record_lab_payment) */
+    /**
+     * «Оплатить» a lab; fromCash — the expense; allocations — the orders it
+     * pays (public.record_lab_payment)
+     */
     async recordLabPayment(input: {
       lab_id: Identifier;
       month: string;
@@ -605,6 +641,7 @@ export const createCashOutflowsDemo = ({
       day?: string | null;
       comment?: string | null;
       fromCash?: boolean;
+      allocations?: Array<{ order_id: Identifier; amount: number }>;
     }): Promise<CashLinkResult> {
       if (!(await senior())) {
         throw fail(
@@ -648,6 +685,33 @@ export const createCashOutflowsDemo = ({
             },
           },
         );
+        try {
+          for (const allocation of input.allocations ?? []) {
+            if (!(Number(allocation.amount) > 0)) continue;
+            await getDataProvider().create("lab_payment_allocations", {
+              data: {
+                payment_id: data.id,
+                order_id: allocation.order_id,
+                amount: Math.round(Number(allocation.amount)),
+              },
+            });
+          }
+        } catch (error) {
+          // All or nothing, like the transaction of the RPC
+          for (const allocation of (
+            await all<LabPaymentAllocation>("lab_payment_allocations")
+          ).filter((a) => same(a.payment_id, data.id))) {
+            await baseDataProvider.delete("lab_payment_allocations", {
+              id: allocation.id,
+              previousData: allocation,
+            });
+          }
+          await baseDataProvider.delete("lab_payments", {
+            id: data.id,
+            previousData: data,
+          });
+          throw error;
+        }
         return { payment_id: data.id, operation_id: op?.id ?? null };
       } catch (error) {
         if (op) {

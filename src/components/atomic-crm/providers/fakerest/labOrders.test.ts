@@ -183,22 +183,40 @@ describe("demo lab work orders", { timeout: 30_000 }, () => {
       dataProvider,
       "lab_work_type_prices",
     );
-    expect(prices).toHaveLength(13);
+    // Stage 43: the default prices with their history and the own lab's
+    expect(prices).toHaveLength(db.lab_work_type_prices.length);
+    expect(prices.some((p) => p.lab_id != null)).toBe(true);
     const costs = await list<LabOrderCost>(dataProvider, "lab_order_costs");
-    expect(costs.length).toBe(db.lab_order_items.length);
+    expect(costs.filter((c) => c.kind === "work").length).toBe(
+      db.lab_order_items.length,
+    );
+    // One row per paid remake
+    expect(costs.filter((c) => c.kind === "remake").length).toBe(
+      db.lab_order_remakes.filter((r) => r.is_paid).length,
+    );
     const labs = await list<Lab>(dataProvider, "labs");
     const month = monthStart(localDay());
     const settlement = labSettlement(costs, labs, month);
-    const expected = db.lab_orders
-      .filter((o) => o.ready_at && o.ready_at.slice(0, 7) === month.slice(0, 7))
-      .flatMap((o) => db.lab_order_items.filter((i) => i.order_id === o.id))
-      .reduce(
-        (sum, item) =>
-          sum +
-          item.qty *
-            db.lab_order_item_prices.find((p) => p.item_id === item.id)!.price,
-        0,
-      );
+    const orderCost = (orderId: unknown) =>
+      db.lab_order_items
+        .filter((i) => i.order_id === orderId)
+        .reduce(
+          (sum, item) =>
+            sum +
+            item.qty *
+              db.lab_order_item_prices.find((p) => p.item_id === item.id)!
+                .price,
+          0,
+        );
+    const inMonth = (day?: string | null) =>
+      !!day && day.slice(0, 7) === month.slice(0, 7);
+    const expected =
+      db.lab_orders
+        .filter((o) => inMonth(o.first_ready_at))
+        .reduce((sum, o) => sum + orderCost(o.id), 0) +
+      db.lab_order_remakes
+        .filter((r) => r.is_paid && inMonth(r.ready_at))
+        .reduce((sum, r) => sum + orderCost(r.order_id), 0);
     expect(settlement.reduce((sum, row) => sum + row.amount, 0)).toBe(expected);
 
     // A line price adjusted by the owner, in the audit log

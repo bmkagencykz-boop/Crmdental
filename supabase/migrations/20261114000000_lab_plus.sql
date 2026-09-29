@@ -810,8 +810,6 @@ declare
   today date := private.lab_today(new.organization_id);
   old_status text := case when tg_op = 'UPDATE' then old.status end;
   months integer;
-  invites integer;
-  remakes integer;
   recipients bigint[];
   recipient bigint;
   assignee bigint;
@@ -861,11 +859,14 @@ begin
   -- «Готово»: invite the patient, once per ready cycle
   if new.status = 'ready' and old_status is distinct from 'ready' and old_status is distinct from 'delivered'
     and coalesce(current_setting('crm.importing', true), '') <> 'on' then
-    select count(*) into invites from public.lab_order_events e
-    where e.organization_id = new.organization_id and e.order_id = new.id and e.kind = 'invite';
-    select count(*) into remakes from public.lab_order_remakes r
-    where r.organization_id = new.organization_id and r.order_id = new.id;
-    if invites <= remakes then
+    -- Not invited yet since the last remake
+    if not exists (
+      select 1 from public.lab_order_events e
+      where e.organization_id = new.organization_id and e.order_id = new.id and e.kind = 'invite'
+        and e.id > coalesce((
+          select max(e2.id) from public.lab_order_events e2
+          where e2.organization_id = new.organization_id and e2.order_id = new.id and e2.kind = 'remake'), 0)
+    ) then
       insert into public.lab_order_events (organization_id, order_id, kind, to_status, sales_id)
       values (new.organization_id, new.id, 'invite', new.status, actor);
       select coalesce(nullif(btrim(concat_ws(' ', p.last_name, p.first_name)), ''), p.phones[1], 'Пациент') into patient_name
@@ -1012,6 +1013,11 @@ declare
   allocated bigint;
   order_cost bigint;
 begin
+  -- Money: the owner and the head (checked before the RLS of the table,
+  -- which runs after this trigger)
+  if coalesce(private.current_user_role() not in ('owner', 'head'), false) then
+    raise exception 'Оплаты лабораторий распределяют владелец и руководитель' using errcode = '42501';
+  end if;
   if tg_op = 'UPDATE' then
     new.payment_id := old.payment_id;
     new.order_id := old.order_id;
@@ -1367,17 +1373,21 @@ begin
     select 'total', 0, b.id, b.sent_at, b.due_at, b.first_ready_at, b.remake_count, b.created_on, b.overdue from base b
   ),
   order_stats as (
-    select d.dim, d.key,
-      count(*) filter (where d.created_on between period_from and period_to)::integer as orders,
-      count(*) filter (where d.created_on between period_from and period_to and d.remake_count > 0)::integer as remade_orders,
-      count(*) filter (where d.first_ready_at between period_from and period_to)::integer as ready,
-      count(*) filter (where d.first_ready_at between period_from and period_to and d.due_at is not null)::integer as ready_with_due,
-      count(*) filter (where d.first_ready_at between period_from and period_to and d.first_ready_at <= d.due_at)::integer as on_time,
+    select k.dim, k.key,
+      count(d.id) filter (where d.created_on between period_from and period_to)::integer as orders,
+      count(d.id) filter (where d.created_on between period_from and period_to and d.remake_count > 0)::integer as remade_orders,
+      count(d.id) filter (where d.first_ready_at between period_from and period_to)::integer as ready,
+      count(d.id) filter (where d.first_ready_at between period_from and period_to and d.due_at is not null)::integer as ready_with_due,
+      count(d.id) filter (where d.first_ready_at between period_from and period_to and d.first_ready_at <= d.due_at)::integer as on_time,
       avg(d.first_ready_at - d.sent_at) filter (where d.first_ready_at between period_from and period_to and d.sent_at is not null) as lead,
-      count(*) filter (where d.overdue > 0)::integer as overdue_now
-    from dims d
-    where d.key is not null
-    group by d.dim, d.key
+      count(d.id) filter (where d.overdue > 0)::integer as overdue_now
+    from (
+      select distinct d0.dim, d0.key from dims d0 where d0.key is not null
+      union
+      select 'total', 0
+    ) k
+      left join dims d on d.dim = k.dim and d.key = k.key
+    group by k.dim, k.key
   ),
   remakes as (
     select d.dim, d.key, r.reason, r.fault, r.is_warranty

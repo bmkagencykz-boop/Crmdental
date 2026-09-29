@@ -22,6 +22,7 @@ const KINDS: NotificationKind[] = [
   "bot_handoff",
   "visit_reschedule",
   "waiting_list_slot",
+  "lab_order",
 ];
 
 /** Username of the platform notification bot (without @), for the deep link */

@@ -1,6 +1,7 @@
 import {
   CashGlyph,
   IntegrationsGlyph,
+  LabGlyph,
   MailingsGlyph,
   PayrollGlyph,
   PriceListGlyph,
@@ -47,6 +48,13 @@ export const Sidebar = () => {
     match: "/payroll/*",
     icon: PayrollGlyph,
     label: translate("payroll.nav"),
+  };
+  // «Лаборатория» (stage 40): work orders to the dental labs
+  const lab: NavItem = {
+    to: "/lab",
+    match: "/lab",
+    icon: LabGlyph,
+    label: translate("lab.nav"),
   };
   const reports: NavItem = {
     to: "/reports",
@@ -109,6 +117,9 @@ export const Sidebar = () => {
         </CanAccess>
         <CanAccess resource="payroll" action="list">
           <SidebarLink item={payroll} active={isActive(payroll)} />
+        </CanAccess>
+        <CanAccess resource="lab" action="menu">
+          <SidebarLink item={lab} active={isActive(lab)} />
         </CanAccess>
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />

@@ -26,6 +26,7 @@ import { generatePayments } from "./payments";
 import { generatePatientCard } from "./patientCard";
 import { generatePayroll } from "./payroll";
 import { generateWaitingList } from "./waitingList";
+import { generateLabOrders } from "./labOrders";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -68,6 +69,9 @@ export default (): Db => {
   generatePayroll(db);
   // The waiting list (stage 38): after the visits and the notifications
   generateWaitingList(db);
+  // Lab work orders (stage 40): after the plans, the patient files and the
+  // notifications
+  generateLabOrders(db);
   db.configuration = [
     {
       id: 1,

@@ -9,6 +9,7 @@ import { CashDeskPage } from "../payments/CashDeskPage";
 import { PayrollEmployeePage } from "../payroll/PayrollEmployeePage";
 import { PayrollPage } from "../payroll/PayrollPage";
 import { PayrollSchemesPage } from "../payroll/PayrollSchemesPage";
+import { LabPage } from "../lab/LabPage";
 import { MailingsPage } from "../mailings/MailingsPage";
 import type {
   CoreAdminProps,
@@ -242,6 +243,7 @@ const DesktopAdmin = (
           path={PayrollEmployeePage.path}
           element={<PayrollEmployeePage />}
         />
+        <Route path={LabPage.path} element={<LabPage />} />
         <Route path={AuditPage.path} element={<AuditPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />

@@ -158,3 +158,12 @@ export const WaitingListGlyph = glyph(
     <path d="M16 12.75v2.75l1.9 1.4" />
   </>,
 );
+
+/** Лаборатория: a crown on its model, the work of a dental lab */
+export const LabGlyph = glyph(
+  <>
+    <path d="M7 4.5c1.8 0 2.4 1.2 5 1.2s3.2-1.2 5-1.2c1.9 0 3 1.5 3 3.6 0 2.9-1.5 4.8-2.2 6.4H6.2C5.5 12.9 4 11 4 8.1c0-2.1 1.1-3.6 3-3.6z" />
+    <path d="M6.2 14.5l1.2 5.5h9.2l1.2-5.5" />
+    <path d="M10 17.5h4" />
+  </>,
+);

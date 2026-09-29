@@ -128,6 +128,7 @@ import { createPaymentsDemo } from "./payments";
 import { createPatientCardDemo } from "./patientCard";
 import { createPayrollDemo } from "./payroll";
 import { createWaitingListDemo } from "./waitingList";
+import { createLabOrdersDemo } from "./labOrders";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -245,6 +246,7 @@ export const createDataProvider = ({
       "bot_handoff",
       "visit_reschedule",
       "waiting_list_slot",
+      "lab_order",
     ],
     browser_enabled: false,
     telegram_enabled: true,
@@ -427,6 +429,14 @@ export const createDataProvider = ({
       return !!deal && (await accessDemo.filterDeals([deal])).length > 0;
     },
     timeZone: () => db.organizations?.[0]?.timezone || "Asia/Almaty",
+  });
+  // Lab work orders (stage 40)
+  const labDemo = createLabOrdersDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
+    filterPatients: (patients) => accessDemo.filterPatients(patients),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -902,6 +912,7 @@ export const createDataProvider = ({
     ...treatmentDemo.views,
     ...priceListDemo.views,
     ...paymentsDemo.views,
+    ...labDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -1868,6 +1879,8 @@ export const createDataProvider = ({
       ...patientCardDemo.callbacks,
       // Payroll (stage 39): the owner and the head, closed months, audit
       ...payrollDemo.callbacks,
+      // Lab work orders (stage 40): numbers, links, statuses, prices, rights
+      ...labDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

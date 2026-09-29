@@ -294,7 +294,7 @@ describe("toAuditListFilter", () => {
       "at@lt": new Date(2026, 9, 1).toISOString(),
       sales_id: 2,
       "entity@in":
-        "(pipeline,stage,settings,task_rule,checklist_item,messenger,custom_field,sales_plan,mailing,stage_trigger,webhook,api_key,mis_connection,salesbot,service,ad_spend,branch,treatment_stage_template,consent_template,visit_record_template)",
+        "(pipeline,stage,settings,task_rule,checklist_item,messenger,custom_field,sales_plan,mailing,stage_trigger,webhook,api_key,mis_connection,salesbot,service,ad_spend,branch,treatment_stage_template,consent_template,visit_record_template,lab,lab_technician,lab_work_type,lab_work_type_price)",
       q: "ахметов",
     });
   });

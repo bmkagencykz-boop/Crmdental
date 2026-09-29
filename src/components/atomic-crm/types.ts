@@ -204,6 +204,8 @@ export type Doctor = {
   color?: string | null;
   /** Branch (stage 33); null: works in every branch */
   branch_id?: Identifier | null;
+  /** The doctor's responsible administrator: reminders of the lab orders (stage 40) */
+  admin_sales_id?: Identifier | null;
 } & Pick<RaRecord, "id">;
 
 /** Custom fields (stage 19), «Дополнительные поля» of deals and patients */
@@ -779,7 +781,9 @@ export type NotificationKind =
   | "bot_handoff"
   | "visit_reschedule"
   /** A freed slot fits a waiting list entry (stage 38) */
-  | "waiting_list_slot";
+  | "waiting_list_slot"
+  // Lab work orders (stage 40): a fitting or the due date is near, overdue
+  | "lab_order";
 
 export type CrmNotification = {
   organization_id?: Identifier;

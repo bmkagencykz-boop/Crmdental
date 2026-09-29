@@ -153,4 +153,6 @@ export type PatientFile = {
   note?: string | null;
   sales_id?: Identifier | null;
   created_at: string;
+  /** A file of a lab work order: impression, scan, photo (stage 40) */
+  lab_order_id?: Identifier | null;
 };

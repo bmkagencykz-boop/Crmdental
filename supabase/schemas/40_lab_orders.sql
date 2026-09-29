@@ -1,0 +1,1086 @@
+--
+-- Dental lab work orders «Заказ-наряды в лабораторию» (stage 40), like the
+-- lab module of a dental MIS: the clinic sends a work (a crown, a veneer, a
+-- denture…) to a dental laboratory, follows where it is (in the clinic, in
+-- the lab, with the courier, at a fitting, ready, given to the patient,
+-- remade), its fittings and its deadline, and settles with the lab monthly.
+--
+--   labs                      the clinic's own lab or an external one: name,
+--                             contact person, phone, e-mail, address.
+--   lab_technicians           the technicians of a lab.
+--   lab_work_types            what a lab makes (коронка металлокерамика,
+--                             временная коронка, винир, бюгель, каппа,
+--                             индивидуальная ложка…), seeded for every clinic.
+--   lab_work_type_prices      the lab price of a work type (money: the owner
+--                             and the head only).
+--   lab_orders                the work order: patient, doctor, lab,
+--                             technician, the plan / stage of treatment it is
+--                             for (optional), teeth (FDI), shade (VITA),
+--                             material, comment, the dates (sent to the lab,
+--                             fitting 1, fitting 2, due, ready, given to the
+--                             patient) and the status. «№» per clinic.
+--   lab_order_items           the works of an order: work type, quantity,
+--                             the plan item it makes (optional).
+--   lab_order_item_prices     the lab price of every work line, copied from
+--                             lab_work_type_prices when the line is written
+--                             (owner and head only, like the cost price of
+--                             stage 35).
+--   lab_order_reminders       which reminders were sent (closed to clients).
+--   patient_files.lab_order_id  impressions, scans and photos of the order
+--                             are patient files (stage 37) tied to it.
+--   doctors.admin_sales_id    the doctor's responsible administrator: the
+--                             default responsible of the doctor's orders.
+--
+-- Statuses: clinic (в клинике), lab (в лабе), courier (у курьера), fitting
+-- (примерка), ready (готово), delivered (сдано пациенту), remake
+-- (переделка). An order is active until it is ready. Overdue: active and
+-- the due date before today of the clinic (organizations.timezone).
+--
+-- Money: the lab cost of an order is Σ qty × price of its lines; the month
+-- of a cost is the month the work was ready (ready_at). The settlement with
+-- the labs: public.report_lab_settlement(month). For the payroll (stage 39):
+-- the view public.lab_order_costs (one row per work line: doctor, plan item,
+-- month, amount) and private.lab_cost_for_doctor(org, doctor, month),
+-- private.lab_cost_for_plan_item(org, plan_item).
+--
+-- Reminders (pg_cron, private.lab_orders_tick, hourly): the day before a
+-- fitting or the due date, and once when an order becomes overdue — to the
+-- responsible of the order (else the owner and the heads), notification kind
+-- lab_order.
+--
+-- Rights: orders follow the visibility of their patient (the sub-query
+-- applies the patients policy of stage 30); never the integrator. The owner,
+-- the head and the managers write orders; deleting — the owner, the head or
+-- the author while the order is still in the clinic. Dictionaries: every
+-- employee reads, private.can_configure() writes. Prices and costs: the
+-- owner and the head. Every change goes to the audit log.
+--
+-- Twins: src/components/atomic-crm/lab/labMath.ts (statuses, overdue, costs,
+-- settlement, couriers) and providers/fakerest/labOrders.ts (the demo).
+--
+
+-- Teeth of an order: FDI numbers (private.is_fdi_tooth, stage 37)
+CREATE OR REPLACE FUNCTION "private"."lab_teeth_valid"("teeth" smallint[]) RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(bool_and(private.is_fdi_tooth(t)), true) from unnest(teeth) as t;
+$$;
+
+-- Today in the clinic's time zone (organizations.timezone)
+CREATE OR REPLACE FUNCTION "private"."lab_today"("org_id" bigint) RETURNS "date"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select (now() at time zone coalesce((select nullif(o.timezone, '') from public.organizations o where o.id = org_id), 'Asia/Almaty'))::date;
+$$;
+
+-- Days an order is overdue: active (not ready, not given) and the due date
+-- before today; else 0. Twin: overdueDays() in lab/labMath.ts
+CREATE OR REPLACE FUNCTION "private"."lab_overdue_days"("status" "text", "due_at" "date", "today" "date") RETURNS integer
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when status in ('ready', 'delivered') or due_at is null or due_at >= today then 0
+    else today - due_at
+  end;
+$$;
+
+--
+-- Dictionaries
+--
+
+create table public.labs (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    name text not null,
+    -- The clinic's own lab (в клинике), else an external one
+    is_own boolean not null default false,
+    contact_person text,
+    phone text,
+    email text,
+    address text,
+    note text,
+    is_active boolean not null default true,
+    position integer not null default 0,
+    created_at timestamp with time zone not null default now(),
+    constraint labs_name_not_blank check (btrim(name) <> ''),
+    constraint labs_name_length check (char_length(name) <= 200),
+    constraint labs_contacts_length check (char_length(coalesce(contact_person, '') || coalesce(phone, '') || coalesce(email, '') || coalesce(address, '') || coalesce(note, '')) <= 3000)
+);
+
+create table public.lab_technicians (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    lab_id bigint not null,
+    name text not null,
+    phone text,
+    is_active boolean not null default true,
+    position integer not null default 0,
+    created_at timestamp with time zone not null default now(),
+    constraint lab_technicians_name_not_blank check (btrim(name) <> ''),
+    constraint lab_technicians_name_length check (char_length(name) <= 200)
+);
+
+create table public.lab_work_types (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    name text not null,
+    is_active boolean not null default true,
+    position integer not null default 0,
+    created_at timestamp with time zone not null default now(),
+    constraint lab_work_types_name_not_blank check (btrim(name) <> ''),
+    constraint lab_work_types_name_length check (char_length(name) <= 200)
+);
+
+create table public.lab_work_type_prices (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    work_type_id bigint not null,
+    price bigint not null default 0,
+    updated_at timestamp with time zone not null default now(),
+    constraint lab_work_type_prices_price_check check (price >= 0 and price <= 100000000)
+);
+
+-- The doctor's responsible administrator (reminders of the lab orders)
+alter table public.doctors add column admin_sales_id bigint;
+
+--
+-- Orders
+--
+
+create table public.lab_orders (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    -- «Наряд №…», per clinic (set by the trigger)
+    number integer not null default 0,
+    patient_id bigint not null,
+    -- The deal of the plan (set by the trigger), for the audit log and links
+    deal_id bigint,
+    plan_id bigint,
+    stage_id bigint,
+    doctor_id bigint,
+    lab_id bigint,
+    technician_id bigint,
+    -- Who follows the order (reminders): the doctor's administrator by default
+    responsible_id bigint,
+    branch_id bigint,
+    teeth smallint[] not null default '{}'::smallint[],
+    -- Shade (VITA classical: A1…D4, or 3D-Master), free text
+    shade text,
+    material text,
+    comment text,
+    status text not null default 'clinic',
+    sent_at date,
+    fitting1_at date,
+    fitting2_at date,
+    due_at date,
+    -- The work came back ready (the month of the lab cost)
+    ready_at date,
+    -- Given to the patient: the order is closed
+    delivered_at date,
+    remake_count integer not null default 0,
+    created_by bigint default private.current_sales_id(),
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    constraint lab_orders_status_check check (status in ('clinic', 'lab', 'courier', 'fitting', 'ready', 'delivered', 'remake')),
+    constraint lab_orders_teeth_check check (cardinality(teeth) <= 52 and private.lab_teeth_valid(teeth)),
+    constraint lab_orders_text_length check (char_length(coalesce(shade, '')) <= 50 and char_length(coalesce(material, '')) <= 200 and char_length(coalesce(comment, '')) <= 5000),
+    constraint lab_orders_remake_count_check check (remake_count >= 0)
+);
+
+create table public.lab_order_items (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    order_id bigint not null,
+    work_type_id bigint,
+    -- A copy of the work type name (set by the trigger when empty)
+    name text not null default '',
+    qty integer not null default 1,
+    plan_item_id bigint,
+    position integer not null default 0,
+    created_at timestamp with time zone not null default now(),
+    constraint lab_order_items_qty_check check (qty >= 1 and qty <= 100),
+    constraint lab_order_items_name_length check (char_length(name) <= 200)
+);
+
+create table public.lab_order_item_prices (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null,
+    item_id bigint not null,
+    price bigint not null default 0,
+    updated_at timestamp with time zone not null default now(),
+    constraint lab_order_item_prices_price_check check (price >= 0 and price <= 100000000)
+);
+
+create table public.lab_order_reminders (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null,
+    order_id bigint not null,
+    -- fitting1, fitting2, due, overdue
+    kind text not null,
+    on_date date not null,
+    created_at timestamp with time zone not null default now(),
+    constraint lab_order_reminders_kind_check check (kind in ('fitting1', 'fitting2', 'due', 'overdue'))
+);
+
+-- Files of the order: impressions, scans, photos (patient files, stage 37)
+alter table public.patient_files add column lab_order_id bigint;
+
+--
+-- Keys
+--
+
+alter table public.labs add constraint labs_organization_id_id_key unique (organization_id, id);
+alter table public.lab_technicians add constraint lab_technicians_organization_id_id_key unique (organization_id, id);
+alter table public.lab_work_types add constraint lab_work_types_organization_id_id_key unique (organization_id, id);
+alter table public.lab_work_type_prices add constraint lab_work_type_prices_organization_id_id_key unique (organization_id, id);
+alter table public.lab_work_type_prices add constraint lab_work_type_prices_work_type_key unique (organization_id, work_type_id);
+alter table public.lab_orders add constraint lab_orders_organization_id_id_key unique (organization_id, id);
+alter table public.lab_orders add constraint lab_orders_number_key unique (organization_id, number);
+alter table public.lab_order_items add constraint lab_order_items_organization_id_id_key unique (organization_id, id);
+alter table public.lab_order_item_prices add constraint lab_order_item_prices_organization_id_id_key unique (organization_id, id);
+alter table public.lab_order_item_prices add constraint lab_order_item_prices_item_key unique (organization_id, item_id);
+alter table public.lab_order_reminders add constraint lab_order_reminders_key unique (organization_id, order_id, kind, on_date);
+
+alter table public.labs
+    add constraint labs_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_technicians
+    add constraint lab_technicians_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_technicians
+    add constraint lab_technicians_lab_id_fkey foreign key (organization_id, lab_id) references public.labs(organization_id, id) on delete cascade;
+alter table public.lab_work_types
+    add constraint lab_work_types_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_work_type_prices
+    add constraint lab_work_type_prices_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_work_type_prices
+    add constraint lab_work_type_prices_work_type_id_fkey foreign key (organization_id, work_type_id) references public.lab_work_types(organization_id, id) on delete cascade;
+alter table public.doctors
+    add constraint doctors_admin_sales_id_fkey foreign key (organization_id, admin_sales_id) references public.sales(organization_id, id) on delete set null (admin_sales_id);
+
+alter table public.lab_orders
+    add constraint lab_orders_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_orders
+    add constraint lab_orders_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+alter table public.lab_orders
+    add constraint lab_orders_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete set null (deal_id);
+alter table public.lab_orders
+    add constraint lab_orders_plan_id_fkey foreign key (organization_id, plan_id) references public.treatment_plans(organization_id, id) on delete set null (plan_id);
+alter table public.lab_orders
+    add constraint lab_orders_stage_id_fkey foreign key (organization_id, stage_id) references public.treatment_stages(organization_id, id) on delete set null (stage_id);
+alter table public.lab_orders
+    add constraint lab_orders_doctor_id_fkey foreign key (organization_id, doctor_id) references public.doctors(organization_id, id) on delete set null (doctor_id);
+alter table public.lab_orders
+    add constraint lab_orders_lab_id_fkey foreign key (organization_id, lab_id) references public.labs(organization_id, id) on delete restrict;
+alter table public.lab_orders
+    add constraint lab_orders_technician_id_fkey foreign key (organization_id, technician_id) references public.lab_technicians(organization_id, id) on delete set null (technician_id);
+alter table public.lab_orders
+    add constraint lab_orders_responsible_id_fkey foreign key (organization_id, responsible_id) references public.sales(organization_id, id) on delete set null (responsible_id);
+alter table public.lab_orders
+    add constraint lab_orders_branch_id_fkey foreign key (organization_id, branch_id) references public.branches(organization_id, id) on delete set null (branch_id);
+alter table public.lab_orders
+    add constraint lab_orders_created_by_fkey foreign key (organization_id, created_by) references public.sales(organization_id, id) on delete set null (created_by);
+
+alter table public.lab_order_items
+    add constraint lab_order_items_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_order_items
+    add constraint lab_order_items_order_id_fkey foreign key (organization_id, order_id) references public.lab_orders(organization_id, id) on delete cascade;
+alter table public.lab_order_items
+    add constraint lab_order_items_work_type_id_fkey foreign key (organization_id, work_type_id) references public.lab_work_types(organization_id, id) on delete set null (work_type_id);
+alter table public.lab_order_items
+    add constraint lab_order_items_plan_item_id_fkey foreign key (organization_id, plan_item_id) references public.treatment_plan_items(organization_id, id) on delete set null (plan_item_id);
+alter table public.lab_order_item_prices
+    add constraint lab_order_item_prices_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_order_item_prices
+    add constraint lab_order_item_prices_item_id_fkey foreign key (organization_id, item_id) references public.lab_order_items(organization_id, id) on delete cascade;
+alter table public.lab_order_reminders
+    add constraint lab_order_reminders_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.lab_order_reminders
+    add constraint lab_order_reminders_order_id_fkey foreign key (organization_id, order_id) references public.lab_orders(organization_id, id) on delete cascade;
+alter table public.patient_files
+    add constraint patient_files_lab_order_id_fkey foreign key (organization_id, lab_order_id) references public.lab_orders(organization_id, id) on delete set null (lab_order_id);
+
+create index labs_position_idx on public.labs using btree (organization_id, position);
+create index lab_technicians_lab_idx on public.lab_technicians using btree (organization_id, lab_id);
+create index lab_work_types_position_idx on public.lab_work_types using btree (organization_id, position);
+create index lab_orders_patient_idx on public.lab_orders using btree (organization_id, patient_id);
+create index lab_orders_status_idx on public.lab_orders using btree (organization_id, status, due_at);
+create index lab_orders_doctor_idx on public.lab_orders using btree (organization_id, doctor_id);
+create index lab_orders_technician_idx on public.lab_orders using btree (organization_id, technician_id);
+create index lab_orders_lab_idx on public.lab_orders using btree (organization_id, lab_id, ready_at);
+create index lab_orders_plan_idx on public.lab_orders using btree (organization_id, plan_id) where plan_id is not null;
+create index lab_order_items_order_idx on public.lab_order_items using btree (organization_id, order_id, position);
+create index lab_order_items_plan_item_idx on public.lab_order_items using btree (organization_id, plan_item_id) where plan_item_id is not null;
+create index patient_files_lab_order_idx on public.patient_files using btree (organization_id, lab_order_id) where lab_order_id is not null;
+
+--
+-- Dictionaries of a new clinic: the usual works with Almaty lab prices of
+-- 2026 (the clinic changes them)
+--
+
+CREATE OR REPLACE FUNCTION "private"."seed_lab_work_types"("org_id" bigint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if exists (select 1 from public.lab_work_types t where t.organization_id = org_id) then
+    return;
+  end if;
+  with seeded as (
+    insert into public.lab_work_types (organization_id, name, position)
+    select org_id, w.name, w.position
+    from (values
+      ('Коронка металлокерамическая', 0),
+      ('Коронка из диоксида циркония', 1),
+      ('Коронка E.max', 2),
+      ('Коронка на имплант', 3),
+      ('Временная коронка', 4),
+      ('Винир керамический', 5),
+      ('Культевая вкладка', 6),
+      ('Бюгельный протез', 7),
+      ('Частичный съёмный протез', 8),
+      ('Полный съёмный протез', 9),
+      ('Каппа (сплинт)', 10),
+      ('Индивидуальная ложка', 11),
+      ('Хирургический шаблон', 12)
+    ) as w(name, position)
+    returning id, name
+  )
+  insert into public.lab_work_type_prices (organization_id, work_type_id, price)
+  select org_id, s.id, p.price
+  from seeded s
+    join (values
+      ('Коронка металлокерамическая', 18000),
+      ('Коронка из диоксида циркония', 35000),
+      ('Коронка E.max', 40000),
+      ('Коронка на имплант', 45000),
+      ('Временная коронка', 5000),
+      ('Винир керамический', 38000),
+      ('Культевая вкладка', 8000),
+      ('Бюгельный протез', 60000),
+      ('Частичный съёмный протез', 45000),
+      ('Полный съёмный протез', 55000),
+      ('Каппа (сплинт)', 15000),
+      ('Индивидуальная ложка', 4000),
+      ('Хирургический шаблон', 25000)
+    ) as p(name, price) on p.name = s.name;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "private"."handle_organization_lab_work_types"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform private.seed_lab_work_types(new.id);
+  return new;
+end;
+$$;
+
+--
+-- Orders: number, links, defaults, the dates of the statuses
+--
+
+-- «№» per clinic; the plan, its stage, the deal and the technician must fit
+-- the patient and the lab; defaults: the doctor of the plan, the doctor's
+-- administrator as the responsible, the branch of the doctor (or the deal).
+-- Statuses stamp their dates: sent to the lab, ready, given to the patient;
+-- a remake counts and reopens the order. Twin: applyLabStatus() in
+-- lab/labMath.ts
+CREATE OR REPLACE FUNCTION "private"."handle_lab_order_before_write"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  plan public.treatment_plans;
+  stage_plan_id bigint;
+  tech_lab_id bigint;
+  deal_patient_id bigint;
+  today date := private.lab_today(new.organization_id);
+begin
+  new.shade := nullif(btrim(coalesce(new.shade, '')), '');
+  new.material := nullif(btrim(coalesce(new.material, '')), '');
+  new.comment := nullif(btrim(coalesce(new.comment, '')), '');
+  new.teeth := array(select distinct t from unnest(coalesce(new.teeth, '{}'::smallint[])) as t order by t);
+
+  if tg_op = 'INSERT' then
+    perform pg_advisory_xact_lock(hashtextextended('lab_orders:' || new.organization_id, 0));
+    select coalesce(max(o.number), 0) + 1 into new.number
+    from public.lab_orders o
+    where o.organization_id = new.organization_id;
+    new.remake_count := 0;
+  else
+    new.number := old.number;
+    new.created_by := old.created_by;
+    new.created_at := old.created_at;
+    new.remake_count := old.remake_count;
+  end if;
+
+  -- The stage gives its plan; the plan gives its deal and doctor
+  if new.stage_id is not null and (tg_op = 'INSERT' or new.stage_id is distinct from old.stage_id) then
+    select s.plan_id into stage_plan_id
+    from public.treatment_stages s
+    where s.organization_id = new.organization_id and s.id = new.stage_id;
+    if new.plan_id is null then
+      new.plan_id := stage_plan_id;
+    elsif new.plan_id is distinct from stage_plan_id then
+      raise exception 'Этап из другого плана лечения' using errcode = '22023', hint = 'lab_order_stage';
+    end if;
+  end if;
+  if new.plan_id is null then
+    new.stage_id := null;
+  elsif tg_op = 'INSERT' or new.plan_id is distinct from old.plan_id then
+    select * into plan
+    from public.treatment_plans p
+    where p.organization_id = new.organization_id and p.id = new.plan_id;
+    if plan.patient_id is distinct from new.patient_id then
+      raise exception 'План лечения другого пациента' using errcode = '22023', hint = 'lab_order_plan';
+    end if;
+    new.deal_id := plan.deal_id;
+    new.doctor_id := coalesce(new.doctor_id, plan.doctor_id);
+  end if;
+  if new.deal_id is not null and new.plan_id is null
+    and (tg_op = 'INSERT' or new.deal_id is distinct from old.deal_id) then
+    select d.patient_id into deal_patient_id
+    from public.deals d
+    where d.organization_id = new.organization_id and d.id = new.deal_id;
+    if deal_patient_id is distinct from new.patient_id then
+      raise exception 'Сделка другого пациента' using errcode = '22023', hint = 'lab_order_deal';
+    end if;
+  end if;
+
+  -- The technician works in the lab of the order
+  if new.technician_id is not null and (tg_op = 'INSERT'
+    or new.technician_id is distinct from old.technician_id or new.lab_id is distinct from old.lab_id) then
+    select t.lab_id into tech_lab_id
+    from public.lab_technicians t
+    where t.organization_id = new.organization_id and t.id = new.technician_id;
+    if new.lab_id is null then
+      new.lab_id := tech_lab_id;
+    elsif new.lab_id is distinct from tech_lab_id then
+      raise exception 'Техник работает в другой лаборатории' using errcode = '22023', hint = 'lab_order_technician';
+    end if;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.responsible_id is null and new.doctor_id is not null then
+      select d.admin_sales_id into new.responsible_id
+      from public.doctors d
+      where d.organization_id = new.organization_id and d.id = new.doctor_id;
+    end if;
+    new.responsible_id := coalesce(new.responsible_id, private.current_sales_id());
+    if new.branch_id is null and new.doctor_id is not null then
+      select d.branch_id into new.branch_id
+      from public.doctors d
+      where d.organization_id = new.organization_id and d.id = new.doctor_id;
+    end if;
+    if new.branch_id is null and new.deal_id is not null then
+      select d.branch_id into new.branch_id
+      from public.deals d
+      where d.organization_id = new.organization_id and d.id = new.deal_id;
+    end if;
+  end if;
+
+  -- A date given to the patient closes the order
+  if new.delivered_at is not null and new.status <> 'delivered'
+    and (tg_op = 'INSERT' or old.delivered_at is null) then
+    new.status := 'delivered';
+  end if;
+  if new.status = 'remake' and (tg_op = 'INSERT' or old.status <> 'remake') then
+    new.remake_count := new.remake_count + 1;
+  end if;
+  if new.status in ('lab', 'courier', 'fitting') and new.sent_at is null then
+    new.sent_at := today;
+  end if;
+  if new.status in ('ready', 'delivered') then
+    new.ready_at := coalesce(new.ready_at, today);
+  else
+    new.ready_at := null;
+  end if;
+  if new.status = 'delivered' then
+    new.delivered_at := coalesce(new.delivered_at, today);
+  else
+    new.delivered_at := null;
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+-- A work line: the name of its work type, a plan item of the order's
+-- patient (and plan); a line never moves to another order
+CREATE OR REPLACE FUNCTION "private"."handle_lab_order_item_before_write"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  ord public.lab_orders;
+  type_name text;
+begin
+  if tg_op = 'UPDATE' and new.order_id is distinct from old.order_id then
+    raise exception 'Строку нельзя перенести в другой наряд' using errcode = '22023', hint = 'lab_item_order';
+  end if;
+  select * into ord
+  from public.lab_orders o
+  where o.organization_id = new.organization_id and o.id = new.order_id;
+  new.name := btrim(coalesce(new.name, ''));
+  if new.work_type_id is not null and (new.name = ''
+    or (tg_op = 'UPDATE' and new.work_type_id is distinct from old.work_type_id and new.name = old.name)) then
+    select w.name into type_name
+    from public.lab_work_types w
+    where w.organization_id = new.organization_id and w.id = new.work_type_id;
+    new.name := coalesce(type_name, new.name);
+  end if;
+  if new.name = '' then
+    raise exception 'Укажите вид работы' using errcode = '22023', hint = 'lab_item_name';
+  end if;
+  if new.plan_item_id is not null and (tg_op = 'INSERT' or new.plan_item_id is distinct from old.plan_item_id)
+    and not exists (
+      select 1
+      from public.treatment_plan_items i
+        join public.treatment_plans p on p.organization_id = i.organization_id and p.id = i.plan_id
+      where i.organization_id = new.organization_id and i.id = new.plan_item_id
+        and p.patient_id = ord.patient_id
+        and (ord.plan_id is null or p.id = ord.plan_id)
+    ) then
+    raise exception 'Позиция другого плана лечения' using errcode = '22023', hint = 'lab_item_plan_item';
+  end if;
+  return new;
+end;
+$$;
+
+-- The lab price of a line: the price of its work type when the line is
+-- written or its work type changes (the owner and the head adjust it)
+CREATE OR REPLACE FUNCTION "private"."handle_lab_order_item_price"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if tg_op = 'INSERT' or new.work_type_id is distinct from old.work_type_id then
+    insert into public.lab_order_item_prices (organization_id, item_id, price)
+    values (new.organization_id, new.id, coalesce((
+      select p.price
+      from public.lab_work_type_prices p
+      where p.organization_id = new.organization_id and p.work_type_id = new.work_type_id
+    ), 0))
+    on conflict on constraint lab_order_item_prices_item_key
+    do update set price = excluded.price, updated_at = now();
+  end if;
+  return null;
+end;
+$$;
+
+-- The audit log of the orders, their lines and line prices, linked to the
+-- patient (and the deal) of the order. Cascades are not logged.
+CREATE OR REPLACE FUNCTION "private"."audit_lab_row"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  entity_name text := tg_argv[0];
+  fields text[] := string_to_array(tg_argv[1], ',');
+  old_row jsonb := case when tg_op <> 'INSERT' then to_jsonb(old) end;
+  new_row jsonb := case when tg_op <> 'DELETE' then to_jsonb(new) end;
+  row_data jsonb := coalesce(new_row, old_row);
+  org_id bigint := (row_data ->> 'organization_id')::bigint;
+  target_order_id bigint;
+  diff jsonb;
+  row_deal_id bigint;
+  row_patient_id bigint;
+  actor record;
+begin
+  if pg_trigger_depth() > 1 and tg_op = 'DELETE' then
+    return null;
+  end if;
+  if tg_op = 'DELETE' and not exists (select 1 from public.organizations o where o.id = org_id) then
+    return null;
+  end if;
+  diff := private.audit_diff(old_row, new_row, fields);
+  if tg_op = 'UPDATE' and diff = '{}'::jsonb then
+    return null;
+  end if;
+  if entity_name = 'lab_order' then
+    row_patient_id := (row_data ->> 'patient_id')::bigint;
+    row_deal_id := (row_data ->> 'deal_id')::bigint;
+  else
+    if entity_name = 'lab_order_item' then
+      target_order_id := (row_data ->> 'order_id')::bigint;
+    else
+      select i.order_id into target_order_id
+      from public.lab_order_items i
+      where i.organization_id = org_id and i.id = (row_data ->> 'item_id')::bigint;
+    end if;
+    select o.patient_id, o.deal_id into row_patient_id, row_deal_id
+    from public.lab_orders o
+    where o.organization_id = org_id and o.id = target_order_id;
+  end if;
+  select * into actor from private.audit_actor(org_id);
+  if pg_trigger_depth() > 1 then
+    actor.actor_id := null;
+    actor.actor_source := 'automation';
+  end if;
+  insert into public.audit_log (organization_id, sales_id, source, entity, entity_id, action, changes, deal_id, patient_id)
+  values (org_id, actor.actor_id, actor.actor_source, entity_name, (row_data ->> 'id')::bigint,
+    case tg_op when 'INSERT' then 'create' when 'DELETE' then 'delete' else 'update' end,
+    diff, row_deal_id, row_patient_id);
+  return null;
+end;
+$$;
+
+--
+-- Views
+--
+
+-- The orders with their names, works, overdue days and lab cost (null for
+-- whoever does not see the prices: RLS of lab_order_item_prices)
+create or replace view public.lab_orders_summary with (security_invoker = on) as
+select
+    o.id,
+    o.organization_id,
+    o.number,
+    o.patient_id,
+    o.deal_id,
+    o.plan_id,
+    o.stage_id,
+    o.doctor_id,
+    o.lab_id,
+    o.technician_id,
+    o.responsible_id,
+    o.branch_id,
+    o.teeth,
+    o.shade,
+    o.material,
+    o.comment,
+    o.status,
+    o.sent_at,
+    o.fitting1_at,
+    o.fitting2_at,
+    o.due_at,
+    o.ready_at,
+    o.delivered_at,
+    o.remake_count,
+    o.created_by,
+    o.created_at,
+    o.updated_at,
+    nullif(btrim(concat_ws(' ', p.last_name, p.first_name, p.middle_name)), '') as patient_name,
+    p.phones[1] as patient_phone,
+    d.name as doctor_name,
+    l.name as lab_name,
+    t.name as technician_name,
+    nullif(btrim(concat_ws(' ', s.first_name, s.last_name)), '') as responsible_name,
+    coalesce(w.items_count, 0) as items_count,
+    coalesce(w.units, 0) as units,
+    w.works,
+    private.lab_overdue_days(o.status, o.due_at, private.lab_today(o.organization_id)) as overdue_days,
+    c.lab_cost
+from public.lab_orders o
+    left join public.patients p on p.organization_id = o.organization_id and p.id = o.patient_id
+    left join public.doctors d on d.organization_id = o.organization_id and d.id = o.doctor_id
+    left join public.labs l on l.organization_id = o.organization_id and l.id = o.lab_id
+    left join public.lab_technicians t on t.organization_id = o.organization_id and t.id = o.technician_id
+    left join public.sales s on s.organization_id = o.organization_id and s.id = o.responsible_id
+    left join lateral (
+        select count(*)::integer as items_count,
+            sum(i.qty)::integer as units,
+            string_agg(i.name || case when i.qty > 1 then ' × ' || i.qty else '' end, ', ' order by i.position, i.id) as works
+        from public.lab_order_items i
+        where i.organization_id = o.organization_id and i.order_id = o.id
+    ) w on true
+    left join lateral (
+        select sum(i.qty::bigint * pr.price)::bigint as lab_cost
+        from public.lab_order_items i
+            join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
+        where i.organization_id = o.organization_id and i.order_id = o.id
+    ) c on true;
+
+-- Lab cost per work line (owner and head: RLS of the prices): the doctor,
+-- the plan item and the month of the cost (the month the work was ready).
+-- The source of the payroll (stage 39) and of the lab settlement.
+create or replace view public.lab_order_costs with (security_invoker = on) as
+select
+    i.id,
+    i.organization_id,
+    i.order_id,
+    o.number as order_number,
+    o.patient_id,
+    o.doctor_id,
+    o.lab_id,
+    o.technician_id,
+    o.branch_id,
+    o.plan_id,
+    i.plan_item_id,
+    i.work_type_id,
+    i.name,
+    i.qty,
+    pr.price,
+    i.qty::bigint * pr.price as amount,
+    o.status,
+    o.ready_at,
+    date_trunc('month', o.ready_at)::date as month
+from public.lab_order_items i
+    join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
+    join public.lab_orders o on o.organization_id = i.organization_id and o.id = i.order_id;
+
+--
+-- Money: payroll helpers and the settlement with the labs
+--
+
+-- The lab cost of a doctor's works ready in the month of the given date
+-- (payroll, stage 39)
+CREATE OR REPLACE FUNCTION "private"."lab_cost_for_doctor"("org_id" bigint, "target_doctor_id" bigint, "in_month" "date") RETURNS bigint
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(sum(i.qty::bigint * pr.price), 0)::bigint
+  from public.lab_orders o
+    join public.lab_order_items i on i.organization_id = o.organization_id and i.order_id = o.id
+    join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
+  where o.organization_id = org_id and o.doctor_id = target_doctor_id
+    and o.ready_at >= date_trunc('month', in_month)::date
+    and o.ready_at < (date_trunc('month', in_month) + interval '1 month')::date;
+$$;
+
+-- The lab cost of a plan item (the works made for it, ready or not)
+CREATE OR REPLACE FUNCTION "private"."lab_cost_for_plan_item"("org_id" bigint, "target_plan_item_id" bigint) RETURNS bigint
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(sum(i.qty::bigint * pr.price), 0)::bigint
+  from public.lab_order_items i
+    join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
+  where i.organization_id = org_id and i.plan_item_id = target_plan_item_id;
+$$;
+
+-- «Сумма лаборатории»: what the clinic owes each lab for the works ready in
+-- the month of the given date. Owner and head. Twin: labSettlement()
+CREATE OR REPLACE FUNCTION "public"."report_lab_settlement"("in_month" "date") RETURNS TABLE("lab_id" bigint, "lab_name" "text", "is_own" boolean, "orders_count" integer, "items_count" integer, "amount" bigint)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := private.current_organization_id();
+begin
+  if org_id is null or private.current_user_role() not in ('owner', 'head') then
+    raise exception 'Суммы лабораторий видят владелец и руководитель' using errcode = '42501';
+  end if;
+  return query
+  select l.id, l.name, l.is_own,
+    count(distinct o.id)::integer,
+    coalesce(sum(i.qty), 0)::integer,
+    coalesce(sum(i.qty::bigint * pr.price), 0)::bigint
+  from public.lab_orders o
+    join public.labs l on l.organization_id = o.organization_id and l.id = o.lab_id
+    left join public.lab_order_items i on i.organization_id = o.organization_id and i.order_id = o.id
+    left join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
+  where o.organization_id = org_id
+    and o.ready_at >= date_trunc('month', in_month)::date
+    and o.ready_at < (date_trunc('month', in_month) + interval '1 month')::date
+  group by l.id, l.name, l.is_own
+  order by 6 desc, 2;
+end;
+$$;
+
+--
+-- Reminders (pg_cron, hourly)
+--
+
+-- The day before (and the day of) a fitting or the due date of an active
+-- order, and once when it becomes overdue: a notification lab_order to the
+-- responsible of the order, else to the owner and the heads. Each reminder
+-- once per order, kind and date (moving a date reminds again).
+CREATE OR REPLACE FUNCTION "private"."lab_orders_tick"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  ord record;
+  reminder record;
+  recipients bigint[];
+  recipient bigint;
+  title text;
+  notified integer := 0;
+begin
+  for ord in
+    select o.*, private.lab_today(o.organization_id) as today,
+      coalesce(nullif(btrim(concat_ws(' ', p.last_name, p.first_name)), ''), p.phones[1], 'Пациент') as patient_name,
+      l.name as lab_name
+    from public.lab_orders o
+      join public.patients p on p.organization_id = o.organization_id and p.id = o.patient_id
+      left join public.labs l on l.organization_id = o.organization_id and l.id = o.lab_id
+    where o.status not in ('ready', 'delivered')
+      and coalesce(o.fitting1_at, o.fitting2_at, o.due_at) is not null
+  loop
+    for reminder in
+      select v.kind, v.on_date
+      from (values ('fitting1', ord.fitting1_at), ('fitting2', ord.fitting2_at), ('due', ord.due_at), ('overdue', ord.due_at)) as v(kind, on_date)
+      where v.on_date is not null
+        and case when v.kind = 'overdue' then v.on_date < ord.today
+          else v.on_date between ord.today and ord.today + 1 end
+    loop
+      insert into public.lab_order_reminders (organization_id, order_id, kind, on_date)
+      values (ord.organization_id, ord.id, reminder.kind, reminder.on_date)
+      on conflict do nothing;
+      if not found then
+        continue;
+      end if;
+      title := case reminder.kind
+        when 'fitting1' then 'Примерка 1 '
+        when 'fitting2' then 'Примерка 2 '
+        when 'due' then 'Сдача работы из лаборатории '
+        else 'Наряд просрочен'
+      end || case
+        when reminder.kind = 'overdue' then ''
+        when reminder.on_date = ord.today then 'сегодня'
+        else 'завтра'
+      end;
+      recipients := case
+        when ord.responsible_id is not null and exists (
+          select 1 from public.sales s
+          where s.organization_id = ord.organization_id and s.id = ord.responsible_id and not s.disabled)
+        then array[ord.responsible_id]
+        else private.clinic_managers(ord.organization_id)
+      end;
+      foreach recipient in array recipients loop
+        if private.add_notification(ord.organization_id, recipient, 'lab_order', title,
+          'Наряд №' || ord.number || ' · ' || ord.patient_name || coalesce(' · ' || ord.lab_name, ''),
+          ord.deal_id, ord.patient_id, null) is not null then
+          notified := notified + 1;
+        end if;
+      end loop;
+    end loop;
+  end loop;
+  return notified;
+end;
+$$;
+
+--
+-- Triggers
+--
+
+create or replace trigger lab_order_before_write
+    before insert or update on public.lab_orders
+    for each row execute function private.handle_lab_order_before_write();
+
+create or replace trigger lab_order_item_before_write
+    before insert or update on public.lab_order_items
+    for each row execute function private.handle_lab_order_item_before_write();
+
+create or replace trigger lab_order_item_price
+    after insert or update on public.lab_order_items
+    for each row execute function private.handle_lab_order_item_price();
+
+create or replace trigger lab_order_item_price_touch
+    before update on public.lab_order_item_prices
+    for each row execute function private.touch_updated_at();
+
+create or replace trigger lab_work_type_price_touch
+    before update on public.lab_work_type_prices
+    for each row execute function private.touch_updated_at();
+
+create or replace trigger seed_lab_work_types
+    after insert on public.organizations
+    for each row execute function private.handle_organization_lab_work_types();
+
+-- Audit log: orders and their lines (group «Пациенты»), the dictionaries
+-- and the prices (group «Настройки»; what an employee changes, not the
+-- dictionaries seeded for a new clinic)
+create or replace trigger audit_lab_order
+    after insert or update or delete on public.lab_orders
+    for each row execute function private.audit_lab_row('lab_order', 'number,status,lab_id,technician_id,doctor_id,responsible_id,plan_id,teeth,shade,material,comment,sent_at,fitting1_at,fitting2_at,due_at,ready_at,delivered_at');
+
+create or replace trigger audit_lab_order_item
+    after insert or update or delete on public.lab_order_items
+    for each row execute function private.audit_lab_row('lab_order_item', 'name,qty,work_type_id,plan_item_id');
+
+create or replace trigger audit_lab_order_item_price
+    after update on public.lab_order_item_prices
+    for each row execute function private.audit_lab_row('lab_order_price', 'price');
+
+create or replace trigger audit_lab
+    after insert or update or delete on public.labs
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab', 'name,is_own,contact_person,phone,email,address,is_active');
+
+create or replace trigger audit_lab_technician
+    after insert or update or delete on public.lab_technicians
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_technician', 'name,lab_id,phone,is_active');
+
+create or replace trigger audit_lab_work_type
+    after insert or update or delete on public.lab_work_types
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_work_type', 'name,is_active');
+
+create or replace trigger audit_lab_work_type_price
+    after insert or update or delete on public.lab_work_type_prices
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_work_type_price', 'work_type_id,price');
+
+--
+-- Row Level Security
+--
+
+alter table public.labs enable row level security;
+alter table public.lab_technicians enable row level security;
+alter table public.lab_work_types enable row level security;
+alter table public.lab_work_type_prices enable row level security;
+alter table public.lab_orders enable row level security;
+alter table public.lab_order_items enable row level security;
+alter table public.lab_order_item_prices enable row level security;
+alter table public.lab_order_reminders enable row level security;
+
+-- Dictionaries: the clinic reads them, whoever configures it writes them
+create policy "Clinic can read" on public.labs for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Configurators can insert" on public.labs for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.can_configure()));
+create policy "Configurators can update" on public.labs for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.can_configure()))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Configurators can delete" on public.labs for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.can_configure()));
+
+create policy "Clinic can read" on public.lab_technicians for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Configurators can insert" on public.lab_technicians for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.can_configure()));
+create policy "Configurators can update" on public.lab_technicians for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.can_configure()))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Configurators can delete" on public.lab_technicians for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.can_configure()));
+
+create policy "Clinic can read" on public.lab_work_types for select to authenticated
+    using (organization_id = (select private.current_organization_id()));
+create policy "Configurators can insert" on public.lab_work_types for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.can_configure()));
+create policy "Configurators can update" on public.lab_work_types for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.can_configure()))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Configurators can delete" on public.lab_work_types for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.can_configure()));
+
+-- Lab prices: money, the owner and the head only
+create policy "Owner and head can read" on public.lab_work_type_prices for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can insert" on public.lab_work_type_prices for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can update" on public.lab_work_type_prices for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Owner and head can delete" on public.lab_work_type_prices for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+
+-- Orders follow their patient (the sub-query applies the patients policy);
+-- never the integrator
+create policy "Orders of visible patients can be read" on public.lab_orders for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) <> 'integrator'
+        and exists (select 1 from public.patients p where p.organization_id = lab_orders.organization_id and p.id = lab_orders.patient_id));
+create policy "Staff can insert on visible patients" on public.lab_orders for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.patients p where p.organization_id = lab_orders.organization_id and p.id = lab_orders.patient_id));
+create policy "Staff can update on visible patients" on public.lab_orders for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.patients p where p.organization_id = lab_orders.organization_id and p.id = lab_orders.patient_id))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Owner, head or author of an unsent order can delete" on public.lab_orders for delete to authenticated
+    using (organization_id = (select private.current_organization_id())
+        and ((select private.current_user_role()) in ('owner', 'head')
+            or ((select private.current_user_role()) = 'manager' and created_by = (select private.current_sales_id()) and status = 'clinic'))
+        and exists (select 1 from public.patients p where p.organization_id = lab_orders.organization_id and p.id = lab_orders.patient_id));
+
+-- Lines follow their order
+create policy "Lines of visible orders can be read" on public.lab_order_items for select to authenticated
+    using (organization_id = (select private.current_organization_id())
+        and exists (select 1 from public.lab_orders o where o.organization_id = lab_order_items.organization_id and o.id = lab_order_items.order_id));
+create policy "Staff can insert on visible orders" on public.lab_order_items for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.lab_orders o where o.organization_id = lab_order_items.organization_id and o.id = lab_order_items.order_id));
+create policy "Staff can update on visible orders" on public.lab_order_items for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.lab_orders o where o.organization_id = lab_order_items.organization_id and o.id = lab_order_items.order_id))
+    with check (organization_id = (select private.current_organization_id()));
+create policy "Staff can delete on visible orders" on public.lab_order_items for delete to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.lab_orders o where o.organization_id = lab_order_items.organization_id and o.id = lab_order_items.order_id));
+
+-- Line prices: the owner and the head read and adjust them; the trigger
+-- writes them
+create policy "Owner and head can read" on public.lab_order_item_prices for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'));
+create policy "Owner and head can update" on public.lab_order_item_prices for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head'))
+    with check (organization_id = (select private.current_organization_id()));
+
+--
+-- Grants
+--
+
+revoke all on table public.labs from anon;
+grant select, insert, update, delete on table public.labs to authenticated;
+grant all on table public.labs to service_role;
+revoke all on sequence public.labs_id_seq from anon;
+grant usage on sequence public.labs_id_seq to authenticated;
+grant all on sequence public.labs_id_seq to service_role;
+
+revoke all on table public.lab_technicians from anon;
+grant select, insert, update, delete on table public.lab_technicians to authenticated;
+grant all on table public.lab_technicians to service_role;
+revoke all on sequence public.lab_technicians_id_seq from anon;
+grant usage on sequence public.lab_technicians_id_seq to authenticated;
+grant all on sequence public.lab_technicians_id_seq to service_role;
+
+revoke all on table public.lab_work_types from anon;
+grant select, insert, update, delete on table public.lab_work_types to authenticated;
+grant all on table public.lab_work_types to service_role;
+revoke all on sequence public.lab_work_types_id_seq from anon;
+grant usage on sequence public.lab_work_types_id_seq to authenticated;
+grant all on sequence public.lab_work_types_id_seq to service_role;
+
+revoke all on table public.lab_work_type_prices from anon;
+grant select, insert, update, delete on table public.lab_work_type_prices to authenticated;
+grant all on table public.lab_work_type_prices to service_role;
+revoke all on sequence public.lab_work_type_prices_id_seq from anon;
+grant usage on sequence public.lab_work_type_prices_id_seq to authenticated;
+grant all on sequence public.lab_work_type_prices_id_seq to service_role;
+
+revoke all on table public.lab_orders from anon;
+grant select, insert, update, delete on table public.lab_orders to authenticated;
+grant all on table public.lab_orders to service_role;
+revoke all on sequence public.lab_orders_id_seq from anon;
+grant usage on sequence public.lab_orders_id_seq to authenticated;
+grant all on sequence public.lab_orders_id_seq to service_role;
+
+revoke all on table public.lab_order_items from anon;
+grant select, insert, update, delete on table public.lab_order_items to authenticated;
+grant all on table public.lab_order_items to service_role;
+revoke all on sequence public.lab_order_items_id_seq from anon;
+grant usage on sequence public.lab_order_items_id_seq to authenticated;
+grant all on sequence public.lab_order_items_id_seq to service_role;
+
+revoke all on table public.lab_order_item_prices from anon, authenticated;
+grant select on table public.lab_order_item_prices to authenticated;
+grant update (price) on table public.lab_order_item_prices to authenticated;
+grant all on table public.lab_order_item_prices to service_role;
+revoke all on sequence public.lab_order_item_prices_id_seq from anon, authenticated;
+grant all on sequence public.lab_order_item_prices_id_seq to service_role;
+
+revoke all on table public.lab_order_reminders from anon, authenticated;
+grant all on table public.lab_order_reminders to service_role;
+revoke all on sequence public.lab_order_reminders_id_seq from anon, authenticated;
+grant all on sequence public.lab_order_reminders_id_seq to service_role;
+
+revoke all on table public.lab_orders_summary from anon;
+grant select on table public.lab_orders_summary to authenticated;
+grant all on table public.lab_orders_summary to service_role;
+revoke all on table public.lab_order_costs from anon;
+grant select on table public.lab_order_costs to authenticated;
+grant all on table public.lab_order_costs to service_role;
+
+revoke all on function private.seed_lab_work_types(bigint) from public;
+grant execute on function private.seed_lab_work_types(bigint) to service_role;
+revoke all on function private.lab_orders_tick() from public;
+grant execute on function private.lab_orders_tick() to service_role;
+revoke all on function private.lab_cost_for_doctor(bigint, bigint, date) from public;
+grant execute on function private.lab_cost_for_doctor(bigint, bigint, date) to service_role;
+revoke all on function private.lab_cost_for_plan_item(bigint, bigint) from public;
+grant execute on function private.lab_cost_for_plan_item(bigint, bigint) to service_role;
+revoke all on function public.report_lab_settlement(date) from public, anon;
+grant execute on function public.report_lab_settlement(date) to authenticated, service_role;

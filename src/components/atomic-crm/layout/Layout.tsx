@@ -235,6 +235,7 @@ const PageTitle = () => {
     { match: "/price-list", label: translate("price_list.title") },
     { match: "/cash", label: translate("payments.title") },
     { match: "/payroll/*", label: translate("payroll.title") },
+    { match: "/lab", label: translate("lab.title") },
     { match: "/audit", label: translate("audit.title") },
     { match: "/mailings", label: translate("mailings.title") },
     { match: "/integrations", label: translate("market.title") },

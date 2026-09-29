@@ -65,7 +65,17 @@ const DATE_TIME_FIELDS = new Set([
   "occurred_at",
   "closed_at",
 ]);
-const DATE_FIELDS = new Set(["paid_at", "month"]);
+const DATE_FIELDS = new Set([
+  "paid_at",
+  "month",
+  // Lab work orders (stage 40)
+  "sent_at",
+  "fitting1_at",
+  "fitting2_at",
+  "due_at",
+  "ready_at",
+  "delivered_at",
+]);
 const BOOLEAN_FIELDS = new Set([
   "disabled",
   "is_active",
@@ -128,6 +138,10 @@ export const AUDIT_ENTITY_GROUPS = {
     "patient_file",
     // The waiting list (stage 38)
     "waiting_list",
+    // Lab work orders (stage 40)
+    "lab_order",
+    "lab_order_item",
+    "lab_order_price",
   ],
   payment: ["payment", "account_operation", "cash_shift"],
   task: ["task"],
@@ -160,6 +174,10 @@ export const AUDIT_ENTITY_GROUPS = {
     "treatment_stage_template",
     "consent_template",
     "visit_record_template",
+    "lab",
+    "lab_technician",
+    "lab_work_type",
+    "lab_work_type_price",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -362,17 +380,27 @@ export const describeAuditChanges = (
                     }
                   : entity === "waiting_list"
                     ? waitingListChange(field, translate)
-                    : entity === "treatment_plan" && field === "status"
+                    : entity === "lab_order" && field === "status"
                       ? {
-                          label: translate("treatment.audit.fields.status"),
+                          label: translate("lab.fields.status"),
                           format: (value: unknown) =>
                             value == null
                               ? EMPTY
-                              : translate(`treatment.statuses.${value}`, {
+                              : translate(`lab.statuses.${value}`, {
                                   _: String(value),
                                 }),
                         }
-                      : null);
+                      : entity === "treatment_plan" && field === "status"
+                        ? {
+                            label: translate("treatment.audit.fields.status"),
+                            format: (value: unknown) =>
+                              value == null
+                                ? EMPTY
+                                : translate(`treatment.statuses.${value}`, {
+                                    _: String(value),
+                                  }),
+                          }
+                        : null);
       // Fields of the treatment plans and the patient card (stage 29)
       const label =
         special?.label ??
@@ -391,7 +419,7 @@ export const describeAuditChanges = (
                       _: translate(`payroll.audit.fields.${field}`, {
                         // The waiting list (stage 38)
                         _: translate(`waiting_list.audit.fields.${field}`, {
-                          _: field,
+                          _: translate(`lab.fields.${field}`, { _: field }),
                         }),
                       }),
                     }),
@@ -523,23 +551,25 @@ export const auditEntityLabel = (
             ? translate("marketing.audit.entity")
             : entry.entity === "branch"
               ? translate("branches.audit.entity")
-              : PAYROLL_ENTITIES.includes(entry.entity)
-                ? translate(`payroll.audit.${entry.entity}`)
-                : PAYMENT_ENTITIES.includes(entry.entity)
-                  ? translate(`payments.audit.${entry.entity}`)
-                  : entry.entity === "waiting_list"
-                    ? translate("waiting_list.audit.entity")
-                    : PATIENT_CARD_ENTITIES.includes(entry.entity)
-                      ? translate(`patient_card.audit.${entry.entity}`)
-                      : SCHEDULE_ENTITIES.includes(entry.entity)
-                        ? translate(`schedule.audit.${entry.entity}`)
-                        : PLAN_EDITOR_ENTITIES.includes(entry.entity)
-                          ? translate(`plan_editor.audit.${entry.entity}`)
-                          : TREATMENT_ENTITIES.includes(entry.entity)
-                            ? translate(`treatment.audit.${entry.entity}`)
-                            : translate(`audit.entities.${entry.entity}`, {
-                                _: entry.entity,
-                              });
+              : LAB_ENTITIES.includes(entry.entity)
+                ? translate(`lab.audit.${entry.entity}`)
+                : PAYROLL_ENTITIES.includes(entry.entity)
+                  ? translate(`payroll.audit.${entry.entity}`)
+                  : PAYMENT_ENTITIES.includes(entry.entity)
+                    ? translate(`payments.audit.${entry.entity}`)
+                    : entry.entity === "waiting_list"
+                      ? translate("waiting_list.audit.entity")
+                      : PATIENT_CARD_ENTITIES.includes(entry.entity)
+                        ? translate(`patient_card.audit.${entry.entity}`)
+                        : SCHEDULE_ENTITIES.includes(entry.entity)
+                          ? translate(`schedule.audit.${entry.entity}`)
+                          : PLAN_EDITOR_ENTITIES.includes(entry.entity)
+                            ? translate(`plan_editor.audit.${entry.entity}`)
+                            : TREATMENT_ENTITIES.includes(entry.entity)
+                              ? translate(`treatment.audit.${entry.entity}`)
+                              : translate(`audit.entities.${entry.entity}`, {
+                                  _: entry.entity,
+                                });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -556,7 +586,22 @@ export const auditEntityLabel = (
     case "waiting_list":
     case "visit_record":
     case "patient_questionnaire":
+    case "lab_order_price":
       name = entry.patient_name ?? undefined;
+      break;
+    case "lab_order":
+      name = [
+        entry.patient_name,
+        `№ ${changedName(entry, "number") ?? entry.entity_id}`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      break;
+    case "lab_order_item":
+    case "lab":
+    case "lab_technician":
+    case "lab_work_type":
+      name = changedName(entry) ?? ref;
       break;
     case "patient_tooth": {
       const tooth = changedName(entry, "tooth");
@@ -655,6 +700,17 @@ const PAYROLL_ENTITIES = [
   "payroll_scheme",
   "payroll_adjustment",
   "payroll_month",
+];
+
+/** Entities of the lab work orders (stage 40), labelled in its namespace */
+const LAB_ENTITIES = [
+  "lab_order",
+  "lab_order_item",
+  "lab_order_price",
+  "lab",
+  "lab_technician",
+  "lab_work_type",
+  "lab_work_type_price",
 ];
 
 /** Entities of the cash desk (stage 36), labelled in its namespace */

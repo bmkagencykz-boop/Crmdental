@@ -724,7 +724,12 @@ export const createPatientCardDemo = ({
       patientId: Identifier,
       file: File,
       kind: PatientFileKind,
-      extra: { taken_at?: string | null; note?: string | null } = {},
+      extra: {
+        taken_at?: string | null;
+        note?: string | null;
+        /** A file of a lab work order (stage 40) */
+        lab_order_id?: Identifier | null;
+      } = {},
     ): Promise<PatientFile> {
       await requireWriter(patientId);
       const { path, mime } = await readFile(file);
@@ -740,6 +745,7 @@ export const createPatientCardDemo = ({
             kind,
             taken_at: extra.taken_at ?? null,
             note: extra.note ?? null,
+            lab_order_id: extra.lab_order_id ?? null,
             sales_id: (await currentSalesId()) ?? null,
             created_at: new Date().toISOString(),
           } as PatientFile,

@@ -93,6 +93,9 @@ export const NotificationBell = () => {
     // A freed slot for the waiting list (stage 38): the list, highlighted
     if (notification.kind === "waiting_list_slot") {
       navigate("/waiting-list");
+    } else if (notification.kind === "lab_order") {
+      // Lab work orders (stage 40): the board of the lab
+      navigate("/lab");
     } else if (notification.deal_id != null) {
       navigate(`/deals/${notification.deal_id}/show`);
     }

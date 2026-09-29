@@ -1,3 +1,12 @@
+import type {
+  Lab,
+  LabOrder,
+  LabOrderItem,
+  LabOrderItemPrice,
+  LabTechnician,
+  LabWorkType,
+  LabWorkTypePrice,
+} from "../../../lab/types";
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
 import type { Identifier } from "ra-core";
@@ -212,4 +221,12 @@ export interface Db {
   payroll_closed_lines: PayrollClosedLine[];
   // The waiting list (stage 38)
   waiting_list: WaitingEntry[];
+  // Lab work orders (stage 40)
+  labs: Lab[];
+  lab_technicians: LabTechnician[];
+  lab_work_types: LabWorkType[];
+  lab_work_type_prices: LabWorkTypePrice[];
+  lab_orders: LabOrder[];
+  lab_order_items: LabOrderItem[];
+  lab_order_item_prices: LabOrderItemPrice[];
 }

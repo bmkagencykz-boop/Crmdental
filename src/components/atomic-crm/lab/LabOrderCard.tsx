@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { ChevronGlyph, Fact, OverdueChip, StatusMenu } from "./LabBits";
-import { initials, localDay, shortDay, teethText, tenge } from "./labMath";
+import {
+  initials,
+  isActive,
+  localDay,
+  shortDay,
+  teethText,
+  tenge,
+} from "./labMath";
 import type { LabOrderSummary, LabStatus } from "./types";
 
 /**
@@ -23,6 +30,7 @@ export const LabOrderCard = ({
   onClose,
   onEdit,
   onPdf,
+  onBookFitting,
 }: {
   order: LabOrderSummary;
   today: string;
@@ -32,6 +40,8 @@ export const LabOrderCard = ({
   onClose: (order: LabOrderSummary) => void;
   onEdit: (order: LabOrderSummary) => void;
   onPdf: (order: LabOrderSummary) => void;
+  /** «Записать на примерку» (stage 43) */
+  onBookFitting?: (order: LabOrderSummary) => void;
 }) => {
   const translate = useTranslate();
   const [open, setOpen] = useState(false);
@@ -163,6 +173,27 @@ export const LabOrderCard = ({
           {order.remake_count > 0 ? (
             <Fact label={translate("lab.statuses.remake")}>
               {translate("lab.card.remakes", { count: order.remake_count })}
+              {order.last_remake_reason ? ` · ${order.last_remake_reason}` : ""}
+              {order.last_remake_fault
+                ? ` · ${translate(`lab_plus.faults.${order.last_remake_fault}`)}`
+                : ""}
+            </Fact>
+          ) : null}
+          {order.warranty_until ? (
+            <Fact label={translate("lab_plus.warranty.title")}>
+              {translate("lab_plus.warranty.until", {
+                date: shortDay(order.warranty_until, true),
+              })}
+            </Fact>
+          ) : null}
+          {order.fitting_visit_at ? (
+            <Fact label={translate("lab_plus.fitting.visit")}>
+              {new Date(order.fitting_visit_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Fact>
           ) : null}
           {seesMoney ? (
@@ -187,6 +218,15 @@ export const LabOrderCard = ({
             <Button variant="outline" size="sm" onClick={() => onPdf(order)}>
               {translate("lab.card.pdf")}
             </Button>
+            {canWrite && onBookFitting && order.status !== "delivered" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onBookFitting(order)}
+              >
+                {translate("lab_plus.fitting.book")}
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -198,6 +238,11 @@ export const LabOrderCard = ({
           onChange={(status) => onStatus(order, status)}
         />
         <OverdueChip days={order.overdue_days} />
+        {order.last_remake_warranty && isActive(order.status) ? (
+          <span className="inline-flex h-9 items-center rounded-full bg-neon px-3.5 text-sm text-neon-ink">
+            {translate("lab_plus.remake.by_warranty")}
+          </span>
+        ) : null}
         {order.status === "delivered" && order.delivered_at ? (
           <span className="text-xs text-muted-foreground">
             {translate("lab.card.closed", {

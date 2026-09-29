@@ -105,9 +105,13 @@ create table public.labs (
     is_active boolean not null default true,
     position integer not null default 0,
     created_at timestamp with time zone not null default now(),
+    -- The days the lab works (ISO weekdays, 1 = Monday): the standard terms
+    -- count them (stage 43)
+    work_weekdays smallint[] not null default '{1,2,3,4,5,6}'::smallint[],
     constraint labs_name_not_blank check (btrim(name) <> ''),
     constraint labs_name_length check (char_length(name) <= 200),
-    constraint labs_contacts_length check (char_length(coalesce(contact_person, '') || coalesce(phone, '') || coalesce(email, '') || coalesce(address, '') || coalesce(note, '')) <= 3000)
+    constraint labs_contacts_length check (char_length(coalesce(contact_person, '') || coalesce(phone, '') || coalesce(email, '') || coalesce(address, '') || coalesce(note, '')) <= 3000),
+    constraint labs_work_weekdays_check check (cardinality(work_weekdays) >= 1 and work_weekdays <@ '{1,2,3,4,5,6,7}'::smallint[])
 );
 
 create table public.lab_technicians (
@@ -130,8 +134,16 @@ create table public.lab_work_types (
     is_active boolean not null default true,
     position integer not null default 0,
     created_at timestamp with time zone not null default now(),
+    -- Standard terms (stage 43): working days of the lab from sending to the
+    -- fitting and to the ready work (null: no fitting / no term)
+    fitting_days smallint,
+    ready_days smallint,
+    -- Warranty of the delivered work, months (0: none)
+    warranty_months smallint not null default 0,
     constraint lab_work_types_name_not_blank check (btrim(name) <> ''),
-    constraint lab_work_types_name_length check (char_length(name) <= 200)
+    constraint lab_work_types_name_length check (char_length(name) <= 200),
+    constraint lab_work_types_terms_check check ((fitting_days is null or fitting_days between 0 and 365) and (ready_days is null or ready_days between 0 and 365)),
+    constraint lab_work_types_warranty_check check (warranty_months between 0 and 120)
 );
 
 create table public.lab_work_type_prices (
@@ -140,6 +152,11 @@ create table public.lab_work_type_prices (
     work_type_id bigint not null,
     price bigint not null default 0,
     updated_at timestamp with time zone not null default now(),
+    -- Stage 43: the price of one lab (null: the default of every lab) ...
+    lab_id bigint,
+    -- ... from this day of the order on (the history: old orders keep their
+    -- price)
+    effective_from date not null default '2000-01-01'::date,
     constraint lab_work_type_prices_price_check check (price >= 0 and price <= 100000000)
 );
 
@@ -184,6 +201,13 @@ create table public.lab_orders (
     created_by bigint default private.current_sales_id(),
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
+    -- Stage 43: the first time the work was ready (the month the lab bills
+    -- it, kept through a remake) and given to the patient (the start of the
+    -- warranty); set by the trigger
+    first_ready_at date,
+    first_delivered_at date,
+    -- The visit of the fitting in the schedule («Записать на примерку»)
+    fitting_visit_id bigint,
     constraint lab_orders_status_check check (status in ('clinic', 'lab', 'courier', 'fitting', 'ready', 'delivered', 'remake')),
     constraint lab_orders_teeth_check check (cardinality(teeth) <= 52 and private.lab_teeth_valid(teeth)),
     constraint lab_orders_text_length check (char_length(coalesce(shade, '')) <= 50 and char_length(coalesce(material, '')) <= 200 and char_length(coalesce(comment, '')) <= 5000),
@@ -236,7 +260,7 @@ alter table public.labs add constraint labs_organization_id_id_key unique (organ
 alter table public.lab_technicians add constraint lab_technicians_organization_id_id_key unique (organization_id, id);
 alter table public.lab_work_types add constraint lab_work_types_organization_id_id_key unique (organization_id, id);
 alter table public.lab_work_type_prices add constraint lab_work_type_prices_organization_id_id_key unique (organization_id, id);
-alter table public.lab_work_type_prices add constraint lab_work_type_prices_work_type_key unique (organization_id, work_type_id);
+alter table public.lab_work_type_prices add constraint lab_work_type_prices_work_type_key unique nulls not distinct (organization_id, work_type_id, lab_id, effective_from);
 alter table public.lab_orders add constraint lab_orders_organization_id_id_key unique (organization_id, id);
 alter table public.lab_orders add constraint lab_orders_number_key unique (organization_id, number);
 alter table public.lab_order_items add constraint lab_order_items_organization_id_id_key unique (organization_id, id);
@@ -256,6 +280,8 @@ alter table public.lab_work_type_prices
     add constraint lab_work_type_prices_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.lab_work_type_prices
     add constraint lab_work_type_prices_work_type_id_fkey foreign key (organization_id, work_type_id) references public.lab_work_types(organization_id, id) on delete cascade;
+alter table public.lab_work_type_prices
+    add constraint lab_work_type_prices_lab_id_fkey foreign key (organization_id, lab_id) references public.labs(organization_id, id) on delete cascade;
 alter table public.doctors
     add constraint doctors_admin_sales_id_fkey foreign key (organization_id, admin_sales_id) references public.sales(organization_id, id) on delete set null (admin_sales_id);
 
@@ -281,6 +307,8 @@ alter table public.lab_orders
     add constraint lab_orders_branch_id_fkey foreign key (organization_id, branch_id) references public.branches(organization_id, id) on delete set null (branch_id);
 alter table public.lab_orders
     add constraint lab_orders_created_by_fkey foreign key (organization_id, created_by) references public.sales(organization_id, id) on delete set null (created_by);
+alter table public.lab_orders
+    add constraint lab_orders_fitting_visit_id_fkey foreign key (organization_id, fitting_visit_id) references public.visits(organization_id, id) on delete set null (fitting_visit_id);
 
 alter table public.lab_order_items
     add constraint lab_order_items_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
@@ -309,6 +337,7 @@ create index lab_orders_status_idx on public.lab_orders using btree (organizatio
 create index lab_orders_doctor_idx on public.lab_orders using btree (organization_id, doctor_id);
 create index lab_orders_technician_idx on public.lab_orders using btree (organization_id, technician_id);
 create index lab_orders_lab_idx on public.lab_orders using btree (organization_id, lab_id, ready_at);
+create index lab_orders_fitting_visit_idx on public.lab_orders using btree (organization_id, fitting_visit_id) where fitting_visit_id is not null;
 create index lab_orders_plan_idx on public.lab_orders using btree (organization_id, plan_id) where plan_id is not null;
 create index lab_order_items_order_idx on public.lab_order_items using btree (organization_id, order_id, position);
 create index lab_order_items_plan_item_idx on public.lab_order_items using btree (organization_id, plan_item_id) where plan_item_id is not null;
@@ -327,24 +356,26 @@ begin
   if exists (select 1 from public.lab_work_types t where t.organization_id = org_id) then
     return;
   end if;
+  -- Terms (working days to the fitting and to the ready work) and the
+  -- warranty in months (stage 43)
   with seeded as (
-    insert into public.lab_work_types (organization_id, name, position)
-    select org_id, w.name, w.position
+    insert into public.lab_work_types (organization_id, name, position, fitting_days, ready_days, warranty_months)
+    select org_id, w.name, w.position, w.fitting_days, w.ready_days, w.warranty_months
     from (values
-      ('Коронка металлокерамическая', 0),
-      ('Коронка из диоксида циркония', 1),
-      ('Коронка E.max', 2),
-      ('Коронка на имплант', 3),
-      ('Временная коронка', 4),
-      ('Винир керамический', 5),
-      ('Культевая вкладка', 6),
-      ('Бюгельный протез', 7),
-      ('Частичный съёмный протез', 8),
-      ('Полный съёмный протез', 9),
-      ('Каппа (сплинт)', 10),
-      ('Индивидуальная ложка', 11),
-      ('Хирургический шаблон', 12)
-    ) as w(name, position)
+      ('Коронка металлокерамическая', 0, 3, 7, 12),
+      ('Коронка из диоксида циркония', 1, 4, 8, 24),
+      ('Коронка E.max', 2, 4, 8, 24),
+      ('Коронка на имплант', 3, 5, 10, 24),
+      ('Временная коронка', 4, null, 2, 0),
+      ('Винир керамический', 5, 5, 10, 24),
+      ('Культевая вкладка', 6, null, 3, 12),
+      ('Бюгельный протез', 7, 5, 14, 12),
+      ('Частичный съёмный протез', 8, 5, 10, 12),
+      ('Полный съёмный протез', 9, 5, 12, 12),
+      ('Каппа (сплинт)', 10, null, 5, 6),
+      ('Индивидуальная ложка', 11, null, 2, 0),
+      ('Хирургический шаблон', 12, null, 4, 0)
+    ) as w(name, position, fitting_days, ready_days, warranty_months)
     returning id, name
   )
   insert into public.lab_work_type_prices (organization_id, work_type_id, price)
@@ -397,6 +428,7 @@ declare
   stage_plan_id bigint;
   tech_lab_id bigint;
   deal_patient_id bigint;
+  visit_day date;
   today date := private.lab_today(new.organization_id);
 begin
   new.shade := nullif(btrim(coalesce(new.shade, '')), '');
@@ -410,11 +442,28 @@ begin
     from public.lab_orders o
     where o.organization_id = new.organization_id;
     new.remake_count := 0;
+    new.first_ready_at := null;
+    new.first_delivered_at := null;
   else
     new.number := old.number;
     new.created_by := old.created_by;
     new.created_at := old.created_at;
     new.remake_count := old.remake_count;
+    new.first_ready_at := old.first_ready_at;
+    new.first_delivered_at := old.first_delivered_at;
+  end if;
+
+  -- The fitting visit (stage 43): a visit of the same patient; its day is
+  -- the first fitting when the order has none
+  if new.fitting_visit_id is not null
+    and (tg_op = 'INSERT' or new.fitting_visit_id is distinct from old.fitting_visit_id) then
+    select private.clinic_date(v.organization_id, v.starts_at) into visit_day
+    from public.visits v
+    where v.organization_id = new.organization_id and v.id = new.fitting_visit_id and v.patient_id = new.patient_id;
+    if visit_day is null then
+      raise exception 'Запись другого пациента' using errcode = '22023', hint = 'lab_order_visit';
+    end if;
+    new.fitting1_at := coalesce(new.fitting1_at, visit_day);
   end if;
 
   -- The stage gives its plan; the plan gives its deal and doctor
@@ -503,6 +552,19 @@ begin
   else
     new.delivered_at := null;
   end if;
+  -- The first readiness and delivery (stage 43) survive a remake. While the
+  -- current one is the first, it follows its date (a correction of the
+  -- date, or of the status: undone without a remake)
+  if tg_op = 'UPDATE' and new.status <> 'remake' then
+    if old.first_ready_at is not null and old.first_ready_at = old.ready_at then
+      new.first_ready_at := new.ready_at;
+    end if;
+    if old.first_delivered_at is not null and old.first_delivered_at = old.delivered_at then
+      new.first_delivered_at := new.delivered_at;
+    end if;
+  end if;
+  new.first_ready_at := coalesce(new.first_ready_at, new.ready_at);
+  new.first_delivered_at := coalesce(new.first_delivered_at, new.delivered_at);
   new.updated_at := now();
   return new;
 end;
@@ -551,19 +613,22 @@ end;
 $$;
 
 -- The lab price of a line: the price of its work type when the line is
--- written or its work type changes (the owner and the head adjust it)
+-- written or its work type changes (the owner and the head adjust it) —
+-- the price of the order's lab on the day of the order, else the default
+-- price (stage 43: private.lab_price_on)
 CREATE OR REPLACE FUNCTION "private"."handle_lab_order_item_price"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  ord record;
 begin
   if tg_op = 'INSERT' or new.work_type_id is distinct from old.work_type_id then
+    select o.lab_id, private.clinic_date(o.organization_id, o.created_at) as day into ord
+    from public.lab_orders o
+    where o.organization_id = new.organization_id and o.id = new.order_id;
     insert into public.lab_order_item_prices (organization_id, item_id, price)
-    values (new.organization_id, new.id, coalesce((
-      select p.price
-      from public.lab_work_type_prices p
-      where p.organization_id = new.organization_id and p.work_type_id = new.work_type_id
-    ), 0))
+    values (new.organization_id, new.id, private.lab_price_on(new.organization_id, new.work_type_id, ord.lab_id, ord.day))
     on conflict on constraint lab_order_item_prices_item_key
     do update set price = excluded.price, updated_at = now();
   end if;
@@ -604,7 +669,7 @@ begin
     row_patient_id := (row_data ->> 'patient_id')::bigint;
     row_deal_id := (row_data ->> 'deal_id')::bigint;
   else
-    if entity_name = 'lab_order_item' then
+    if entity_name in ('lab_order_item', 'lab_order_remake') then
       target_order_id := (row_data ->> 'order_id')::bigint;
     else
       select i.order_id into target_order_id
@@ -633,7 +698,8 @@ $$;
 --
 
 -- The orders with their names, works, overdue days and lab cost (null for
--- whoever does not see the prices: RLS of lab_order_item_prices)
+-- whoever does not see the prices: RLS of lab_order_item_prices).
+-- Extended (columns at the end) in 43_lab_plus.sql: edit it there.
 create or replace view public.lab_orders_summary with (security_invoker = on) as
 select
     o.id,
@@ -697,6 +763,8 @@ from public.lab_orders o
 -- Lab cost per work line (owner and head: RLS of the prices): the doctor,
 -- the plan item and the month of the cost (the month the work was ready).
 -- The source of the payroll (stage 39) and of the lab settlement.
+-- Redefined in 43_lab_plus.sql (paid remakes, the billing day): edit it
+-- there.
 create or replace view public.lab_order_costs with (security_invoker = on) as
 select
     i.id,
@@ -726,37 +794,46 @@ from public.lab_order_items i
 -- Money: payroll helpers and the settlement with the labs
 --
 
--- The lab cost of a doctor's works ready in the month of the given date
--- (payroll, stage 39)
+-- The lab cost of a doctor's works billed in the month of the given date
+-- (payroll, stage 39): the rows of public.lab_order_costs — the works
+-- ready (the first time) in the month and the paid remakes back in it
+-- (stage 43)
 CREATE OR REPLACE FUNCTION "private"."lab_cost_for_doctor"("org_id" bigint, "target_doctor_id" bigint, "in_month" "date") RETURNS bigint
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select coalesce(sum(i.qty::bigint * pr.price), 0)::bigint
-  from public.lab_orders o
-    join public.lab_order_items i on i.organization_id = o.organization_id and i.order_id = o.id
-    join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
-  where o.organization_id = org_id and o.doctor_id = target_doctor_id
-    and o.ready_at >= date_trunc('month', in_month)::date
-    and o.ready_at < (date_trunc('month', in_month) + interval '1 month')::date;
+begin
+  return coalesce((
+    select sum(c.amount)
+    from public.lab_order_costs c
+    where c.organization_id = org_id and c.doctor_id = target_doctor_id
+      and c.month = date_trunc('month', in_month)::date
+  ), 0)::bigint;
+end;
 $$;
 
 -- The lab cost of a plan item (the works made for it, ready or not)
 CREATE OR REPLACE FUNCTION "private"."lab_cost_for_plan_item"("org_id" bigint, "target_plan_item_id" bigint) RETURNS bigint
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select coalesce(sum(i.qty::bigint * pr.price), 0)::bigint
-  from public.lab_order_items i
-    join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
-  where i.organization_id = org_id and i.plan_item_id = target_plan_item_id;
+begin
+  return coalesce((
+    select sum(c.amount)
+    from public.lab_order_costs c
+    where c.organization_id = org_id and c.plan_item_id = target_plan_item_id
+  ), 0)::bigint;
+end;
 $$;
 
 -- «Сумма лаборатории»: what the clinic owes each lab for the works ready in
 -- the month of the given date, what it paid for that month (lab_payments,
 -- stage 42), the balance of the month and the balance of every month up to
 -- it (total_balance). Labs with works, payments or a balance. Owner and
--- head. Twin: labSettlement()
+-- head. Twin: labSettlement(). Stage 43: the amounts are the rows of
+-- public.lab_order_costs — a work is billed in the month it was first
+-- ready (a remake does not move it), a paid remake in the month it came
+-- back; a free remake (the lab's fault, the warranty) costs nothing.
 CREATE OR REPLACE FUNCTION "public"."report_lab_settlement"("in_month" "date") RETURNS TABLE("lab_id" bigint, "lab_name" "text", "is_own" boolean, "orders_count" integer, "items_count" integer, "amount" bigint, "paid" bigint, "balance" bigint, "total_balance" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -772,16 +849,20 @@ begin
   end if;
   return query
   with owed as (
+    select c.lab_id, c.month,
+      coalesce(sum(c.amount), 0)::bigint as amount
+    from public.lab_order_costs c
+    where c.organization_id = org_id and c.month < month_end
+    group by c.lab_id, c.month
+  ),
+  works as (
     select o.lab_id,
-      date_trunc('month', o.ready_at)::date as month,
       count(distinct o.id)::integer as orders_count,
-      coalesce(sum(i.qty), 0)::integer as items_count,
-      coalesce(sum(i.qty::bigint * pr.price), 0)::bigint as amount
+      coalesce(sum(i.qty), 0)::integer as items_count
     from public.lab_orders o
       left join public.lab_order_items i on i.organization_id = o.organization_id and i.order_id = o.id
-      left join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
-    where o.organization_id = org_id and o.ready_at < month_end
-    group by o.lab_id, date_trunc('month', o.ready_at)
+    where o.organization_id = org_id and o.first_ready_at >= month_start and o.first_ready_at < month_end
+    group by o.lab_id
   ),
   paid as (
     select p.lab_id, p.month, sum(p.amount)::bigint as amount
@@ -791,8 +872,8 @@ begin
   ),
   per_lab as (
     select l.id, l.name, l.is_own,
-      coalesce((select sum(w.orders_count) from owed w where w.lab_id = l.id and w.month = month_start), 0)::integer as orders_count,
-      coalesce((select sum(w.items_count) from owed w where w.lab_id = l.id and w.month = month_start), 0)::integer as items_count,
+      coalesce((select sum(w.orders_count) from works w where w.lab_id = l.id), 0)::integer as orders_count,
+      coalesce((select sum(w.items_count) from works w where w.lab_id = l.id), 0)::integer as items_count,
       coalesce((select sum(w.amount) from owed w where w.lab_id = l.id and w.month = month_start), 0)::bigint as amount,
       coalesce((select sum(p.amount) from paid p where p.lab_id = l.id and p.month = month_start), 0)::bigint as paid,
       (coalesce((select sum(w.amount) from owed w where w.lab_id = l.id), 0)
@@ -913,7 +994,7 @@ create or replace trigger seed_lab_work_types
 -- dictionaries seeded for a new clinic)
 create or replace trigger audit_lab_order
     after insert or update or delete on public.lab_orders
-    for each row execute function private.audit_lab_row('lab_order', 'number,status,lab_id,technician_id,doctor_id,responsible_id,plan_id,teeth,shade,material,comment,sent_at,fitting1_at,fitting2_at,due_at,ready_at,delivered_at');
+    for each row execute function private.audit_lab_row('lab_order', 'number,status,lab_id,technician_id,doctor_id,responsible_id,plan_id,teeth,shade,material,comment,sent_at,fitting1_at,fitting2_at,due_at,ready_at,delivered_at,fitting_visit_id');
 
 create or replace trigger audit_lab_order_item
     after insert or update or delete on public.lab_order_items
@@ -925,7 +1006,7 @@ create or replace trigger audit_lab_order_item_price
 
 create or replace trigger audit_lab
     after insert or update or delete on public.labs
-    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab', 'name,is_own,contact_person,phone,email,address,is_active');
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab', 'name,is_own,contact_person,phone,email,address,is_active,work_weekdays');
 
 create or replace trigger audit_lab_technician
     after insert or update or delete on public.lab_technicians
@@ -933,11 +1014,11 @@ create or replace trigger audit_lab_technician
 
 create or replace trigger audit_lab_work_type
     after insert or update or delete on public.lab_work_types
-    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_work_type', 'name,is_active');
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_work_type', 'name,is_active,fitting_days,ready_days,warranty_months');
 
 create or replace trigger audit_lab_work_type_price
     after insert or update or delete on public.lab_work_type_prices
-    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_work_type_price', 'work_type_id,price');
+    for each row when (pg_trigger_depth() = 0) execute function private.audit_row('lab_work_type_price', 'work_type_id,lab_id,effective_from,price');
 
 --
 -- Row Level Security

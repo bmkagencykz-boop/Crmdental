@@ -5,12 +5,7 @@ import type {
   ResourceCallbacks,
 } from "ra-core";
 
-import {
-  applyLabStatus,
-  localDay,
-  monthStart,
-  overdueDays,
-} from "../../lab/labMath";
+import { applyLabStatus, localDay, overdueDays } from "../../lab/labMath";
 import type {
   Lab,
   LabOrder,
@@ -25,6 +20,7 @@ import type {
 import type { TreatmentPlan, TreatmentPlanItem } from "../../treatment/types";
 import type { TreatmentStage } from "../../treatment/types";
 import type { AuditLogEntry, Deal, Doctor, Patient, Sale } from "../../types";
+import { createLabPlusDemo } from "./labPlus";
 
 const same = (
   a: Identifier | null | undefined,
@@ -52,6 +48,7 @@ const ORDER_AUDITED = [
   "due_at",
   "ready_at",
   "delivered_at",
+  "fitting_visit_id",
 ] as const;
 const ITEM_AUDITED = ["name", "qty", "work_type_id", "plan_item_id"] as const;
 
@@ -84,12 +81,15 @@ const trimOrNull = (value: unknown) =>
  */
 export const createLabOrdersDemo = ({
   baseDataProvider,
+  getDataProvider,
   all,
   currentSalesId,
   logAudit,
   filterPatients,
 }: {
   baseDataProvider: DataProvider;
+  /** The demo provider with the lifecycle callbacks (stage 43 methods) */
+  getDataProvider: () => DataProvider;
   all: <T>(resource: string) => Promise<T[]>;
   currentSalesId: () => Promise<Identifier | undefined>;
   logAudit: (
@@ -125,6 +125,17 @@ export const createLabOrdersDemo = ({
     }
   };
   const today = () => localDay();
+
+  // Stage 43: prices per lab, history, remakes, allocations, reports
+  const plus = createLabPlusDemo({
+    baseDataProvider,
+    getDataProvider,
+    all,
+    currentSalesId,
+    logAudit,
+    myRole,
+    visiblePatientIds,
+  });
 
   const findOrder = async (id: Identifier) =>
     (await all<LabOrder>("lab_orders")).find((o) => same(o.id, id));
@@ -297,10 +308,10 @@ export const createLabOrdersDemo = ({
   };
 
   const writePrice = async (item: LabOrderItem) => {
-    const price =
-      (await all<LabWorkTypePrice>("lab_work_type_prices")).find((p) =>
-        same(p.work_type_id, item.work_type_id),
-      )?.price ?? 0;
+    const order = await findOrder(item.order_id);
+    const price = order
+      ? await plus.priceOfLine(order, item.work_type_id ?? null)
+      : 0;
     const existing = (
       await all<LabOrderItemPrice>("lab_order_item_prices")
     ).find((p) => same(p.item_id, item.id));
@@ -427,7 +438,30 @@ export const createLabOrdersDemo = ({
         if (resource === "lab_order_item_prices") {
           throw fail("Цену строки пишет наряд", "42501");
         }
-        return params;
+        // Stage 43: a price of a lab (or the default) from a day on
+        const data = {
+          lab_id: null,
+          effective_from: "2000-01-01",
+          ...params.data,
+        } as LabWorkTypePrice;
+        const price = Math.round(Number(data.price ?? 0));
+        if (!(price >= 0 && price <= 100_000_000)) {
+          throw fail("Цена от 0 до 100 000 000 ₸", "23514");
+        }
+        if (
+          (await all<LabWorkTypePrice>("lab_work_type_prices")).some(
+            (p) =>
+              same(p.work_type_id, data.work_type_id) &&
+              String(p.lab_id ?? "") === String(data.lab_id ?? "") &&
+              (p.effective_from ?? "2000-01-01") === data.effective_from,
+          )
+        ) {
+          throw fail("Цена на этот день уже есть", "23505");
+        }
+        return {
+          ...params,
+          data: { ...data, price, updated_at: new Date().toISOString() },
+        };
       },
       beforeUpdate: async (params: any) => {
         await guard(params);
@@ -487,6 +521,8 @@ export const createLabOrdersDemo = ({
           action: "create",
           changes: diff(null, result.data, [
             "work_type_id",
+            "lab_id",
+            "effective_from",
             "price",
           ]) as AuditLogEntry["changes"],
         });
@@ -504,6 +540,7 @@ export const createLabOrdersDemo = ({
       "email",
       "address",
       "is_active",
+      "work_weekdays",
     ]),
     dictionary("lab_technicians", "lab_technician", [
       "name",
@@ -511,7 +548,23 @@ export const createLabOrdersDemo = ({
       "phone",
       "is_active",
     ]),
-    dictionary("lab_work_types", "lab_work_type", ["name", "is_active"]),
+    dictionary("lab_work_types", "lab_work_type", [
+      "name",
+      "is_active",
+      "fitting_days",
+      "ready_days",
+      "warranty_months",
+    ]),
+    dictionary("lab_work_type_terms", "lab_work_type_term", [
+      "lab_id",
+      "work_type_id",
+      "fitting_days",
+      "ready_days",
+    ]),
+    dictionary("lab_remake_reasons", "lab_remake_reason", [
+      "name",
+      "is_active",
+    ]),
     money("lab_work_type_prices", "lab_work_type_price"),
     money("lab_order_item_prices", "lab_order_price"),
     {
@@ -532,7 +585,10 @@ export const createLabOrdersDemo = ({
         await requireWriter(data.patient_id);
         const orders = await all<LabOrder>("lab_orders");
         const me = (await currentSalesId()) ?? null;
-        const linked = await resolveLinks(null, data);
+        const linked = {
+          ...(await resolveLinks(null, data)),
+          ...(await plus.checkFittingVisit(null, data)),
+        };
         const doctorId = linked.doctor_id ?? data.doctor_id ?? null;
         const doctor = (await all<Doctor>("doctors")).find((d) =>
           same(d.id, doctorId),
@@ -562,6 +618,7 @@ export const createLabOrdersDemo = ({
               fitting1_at: null,
               fitting2_at: null,
               due_at: null,
+              fitting_visit_id: null,
               ...data,
               ...linked,
               number: Math.max(0, ...orders.map((o) => o.number)) + 1,
@@ -579,6 +636,7 @@ export const createLabOrdersDemo = ({
       },
       afterCreate: async (result: any) => {
         await auditOrder(null, result.data);
+        await plus.afterOrderWrite(null, result.data);
         return result;
       },
       beforeUpdate: async (params: any) => {
@@ -591,9 +649,14 @@ export const createLabOrdersDemo = ({
           created_by: _createdBy,
           created_at: _createdAt,
           remake_count: _remakes,
+          first_ready_at: _firstReady,
+          first_delivered_at: _firstDelivered,
           ...data
         } = params.data as Partial<LabOrder>;
-        const linked = await resolveLinks(before, data);
+        const linked = {
+          ...(await resolveLinks(before, data)),
+          ...(await plus.checkFittingVisit(before, data)),
+        };
         return {
           ...params,
           data: {
@@ -603,7 +666,9 @@ export const createLabOrdersDemo = ({
         };
       },
       afterUpdate: async (result: any) => {
-        await auditOrder(recall("lab_orders", result.data.id), result.data);
+        const before = recall("lab_orders", result.data.id) as LabOrder | null;
+        await auditOrder(before, result.data);
+        await plus.afterOrderWrite(before, result.data);
         return result;
       },
       beforeDelete: async (params: any) => {
@@ -646,6 +711,21 @@ export const createLabOrdersDemo = ({
             id: item.id,
             previousData: item,
           });
+        }
+        // The remakes, the history and the allocations go with the order
+        for (const resource of [
+          "lab_order_remakes",
+          "lab_order_events",
+          "lab_payment_allocations",
+        ]) {
+          for (const row of (
+            await all<{ id: Identifier; order_id: Identifier }>(resource)
+          ).filter((r) => same(r.order_id, result.data.id))) {
+            await baseDataProvider.delete(resource, {
+              id: row.id,
+              previousData: row,
+            });
+          }
         }
         if (order) await auditOrder(order, null);
         return result;
@@ -757,6 +837,7 @@ export const createLabOrdersDemo = ({
         return result;
       },
     },
+    ...plus.callbacks,
   ];
 
   // --- views ------------------------------------------------------------
@@ -778,6 +859,7 @@ export const createLabOrdersDemo = ({
     const visible = await visiblePatientIds();
     const money = await seesMoney();
     const day = today();
+    const extras = await plus.summaryExtras();
     return orders
       .filter((order) => visible.has(String(order.patient_id)))
       .map((order) => {
@@ -823,53 +905,25 @@ export const createLabOrdersDemo = ({
             : null,
           overdue_days: overdueDays(order.status, order.due_at, day),
           lab_cost: money && lines.length ? cost : null,
+          ...extras(order, money && lines.length ? cost : null),
         };
       });
   };
 
-  /** public.lab_order_costs: the lines with their prices (owner, head) */
-  const orderCosts = async (): Promise<LabOrderCost[]> => {
-    if (!(await seesMoney())) return [];
-    const [orders, items, prices] = await Promise.all([
-      all<LabOrder>("lab_orders"),
-      all<LabOrderItem>("lab_order_items"),
-      all<LabOrderItemPrice>("lab_order_item_prices"),
-    ]);
-    return items.flatMap((item) => {
-      const order = orders.find((o) => same(o.id, item.order_id));
-      const price = prices.find((p) => same(p.item_id, item.id));
-      if (!order || !price) return [];
-      return [
-        {
-          id: item.id,
-          order_id: order.id,
-          order_number: order.number,
-          patient_id: order.patient_id,
-          doctor_id: order.doctor_id ?? null,
-          lab_id: order.lab_id ?? null,
-          technician_id: order.technician_id ?? null,
-          branch_id: order.branch_id ?? null,
-          plan_id: order.plan_id ?? null,
-          plan_item_id: item.plan_item_id ?? null,
-          work_type_id: item.work_type_id ?? null,
-          name: item.name,
-          qty: item.qty,
-          price: price.price,
-          amount: item.qty * price.price,
-          status: order.status,
-          ready_at: order.ready_at ?? null,
-          month: order.ready_at ? monthStart(order.ready_at) : null,
-        },
-      ];
-    });
-  };
+  /**
+   * public.lab_order_costs (owner, head): the lines with their prices,
+   * billed on the first ready day, and the paid remakes (stage 43)
+   */
+  const orderCosts = async (): Promise<LabOrderCost[]> =>
+    (await seesMoney()) ? plus.costRows() : [];
 
   // «lab_orders_summary» reaches the demo as «lab_orders» (the adapter drops
   // the suffix): the raw rows are read through the view too
   const views = {
     lab_orders: ordersSummary,
     lab_order_costs: orderCosts,
+    ...plus.views,
   };
 
-  return { callbacks, views };
+  return { callbacks, views, methods: plus.methods };
 };

@@ -1,21 +1,27 @@
 import type { Identifier } from "ra-core";
 
+import { DEFAULT_TIME_ZONE } from "../../commons/automessages";
 import {
   addDays,
   dueReminders,
   localDay,
   VITA_SHADES,
 } from "../../../lab/labMath";
+import { labPriceOn, remakeIsPaid } from "../../../lab/labPlusMath";
 import type {
   Lab,
+  LabFault,
   LabOrder,
+  LabOrderEvent,
   LabOrderItem,
   LabOrderItemPrice,
+  LabOrderRemake,
   LabStatus,
   LabTechnician,
   LabWorkType,
   LabWorkTypePrice,
 } from "../../../lab/types";
+import { zonedMoment } from "../../../tasks/calendarLayout";
 import type { Db } from "./types";
 
 /** The work types of a new clinic and their lab prices (seed_lab_work_types) */
@@ -35,8 +41,51 @@ export const LAB_WORK_TYPES: Array<[string, number]> = [
   ["Хирургический шаблон", 25000],
 ];
 
+/**
+ * Standard terms (working days to the fitting, to the ready work) and the
+ * warranty in months of the seeded work types (seed_lab_work_types)
+ */
+export const LAB_WORK_TYPE_TERMS: Record<
+  string,
+  [number | null, number, number]
+> = {
+  "Коронка металлокерамическая": [3, 7, 12],
+  "Коронка из диоксида циркония": [4, 8, 24],
+  "Коронка E.max": [4, 8, 24],
+  "Коронка на имплант": [5, 10, 24],
+  "Временная коронка": [null, 2, 0],
+  "Винир керамический": [5, 10, 24],
+  "Культевая вкладка": [null, 3, 12],
+  "Бюгельный протез": [5, 14, 12],
+  "Частичный съёмный протез": [5, 10, 12],
+  "Полный съёмный протез": [5, 12, 12],
+  "Каппа (сплинт)": [null, 5, 6],
+  "Индивидуальная ложка": [null, 2, 0],
+  "Хирургический шаблон": [null, 4, 0],
+};
+
+/** The reasons of a remake of a new clinic (seed_lab_remake_reasons) */
+export const LAB_REMAKE_REASONS = [
+  "Не подошёл цвет",
+  "Не сел",
+  "Скол",
+  "Ошибка оттиска",
+];
+
 /** The demo user (the owner) */
 const DEMO_SALES_ID = 0;
+
+/** A remake of a demo order: days relative to today */
+type RemakeSpec = {
+  reason: string;
+  fault: LabFault | null;
+  on: number;
+  from: LabStatus;
+  /** Came back ready */
+  ready?: number;
+  warranty?: boolean;
+  comment?: string;
+};
 
 type Spec = {
   status: LabStatus;
@@ -54,6 +103,10 @@ type Spec = {
   /** Linked to a crown-like item of a treatment plan */
   plan?: boolean;
   comment?: string;
+  /** Stage 43: the first ready and delivered days (a remake after them) */
+  firstReady?: number;
+  firstDelivered?: number;
+  remakeLog?: RemakeSpec[];
 };
 
 /**
@@ -148,6 +201,63 @@ const SPECS: Spec[] = [
     remakes: 1,
     teeth: [21],
     comment: "Переделка: не совпал цвет с соседним зубом",
+    remakeLog: [
+      {
+        reason: "Не подошёл цвет",
+        fault: "lab",
+        on: -5,
+        from: "fitting",
+        comment: "Светлее соседнего 11 на полтона",
+      },
+    ],
+  },
+  // A crown remade under the warranty: delivered months ago, chipped now
+  {
+    status: "lab",
+    created: -130,
+    sent: -129,
+    f1: -124,
+    due: 4,
+    works: [["Коронка из диоксида циркония", 1]],
+    tech: 2,
+    remakes: 1,
+    teeth: [46],
+    firstReady: -120,
+    firstDelivered: -118,
+    remakeLog: [
+      {
+        reason: "Скол",
+        fault: null,
+        on: -3,
+        from: "delivered",
+        warranty: true,
+        comment: "Скол режущего края, гарантия 24 мес.",
+      },
+    ],
+  },
+  // The clinic's impression was wrong: a paid remake, delivered since
+  {
+    status: "delivered",
+    created: -26,
+    sent: -25,
+    f1: -19,
+    due: -12,
+    ready: -9,
+    delivered: -7,
+    works: [["Коронка металлокерамическая", 2]],
+    tech: 1,
+    remakes: 1,
+    teeth: [35, 36],
+    remakeLog: [
+      {
+        reason: "Ошибка оттиска",
+        fault: "clinic",
+        on: -18,
+        from: "fitting",
+        ready: -9,
+        comment: "Оттиск с порами, сняли повторно",
+      },
+    ],
   },
   {
     status: "lab",
@@ -235,6 +345,51 @@ const SPECS: Spec[] = [
   },
 ];
 
+/**
+ * The history of the last three months for «Качество»: delivered orders of
+ * both labs, most on time, some late, a few remade
+ */
+const HISTORY: Spec[] = Array.from({ length: 14 }, (_, index): Spec => {
+  const created = -92 + index * 6;
+  const term = [7, 8, 6, 10, 7, 9, 8, 12, 7, 6, 11, 8, 7, 9][index];
+  const late = [0, 0, 1, 0, 0, 2, 0, 3, 0, 0, 0, 1, 0, 0][index];
+  const works: Array<Array<[string, number]>> = [
+    [["Коронка металлокерамическая", 1]],
+    [["Коронка из диоксида циркония", 2]],
+    [["Временная коронка", 3]],
+    [["Коронка E.max", 1]],
+    [
+      ["Культевая вкладка", 1],
+      ["Коронка металлокерамическая", 1],
+    ],
+    [["Бюгельный протез", 1]],
+  ];
+  const remade = index === 3 || index === 10;
+  return {
+    status: "delivered",
+    created,
+    sent: created + 1,
+    f1: created + 4,
+    due: created + 1 + term,
+    ready: created + 1 + term + late,
+    delivered: created + 3 + term + late,
+    works: works[index % works.length],
+    tech: [1, 2, 3, 1, 2, 1, 3, 2, 1, 2, 1, 3, 2, 1][index],
+    remakes: remade ? 1 : 0,
+    remakeLog: remade
+      ? [
+          {
+            reason: index === 3 ? "Не сел" : "Не подошёл цвет",
+            fault: index === 3 ? "lab" : "patient",
+            on: created + 5,
+            from: "fitting",
+            ready: created + 1 + term + late,
+          },
+        ]
+      : undefined,
+  };
+});
+
 const MATERIALS: Record<string, string> = {
   "Коронка металлокерамическая": "Металлокерамика, КХС",
   "Коронка из диоксида циркония": "Диоксид циркония",
@@ -258,6 +413,7 @@ export const generateLabOrders = (db: Db) => {
       address: "Алматы, ул. Жандосова, 58",
       is_active: true,
       position: 0,
+      work_weekdays: [1, 2, 3, 4, 5, 6],
     },
     {
       id: 2,
@@ -268,6 +424,7 @@ export const generateLabOrders = (db: Db) => {
       address: "2 этаж, кабинет 12",
       is_active: true,
       position: 1,
+      work_weekdays: [1, 2, 3, 4, 5],
     },
   ] satisfies Lab[];
   db.lab_technicians = [
@@ -302,15 +459,61 @@ export const generateLabOrders = (db: Db) => {
       name,
       is_active: true,
       position: index,
+      fitting_days: LAB_WORK_TYPE_TERMS[name]?.[0] ?? null,
+      ready_days: LAB_WORK_TYPE_TERMS[name]?.[1] ?? null,
+      warranty_months: LAB_WORK_TYPE_TERMS[name]?.[2] ?? 0,
     }),
   );
-  db.lab_work_type_prices = LAB_WORK_TYPES.map(
-    ([, price], index): LabWorkTypePrice => ({
-      id: index + 1,
+  // Prices (stage 43): the default ones — the crowns went up 40 days ago
+  // (older orders keep the old price) — and the clinic's own lab, 20%
+  // cheaper, from the start
+  const raised = addDays(today, -40);
+  db.lab_work_type_prices = [];
+  const pricePush = (row: Omit<LabWorkTypePrice, "id">) =>
+    db.lab_work_type_prices.push({
+      id: db.lab_work_type_prices.length + 1,
+      ...row,
+    });
+  LAB_WORK_TYPES.forEach(([name, price], index) => {
+    const crown = /^Коронка/.test(name);
+    pricePush({
       work_type_id: index + 1,
-      price,
+      lab_id: null,
+      effective_from: "2000-01-01",
+      price: crown ? Math.round((price * 0.9) / 500) * 500 : price,
+    });
+    if (crown) {
+      pricePush({
+        work_type_id: index + 1,
+        lab_id: null,
+        effective_from: raised,
+        price,
+      });
+    }
+    pricePush({
+      work_type_id: index + 1,
+      lab_id: 2,
+      effective_from: "2000-01-01",
+      price: Math.round((price * 0.8) / 100) * 100,
+    });
+  });
+  // The own lab makes a temporary crown in a day and a metal-ceramic crown
+  // in five
+  db.lab_work_type_terms = [
+    { id: 1, lab_id: 2, work_type_id: 5, fitting_days: null, ready_days: 1 },
+    { id: 2, lab_id: 2, work_type_id: 1, fitting_days: 2, ready_days: 5 },
+  ];
+  db.lab_remake_reasons = [...LAB_REMAKE_REASONS, "Трещина"].map(
+    (name, index) => ({
+      id: index + 1,
+      name,
+      is_active: true,
+      position: index,
     }),
   );
+  db.lab_order_remakes = [];
+  db.lab_order_events = [];
+  db.lab_payment_allocations = [];
 
   // The doctors' administrators: the managers of the demo
   const managers = db.sales.filter((sale) => sale.role === "manager");
@@ -346,11 +549,83 @@ export const generateLabOrders = (db: Db) => {
   const orthopedist =
     db.doctors.find((d) => d.specialty === "ортопед") ?? db.doctors[0];
 
+  /** The history of a demo order from its dates (lab_order_events) */
+  const historyOf = (order: LabOrder, remakes: RemakeSpec[]) => {
+    const who = order.responsible_id ?? DEMO_SALES_ID;
+    const steps: Array<
+      [string, LabOrderEvent["kind"], LabStatus | null, LabStatus]
+    > = [];
+    const created = localDay(new Date(order.created_at));
+    steps.push([created, "created", null, "clinic"]);
+    let status: LabStatus = "clinic";
+    const move = (day: string | null | undefined, to: LabStatus) => {
+      if (!day || status === to) return;
+      steps.push([day, to === "remake" ? "remake" : "status", status, to]);
+      status = to;
+    };
+    const firstReady = order.first_ready_at;
+    move(order.sent_at, "lab");
+    if (order.fitting1_at && order.fitting1_at <= today) {
+      move(order.fitting1_at, "fitting");
+    }
+    const timeline = [
+      ...remakes.map((r) => ({
+        day: addDays(today, r.on),
+        kind: "remake" as const,
+        r,
+      })),
+      ...(firstReady ? [{ day: firstReady, kind: "ready" as const }] : []),
+      ...(order.first_delivered_at
+        ? [{ day: order.first_delivered_at, kind: "delivered" as const }]
+        : []),
+    ].sort((a, b) => a.day.localeCompare(b.day));
+    for (const step of timeline) {
+      if (step.kind === "remake") {
+        move(step.day, "remake");
+        move(step.day, "lab");
+        if (step.r.ready) move(addDays(today, step.r.ready), "ready");
+      } else if (step.kind === "ready") {
+        move(step.day, "ready");
+      } else {
+        move(step.day, "delivered");
+      }
+    }
+    if (order.ready_at) move(order.ready_at, "ready");
+    if (order.delivered_at) move(order.delivered_at, "delivered");
+    if (status !== order.status) move(today, order.status);
+    steps.forEach(([day, kind, from, to], index) => {
+      const at = new Date(`${day}T10:00:00`);
+      at.setMinutes(index * 11);
+      db.lab_order_events.push({
+        id: db.lab_order_events.length + 1,
+        order_id: order.id,
+        kind,
+        from_status: from,
+        to_status: to,
+        note: null,
+        sales_id: who,
+        created_at: at.toISOString(),
+      });
+      if (to === "ready") {
+        db.lab_order_events.push({
+          id: db.lab_order_events.length + 1,
+          order_id: order.id,
+          kind: "invite",
+          from_status: null,
+          to_status: "ready",
+          note: null,
+          sales_id: who,
+          created_at: new Date(at.getTime() + 60_000).toISOString(),
+        });
+      }
+    });
+  };
+
   db.lab_orders = [];
   db.lab_order_items = [];
   db.lab_order_item_prices = [];
   let itemId = 1;
-  SPECS.forEach((spec, index) => {
+  [...SPECS, ...HISTORY].forEach((spec, index) => {
     const item = spec.plan ? linked.shift() : undefined;
     const plan = item
       ? db.treatment_plans.find((p) => p.id === item.plan_id)
@@ -392,6 +667,9 @@ export const generateLabOrders = (db: Db) => {
       due_at: at(spec.due),
       ready_at: at(spec.ready),
       delivered_at: at(spec.delivered),
+      first_ready_at: at(spec.firstReady ?? spec.ready),
+      first_delivered_at: at(spec.firstDelivered ?? spec.delivered),
+      fitting_visit_id: null,
       remake_count: spec.remakes ?? 0,
       created_by: doctor.admin_sales_id ?? DEMO_SALES_ID,
       created_at: created.toISOString(),
@@ -414,19 +692,88 @@ export const generateLabOrders = (db: Db) => {
       db.lab_order_item_prices.push({
         id: itemId,
         item_id: itemId,
-        // The own lab works at cost: 20% cheaper
-        price:
-          Math.round(
-            (LAB_WORK_TYPES[typeIndex][1] * (tech.lab_id === 2 ? 0.8 : 1)) /
-              100,
-          ) * 100,
+        // The price of the order's lab on the day of the order
+        price: labPriceOn(
+          db.lab_work_type_prices,
+          typeIndex + 1,
+          tech.lab_id,
+          localDay(created),
+        ),
       } satisfies LabOrderItemPrice);
       itemId++;
     });
+    // Stage 43: the remakes and the history of the order
+    for (const remake of spec.remakeLog ?? []) {
+      db.lab_order_remakes.push({
+        id: db.lab_order_remakes.length + 1,
+        order_id: order.id,
+        reason_id:
+          db.lab_remake_reasons.find((r) => r.name === remake.reason)?.id ??
+          null,
+        reason: remake.reason,
+        fault: remake.fault,
+        is_warranty: !!remake.warranty,
+        is_paid: remakeIsPaid(remake.fault, !!remake.warranty),
+        comment: remake.comment ?? null,
+        from_status: remake.from,
+        occurred_on: addDays(today, remake.on),
+        ready_at: at(remake.ready),
+        created_by: order.responsible_id ?? DEMO_SALES_ID,
+        created_at: new Date(
+          `${addDays(today, remake.on)}T15:20:00`,
+        ).toISOString(),
+      } satisfies LabOrderRemake);
+    }
+    historyOf(order, spec.remakeLog ?? []);
   });
 
   // A scan and a shade photo of the veneers (patient files of stage 37)
   const veneers = db.lab_orders.find((o) => o.status === "fitting");
+  // Stage 43: the veneers' fitting is booked in the schedule today
+  if (veneers) {
+    const timeZone = db.organizations?.[0]?.timezone || DEFAULT_TIME_ZONE;
+    const busy = (start: Date, end: Date) =>
+      db.visits.some(
+        (visit) =>
+          String(visit.doctor_id) === String(veneers.doctor_id) &&
+          visit.status !== "cancelled" &&
+          new Date(visit.starts_at) < end &&
+          new Date(visit.ends_at) > start,
+      );
+    for (let minute = 11 * 60; minute <= 18 * 60; minute += 30) {
+      const start = zonedMoment(today, minute, timeZone);
+      const end = new Date(start.getTime() + 30 * 60_000);
+      if (busy(start, end)) continue;
+      const visitId =
+        Math.max(0, ...db.visits.map((v) => Number(v.id) || 0)) + 1;
+      db.visits.push({
+        id: visitId,
+        patient_id: veneers.patient_id,
+        deal_id: veneers.deal_id ?? null,
+        doctor_id: veneers.doctor_id ?? null,
+        chair_id: null,
+        service_id: null,
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        status: "confirmed",
+        note: `Примерка: наряд №${veneers.number}`,
+        source: "crm",
+        created_by: veneers.responsible_id ?? DEMO_SALES_ID,
+        created_at: veneers.created_at,
+        branch_id: null,
+      });
+      veneers.fitting_visit_id = visitId;
+      db.lab_order_events.push({
+        id: db.lab_order_events.length + 1,
+        order_id: veneers.id,
+        kind: "fitting_visit",
+        note: `${start.toLocaleDateString("ru-RU")} ${start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`,
+        sales_id: veneers.responsible_id ?? DEMO_SALES_ID,
+        created_at: veneers.created_at,
+      });
+      break;
+    }
+  }
   if (veneers) {
     let fileId = Math.max(0, ...db.patient_files.map((f) => Number(f.id))) + 1;
     const svg = (label: string, color: string) =>

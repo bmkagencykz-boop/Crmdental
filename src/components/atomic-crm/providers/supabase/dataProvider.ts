@@ -60,6 +60,7 @@ import { getPaymentMethods } from "./paymentMethods";
 import { getPayrollMethods } from "./payrollMethods";
 import { getCashOutflowMethods } from "./cashOutflowMethods";
 import { getFinanceMethods } from "./financeMethods";
+import { getLabPlusMethods } from "./labPlusMethods";
 import { getPatientCardMethods } from "./patientCardMethods";
 import { getMarketingMethods } from "./marketingMethods";
 import { getBranchMethods } from "./branchMethods";
@@ -162,6 +163,8 @@ const getDataProviderWithCustomMethods = () => {
     ...getCashOutflowMethods(),
     // Finance: ДДС, ПиУ, the financial model (stage 44)
     ...getFinanceMethods(),
+    // The lab module strengthened (stage 43)
+    ...getLabPlusMethods(),
     async getList(resource: string, params: GetListParams) {
       // Lists read the summary views (counters, patient of a deal...)
       if (resource === "patients") {

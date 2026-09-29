@@ -388,6 +388,17 @@ begin
       raise exception 'Оплата проведена через кассу: сумму, способ и время меняют в кассе или отменяют оплату'
         using errcode = '22023', hint = 'cash_linked';
     end if;
+    -- Stage 43: the orders it pays keep their part, in the same lab
+    if new.amount < old.amount and new.amount < coalesce((
+      select sum(a.amount) from public.lab_payment_allocations a
+      where a.organization_id = new.organization_id and a.payment_id = new.id), 0) then
+      raise exception 'Оплата распределена по нарядам на большую сумму' using errcode = '22023', hint = 'lab_allocation_over_payment';
+    end if;
+    if new.lab_id <> old.lab_id and exists (
+      select 1 from public.lab_payment_allocations a
+      where a.organization_id = new.organization_id and a.payment_id = new.id) then
+      raise exception 'Оплата распределена по нарядам этой лаборатории' using errcode = '22023', hint = 'lab_allocation_lab';
+    end if;
     return new;
   end if;
   if pg_trigger_depth() = 1 and private.current_user_role() is not null then
@@ -493,7 +504,10 @@ $$;
 
 -- «Оплатить» a lab for a month; from_cash writes the expense Лаборатория
 -- first (cash needs the open shift of the cashier). The owner and the head.
-CREATE OR REPLACE FUNCTION "public"."record_lab_payment"("target_lab_id" bigint, "target_month" "date", "payment_amount" bigint, "payment_method" "text" DEFAULT 'bank_transfer'::"text", "payment_day" "date" DEFAULT NULL::"date", "payment_comment" "text" DEFAULT NULL::"text", "from_cash" boolean DEFAULT false) RETURNS "jsonb"
+-- Stage 43: payment_allocations — [{"order_id": …, "amount": …}] — pays
+-- these orders of the lab (public.lab_payment_allocations); the rest stays
+-- a payment of the lab for the month.
+CREATE OR REPLACE FUNCTION "public"."record_lab_payment"("target_lab_id" bigint, "target_month" "date", "payment_amount" bigint, "payment_method" "text" DEFAULT 'bank_transfer'::"text", "payment_day" "date" DEFAULT NULL::"date", "payment_comment" "text" DEFAULT NULL::"text", "from_cash" boolean DEFAULT false, "payment_allocations" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -532,6 +546,12 @@ begin
   values (org_id, target_lab_id, target_month, payment_amount, coalesce(payment_method, 'bank_transfer'), moment,
     payment_comment, op_id)
   returning id into payment_id;
+  if jsonb_typeof(payment_allocations) = 'array' then
+    insert into public.lab_payment_allocations (organization_id, payment_id, order_id, amount)
+    select org_id, payment_id, (a.value ->> 'order_id')::bigint, (a.value ->> 'amount')::bigint
+    from jsonb_array_elements(payment_allocations) as a(value)
+    where coalesce((a.value ->> 'amount')::bigint, 0) > 0;
+  end if;
   return jsonb_build_object('payment_id', payment_id, 'operation_id', op_id);
 end;
 $$;
@@ -773,7 +793,7 @@ grant execute on function private.cash_moment(bigint, date) to authenticated, se
 
 revoke all on function public.record_payroll_payout(bigint, bigint, date, bigint, date, text, boolean, text) from public, anon;
 grant execute on function public.record_payroll_payout(bigint, bigint, date, bigint, date, text, boolean, text) to authenticated, service_role;
-revoke all on function public.record_lab_payment(bigint, date, bigint, text, date, text, boolean) from public, anon;
-grant execute on function public.record_lab_payment(bigint, date, bigint, text, date, text, boolean) to authenticated, service_role;
+revoke all on function public.record_lab_payment(bigint, date, bigint, text, date, text, boolean, jsonb) from public, anon;
+grant execute on function public.record_lab_payment(bigint, date, bigint, text, date, text, boolean, jsonb) to authenticated, service_role;
 revoke all on function public.report_cash_expenses(timestamp with time zone, timestamp with time zone, bigint) from public, anon;
 grant execute on function public.report_cash_expenses(timestamp with time zone, timestamp with time zone, bigint) to authenticated, service_role;

@@ -131,6 +131,18 @@ export const applyLabStatus = <T extends Partial<LabOrder>>(
       : null;
   const deliveredAt =
     status === "delivered" ? (next.delivered_at ?? today) : null;
+  // Stage 43: the first readiness and delivery survive a remake; while the
+  // current one is the first, it follows its date (undone without a remake)
+  let firstReady = before ? (before.first_ready_at ?? null) : null;
+  let firstDelivered = before ? (before.first_delivered_at ?? null) : null;
+  if (before && status !== "remake") {
+    if (firstReady && firstReady === (before.ready_at ?? null)) {
+      firstReady = readyAt;
+    }
+    if (firstDelivered && firstDelivered === (before.delivered_at ?? null)) {
+      firstDelivered = deliveredAt;
+    }
+  }
   return {
     ...data,
     status,
@@ -138,6 +150,8 @@ export const applyLabStatus = <T extends Partial<LabOrder>>(
     sent_at: sentAt,
     ready_at: readyAt,
     delivered_at: deliveredAt,
+    first_ready_at: firstReady ?? readyAt,
+    first_delivered_at: firstDelivered ?? deliveredAt,
   };
 };
 
@@ -232,12 +246,23 @@ export const orderCost = (
     0,
   );
 
+/** The day a cost row is billed: billed_on (stage 43), else ready_at */
+export const billedOn = (
+  line: Pick<LabOrderCost, "billed_on" | "ready_at">,
+): string | null =>
+  line.billed_on !== undefined
+    ? (line.billed_on ?? null)
+    : (line.ready_at ?? null);
+
 /**
  * «Сумма лаборатории»: per lab, the orders, works and sum of the lines of
  * the works ready in the month, what was paid for the month (lab payments,
  * stage 42), the balance of the month and of every month up to it
  * (public.report_lab_settlement). `costs` may hold the earlier months too:
  * they only count in total_balance. Labs with works, payments or a balance.
+ * Stage 43: a row counts in the month of its billing day (a work: first
+ * ready; a paid remake: back ready); the orders and works count the work
+ * rows only.
  */
 export const labSettlement = (
   costs: LabOrderCost[],
@@ -268,14 +293,16 @@ export const labSettlement = (
     labs.find((l) => String(l.id) === String(id));
   for (const line of costs) {
     const lab = labOf(line.lab_id);
-    if (!lab || !line.ready_at || monthStart(line.ready_at) > start) continue;
+    const day = billedOn(line);
+    if (!lab || !day || monthStart(day) > start) continue;
     const row = rowOf(lab);
     const sum = Number(line.qty) * Number(line.price);
     row.total_balance += sum;
-    if (!sameMonth(line.ready_at, start)) continue;
+    if (!sameMonth(day, start)) continue;
+    row.amount += sum;
+    if (line.kind === "remake") continue;
     row.orders.add(String(line.order_id));
     row.items_count += Number(line.qty);
-    row.amount += sum;
   }
   for (const payment of payments) {
     const lab = labOf(payment.lab_id);
@@ -308,7 +335,7 @@ export const doctorLabCost = (
     .filter(
       (line) =>
         String(line.doctor_id) === String(doctorId) &&
-        sameMonth(line.ready_at, month),
+        sameMonth(billedOn(line), month),
     )
     .reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0);
 

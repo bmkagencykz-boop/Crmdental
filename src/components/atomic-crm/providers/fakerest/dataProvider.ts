@@ -443,6 +443,7 @@ export const createDataProvider = ({
   // Lab work orders (stage 40)
   const labDemo = createLabOrdersDemo({
     baseDataProvider,
+    getDataProvider: () => dataProvider,
     all,
     currentSalesId: () => currentSalesId(),
     logAudit: (row) => logAudit(row),
@@ -980,6 +981,8 @@ export const createDataProvider = ({
     ...payrollDemo.methods,
     ...cashOutDemo.methods,
     ...financeDemo.methods,
+    // Stage 43: remakes, quality, reconciliation
+    ...labDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();

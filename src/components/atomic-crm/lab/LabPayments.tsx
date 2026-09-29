@@ -1,5 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useDataProvider, useDelete, useNotify, useTranslate } from "ra-core";
+import {
+  useDataProvider,
+  useDelete,
+  useGetList,
+  useNotify,
+  useTranslate,
+} from "ra-core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +26,7 @@ import type { CrmDataProvider } from "../providers/types";
 import { localDay, shortDay, tenge } from "./labMath";
 import {
   LAB_PAYMENT_METHODS,
+  type LabOrderBalance,
   type LabPaymentMethod,
   type LabPaymentSummary,
   type LabSettlementRow,
@@ -38,7 +45,14 @@ const useRefreshLabPayments = () => {
   const queryClient = useQueryClient();
   const refreshMoney = useRefreshMoney();
   return () => {
-    for (const key of ["lab_payments_summary", "lab_payments"]) {
+    for (const key of [
+      "lab_payments_summary",
+      "lab_payments",
+      // Stage 43
+      "lab_payment_allocations",
+      "lab_order_balances",
+      "lab_orders_summary",
+    ]) {
       queryClient.invalidateQueries({ queryKey: [key] });
     }
     return refreshMoney();
@@ -74,7 +88,37 @@ export const LabPaymentDialog = ({
   const [day, setDay] = useState(localDay());
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  // Stage 43: the orders it pays (optional)
+  const [allocate, setAllocate] = useState(false);
+  const [parts, setParts] = useState<Record<string, string>>({});
+  const { data: balances = [] } = useGetList<LabOrderBalance>(
+    "lab_order_balances",
+    {
+      filter: { lab_id: row.lab_id, "due@gt": 0 },
+      pagination: { page: 1, perPage: 500 },
+      sort: { field: "number", order: "ASC" },
+    },
+    { enabled: allocate },
+  );
+  const allocations = Object.entries(parts)
+    .map(([order_id, text]) => ({ order_id, amount: parseAmount(text) }))
+    .filter((part) => part.amount > 0);
+  const allocated = allocations.reduce((sum, part) => sum + part.amount, 0);
   const value = parseAmount(amount);
+  /** «По порядку»: the oldest orders first, up to the amount */
+  const fillInOrder = () => {
+    let left = value;
+    const next: Record<string, string> = {};
+    for (const balance of [...balances].sort((a, b) =>
+      (a.billed_on ?? "9999").localeCompare(b.billed_on ?? "9999"),
+    )) {
+      if (left <= 0) break;
+      const part = Math.min(left, balance.due);
+      next[String(balance.id)] = String(part);
+      left -= part;
+    }
+    setParts(next);
+  };
   // From the cash desk: the methods money leaves the till by
   const methods: readonly LabPaymentMethod[] = fromCash
     ? EXPENSE_METHODS
@@ -92,6 +136,7 @@ export const LabPaymentDialog = ({
         day,
         comment: comment.trim() || null,
         fromCash,
+        allocations: allocate ? allocations : undefined,
       });
       notify("cash_out.lab.done", { type: "info" });
       await refresh();
@@ -187,12 +232,91 @@ export const LabPaymentDialog = ({
             />
           </label>
         </div>
+        <div className="flex flex-col gap-2 rounded-2xl bg-muted/60 p-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={allocate}
+              onChange={(event) => setAllocate(event.target.checked)}
+              data-testid="lab-payment-allocate"
+            />
+            {translate("lab_plus.allocation.toggle")}
+          </label>
+          {allocate ? (
+            balances.length ? (
+              <>
+                <ul className="flex max-h-56 flex-col gap-1.5 overflow-y-auto">
+                  {balances.map((balance) => (
+                    <li
+                      key={balance.id}
+                      className="flex items-center gap-2 rounded-xl bg-card px-3 py-1.5 text-sm"
+                    >
+                      <span className="w-14 shrink-0 tabular-nums">
+                        № {balance.number}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {balance.patient_name ?? "—"}
+                        <span className="block text-xs text-muted-foreground">
+                          {translate("lab_plus.allocation.due", {
+                            amount: tenge(balance.due),
+                          })}
+                        </span>
+                      </span>
+                      <Input
+                        inputMode="numeric"
+                        value={parts[String(balance.id)] ?? ""}
+                        placeholder="0"
+                        onChange={(event) =>
+                          setParts((current) => ({
+                            ...current,
+                            [String(balance.id)]: event.target.value,
+                          }))
+                        }
+                        aria-label={translate("lab_plus.allocation.amount", {
+                          number: balance.number,
+                        })}
+                        className="h-9 w-28 text-right tabular-nums"
+                      />
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={fillInOrder}
+                    disabled={!(value > 0)}
+                  >
+                    {translate("lab_plus.allocation.fill")}
+                  </Button>
+                  <span
+                    className={
+                      allocated > value
+                        ? "text-tone-red"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {translate("lab_plus.allocation.total", {
+                      allocated: tenge(allocated),
+                      rest: tenge(Math.max(0, value - allocated)),
+                    })}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {translate("lab_plus.allocation.none")}
+              </p>
+            )
+          ) : null}
+        </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
             {translate("ra.action.cancel")}
           </Button>
           <Button
-            disabled={saving || !(value > 0)}
+            disabled={saving || !(value > 0) || (allocate && allocated > value)}
             onClick={save}
             data-testid="lab-payment-save"
           >

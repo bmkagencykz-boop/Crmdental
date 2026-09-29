@@ -29,6 +29,7 @@ import {
   type Hours,
 } from "./scheduleLayout";
 import type { BusySlot, Visit } from "./types";
+import type { LabMarker } from "./visitMarkers";
 import { VisitMenu, type VisitMenuAction } from "./VisitMenu";
 import { PaymentDialog } from "../payments/PaymentDialog";
 import { VisitRecordDialog } from "../patient-card/VisitRecordDialog";
@@ -66,6 +67,8 @@ export type VisitInfo = {
   author?: string;
   /** «1В»: the patient's first visit */
   firstVisit?: boolean;
+  /** «Лаб» (stage 43): a lab order to fit or ready */
+  lab?: LabMarker;
   /** «$»: prepayment and payments of the visit's deal, in tenge */
   prepayment?: number;
   paid?: number;
@@ -469,6 +472,18 @@ const VisitBlock = ({
                 {rows >= 2 ? (
                   <span className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-5.5 text-[11.5px] leading-tight text-muted-foreground tabular-nums">
                     <span className="shrink-0">{time}</span>
+                    {info.lab ? (
+                      <span
+                        className="shrink-0 rounded-sm bg-neon px-1 text-[9.5px] leading-[13px] font-bold text-neon-ink"
+                        title={translate("lab_plus.schedule.marker_title", {
+                          number: info.lab.number,
+                          status: translate(`lab.statuses.${info.lab.status}`),
+                        })}
+                        data-testid="visit-lab"
+                      >
+                        {translate("lab_plus.schedule.marker")}
+                      </span>
+                    ) : null}
                     {info.firstVisit ? (
                       <span
                         className="shrink-0 rounded-sm border border-destructive px-0.5 text-[9.5px] leading-[13px] font-bold text-destructive"
@@ -604,6 +619,15 @@ const VisitHover = ({
       translate(
         info.firstVisit ? "schedule.markers.first" : "schedule.markers.repeat",
       ),
+    ],
+    [
+      translate("lab_plus.schedule.hover"),
+      info.lab
+        ? translate("lab_plus.schedule.marker_title", {
+            number: info.lab.number,
+            status: translate(`lab.statuses.${info.lab.status}`),
+          })
+        : null,
     ],
     [
       translate("schedule.hover.payment"),

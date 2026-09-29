@@ -1510,6 +1510,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/misc/motion.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/misc/formatPhone.ts",
           "type": "registry:component"
         },
@@ -1543,6 +1547,10 @@
         },
         {
           "path": "src/components/atomic-crm/misc/Dental3D.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/misc/CountUp.tsx",
           "type": "registry:component"
         },
         {
@@ -1715,6 +1723,10 @@
         },
         {
           "path": "src/components/atomic-crm/layout/Sidebar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/layout/NavTooltip.tsx",
           "type": "registry:component"
         },
         {

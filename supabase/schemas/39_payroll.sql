@@ -805,6 +805,10 @@ CREATE OR REPLACE FUNCTION "private"."handle_payroll_adjustment_before_write"() 
     SET "search_path" TO ''
     AS $$
 begin
+  -- Deleting the clinic, the doctor or the employee takes everything
+  if tg_op = 'DELETE' and pg_trigger_depth() > 1 then
+    return old;
+  end if;
   if tg_op <> 'INSERT' and old.kind <> 'payout' and exists (
     select 1 from public.payroll_months m where m.organization_id = old.organization_id and m.month = old.month) then
     raise exception 'Месяц закрыт: премии и штрафы не меняются' using errcode = '22023', hint = 'payroll_month_closed';

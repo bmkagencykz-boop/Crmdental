@@ -376,6 +376,14 @@ select tests.assert(
   and (select count(*) = 1 from public.audit_log where entity = 'payroll_month' and action = 'create')
   and (select count(*) = 1 from public.audit_log where entity = 'payroll_month' and action = 'delete'),
   'schemes, adjustments, closing and reopening are in the audit log');
+
+-- A clinic with a closed month can still be deleted: the cascade takes
+-- its bonuses and penalties
+select public.close_payroll_month('2026-08-01');
 select tests.logout();
+delete from public.organizations where id = current_setting('t.org')::bigint;
+select tests.assert(
+  (select count(*) = 0 from public.payroll_adjustments where organization_id = current_setting('t.org')::bigint),
+  'deleting the clinic takes the adjustments of a closed month');
 
 rollback;

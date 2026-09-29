@@ -6,6 +6,7 @@ import type {
   LabTechnician,
   LabWorkType,
   LabWorkTypePrice,
+  LabPayment,
 } from "../../../lab/types";
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
@@ -15,7 +16,11 @@ import type {
   ServiceCategory,
   ServiceCost,
 } from "../../../price-list/types";
-import type { AccountOperation, CashShift } from "../../../payments/types";
+import type {
+  AccountOperation,
+  CashExpenseCategory,
+  CashShift,
+} from "../../../payments/types";
 import type {
   PayrollAdjustment,
   PayrollClosedLine,

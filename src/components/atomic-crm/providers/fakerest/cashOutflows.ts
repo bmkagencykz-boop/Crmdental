@@ -665,7 +665,8 @@ export const createCashOutflowsDemo = ({
   return {
     callbacks,
     methods,
-    views: { lab_payments_summary: labPaymentsSummary } as Record<
+    // lab_payments_summary: the demo adapter reads it as the table
+    views: { lab_payments: labPaymentsSummary } as Record<
       string,
       () => Promise<any[]>
     >,

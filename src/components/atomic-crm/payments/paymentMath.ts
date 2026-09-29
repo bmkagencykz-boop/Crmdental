@@ -390,7 +390,7 @@ export const expenseTotals = <
       return {
         category_id: category.id,
         name: category.name,
-        code: category.code ?? null,
+        code: (category.code ?? null) as C["code"] | null,
         amount: own.reduce((sum, op) => sum + Math.abs(op.amount), 0),
         cash: own.reduce((sum, op) => sum + methodAmount(op, "cash"), 0),
         operations: own.length,

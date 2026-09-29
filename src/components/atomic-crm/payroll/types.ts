@@ -48,6 +48,8 @@ export type PayrollAdjustment = {
   note?: string | null;
   /** YYYY-MM-DD */
   occurred_on: string;
+  /** A payout given from the cash desk: its expense (stage 42) */
+  account_operation_id?: Identifier | null;
   created_by?: Identifier | null;
   created_at?: string;
 };

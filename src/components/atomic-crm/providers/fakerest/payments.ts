@@ -713,7 +713,7 @@ export const createPaymentsDemo = ({
           );
         }
         const op = (await ops()).find((row) => same(row.id, params.id));
-        if (op && operationDeltas(op).deposit > 0) {
+        if (op && op.patient_id != null && operationDeltas(op).deposit > 0) {
           const { deposit } = await balances(op.patient_id, null);
           if (deposit - operationDeltas(op).deposit < 0) {
             throw fail(

@@ -1,16 +1,6 @@
 import { InboxPage } from "../messages/InboxPage";
 import { TasksPage } from "../tasks/TasksPage";
 import { SchedulePage } from "../schedule/SchedulePage";
-import { WaitingListPage } from "../waiting-list/WaitingListPage";
-import { AuditPage } from "../audit/AuditPage";
-import { ReportsPage } from "../reports/ReportsPage";
-import { PriceListPage } from "../price-list/PriceListPage";
-import { CashDeskPage } from "../payments/CashDeskPage";
-import { PayrollEmployeePage } from "../payroll/PayrollEmployeePage";
-import { PayrollPage } from "../payroll/PayrollPage";
-import { PayrollSchemesPage } from "../payroll/PayrollSchemesPage";
-import { LabPage } from "../lab/LabPage";
-import { MailingsPage } from "../mailings/MailingsPage";
 import type {
   CoreAdminProps,
   AuthProvider,
@@ -31,19 +21,13 @@ import deals from "../deals";
 import { Layout } from "../layout/Layout";
 import { SignupPage } from "../login/SignupPage";
 import { ConfirmationRequired } from "../login/ConfirmationRequired";
-import { ChangelogPage } from "../misc/ChangelogPage";
 import {
   getAuthProvider as defaultAuthProviderBuilder,
   getDataProvider as defaultDataProviderBuilder,
 } from "../providers/supabase";
 import sales from "../sales";
 import { ProfilePage } from "../settings/ProfilePage";
-import { SettingsPage } from "../settings/SettingsPage";
-import { ImportPage } from "../import/ImportPage";
-import { ApiDocsPage } from "../pipeline-automation/ApiDocsPage";
-import { SalesbotEditorPage } from "../salesbot/SalesbotEditorPage";
 import { OnboardingPage } from "../onboarding/OnboardingPage";
-import { IntegrationsPage } from "../integrations/IntegrationsPage";
 import {
   CONFIGURATION_STORE_KEY,
   type ConfigurationContextValue,
@@ -59,7 +43,26 @@ import {
 import { i18nProvider as defaulti18nProvider } from "../providers/commons/i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
 import { SearchPage } from "../search/SearchPage";
-import { PlanPage } from "../treatment/PlanPage";
+
+import {
+  LazyApiDocsPage,
+  LazyAuditPage,
+  LazyCashDeskPage,
+  LazyChangelogPage,
+  LazyImportPage,
+  LazyIntegrationsPage,
+  LazyLabPage,
+  LazyMailingsPage,
+  LazyPayrollEmployeePage,
+  LazyPayrollPage,
+  LazyPayrollSchemesPage,
+  LazyPlanPage,
+  LazyPriceListPage,
+  LazyReportsPage,
+  LazySalesbotEditorPage,
+  LazySettingsPage,
+  LazyWaitingListPage,
+} from "./lazyPages";
 
 const defaultStore = localStorageStore(undefined, "CRM");
 
@@ -225,36 +228,30 @@ const DesktopAdmin = (
 
       <CustomRoutes>
         <Route path={ProfilePage.path} element={<ProfilePage />} />
-        <Route path={SettingsPage.path} element={<SettingsPage />} />
-        <Route path={ChangelogPage.path} element={<ChangelogPage />} />
+        <Route path="/settings" element={<LazySettingsPage />} />
+        <Route path="/changelog" element={<LazyChangelogPage />} />
         <Route path={TasksPage.path} element={<TasksPage />} />
         <Route path={SchedulePage.path} element={<SchedulePage />} />
-        <Route path={WaitingListPage.path} element={<WaitingListPage />} />
+        <Route path="/waiting-list" element={<LazyWaitingListPage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
-        <Route path={ReportsPage.path} element={<ReportsPage />} />
-        <Route path={PriceListPage.path} element={<PriceListPage />} />
-        <Route path={CashDeskPage.path} element={<CashDeskPage />} />
-        <Route path={PayrollPage.path} element={<PayrollPage />} />
-        <Route
-          path={PayrollSchemesPage.path}
-          element={<PayrollSchemesPage />}
-        />
-        <Route
-          path={PayrollEmployeePage.path}
-          element={<PayrollEmployeePage />}
-        />
-        <Route path={LabPage.path} element={<LabPage />} />
-        <Route path={AuditPage.path} element={<AuditPage />} />
-        <Route path={ImportPage.path} element={<ImportPage />} />
-        <Route path={MailingsPage.path} element={<MailingsPage />} />
-        <Route path={ApiDocsPage.path} element={<ApiDocsPage />} />
-        <Route
-          path={SalesbotEditorPage.path}
-          element={<SalesbotEditorPage />}
-        />
-        <Route path={IntegrationsPage.path} element={<IntegrationsPage />} />
+        <Route path="/reports" element={<LazyReportsPage />} />
+        <Route path="/price-list" element={<LazyPriceListPage />} />
+        <Route path="/cash" element={<LazyCashDeskPage />} />
+        <Route path="/payroll" element={<LazyPayrollPage />} />
+        <Route path="/payroll/schemes" element={<LazyPayrollSchemesPage />} />
+        <Route path="/payroll/:key" element={<LazyPayrollEmployeePage />} />
+        <Route path="/lab" element={<LazyLabPage />} />
+        <Route path="/audit" element={<LazyAuditPage />} />
+        <Route path="/import" element={<LazyImportPage />} />
+        <Route path="/mailings" element={<LazyMailingsPage />} />
+        <Route path="/api-docs" element={<LazyApiDocsPage />} />
+        <Route path="/salesbots/:id" element={<LazySalesbotEditorPage />} />
+        <Route path="/integrations" element={<LazyIntegrationsPage />} />
         <Route path={SearchPage.path} element={<SearchPage />} />
-        <Route path={PlanPage.path} element={<PlanPage />} />
+        <Route
+          path="/patients/:patientId/plans/:planId"
+          element={<LazyPlanPage />}
+        />
       </CustomRoutes>
       <Resource name="deals" {...deals} />
       <Resource name="patients" {...patients} />

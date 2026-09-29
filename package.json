@@ -11,6 +11,7 @@
     "build:e2e": "vite build --mode e2e",
     "build:demo": "tsc && vite build --config vite.demo.config",
     "typecheck": "tsc --noEmit --project tsconfig.app.json",
+    "typecheck:functions": "cd supabase/functions && deno check --no-lock --config ../../deno.check.json */index.ts",
     "preview": "vite preview",
     "lint:apply": "eslint **/*.{mjs,ts,tsx} --fix",
     "lint": "eslint **/*.{mjs,ts,tsx}",

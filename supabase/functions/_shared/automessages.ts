@@ -1,3 +1,4 @@
+import { secureEqual } from "./secureCompare.ts";
 /**
  * Dispatcher of the automatic messages (edge function automessages_dispatch).
  * No Deno import here so that it can be unit tested.
@@ -69,7 +70,7 @@ export const isDispatchAuthorized = (
   keys: (string | undefined | null)[],
 ) => {
   const token = authorization?.match(/^Bearer\s+(.+)$/)?.[1]?.trim();
-  return !!token && keys.some((key) => !!key && key === token);
+  return !!token && keys.some((key) => !!key && secureEqual(key, token));
 };
 
 /** Error text stored on the automessage, in Russian for the deal page */

@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="ru">
   <head>
     <style>
       body {
@@ -49,21 +49,21 @@
   <body>
     <div class="container">
       <div class="header">
-        <h2>Confirm your account</h2>
+        <h2>Приглашение в DentalCRM</h2>
       </div>
       <div class="content">
-        <p>Hello {{ .Data.first_name }},</p>
+        <p>Здравствуйте, {{ .Data.first_name }}!</p>
         <p>
-          You've been invited to join Atomic CRM. To confirm your account and
-          choose your password, please click the link below.
+          Вас пригласили в CRM клиники. Чтобы подтвердить учётную запись и
+          задать пароль, нажмите на кнопку ниже.
         </p>
         <p>
           <a href="{{ .ConfirmationURL }}/auth-callback.html" class="button"
-            >Create my account</a
+            >Создать учётную запись</a
           >
         </p>
-        <p>See you soon!</p>
-        <p>The Atomic CRM team</p>
+        <p>До встречи!</p>
+        <p>Команда DentalCRM</p>
       </div>
     </div>
   </body>

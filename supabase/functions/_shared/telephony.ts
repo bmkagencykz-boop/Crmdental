@@ -1,3 +1,4 @@
+import { secureEqual } from "./secureCompare.ts";
 /**
  * Telephony webhooks (Binotel, Zadarma, Mango Office, Sipuni, generic JSON) mapped to
  * the provider-neutral shape of public.ingest_call, signature checks and
@@ -347,8 +348,8 @@ export const verifyZadarma = async (
   if (signed == null || !signature) return false;
   const digest = await hmac("SHA-1", secret, signed);
   return (
-    signature === base64(new TextEncoder().encode(toHex(digest))) ||
-    signature === base64(digest)
+    secureEqual(signature, base64(new TextEncoder().encode(toHex(digest)))) ||
+    secureEqual(signature, base64(digest))
   );
 };
 
@@ -470,8 +471,11 @@ export const verifyMango = async (
   const key = text(body.vpbx_api_key);
   const json = typeof body.json === "string" ? body.json : null;
   if (!key || json == null || !body.sign) return false;
-  if (apiKey && apiKey !== key) return false;
-  return (await mangoSign(key, json, salt)) === String(body.sign).toLowerCase();
+  if (apiKey && !secureEqual(apiKey, key)) return false;
+  return secureEqual(
+    await mangoSign(key, json, salt),
+    String(body.sign).toLowerCase(),
+  );
 };
 
 /**
@@ -620,13 +624,13 @@ export const verifyGeneric = async (
   headers: { get(name: string): string | null },
   secret: string,
 ) => {
-  if (headers.get("x-webhook-secret") === secret) return true;
+  if (secureEqual(headers.get("x-webhook-secret"), secret)) return true;
   const signature = headers
     .get("x-signature")
     ?.replace(/^sha256=/i, "")
     .toLowerCase();
   if (!signature) return false;
-  return toHex(await hmac("SHA-256", secret, raw)) === signature;
+  return secureEqual(toHex(await hmac("SHA-256", secret, raw)), signature);
 };
 
 // --- dispatch --------------------------------------------------------------

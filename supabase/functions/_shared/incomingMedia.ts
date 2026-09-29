@@ -6,6 +6,7 @@ import {
   MAX_FILE_SIZE,
   resolveMime,
 } from "./attachments.ts";
+import { isFetchableUrl } from "./safeUrl.ts";
 
 /** What public.ingest_message / ingest_telegram_message return */
 export type IngestResult = {
@@ -101,10 +102,26 @@ export const runInBackground = async (task: Promise<void>) => {
 
 /** Downloads a link, refusing more than the size limit */
 export const downloadUrl = async (url: string) => {
-  const response = await fetch(url).catch(() => null);
-  if (!response?.ok) return null;
+  if (!isFetchableUrl(url)) return null;
+  const response = await fetch(url, { redirect: "error" }).catch(() => null);
+  if (!response?.ok || !response.body) return null;
   const length = Number(response.headers.get("content-length") ?? 0);
   if (length > MAX_FILE_SIZE) return null;
-  const blob = await response.blob();
-  return { blob, mime: response.headers.get("content-type") ?? blob.type };
+  // The size header may be missing or wrong: count while reading
+  const reader = response.body.getReader();
+  const chunks: BlobPart[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_FILE_SIZE) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(new Uint8Array(value));
+  }
+  const mime = response.headers.get("content-type") ?? "";
+  const blob = new Blob(chunks, mime ? { type: mime } : undefined);
+  return { blob, mime: mime || blob.type };
 };

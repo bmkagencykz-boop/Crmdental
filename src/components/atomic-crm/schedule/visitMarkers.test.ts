@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { firstVisitIds } from "./visitMarkers";
+import { firstVisitIds, labMarkers } from "./visitMarkers";
 
 const visit = (
   id: number,
@@ -40,5 +40,28 @@ describe("firstVisitIds", () => {
       [],
     );
     expect([...ids]).toEqual(["3"]);
+  });
+});
+
+describe("labMarkers («Лаб», stage 43)", () => {
+  it("marks the fitting visit and the visits of a patient with a work to fit or ready", () => {
+    const markers = labMarkers(
+      [
+        { id: 1, patient_id: 10 },
+        { id: 2, patient_id: 10 },
+        { id: 3, patient_id: 20 },
+        { id: 4, patient_id: 30 },
+      ],
+      [
+        { number: 5, status: "ready", patient_id: 10 },
+        { number: 7, status: "fitting", patient_id: 10, fitting_visit_id: 2 },
+        { number: 8, status: "lab", patient_id: 20 },
+        { number: 9, status: "delivered", patient_id: 30 },
+      ],
+    );
+    expect(markers.get("1")).toEqual({ number: 5, status: "ready" });
+    expect(markers.get("2")).toEqual({ number: 7, status: "fitting" });
+    expect(markers.has("3")).toBe(false);
+    expect(markers.has("4")).toBe(false);
   });
 });

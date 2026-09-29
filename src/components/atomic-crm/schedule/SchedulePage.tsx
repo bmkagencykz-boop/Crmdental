@@ -62,7 +62,7 @@ import {
   type ScheduleView,
 } from "./scheduleLayout";
 import { VISIT_STATUSES, type Visit } from "./types";
-import { COUNTED_STATUSES, firstVisitIds } from "./visitMarkers";
+import { COUNTED_STATUSES, firstVisitIds, labMarkers } from "./visitMarkers";
 import {
   useChairs,
   useDoctorExceptions,
@@ -226,6 +226,29 @@ export const SchedulePage = () => {
     () => firstVisitIds(visits, earlierVisits),
     [visits, earlierVisits],
   );
+  // «Лаб» (stage 43): lab orders of the shown patients to fit or ready
+  const { data: labOrders = [] } = useGetList<{
+    id: Identifier;
+    number: number;
+    status: string;
+    patient_id: Identifier;
+    fitting_visit_id?: Identifier | null;
+  }>(
+    "lab_orders_summary",
+    {
+      pagination: { page: 1, perPage: 500 },
+      sort: { field: "number", order: "ASC" },
+      filter: {
+        "patient_id@in": `(${patientIds.join(",")})`,
+        "status@in": "(fitting,ready)",
+      },
+    },
+    { enabled: patientIds.length > 0 },
+  );
+  const labOfVisit = useMemo(
+    () => labMarkers(visits, labOrders),
+    [visits, labOrders],
+  );
   // «$»: the deal of the visit has a prepayment or a payment
   const dealIds = useMemo(
     () =>
@@ -351,6 +374,7 @@ export const SchedulePage = () => {
       chair: findById(chairs, visit.chair_id)?.name,
       author: author ? `${author.first_name} ${author.last_name}` : undefined,
       firstVisit: firstVisits.has(String(visit.id)),
+      lab: labOfVisit.get(String(visit.id)),
       prepayment: findById(dealRows, visit.deal_id)?.prepayment_amount ?? 0,
       paid: findById(dealRows, visit.deal_id)?.paid_amount ?? 0,
       // The doctor's color, whatever the columns

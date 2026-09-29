@@ -8,6 +8,7 @@ import { useDoctors } from "../dictionaries/useDictionaries";
 import { Implant3D } from "../misc/Dental3D";
 import { exportCsv, type ReportColumn } from "../reports/csv";
 import {
+  billedOn,
   labSettlement,
   localDay,
   monthStart,
@@ -17,6 +18,7 @@ import {
   tenge,
 } from "./labMath";
 import { LabPaymentDialog, LabPaymentsCard } from "./LabPayments";
+import { LabReconciliationDialog } from "./LabReconciliationDialog";
 import type {
   LabOrderCost,
   LabPaymentSummary,
@@ -41,9 +43,10 @@ export const LabSettlement = () => {
   const { data: history = [], isPending } = useGetList<LabOrderCost>(
     "lab_order_costs",
     {
-      filter: { "ready_at@lt": next },
+      // Stage 43: billed on the first ready day (a paid remake: back ready)
+      filter: { "billed_on@lt": next },
       pagination: { page: 1, perPage: 10000 },
-      sort: { field: "ready_at", order: "ASC" },
+      sort: { field: "billed_on", order: "ASC" },
     },
   );
   const { data: payments = [] } = useGetList<LabPaymentSummary>(
@@ -55,7 +58,7 @@ export const LabSettlement = () => {
     },
   );
   const costs = useMemo(
-    () => history.filter((line) => sameMonth(line.ready_at, month)),
+    () => history.filter((line) => sameMonth(billedOn(line), month)),
     [history, month],
   );
   const rows = useMemo(
@@ -66,6 +69,7 @@ export const LabSettlement = () => {
     sameMonth(payment.month, month),
   );
   const [paying, setPaying] = useState<LabSettlementRow | null>(null);
+  const [act, setAct] = useState<LabSettlementRow | null>(null);
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
   const totalPaid = rows.reduce((sum, row) => sum + row.paid, 0);
   const totalDue = rows.reduce(
@@ -104,7 +108,7 @@ export const LabSettlement = () => {
     },
     {
       label: translate("lab.fields.ready_at"),
-      render: (line) => shortDay(line.ready_at, true),
+      render: (line) => shortDay(billedOn(line), true),
     },
     {
       label: translate("lab.fields.lab"),
@@ -267,6 +271,14 @@ export const LabSettlement = () => {
                   </span>
                   <Button
                     size="sm"
+                    variant="outline"
+                    onClick={() => setAct(row)}
+                    data-testid="lab-act-open"
+                  >
+                    {translate("lab_plus.act.open")}
+                  </Button>
+                  <Button
+                    size="sm"
                     variant={row.total_balance > 0 ? "default" : "outline"}
                     onClick={() => setPaying(row)}
                   >
@@ -364,6 +376,12 @@ export const LabSettlement = () => {
           month={month}
           monthTitle={monthTitle}
           onClose={() => setPaying(null)}
+        />
+      ) : null}
+      {act ? (
+        <LabReconciliationDialog
+          lab={{ id: act.lab_id, name: act.lab_name }}
+          onClose={() => setAct(null)}
         />
       ) : null}
     </div>

@@ -142,6 +142,8 @@ export const AUDIT_ENTITY_GROUPS = {
     "lab_order",
     "lab_order_item",
     "lab_order_price",
+    // The lab module strengthened (stage 43)
+    "lab_order_remake",
   ],
   payment: [
     "payment",
@@ -150,6 +152,7 @@ export const AUDIT_ENTITY_GROUPS = {
     // Money going out of the cash desk (stage 42)
     "cash_expense_category",
     "lab_payment",
+    "lab_payment_allocation",
   ],
   task: ["task"],
   employee: [
@@ -185,6 +188,8 @@ export const AUDIT_ENTITY_GROUPS = {
     "lab_technician",
     "lab_work_type",
     "lab_work_type_price",
+    "lab_work_type_term",
+    "lab_remake_reason",
   ],
 } as const;
 export type AuditEntityGroup = keyof typeof AUDIT_ENTITY_GROUPS;
@@ -726,6 +731,10 @@ const LAB_ENTITIES = [
   "lab_technician",
   "lab_work_type",
   "lab_work_type_price",
+  "lab_order_remake",
+  "lab_payment_allocation",
+  "lab_work_type_term",
+  "lab_remake_reason",
 ];
 
 /** Money going out of the cash desk (stage 42), in its namespace */

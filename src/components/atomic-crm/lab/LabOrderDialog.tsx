@@ -34,17 +34,23 @@ import type {
 } from "../treatment/types";
 import type { Patient, Sale } from "../types";
 import { CrossGlyph, PillTabs, PlusGlyph } from "./LabBits";
+import { LabFittingVisitDialog } from "./LabFittingVisit";
+import { LabOrderHistory } from "./LabOrderHistory";
+import { LabRemakeDialog } from "./LabRemakeDialog";
 import {
   STATUS_FLOW,
   VITA_SHADES,
+  localDay,
   orderCost,
   shortDay,
   tenge,
 } from "./labMath";
+import { labPriceOn, proposeDates } from "./labPlusMath";
 import type {
   LabOrder,
   LabOrderItem,
   LabOrderItemPrice,
+  LabOrderSummary,
   LabStatus,
 } from "./types";
 import { useLabDictionaries, useLabRights, useRefreshLab } from "./useLab";
@@ -146,7 +152,7 @@ export const LabOrderDialog = ({
   const dataProvider = useDataProvider<CrmDataProvider>();
   const refresh = useRefreshLab();
   const rights = useLabRights();
-  const { labs, technicians, workTypes, prices } = useLabDictionaries();
+  const { labs, technicians, workTypes, prices, terms } = useLabDictionaries();
   const { data: doctors } = useDoctors();
   const { data: sales = [] } = useGetList<Sale>("sales", {
     pagination: { page: 1, perPage: 200 },
@@ -158,11 +164,23 @@ export const LabOrderDialog = ({
   const [order, setOrder] = useState<LabOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Stage 43: the remake and the fitting visit reload the order
+  const [reloadKey, setReloadKey] = useState(0);
+  const [remaking, setRemaking] = useState(false);
+  const [booking, setBooking] = useState(false);
+  // The dates typed by hand are not replaced by the standard terms
+  const [datesTouched, setDatesTouched] = useState(false);
+  const { data: summary } = useGetOne<LabOrderSummary>(
+    "lab_orders_summary",
+    { id: orderId as Identifier },
+    { enabled: open && orderId != null },
+  );
 
   // Load the order (or start a new one) each time the dialog opens
   useEffect(() => {
     if (!open) return;
     setRemoved([]);
+    setDatesTouched(false);
     if (orderId == null) {
       setOrder(null);
       setForm({ ...EMPTY_FORM, patient_id: patientId ?? null });
@@ -240,7 +258,7 @@ export const LabOrderDialog = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, orderId]);
+  }, [open, orderId, reloadKey]);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -281,8 +299,34 @@ export const LabOrderDialog = ({
       (form.lab_id === NONE || same(tech.lab_id, form.lab_id)) &&
       (tech.is_active || same(tech.id, form.technician_id)),
   );
+  // The price of the order's lab on the day of the order (stage 43)
+  const orderDay = order ? localDay(new Date(order.created_at)) : localDay();
   const priceOf = (workTypeId: string) =>
-    prices.find((p) => same(p.work_type_id, workTypeId))?.price ?? 0;
+    labPriceOn(prices, workTypeId, idOrNull(form.lab_id), orderDay);
+
+  // «По срокам»: the fitting and the due date of the lab's terms
+  const workTypeIds = lines
+    .map((line) => line.work_type_id)
+    .filter((id) => id !== NONE);
+  const proposal = proposeDates({
+    lab: labs.find((lab) => same(lab.id, form.lab_id)) ?? null,
+    workTypeIds,
+    workTypes,
+    terms,
+    start: form.sent_at || localDay(),
+  });
+  const proposalKey = `${proposal.fitting_at}|${proposal.due_at}`;
+  useEffect(() => {
+    // A new order takes the proposed dates until they are typed by hand
+    if (!open || order || datesTouched) return;
+    if (!proposal.fitting_at && !proposal.due_at) return;
+    setForm((current) => ({
+      ...current,
+      fitting1_at: proposal.fitting_at ?? current.fitting1_at,
+      due_at: proposal.due_at ?? current.due_at,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposalKey, open, order, datesTouched]);
   const linePrice = (line: Line) =>
     line.id != null && line.priceText !== undefined && line.priceText !== ""
       ? Number(line.priceText)
@@ -795,8 +839,17 @@ export const LabOrderDialog = ({
                   size="sm"
                   label={translate("lab.fields.status")}
                   value={form.status}
-                  onChange={(status) => set("status", status)}
-                  options={STATUS_FLOW.map((status) => ({
+                  onChange={(status) => {
+                    // «Переделка» asks the reason and the fault (stage 43)
+                    if (status === "remake" && order?.status !== "remake") {
+                      if (order) setRemaking(true);
+                      return;
+                    }
+                    set("status", status);
+                  }}
+                  options={STATUS_FLOW.filter(
+                    (status) => status !== "remake" || !!order,
+                  ).map((status) => ({
                     value: status,
                     label: translate(`lab.statuses.${status}`),
                   }))}
@@ -809,12 +862,44 @@ export const LabOrderDialog = ({
                       <Input
                         type="date"
                         value={form[field]}
-                        onChange={(event) => set(field, event.target.value)}
+                        onChange={(event) => {
+                          if (field !== "sent_at") setDatesTouched(true);
+                          set(field, event.target.value);
+                        }}
                         aria-label={translate(`lab.fields.${field}`)}
                       />
                     </Field>
                   ))}
                 </div>
+                {proposal.fitting_at || proposal.due_at ? (
+                  <div
+                    className="flex flex-wrap items-center gap-2 rounded-2xl bg-neon-soft px-4 py-2.5 text-sm"
+                    data-testid="lab-proposed-dates"
+                  >
+                    <span>
+                      {translate("lab_plus.terms.proposal", {
+                        fitting: shortDay(proposal.fitting_at),
+                        due: shortDay(proposal.due_at),
+                      })}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          fitting1_at:
+                            proposal.fitting_at ?? current.fitting1_at,
+                          due_at: proposal.due_at ?? current.due_at,
+                        }))
+                      }
+                    >
+                      {translate("lab_plus.terms.apply")}
+                    </Button>
+                  </div>
+                ) : null}
                 {order?.ready_at || order?.delivered_at ? (
                   <p className="text-sm text-muted-foreground">
                     {translate("lab.fields.ready_at")}:{" "}
@@ -825,6 +910,64 @@ export const LabOrderDialog = ({
                 ) : null}
               </div>
             </Section>
+
+            {order ? (
+              <Section
+                title={translate("lab_plus.history.title")}
+                hint={translate("lab_plus.history.hint")}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {summary?.warranty_until ? (
+                    <span
+                      className="rounded-full bg-neon px-3 py-1.5 text-sm text-neon-ink"
+                      data-testid="lab-warranty"
+                    >
+                      {translate("lab_plus.warranty.until", {
+                        date: shortDay(summary.warranty_until, true),
+                      })}
+                    </span>
+                  ) : null}
+                  {summary?.fitting_visit_at ? (
+                    <span className="rounded-full bg-muted px-3 py-1.5 text-sm">
+                      {translate("lab_plus.fitting.booked", {
+                        at: new Date(summary.fitting_visit_at).toLocaleString(
+                          "ru-RU",
+                          {
+                            day: "2-digit",
+                            month: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        ),
+                      })}
+                    </span>
+                  ) : null}
+                  {rights.canWrite && order.status !== "delivered" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setBooking(true)}
+                      data-testid="lab-book-fitting"
+                    >
+                      {translate("lab_plus.fitting.book")}
+                    </Button>
+                  ) : null}
+                  {rights.canWrite && order.status !== "remake" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRemaking(true)}
+                      data-testid="lab-remake"
+                    >
+                      {translate("lab_plus.remake.action")}
+                    </Button>
+                  ) : null}
+                </div>
+                <LabOrderHistory orderId={order.id} />
+              </Section>
+            ) : null}
 
             {order ? (
               <OrderFiles order={order} canWrite={rights.canWrite} />
@@ -861,6 +1004,33 @@ export const LabOrderDialog = ({
             </div>
           </div>
         )}
+        {remaking && order ? (
+          <LabRemakeDialog
+            order={{
+              id: order.id,
+              number: order.number,
+              status: order.status,
+              first_delivered_at: order.first_delivered_at,
+              warranty_until: summary?.warranty_until ?? null,
+            }}
+            onClose={() => setRemaking(false)}
+            onDone={() => setReloadKey((key) => key + 1)}
+          />
+        ) : null}
+        {booking && order ? (
+          <LabFittingVisitDialog
+            order={{
+              ...order,
+              fitting1_at: form.fitting1_at || null,
+              fitting2_at: form.fitting2_at || null,
+              doctor_id: idOrNull(form.doctor_id),
+            }}
+            onClose={() => {
+              setBooking(false);
+              setReloadKey((key) => key + 1);
+            }}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

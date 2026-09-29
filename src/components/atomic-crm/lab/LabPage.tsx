@@ -8,10 +8,11 @@ import { LabCouriers } from "./LabCouriers";
 import { LabDictionaries } from "./LabDictionaries";
 import { LabOrderDialog } from "./LabOrderDialog";
 import { LabOrdersTab } from "./LabOrdersTab";
+import { LabQuality } from "./LabQuality";
 import { LabSettlement } from "./LabSettlement";
 import { useLabRights } from "./useLab";
 
-type Tab = "orders" | "couriers" | "settlement" | "dictionaries";
+type Tab = "orders" | "couriers" | "settlement" | "quality" | "dictionaries";
 
 export type OpenOrder = (orderId?: Identifier | null) => void;
 
@@ -33,7 +34,7 @@ export const LabPage = () => {
   if (rights.isPending) return null;
   const tabs: Tab[] = [
     ...(rights.canWrite ? (["orders", "couriers"] as Tab[]) : []),
-    ...(rights.seesMoney ? (["settlement"] as Tab[]) : []),
+    ...(rights.seesMoney ? (["settlement", "quality"] as Tab[]) : []),
     ...(rights.canConfigure ? (["dictionaries"] as Tab[]) : []),
   ];
   if (!tabs.length) return <Navigate to="/" replace />;
@@ -71,6 +72,8 @@ export const LabPage = () => {
         <LabCouriers onOpen={openOrder} />
       ) : tab === "settlement" ? (
         <LabSettlement />
+      ) : tab === "quality" ? (
+        <LabQuality />
       ) : (
         <LabDictionaries />
       )}

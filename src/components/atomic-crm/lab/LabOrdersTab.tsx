@@ -5,7 +5,7 @@ import {
   useTranslate,
   type Identifier,
 } from "ra-core";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
   DropdownMenu,
@@ -23,6 +23,8 @@ import { StudioCard } from "../dashboard/StudioCards";
 import { useDoctors } from "../dictionaries/useDictionaries";
 import { Molar3D } from "../misc/Dental3D";
 import type { CrmDataProvider } from "../providers/types";
+import { LabFittingVisitDialog } from "./LabFittingVisit";
+import { LabRemakeDialog } from "./LabRemakeDialog";
 import {
   CrossGlyph,
   OverdueChip,
@@ -81,7 +83,15 @@ export const LabOrdersTab = ({ onOpen }: { onOpen: OpenOrder }) => {
     [orders, filters, today],
   );
 
+  // Stage 43: «Переделка» asks the reason, «Записать на примерку»
+  const [remaking, setRemaking] = useState<LabOrderSummary | null>(null);
+  const [booking, setBooking] = useState<LabOrderSummary | null>(null);
+
   const setStatus = async (order: LabOrderSummary, status: LabStatus) => {
+    if (status === "remake") {
+      setRemaking(order);
+      return;
+    }
     try {
       await dataProvider.update("lab_orders", {
         id: order.id,
@@ -140,6 +150,7 @@ export const LabOrdersTab = ({ onOpen }: { onOpen: OpenOrder }) => {
               onClose={(o) => setStatus(o, "delivered")}
               onEdit={(o) => onOpen(o.id)}
               onPdf={(o) => pdf(o.id)}
+              onBookFitting={setBooking}
             />
           ))}
         </div>
@@ -150,6 +161,15 @@ export const LabOrdersTab = ({ onOpen }: { onOpen: OpenOrder }) => {
           onOpen={onOpen}
         />
       )}
+      {remaking ? (
+        <LabRemakeDialog order={remaking} onClose={() => setRemaking(null)} />
+      ) : null}
+      {booking ? (
+        <LabFittingVisitDialog
+          order={booking}
+          onClose={() => setBooking(null)}
+        />
+      ) : null}
     </>
   );
 };

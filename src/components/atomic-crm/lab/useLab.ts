@@ -20,9 +20,11 @@ import type {
   LabOrderItem,
   LabOrderItemPrice,
   LabOrderSummary,
+  LabRemakeReason,
   LabTechnician,
   LabWorkType,
   LabWorkTypePrice,
+  LabWorkTypeTerm,
 } from "./types";
 
 const same = (a: unknown, b: unknown) =>
@@ -84,6 +86,15 @@ export const useLabDictionaries = () => {
     { pagination: all, sort: { field: "id", order: "ASC" } },
     { enabled: seesMoney },
   );
+  // Stage 43: the labs' own terms and the reasons of a remake
+  const terms = useGetList<LabWorkTypeTerm>("lab_work_type_terms", {
+    pagination: all,
+    sort: { field: "id", order: "ASC" },
+  });
+  const reasons = useGetList<LabRemakeReason>("lab_remake_reasons", {
+    pagination: all,
+    sort: byPosition,
+  });
   return {
     labs: labs.data ?? (EMPTY as Lab[]),
     technicians: technicians.data ?? (EMPTY as LabTechnician[]),
@@ -91,6 +102,8 @@ export const useLabDictionaries = () => {
     prices: seesMoney
       ? (prices.data ?? (EMPTY as LabWorkTypePrice[]))
       : (EMPTY as LabWorkTypePrice[]),
+    terms: terms.data ?? (EMPTY as LabWorkTypeTerm[]),
+    reasons: reasons.data ?? (EMPTY as LabRemakeReason[]),
     isPending: labs.isPending || technicians.isPending || workTypes.isPending,
   };
 };
@@ -124,6 +137,14 @@ const TOUCHED = [
   "lab_order_costs",
   "patient_files",
   "audit_log",
+  // Stage 43
+  "lab_order_remakes",
+  "lab_order_events",
+  "lab_order_balances",
+  "lab_payment_allocations",
+  "tasks",
+  "notifications",
+  "visits",
 ];
 
 export const useRefreshLab = () => {
@@ -139,7 +160,7 @@ export const useRefreshLab = () => {
   );
 };
 
-const download = (bytes: Uint8Array, name: string) => {
+export const download = (bytes: Uint8Array, name: string) => {
   const url = URL.createObjectURL(
     new Blob([bytes as BlobPart], { type: "application/pdf" }),
   );

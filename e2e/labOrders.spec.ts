@@ -94,8 +94,14 @@ test.describe("lab work orders", () => {
     await expect(card.getByTestId("lab-status")).toHaveText("At the lab");
 
     // Overdue: the due date moved to the day before yesterday
-    await card.getByRole("button", { name: "Details" }).click();
-    await card.getByRole("button", { name: "Edit" }).click();
+    // The board refetches after the status: open the details once it settled
+    await expect(async () => {
+      const toggle = card.getByRole("button", { name: /^(Details|Collapse)$/ });
+      if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+        await toggle.click();
+      }
+      await card.getByRole("button", { name: "Edit" }).click({ timeout: 1000 });
+    }).toPass({ timeout: 10_000 });
     const past = new Date(Date.now() - 2 * 86_400_000)
       .toISOString()
       .slice(0, 10);

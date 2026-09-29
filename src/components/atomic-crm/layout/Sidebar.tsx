@@ -6,6 +6,7 @@ import {
   ReportsGlyph,
   SettingsGlyph,
   TeamGlyph,
+  WaitingListGlyph,
 } from "./navGlyphs";
 import { CanAccess, useTranslate, useUserMenu } from "ra-core";
 import { Link, matchPath, useLocation, useNavigate } from "react-router";
@@ -13,6 +14,10 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 import { ChangelogPage } from "../misc/ChangelogPage";
+import {
+  useWaitingCount,
+  useWaitingRights,
+} from "../waiting-list/useWaitingList";
 import { type NavItem, SIDEBAR_WIDTH } from "./navigation";
 
 /**
@@ -65,6 +70,18 @@ export const Sidebar = () => {
     icon: SettingsGlyph,
     label: translate("crm.settings.title"),
   };
+  // «Лист ожидания» (stage 38): the active entries on a chip
+  const waitingRights = useWaitingRights();
+  const waiting = useWaitingCount(waitingRights.canUse);
+  const waitingList: NavItem = {
+    to: "/waiting-list",
+    match: "/waiting-list",
+    icon: WaitingListGlyph,
+    label: translate("waiting_list.nav"),
+    badge: waiting.total,
+    badgeLabel: translate("waiting_list.nav_badge", { count: waiting.total }),
+    badgeAccent: waiting.freed > 0,
+  };
   const isActive = (item: NavItem) =>
     matchPath(item.match, location.pathname) != null;
 
@@ -76,6 +93,9 @@ export const Sidebar = () => {
     >
       <BackButton />
       <div className="mt-3 flex flex-col items-center gap-3">
+        {waitingRights.canUse ? (
+          <SidebarLink item={waitingList} active={isActive(waitingList)} />
+        ) : null}
         <CanAccess resource="cash_desk" action="list">
           <SidebarLink item={cash} active={isActive(cash)} />
         </CanAccess>
@@ -151,7 +171,12 @@ const SidebarLink = ({ item, active }: { item: NavItem; active: boolean }) => {
         <Icon className="size-[1.3rem]" />
         {item.badge ? (
           <span
-            className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-bold text-background ring-2 ring-background"
+            className={cn(
+              "absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ring-2 ring-background",
+              item.badgeAccent
+                ? "bg-neon text-neon-ink"
+                : "bg-foreground text-background",
+            )}
             data-testid="nav-badge"
             title={item.badgeLabel}
             aria-hidden

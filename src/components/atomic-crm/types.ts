@@ -777,7 +777,9 @@ export type NotificationKind =
   | "task_overdue"
   | "response_overdue"
   | "bot_handoff"
-  | "visit_reschedule";
+  | "visit_reschedule"
+  /** A freed slot fits a waiting list entry (stage 38) */
+  | "waiting_list_slot";
 
 export type CrmNotification = {
   organization_id?: Identifier;

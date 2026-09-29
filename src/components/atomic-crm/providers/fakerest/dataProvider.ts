@@ -126,6 +126,7 @@ import { createBranchesDemo } from "./branches";
 import { createPriceListDemo } from "./priceList";
 import { createPaymentsDemo } from "./payments";
 import { createPatientCardDemo } from "./patientCard";
+import { createWaitingListDemo } from "./waitingList";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -242,6 +243,7 @@ export const createDataProvider = ({
       "task_overdue",
       "bot_handoff",
       "visit_reschedule",
+      "waiting_list_slot",
     ],
     browser_enabled: false,
     telegram_enabled: true,
@@ -395,6 +397,28 @@ export const createDataProvider = ({
         !!patient && (await accessDemo.filterPatients([patient])).length > 0
       );
     },
+  });
+  // The waiting list (stage 38): entries, freed slots of the schedule
+  const waitingListDemo = createWaitingListDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
+    patientVisible: async (patientId) => {
+      const patient = (await all<Patient>("patients")).find(
+        (row) => String(row.id) === String(patientId),
+      );
+      return (
+        !!patient && (await accessDemo.filterPatients([patient])).length > 0
+      );
+    },
+    dealVisible: async (dealId) => {
+      const deal = (await all<Deal>("deals")).find(
+        (row) => String(row.id) === String(dealId),
+      );
+      return !!deal && (await accessDemo.filterDeals([deal])).length > 0;
+    },
+    timeZone: () => db.organizations?.[0]?.timezone || "Asia/Almaty",
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -2431,6 +2455,8 @@ export const createDataProvider = ({
       ...pipelineDemo.callbacks,
       ...salesbotDemo.callbacks,
       ...scheduleDemo.callbacks,
+      // After the schedule: a freed slot fits the waiting list (stage 38)
+      ...waitingListDemo.callbacks,
     ],
   ) as CrmDataProvider;
 

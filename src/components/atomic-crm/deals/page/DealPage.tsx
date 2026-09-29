@@ -23,6 +23,7 @@ import { PatientBlock } from "./PatientBlock";
 import { UnsortedBanner } from "../../unsorted/UnsortedBanner";
 import { MisDealBadge, MisVisits } from "../../mis/MisVisits";
 import { DealVisits } from "../../schedule/DealVisits";
+import { DealWaitingList } from "../../waiting-list/WaitingListBlock";
 import {
   DealPlanLink,
   DealTreatmentPlans,
@@ -113,6 +114,7 @@ const DealPageContent = () => {
               </div>
               <DealAttribution deal={deal} />
               <DealVisits deal={deal} />
+              <DealWaitingList deal={deal} />
               <PatientBlock deal={deal} />
               <MisVisits patientId={deal.patient_id} compact />
             </>

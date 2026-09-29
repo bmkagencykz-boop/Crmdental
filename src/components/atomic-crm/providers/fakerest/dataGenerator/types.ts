@@ -18,6 +18,7 @@ import type {
   VisitRecordTemplate,
 } from "../../../patient-card/types";
 import type { DeveloperApp } from "../../../integrations/types";
+import type { WaitingEntry } from "../../../waiting-list/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
   AuditLogEntry,
@@ -198,4 +199,6 @@ export interface Db {
   consent_templates: ConsentTemplate[];
   patient_consents: PatientConsent[];
   patient_files: PatientFile[];
+  // The waiting list (stage 38)
+  waiting_list: WaitingEntry[];
 }

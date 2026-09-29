@@ -23,7 +23,7 @@ export const STATE_LOOK: Record<
   healthy: { color: "#fbfbfc" },
   caries: { color: "#ffd9b8", glyph: "caries" },
   endo: { color: "#ffc9cc", glyph: "endo" },
-  treatment: { color: "#ffc2e0" },
+  treatment: { color: "#f5dde6" },
   filling: { color: "#cfdcff", glyph: "filling" },
   crown: { color: "#e6dbff", glyph: "crown" },
   implant: { color: "#d7dde3", glyph: "implant" },

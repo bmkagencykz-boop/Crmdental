@@ -12,8 +12,8 @@ type Tone = "neon" | "soft" | "ink";
 
 const TONES: Record<Tone, [string, string, string, string]> = {
   // highlight, light, body, edge
-  neon: ["#fff1f8", "#ff8cc6", "#ff2e93", "#b3005f"],
-  soft: ["#ffffff", "#ffe3f1", "#ffb8dc", "#e0569f"],
+  neon: ["#fff6f9", "#f5c3d5", "#e38fae", "#a9536f"],
+  soft: ["#ffffff", "#fbecf1", "#f1c9d7", "#c77f98"],
   ink: ["#8a8a92", "#3a3a40", "#1c1c20", "#050506"],
 };
 

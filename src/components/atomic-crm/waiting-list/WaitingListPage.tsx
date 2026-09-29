@@ -197,9 +197,8 @@ export const WaitingListPage = () => {
   return (
     <div className="flex flex-col gap-5" data-testid="waiting-list-page">
       <div className="flex flex-wrap items-end gap-3">
-        <h1 className="mr-auto text-[30px] leading-tight font-normal tracking-[-0.03em]">
-          {translate("waiting_list.title")}
-        </h1>
+        {/* The title is the page title of the layout */}
+        <span className="mr-auto" />
         <Filter
           label={translate("waiting_list.filters.doctor")}
           value={doctorFilter}

@@ -162,7 +162,7 @@ export const ctImage = (caption: string) =>
         const x = (1 - t) * (1 - t) * 70 + 2 * (1 - t) * t * 260 + t * t * 450;
         const y = (1 - t) * (1 - t) * 330 + 2 * (1 - t) * t * 20 + t * t * 330;
         return i === 9
-          ? `<circle cx="${x}" cy="${y}" r="15" fill="none" stroke="#ff2e93" stroke-width="2" stroke-dasharray="4 3"/>`
+          ? `<circle cx="${x}" cy="${y}" r="15" fill="none" stroke="#e892b2" stroke-width="2" stroke-dasharray="4 3"/>`
           : `<circle cx="${x}" cy="${y}" r="13" fill="#f5f5f5" fill-opacity="0.85"/>`;
       }).join("") +
       `<text x="16" y="404" font-family="sans-serif" font-size="14" fill="#fff" fill-opacity="0.75">${caption}</text>`,

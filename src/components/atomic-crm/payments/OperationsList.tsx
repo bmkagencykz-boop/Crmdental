@@ -85,7 +85,7 @@ export const OperationsList = ({
                 <span
                   className={cn(
                     "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                    op.kind === "refund"
+                    op.kind === "refund" || op.kind === "expense"
                       ? "bg-tone-red/15"
                       : op.kind === "deposit"
                         ? "bg-neon-soft"
@@ -94,9 +94,26 @@ export const OperationsList = ({
                           : "bg-card",
                   )}
                 >
-                  {translate(`payments.kinds.${op.kind}`)}
+                  {op.kind === "expense"
+                    ? translate("cash_out.kind")
+                    : translate(`payments.kinds.${op.kind}`)}
                 </span>
+                {op.kind === "expense" && op.category_name ? (
+                  <span className="rounded-full bg-card px-2.5 py-0.5 text-[11px]">
+                    {op.category_name}
+                  </span>
+                ) : null}
                 <span className="truncate">{methodLabel(op)}</span>
+                {op.payroll_adjustment_id != null ||
+                op.lab_payment_id != null ? (
+                  <span className="text-xs text-muted-foreground">
+                    {translate(
+                      op.payroll_adjustment_id != null
+                        ? "cash_out.linked_payout"
+                        : "cash_out.linked_lab",
+                    )}
+                  </span>
+                ) : null}
                 {op.prepayment ? (
                   <span className="text-xs text-muted-foreground">
                     {translate("payments.dialog.prepayment")}
@@ -133,14 +150,16 @@ export const OperationsList = ({
                 {sign > 0 ? "+" : sign < 0 ? "−" : ""}
                 {money(Math.abs(op.amount))}
               </span>
-              <button
-                type="button"
-                onClick={() => receipt(op.id)}
-                className="rounded-full bg-card px-3 py-1 text-xs hover:bg-pill"
-                title={translate("payments.account.receipt")}
-              >
-                {translate("payments.account.receipt")}
-              </button>
+              {op.kind !== "expense" ? (
+                <button
+                  type="button"
+                  onClick={() => receipt(op.id)}
+                  className="rounded-full bg-card px-3 py-1 text-xs hover:bg-pill"
+                  title={translate("payments.account.receipt")}
+                >
+                  {translate("payments.account.receipt")}
+                </button>
+              ) : null}
               {rights.canEdit ? (
                 <button
                   type="button"

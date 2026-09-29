@@ -753,30 +753,56 @@ CREATE OR REPLACE FUNCTION "private"."lab_cost_for_plan_item"("org_id" bigint, "
 $$;
 
 -- «Сумма лаборатории»: what the clinic owes each lab for the works ready in
--- the month of the given date. Owner and head. Twin: labSettlement()
-CREATE OR REPLACE FUNCTION "public"."report_lab_settlement"("in_month" "date") RETURNS TABLE("lab_id" bigint, "lab_name" "text", "is_own" boolean, "orders_count" integer, "items_count" integer, "amount" bigint)
+-- the month of the given date, what it paid for that month (lab_payments,
+-- stage 42), the balance of the month and the balance of every month up to
+-- it (total_balance). Labs with works, payments or a balance. Owner and
+-- head. Twin: labSettlement()
+CREATE OR REPLACE FUNCTION "public"."report_lab_settlement"("in_month" "date") RETURNS TABLE("lab_id" bigint, "lab_name" "text", "is_own" boolean, "orders_count" integer, "items_count" integer, "amount" bigint, "paid" bigint, "balance" bigint, "total_balance" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+#variable_conflict use_column
 declare
   org_id bigint := private.current_organization_id();
+  month_start date := date_trunc('month', in_month)::date;
+  month_end date := (date_trunc('month', in_month) + interval '1 month')::date;
 begin
   if org_id is null or private.current_user_role() not in ('owner', 'head') then
     raise exception 'Суммы лабораторий видят владелец и руководитель' using errcode = '42501';
   end if;
   return query
-  select l.id, l.name, l.is_own,
-    count(distinct o.id)::integer,
-    coalesce(sum(i.qty), 0)::integer,
-    coalesce(sum(i.qty::bigint * pr.price), 0)::bigint
-  from public.lab_orders o
-    join public.labs l on l.organization_id = o.organization_id and l.id = o.lab_id
-    left join public.lab_order_items i on i.organization_id = o.organization_id and i.order_id = o.id
-    left join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
-  where o.organization_id = org_id
-    and o.ready_at >= date_trunc('month', in_month)::date
-    and o.ready_at < (date_trunc('month', in_month) + interval '1 month')::date
-  group by l.id, l.name, l.is_own
+  with owed as (
+    select o.lab_id,
+      date_trunc('month', o.ready_at)::date as month,
+      count(distinct o.id)::integer as orders_count,
+      coalesce(sum(i.qty), 0)::integer as items_count,
+      coalesce(sum(i.qty::bigint * pr.price), 0)::bigint as amount
+    from public.lab_orders o
+      left join public.lab_order_items i on i.organization_id = o.organization_id and i.order_id = o.id
+      left join public.lab_order_item_prices pr on pr.organization_id = i.organization_id and pr.item_id = i.id
+    where o.organization_id = org_id and o.ready_at < month_end
+    group by o.lab_id, date_trunc('month', o.ready_at)
+  ),
+  paid as (
+    select p.lab_id, p.month, sum(p.amount)::bigint as amount
+    from public.lab_payments p
+    where p.organization_id = org_id and p.month < month_end
+    group by p.lab_id, p.month
+  ),
+  per_lab as (
+    select l.id, l.name, l.is_own,
+      coalesce((select sum(w.orders_count) from owed w where w.lab_id = l.id and w.month = month_start), 0)::integer as orders_count,
+      coalesce((select sum(w.items_count) from owed w where w.lab_id = l.id and w.month = month_start), 0)::integer as items_count,
+      coalesce((select sum(w.amount) from owed w where w.lab_id = l.id and w.month = month_start), 0)::bigint as amount,
+      coalesce((select sum(p.amount) from paid p where p.lab_id = l.id and p.month = month_start), 0)::bigint as paid,
+      (coalesce((select sum(w.amount) from owed w where w.lab_id = l.id), 0)
+        - coalesce((select sum(p.amount) from paid p where p.lab_id = l.id), 0))::bigint as total_balance
+    from public.labs l
+    where l.organization_id = org_id
+  )
+  select x.id, x.name, x.is_own, x.orders_count, x.items_count, x.amount, x.paid, x.amount - x.paid, x.total_balance
+  from per_lab x
+  where x.orders_count > 0 or x.paid > 0 or x.total_balance <> 0
   order by 6 desc, 2;
 end;
 $$;

@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useDataProvider,
+  useGetList,
   useGetOne,
   useNotify,
   useTranslate,
@@ -14,7 +15,7 @@ import type { CrmDataProvider } from "../providers/types";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { formatTenge } from "../onboarding/servicePresets";
 import { paymentRights } from "./paymentMath";
-import type { PatientAccount } from "./types";
+import type { CashExpenseCategory, PatientAccount } from "./types";
 
 /** «12 500 ₸» (a negative amount with «−») */
 export const money = (amount: number | null | undefined) => {
@@ -25,13 +26,25 @@ export const money = (amount: number | null | undefined) => {
 /** The money rights of the signed-in employee (see paymentRights) */
 export const usePaymentRights = () => {
   const { data, isPending } = useMyAccessRights();
+  const { data: settings } = useOrganizationSettings();
   return {
     isPending,
     me: data?.sales_id ?? null,
     role: data?.role ?? null,
-    ...paymentRights(data?.role, data?.rights.reports.view),
+    ...paymentRights(
+      data?.role,
+      data?.rights.reports.view,
+      settings?.manager_cash_expenses,
+    ),
   };
 };
+
+/** The expense expense categories of the clinic, in their order */
+export const useExpenseCategories = () =>
+  useGetList<CashExpenseCategory>("cash_expense_categories", {
+    pagination: { page: 1, perPage: 200 },
+    sort: { field: "position", order: "ASC" },
+  });
 
 /** «Счёт» of a patient (public.patient_accounts) */
 export const usePatientAccount = (patientId: Identifier | null | undefined) =>
@@ -51,6 +64,14 @@ const TOUCHED = [
   "deals",
   "cash_shifts",
   "audit_log",
+  // Expenses, payouts, lab payments (stage 42)
+  "payroll_month",
+  "payroll_adjustments",
+  "lab_payments",
+  "lab_payments_summary",
+  "lab_settlement",
+  "cash_expenses_report",
+  "cash_expense_categories",
 ];
 
 export const useRefreshMoney = () => {

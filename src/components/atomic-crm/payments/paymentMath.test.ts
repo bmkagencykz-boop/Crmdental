@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   accountTotals,
   changeDue,
+  checkExpense,
   checkOperation,
+  expenseTotals,
   checkParts,
   itemsAmount,
   methodAmount,
@@ -236,6 +238,7 @@ describe("the cash desk", () => {
     expect(byMethod.cash).toEqual({
       income: 60000,
       refunds: 5000,
+      expenses: 0,
       net: 55000,
       count: 3,
     });
@@ -244,6 +247,7 @@ describe("the cash desk", () => {
     expect(total).toEqual({
       income: 95000,
       refunds: 5000,
+      expenses: 0,
       net: 90000,
       count: 4,
     });
@@ -305,6 +309,7 @@ describe("paymentRights", () => {
       canRefund: false,
       canEdit: false,
       canCorrect: false,
+      canExpense: false,
       seesAll: false,
     });
     expect(paymentRights("manager", "all").seesAll).toBe(true);
@@ -339,5 +344,93 @@ describe("itemsAmount", () => {
     expect(itemsAmount(plan, items, [])).toBe(0);
     expect(itemsAmount(plan, items, [2])).toBe(90000);
     expect(itemsAmount(plan, items, [1, 2])).toBe(270000);
+  });
+});
+
+describe("expenses (stage 42)", () => {
+  const rent = {
+    ...op({ kind: "expense", amount: 20000 }),
+    category_id: 4,
+  };
+  const materials = {
+    ...op({ kind: "expense", amount: 15000, method: "card" }),
+    category_id: 3,
+  };
+  const payment = op({ kind: "payment", amount: 30000 });
+  it("an expense is money out of the till, nothing on the account", () => {
+    expect(operationDeltas(rent)).toEqual({
+      deposit: 0,
+      paid: 0,
+      till: -20000,
+    });
+  });
+  it("lowers the expected cash of the shift (cash only)", () => {
+    expect(shiftExpected(50000, [payment, rent, materials])).toBe(60000);
+  });
+  it("counts expenses apart from the refunds", () => {
+    const { byMethod, total } = tillTotals([
+      payment,
+      rent,
+      materials,
+      op({ kind: "refund", amount: 1000 }),
+    ]);
+    expect(byMethod.cash).toEqual({
+      income: 30000,
+      refunds: 1000,
+      expenses: 20000,
+      net: 9000,
+      count: 3,
+    });
+    expect(byMethod.card.net).toBe(-15000);
+    expect(total.expenses).toBe(35000);
+    expect(total.net).toBe(30000 - 1000 - 35000);
+  });
+  it("sums the expenses by category", () => {
+    const categories = [
+      { id: 3, name: "Материалы", code: "materials" },
+      { id: 4, name: "Аренда", code: "rent" },
+      { id: 5, name: "Прочее", code: "other" },
+    ];
+    expect(expenseTotals([payment, rent, materials, rent], categories)).toEqual(
+      [
+        {
+          category_id: 4,
+          name: "Аренда",
+          code: "rent",
+          amount: 40000,
+          cash: 40000,
+          operations: 2,
+        },
+        {
+          category_id: 3,
+          name: "Материалы",
+          code: "materials",
+          amount: 15000,
+          cash: 0,
+          operations: 1,
+        },
+      ],
+    );
+  });
+  it("checks an expense", () => {
+    expect(checkExpense({ amount: 1000, method: "cash", category_id: 1 })).toBe(
+      null,
+    );
+    expect(checkExpense({ amount: 0, method: "cash", category_id: 1 })).toBe(
+      "payments.errors.amount",
+    );
+    expect(
+      checkExpense({ amount: 1000, method: "deposit", category_id: 1 }),
+    ).toBe("cash_out.errors.method");
+    expect(checkExpense({ amount: 1000, method: "cash" })).toBe(
+      "cash_out.errors.category",
+    );
+  });
+  it("the owner and the head spend; an administrator when allowed", () => {
+    expect(paymentRights("owner").canExpense).toBe(true);
+    expect(paymentRights("head").canExpense).toBe(true);
+    expect(paymentRights("manager").canExpense).toBe(false);
+    expect(paymentRights("manager", null, true).canExpense).toBe(true);
+    expect(paymentRights("integrator", null, true).canExpense).toBe(false);
   });
 });

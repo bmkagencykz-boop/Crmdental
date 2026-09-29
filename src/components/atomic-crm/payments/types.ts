@@ -28,8 +28,42 @@ export const OPERATION_KINDS = [
   "deposit_payment",
   "refund",
   "correction",
+  // Money out of the till, no patient (stage 42)
+  "expense",
 ] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
+
+/** The methods an expense leaves the till by (stage 42) */
+export const EXPENSE_METHODS = [
+  "cash",
+  "card",
+  "kaspi_qr",
+  "kaspi_transfer",
+  "bank_transfer",
+] as const satisfies readonly PaymentMethod[];
+export type ExpenseMethod = (typeof EXPENSE_METHODS)[number];
+
+/** System categories of the expenses (seeded for every clinic) */
+export const EXPENSE_CATEGORY_CODES = [
+  "salary",
+  "lab",
+  "materials",
+  "rent",
+  "other",
+] as const;
+export type ExpenseCategoryCode = (typeof EXPENSE_CATEGORY_CODES)[number];
+
+/** public.cash_expense_categories: «статьи расходов» (stage 42) */
+export type CashExpenseCategory = {
+  id: Identifier;
+  organization_id?: Identifier;
+  name: string;
+  /** A system category: salary, lab, materials, rent, other */
+  code?: ExpenseCategoryCode | null;
+  is_active: boolean;
+  position: number;
+  created_at?: string;
+};
 
 /** services: the paid services; deposit: the patient's advance */
 export type OperationAccount = "services" | "deposit";
@@ -40,7 +74,8 @@ export type MethodPart = { method: PaymentMethod; amount: number };
 export type AccountOperation = {
   id: Identifier;
   organization_id?: Identifier;
-  patient_id: Identifier;
+  /** Null exactly for an expense (stage 42) */
+  patient_id: Identifier | null;
   kind: OperationKind;
   account: OperationAccount;
   /** Positive; a correction is signed */
@@ -63,6 +98,8 @@ export type AccountOperation = {
   comment?: string | null;
   source?: "cash_desk" | "deal" | "import";
   deal_payment_id?: Identifier | null;
+  /** The category of an expense (stage 42) */
+  category_id?: Identifier | null;
   created_at?: string;
   /** Generated: the effect on the deposit, the paid services, the till */
   deposit_delta?: number;
@@ -78,6 +115,11 @@ export type AccountOperationSummary = AccountOperation & {
   deal_name?: string | null;
   plan_name?: string | null;
   branch_name?: string | null;
+  /** An expense: its category, its payout or lab payment (stage 42) */
+  category_name?: string | null;
+  category_code?: ExpenseCategoryCode | null;
+  payroll_adjustment_id?: Identifier | null;
+  lab_payment_id?: Identifier | null;
 };
 
 /** public.patient_accounts: «Счёт» of a patient */
@@ -135,7 +177,20 @@ export type CashMethodRow = {
   method: PaymentMethod;
   income: number;
   refunds: number;
+  /** Expenses paid by the method (stage 42) */
+  expenses: number;
   net: number;
+  operations: number;
+};
+
+/** A line of public.report_cash_expenses (stage 42) */
+export type CashExpenseRow = {
+  category_id: Identifier;
+  name: string;
+  code?: ExpenseCategoryCode | null;
+  amount: number;
+  /** The cash part */
+  cash: number;
   operations: number;
 };
 

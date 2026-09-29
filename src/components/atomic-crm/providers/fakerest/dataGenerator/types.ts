@@ -6,6 +6,7 @@ import type {
   LabTechnician,
   LabWorkType,
   LabWorkTypePrice,
+  LabPayment,
 } from "../../../lab/types";
 import type { AdSpend } from "../../../marketing/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
@@ -15,7 +16,11 @@ import type {
   ServiceCategory,
   ServiceCost,
 } from "../../../price-list/types";
-import type { AccountOperation, CashShift } from "../../../payments/types";
+import type {
+  AccountOperation,
+  CashExpenseCategory,
+  CashShift,
+} from "../../../payments/types";
 import type {
   PayrollAdjustment,
   PayrollClosedLine,
@@ -229,4 +234,7 @@ export interface Db {
   lab_orders: LabOrder[];
   lab_order_items: LabOrderItem[];
   lab_order_item_prices: LabOrderItemPrice[];
+  // Money going out of the cash desk (stage 42)
+  cash_expense_categories: CashExpenseCategory[];
+  lab_payments: LabPayment[];
 }

@@ -440,8 +440,9 @@ end;
 $$;
 
 -- «Дублировать план»: a draft copy with the header, the stages (new, a
--- cancelled one stays cancelled) and the items (not done). Runs with the
--- caller's rights; the discounts are copied as they are.
+-- cancelled one stays cancelled) and the items (not done, with their
+-- doctor). Runs with the caller's rights; the discounts are copied as they
+-- are.
 CREATE OR REPLACE FUNCTION "public"."duplicate_treatment_plan"("source_plan_id" bigint) RETURNS bigint
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -474,8 +475,8 @@ begin
     values (stage.organization_id, new_plan_id, stage.position, stage.name, stage.doctor_id, stage.direction_id, stage.deadline,
       stage.description, case when stage.status = 'cancelled' then 'cancelled' else 'new' end, stage.discount_percent)
     returning id into new_stage_id;
-    insert into public.treatment_plan_items (organization_id, plan_id, stage_id, service_id, name, tooth, quantity, unit_price, discount_percent, position)
-    select i.organization_id, new_plan_id, new_stage_id, i.service_id, i.name, i.tooth, i.quantity, i.unit_price, i.discount_percent, i.position
+    insert into public.treatment_plan_items (organization_id, plan_id, stage_id, service_id, name, tooth, quantity, unit_price, discount_percent, position, doctor_id)
+    select i.organization_id, new_plan_id, new_stage_id, i.service_id, i.name, i.tooth, i.quantity, i.unit_price, i.discount_percent, i.position, i.doctor_id
     from public.treatment_plan_items i
     where i.organization_id = source.organization_id and i.stage_id = stage.id
     order by i.position, i.id;
@@ -614,7 +615,7 @@ create or replace trigger audit_treatment_plan
 
 create or replace trigger audit_treatment_plan_item
     after insert or update or delete on public.treatment_plan_items
-    for each row execute function private.audit_row('treatment_plan_item', 'name,stage_no,tooth,quantity,unit_price,discount_percent,done');
+    for each row execute function private.audit_row('treatment_plan_item', 'name,stage_no,tooth,quantity,unit_price,discount_percent,done,doctor_id');
 
 create or replace trigger audit_service
     after insert or update or delete on public.services

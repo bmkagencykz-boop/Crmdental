@@ -154,4 +154,43 @@ export type LabSettlementRow = {
   orders_count: number;
   items_count: number;
   amount: number;
+  /** Paid for the month (lab payments, stage 42) */
+  paid: number;
+  /** amount − paid */
+  balance: number;
+  /** Owed minus paid over every month up to this one */
+  total_balance: number;
+};
+
+/** public.lab_payments: «Оплата лаборатории» (stage 42) */
+export type LabPayment = {
+  id: Identifier;
+  organization_id?: Identifier;
+  lab_id: Identifier;
+  /** The month of the settlement it pays, YYYY-MM-01 */
+  month: string;
+  amount: number;
+  method: LabPaymentMethod;
+  paid_at: string;
+  comment?: string | null;
+  /** The expense of the cash desk («из кассы») */
+  account_operation_id?: Identifier | null;
+  created_by?: Identifier | null;
+  created_at?: string;
+};
+
+export const LAB_PAYMENT_METHODS = [
+  "bank_transfer",
+  "kaspi_transfer",
+  "cash",
+  "card",
+  "kaspi_qr",
+  "other",
+] as const;
+export type LabPaymentMethod = (typeof LAB_PAYMENT_METHODS)[number];
+
+/** public.lab_payments_summary */
+export type LabPaymentSummary = LabPayment & {
+  lab_name?: string | null;
+  created_by_name?: string | null;
 };

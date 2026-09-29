@@ -11,18 +11,25 @@ import {
   labSettlement,
   localDay,
   monthStart,
+  sameMonth,
   shiftMonth,
   shortDay,
   tenge,
 } from "./labMath";
-import type { LabOrderCost } from "./types";
+import { LabPaymentDialog, LabPaymentsCard } from "./LabPayments";
+import type {
+  LabOrderCost,
+  LabPaymentSummary,
+  LabSettlementRow,
+} from "./types";
 import { useLabDictionaries } from "./useLab";
 
 /**
  * «Сумма лаборатории» (owner, head): what the clinic owes each lab for the
  * works ready in the month, the lab cost of each doctor (the payroll of
  * stage 39 reads the same public.lab_order_costs), the works of the month
- * and the CSV. Same numbers as public.report_lab_settlement.
+ * and the CSV; what was paid for the month, the balance, «Оплатить» and
+ * the payments (stage 42). Same numbers as public.report_lab_settlement.
  */
 export const LabSettlement = () => {
   const translate = useTranslate();
@@ -30,19 +37,41 @@ export const LabSettlement = () => {
   const { data: doctors } = useDoctors();
   const [month, setMonth] = useState(() => monthStart(localDay()));
   const next = shiftMonth(month, 1);
-  const { data: costs = [], isPending } = useGetList<LabOrderCost>(
+  // Every month up to this one: the balance carried over (stage 42)
+  const { data: history = [], isPending } = useGetList<LabOrderCost>(
     "lab_order_costs",
     {
-      filter: { "ready_at@gte": month, "ready_at@lt": next },
-      pagination: { page: 1, perPage: 5000 },
+      filter: { "ready_at@lt": next },
+      pagination: { page: 1, perPage: 10000 },
       sort: { field: "ready_at", order: "ASC" },
     },
   );
-  const rows = useMemo(
-    () => labSettlement(costs, labs, month),
-    [costs, labs, month],
+  const { data: payments = [] } = useGetList<LabPaymentSummary>(
+    "lab_payments_summary",
+    {
+      filter: { "month@lt": next },
+      pagination: { page: 1, perPage: 5000 },
+      sort: { field: "paid_at", order: "DESC" },
+    },
   );
+  const costs = useMemo(
+    () => history.filter((line) => sameMonth(line.ready_at, month)),
+    [history, month],
+  );
+  const rows = useMemo(
+    () => labSettlement(history, labs, month, payments),
+    [history, labs, month, payments],
+  );
+  const monthPayments = payments.filter((payment) =>
+    sameMonth(payment.month, month),
+  );
+  const [paying, setPaying] = useState<LabSettlementRow | null>(null);
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
+  const totalPaid = rows.reduce((sum, row) => sum + row.paid, 0);
+  const totalDue = rows.reduce(
+    (sum, row) => sum + Math.max(0, row.total_balance),
+    0,
+  );
   const max = Math.max(1, ...rows.map((row) => row.amount));
   const byDoctor = useMemo(() => {
     const sums = new Map<string, number>();
@@ -162,13 +191,24 @@ export const LabSettlement = () => {
           >
             {tenge(total)}
           </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm">
+            <span className="rounded-full bg-white/45 px-3 py-1.5">
+              {translate("cash_out.lab.total_paid")}: {tenge(totalPaid)}
+            </span>
+            <span
+              className="rounded-full bg-white/45 px-3 py-1.5"
+              data-testid="lab-settlement-due"
+            >
+              {translate("cash_out.lab.total_balance_hint")}: {tenge(totalDue)}
+            </span>
+          </div>
           <Implant3D className="pointer-events-none absolute -top-4 -right-6 size-36 opacity-90" />
         </section>
 
         <StudioCard
           title={translate("lab.settlement.title")}
           subtitle={monthTitle}
-          className="lg:col-span-5"
+          className="lg:col-span-8"
         >
           {isPending ? null : rows.length ? (
             <ul
@@ -184,6 +224,10 @@ export const LabSettlement = () => {
                     <span className="block text-xs text-muted-foreground">
                       {translate("lab.settlement.orders", {
                         smart_count: row.orders_count,
+                      })}
+                      {" · "}
+                      {translate("lab.settlement.works", {
+                        count: row.items_count,
                       })}
                       {row.is_own
                         ? ` · ${translate("lab.settlement.own")}`
@@ -206,11 +250,28 @@ export const LabSettlement = () => {
                       {tenge(row.amount)}
                     </span>
                   </span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {translate("lab.settlement.works", {
-                      count: row.items_count,
-                    })}
+                  <span className="w-28 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                    <span className="block">
+                      {translate("cash_out.lab.paid")} {tenge(row.paid)}
+                    </span>
+                    <span
+                      className={cn(
+                        "block",
+                        row.total_balance > 0 && "text-foreground",
+                      )}
+                      data-testid="lab-settlement-balance"
+                    >
+                      {translate("cash_out.lab.balance")}{" "}
+                      {tenge(row.total_balance)}
+                    </span>
                   </span>
+                  <Button
+                    size="sm"
+                    variant={row.total_balance > 0 ? "default" : "outline"}
+                    onClick={() => setPaying(row)}
+                  >
+                    {translate("cash_out.lab.pay")}
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -220,11 +281,18 @@ export const LabSettlement = () => {
             </p>
           )}
         </StudioCard>
+      </div>
 
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <LabPaymentsCard
+          payments={monthPayments}
+          subtitle={monthTitle}
+          className="lg:col-span-8"
+        />
         <StudioCard
           title={translate("lab.settlement.by_doctor")}
           subtitle={translate("lab.settlement.by_doctor_hint")}
-          className="lg:col-span-3"
+          className="lg:col-span-4"
         >
           <ul
             className="flex flex-col gap-2"
@@ -290,6 +358,14 @@ export const LabSettlement = () => {
           </p>
         )}
       </StudioCard>
+      {paying ? (
+        <LabPaymentDialog
+          row={paying}
+          month={month}
+          monthTitle={monthTitle}
+          onClose={() => setPaying(null)}
+        />
+      ) : null}
     </div>
   );
 };

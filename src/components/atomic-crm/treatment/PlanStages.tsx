@@ -373,6 +373,19 @@ const StageEditor = ({
     }
   };
 
+  // The doctor of an item (stage 39): empty — the stage's, else the plan's
+  const defaultDoctor = doctors.find(
+    (d) => String(d.id) === String(stage.doctor_id ?? plan.doctor_id ?? ""),
+  );
+  const defaultDoctorText = defaultDoctor
+    ? translate("cash_out.plan_item.default", { name: defaultDoctor.name })
+    : translate("cash_out.plan_item.none");
+  const itemDoctorLabel = (item: TreatmentPlanItem) =>
+    translate("treatment.fields.item_for", {
+      field: translate("cash_out.plan_item.doctor"),
+      name: item.name,
+    });
+
   const serviceCode = (item: TreatmentPlanItem) =>
     services.find((s) => String(s.id) === String(item.service_id))?.code ?? "";
   const targets = selectionTargets(teeth, areas);
@@ -577,6 +590,9 @@ const StageEditor = ({
                 <th className="px-1.5 py-1.5 font-medium">
                   {translate("plan_editor.items.service")}
                 </th>
+                <th className="w-36 px-1.5 py-1.5 font-medium">
+                  {translate("cash_out.plan_item.doctor")}
+                </th>
                 <th className="w-16 px-1.5 py-1.5 text-right font-medium">
                   {translate("plan_editor.items.qty")}
                 </th>
@@ -599,7 +615,7 @@ const StageEditor = ({
               {stageItems.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="rounded-2xl bg-background/60 px-4 py-6 text-center text-sm text-muted-foreground"
                   >
                     {translate("plan_editor.items.empty")}
@@ -640,6 +656,34 @@ const StageEditor = ({
                     ) : (
                       <span className="px-1.5">{item.name}</span>
                     )}
+                  </td>
+                  <td className="px-0.5 py-1">
+                    <select
+                      value={
+                        item.doctor_id == null ? "" : String(item.doctor_id)
+                      }
+                      disabled={readOnly}
+                      aria-label={itemDoctorLabel(item)}
+                      title={itemDoctorLabel(item)}
+                      onChange={(event) =>
+                        saveItem(item, {
+                          doctor_id: pickId(doctors, event.target.value),
+                        })
+                      }
+                      className={cn(
+                        "h-8 w-full min-w-0 truncate rounded-full border-0 bg-transparent px-2 text-[13px] outline-none hover:bg-card focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-100",
+                        item.doctor_id == null && "text-muted-foreground",
+                      )}
+                    >
+                      <option value="">{defaultDoctorText}</option>
+                      {toDoctorChoices(doctors, item.doctor_id).map(
+                        (doctor) => (
+                          <option key={doctor.id} value={String(doctor.id)}>
+                            {doctor.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
                   </td>
                   <td className="px-0.5 py-1">
                     <CellInput

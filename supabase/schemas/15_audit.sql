@@ -375,7 +375,7 @@ create or replace trigger audit_stage
 
 create or replace trigger audit_settings
     after update on public.organization_settings
-    for each row execute function private.audit_row('settings', 'manager_deal_visibility,pipeline_move_mode,lead_distribution,lead_distribution_sales_ids,unsorted_enabled,unsorted_source_ids');
+    for each row execute function private.audit_row('settings', 'manager_deal_visibility,pipeline_move_mode,lead_distribution,lead_distribution_sales_ids,unsorted_enabled,unsorted_source_ids,manager_cash_expenses');
 
 create or replace trigger audit_task_rule
     after insert or update or delete on public.task_rules

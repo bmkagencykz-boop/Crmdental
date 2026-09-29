@@ -129,6 +129,7 @@ import { createPatientCardDemo } from "./patientCard";
 import { createPayrollDemo } from "./payroll";
 import { createWaitingListDemo } from "./waitingList";
 import { createLabOrdersDemo } from "./labOrders";
+import { createCashOutflowsDemo } from "./cashOutflows";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -437,6 +438,15 @@ export const createDataProvider = ({
     currentSalesId: () => currentSalesId(),
     logAudit: (row) => logAudit(row),
     filterPatients: (patients) => accessDemo.filterPatients(patients),
+  });
+  // Money going out of the cash desk (stage 42)
+  const cashOutDemo = createCashOutflowsDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    getDataProvider: () => dataProvider,
+    logAudit: (row) => logAudit(row),
+    cancelLinkedExpense: (opId) => paymentsDemo.cancelLinkedExpense(opId),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -913,6 +923,7 @@ export const createDataProvider = ({
     ...priceListDemo.views,
     ...paymentsDemo.views,
     ...labDemo.views,
+    ...cashOutDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -939,6 +950,7 @@ export const createDataProvider = ({
     ...paymentsDemo.methods,
     ...patientCardDemo.methods,
     ...payrollDemo.methods,
+    ...cashOutDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1881,6 +1893,7 @@ export const createDataProvider = ({
       ...payrollDemo.callbacks,
       // Lab work orders (stage 40): numbers, links, statuses, prices, rights
       ...labDemo.callbacks,
+      ...cashOutDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

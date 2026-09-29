@@ -103,9 +103,21 @@ describe("demo payments", () => {
       "account_operations_summary",
     );
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((row) => typeof row.patient_name === "string")).toBe(
-      true,
-    );
+    // An expense (stage 42) has no patient but a category
+    const [expenses, patientRows] = [
+      rows.filter((row) => row.kind === "expense"),
+      rows.filter((row) => row.kind !== "expense"),
+    ];
+    expect(
+      patientRows.every((row) => typeof row.patient_name === "string"),
+    ).toBe(true);
+    expect(expenses.length).toBeGreaterThan(0);
+    expect(
+      expenses.every(
+        (row) =>
+          row.patient_name == null && typeof row.category_name === "string",
+      ),
+    ).toBe(true);
     expect(rows.some((row) => row.cashier_name)).toBe(true);
   });
 

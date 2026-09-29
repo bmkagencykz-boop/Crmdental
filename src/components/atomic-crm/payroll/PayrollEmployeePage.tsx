@@ -1,6 +1,7 @@
 import {
   useCanAccess,
   useCreate,
+  useDataProvider,
   useDelete,
   useGetList,
   useNotify,
@@ -21,8 +22,11 @@ import { cn } from "@/lib/utils";
 
 import { StudioCard } from "../dashboard/StudioCards";
 import { Implant3D } from "../misc/Dental3D";
+import { Pills } from "../payments/PaymentDialog";
 import { parseAmount } from "../payments/paymentMath";
-import { money } from "../payments/usePayments";
+import { EXPENSE_METHODS, type ExpenseMethod } from "../payments/types";
+import { money, useRefreshMoney } from "../payments/usePayments";
+import type { CrmDataProvider } from "../providers/types";
 import type { ServiceCategory } from "../price-list/types";
 import { exportCsv, type ReportColumn } from "../reports/csv";
 import { todayKey } from "../tasks/calendarLayout";
@@ -413,6 +417,7 @@ const Adjustments = ({
   const translate = useTranslate();
   const notify = useNotify();
   const refresh = useRefreshPayroll();
+  const refreshMoney = useRefreshMoney();
   const [remove] = useDelete();
   return (
     <StudioCard title={translate("payroll.detail.adjustments")}>
@@ -438,6 +443,14 @@ const Adjustments = ({
               >
                 {translate(`payroll.kinds.${row.kind}`)}
               </span>
+              {row.account_operation_id != null ? (
+                <span
+                  className="rounded-full bg-card px-2.5 py-0.5 text-xs"
+                  title={translate("cash_out.payout.locked")}
+                >
+                  {translate("cash_out.payout.in_cash")}
+                </span>
+              ) : null}
               <span className="min-w-0 flex-1 truncate text-muted-foreground">
                 {row.note}
               </span>
@@ -451,14 +464,22 @@ const Adjustments = ({
                   className="rounded-full px-2 text-muted-foreground hover:text-foreground"
                   aria-label={translate("ra.action.delete")}
                   title={translate("ra.action.delete")}
-                  onClick={() =>
+                  onClick={() => {
+                    if (
+                      row.account_operation_id != null &&
+                      !window.confirm(translate("cash_out.payout.locked"))
+                    ) {
+                      return;
+                    }
                     remove(
                       "payroll_adjustments",
                       { id: row.id, previousData: row },
                       {
+                        mutationMode: "pessimistic",
                         onSuccess: () => {
                           notify("payroll.notify.deleted", { type: "info" });
                           refresh();
+                          refreshMoney();
                         },
                         onError: (error) =>
                           notify(
@@ -467,8 +488,8 @@ const Adjustments = ({
                             { type: "error" },
                           ),
                       },
-                    )
-                  }
+                    );
+                  }}
                 >
                   ×
                 </button>
@@ -509,9 +530,46 @@ const AdjustmentDialog = ({
   const [day, setDay] = useState(inMonth || kind === "payout" ? today : month);
   const [note, setNote] = useState("");
   const [create, { isPending }] = useCreate();
+  const dataProvider = useDataProvider<CrmDataProvider>();
+  const refreshMoney = useRefreshMoney();
+  // A payout: from the cash desk (an expense «Зарплата») or by transfer
+  const [fromCash, setFromCash] = useState(false);
+  const [method, setMethod] = useState<ExpenseMethod>("cash");
+  const [paying, setPaying] = useState(false);
   const value = parseAmount(amount);
+  const payout = async () => {
+    setPaying(true);
+    try {
+      await dataProvider.recordPayrollPayout({
+        doctor_id: employee.doctor_id,
+        sales_id: employee.sales_id,
+        month,
+        amount: value,
+        day,
+        note: note.trim() || null,
+        fromCash,
+        method,
+      });
+      notify(fromCash ? "cash_out.payout.done_cash" : "cash_out.payout.done", {
+        type: "info",
+      });
+      refresh();
+      refreshMoney();
+      onClose();
+    } catch (error) {
+      notify((error as Error)?.message || "ra.notification.http_error", {
+        type: "error",
+      });
+    } finally {
+      setPaying(false);
+    }
+  };
   const save = () => {
     if (!value || value <= 0) return;
+    if (kind === "payout") {
+      void payout();
+      return;
+    }
     create(
       "payroll_adjustments",
       {
@@ -571,6 +629,44 @@ const AdjustmentDialog = ({
               aria-label={translate("payroll.adjustment.date")}
             />
           </label>
+          {kind === "payout" ? (
+            <div
+              className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-3"
+              data-testid="payout-cash"
+            >
+              <Pills
+                label={translate("cash_out.payout.title")}
+                value={fromCash ? "cash" : "bank"}
+                options={[
+                  {
+                    value: "bank",
+                    label: translate("cash_out.payout.bank"),
+                  },
+                  {
+                    value: "cash",
+                    label: translate("cash_out.payout.from_cash"),
+                  },
+                ]}
+                onChange={(next) => setFromCash(next === "cash")}
+              />
+              {fromCash ? (
+                <>
+                  <Pills
+                    label={translate("cash_out.payout.method")}
+                    value={method}
+                    options={EXPENSE_METHODS.map((option) => ({
+                      value: option,
+                      label: translate(`payments.methods.${option}`),
+                    }))}
+                    onChange={(next) => setMethod(next as ExpenseMethod)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {translate("cash_out.payout.from_cash_hint")}
+                  </p>
+                </>
+              ) : null}
+            </div>
+          ) : null}
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground">
               {translate("payroll.adjustment.note")}
@@ -587,10 +683,12 @@ const AdjustmentDialog = ({
             </Button>
             <Button
               onClick={save}
-              disabled={isPending || !value || value <= 0}
+              disabled={isPending || paying || !value || value <= 0}
               data-testid="payroll-adjustment-save"
             >
-              {translate("payroll.adjustment.save")}
+              {kind === "payout" && fromCash
+                ? translate("cash_out.payout.from_cash")
+                : translate("payroll.adjustment.save")}
             </Button>
           </div>
         </div>

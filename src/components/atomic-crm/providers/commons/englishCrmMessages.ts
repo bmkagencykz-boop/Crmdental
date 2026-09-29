@@ -5614,7 +5614,8 @@ export const englishCrmMessages = {
       comment_placeholder: "What for and to whom",
       save: "Record the expense",
       done: "Expense recorded",
-      no_shift: "No open shift: cash will not lower the expected amount of a shift",
+      no_shift:
+        "No open shift: cash will not lower the expected amount of a shift",
       in_shift: "Leaves your shift: %{amount} expected after the expense",
     },
     errors: {
@@ -5657,7 +5658,8 @@ export const englishCrmMessages = {
     payout: {
       title: "Payout",
       from_cash: "Pay from the cash desk",
-      from_cash_hint: "A «Salary» expense in your open shift — the cash desk sees it",
+      from_cash_hint:
+        "A «Salary» expense in your open shift — the cash desk sees it",
       bank: "Without the cash desk — transfer to a card or an account",
       method: "Method",
       in_cash: "from the cash desk",
@@ -5688,7 +5690,8 @@ export const englishCrmMessages = {
       payments_hint: "For the settlement month",
       no_payments: "No payments for this month yet",
       delete: "Delete the payment",
-      delete_confirm: "Delete the payment? If it went through the cash desk, the expense is cancelled too.",
+      delete_confirm:
+        "Delete the payment? If it went through the cash desk, the expense is cancelled too.",
       deleted: "Payment deleted",
       done: "Payment recorded",
       in_cash: "from the cash desk",

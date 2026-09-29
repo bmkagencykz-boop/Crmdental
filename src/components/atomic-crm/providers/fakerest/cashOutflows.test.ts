@@ -105,8 +105,9 @@ describe("demo cash outflows (stage 42)", () => {
     );
     expect(advance?.kind).toBe("payout");
     expect(
-      db.account_operations.find((op) => op.id === advance?.account_operation_id)
-        ?.amount,
+      db.account_operations.find(
+        (op) => op.id === advance?.account_operation_id,
+      )?.amount,
     ).toBe(advance?.amount);
     expect(db.lab_payments.length).toBeGreaterThan(0);
     expect(

@@ -66,9 +66,7 @@ export const AccessSettings = () => {
           value,
           label: translate(`cash_out.settings.${value}`),
         }))}
-        onChange={(value) =>
-          mutate({ manager_cash_expenses: value === "yes" })
-        }
+        onChange={(value) => mutate({ manager_cash_expenses: value === "yes" })}
       />
     </div>
   );

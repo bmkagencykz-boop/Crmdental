@@ -358,7 +358,11 @@ describe("expenses (stage 42)", () => {
   };
   const payment = op({ kind: "payment", amount: 30000 });
   it("an expense is money out of the till, nothing on the account", () => {
-    expect(operationDeltas(rent)).toEqual({ deposit: 0, paid: 0, till: -20000 });
+    expect(operationDeltas(rent)).toEqual({
+      deposit: 0,
+      paid: 0,
+      till: -20000,
+    });
   });
   it("lowers the expected cash of the shift (cash only)", () => {
     expect(shiftExpected(50000, [payment, rent, materials])).toBe(60000);

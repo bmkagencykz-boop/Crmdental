@@ -95,8 +95,7 @@ export const createCashOutflowsDemo = ({
     );
   };
   const senior = async () => ["owner", "head"].includes(await myRole());
-  const categories = () =>
-    all<CashExpenseCategory>("cash_expense_categories");
+  const categories = () => all<CashExpenseCategory>("cash_expense_categories");
   const categoryOf = async (code: string) =>
     (await categories()).find((c) => c.code === code);
   const previousRows = new Map<string, unknown>();

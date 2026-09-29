@@ -156,8 +156,8 @@ export const generateCashOutflows = (db: Db) => {
       same(i.order_id, order.id),
     )) {
       const price =
-        db.lab_order_item_prices.find((p) => same(p.item_id, item.id))
-          ?.price ?? 0;
+        db.lab_order_item_prices.find((p) => same(p.item_id, item.id))?.price ??
+        0;
       const key = String(order.lab_id);
       owed.set(key, (owed.get(key) ?? 0) + item.qty * price);
     }

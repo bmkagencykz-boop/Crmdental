@@ -207,8 +207,7 @@ export const createPaymentsDemo = ({
       (op) => op.kind !== "expense" || seesExpense(op),
     );
   };
-  const categories = () =>
-    all<CashExpenseCategory>("cash_expense_categories");
+  const categories = () => all<CashExpenseCategory>("cash_expense_categories");
 
   const operationsSummary = async () => {
     const [rows, patients, sales, deals, plans, branches, cats, payouts, labs] =

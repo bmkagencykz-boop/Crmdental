@@ -174,6 +174,37 @@ describe("canAccess with access rights (stage 30)", () => {
     expect(can("configuration", "edit")).toBe(false);
   });
 
+  it("archives patients with the delete right, deletes them as the owner (stage 41)", () => {
+    const can = (
+      role: "owner" | "head" | "manager",
+      action: string,
+      overrides?: Parameters<typeof accessMatrix>[1],
+    ) =>
+      canAccess(
+        role,
+        { resource: "patients", action },
+        role === "owner" ? undefined : accessMatrix(role, overrides),
+        0,
+      );
+    expect(can("owner", "delete")).toBe(true);
+    expect(can("head", "delete")).toBe(false);
+    expect(can("manager", "delete", { patients: { delete: "all" } })).toBe(
+      false,
+    );
+    expect(can("head", "archive")).toBe(true);
+    expect(can("manager", "archive")).toBe(false);
+    expect(can("manager", "archive", { patients: { delete: "all" } })).toBe(
+      true,
+    );
+    expect(can("head", "restore")).toBe(true);
+    expect(can("manager", "restore", { patients: { delete: "all" } })).toBe(
+      false,
+    );
+    expect(
+      canAccess("integrator", { resource: "patients", action: "archive" }),
+    ).toBe(false);
+  });
+
   it("never restricts the owner", () => {
     expect(
       canAccess(

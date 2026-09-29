@@ -710,7 +710,15 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/supabase/labPlusMethods.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/supabase/index.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/supabase/financeMethods.ts",
           "type": "registry:component"
         },
         {
@@ -806,6 +814,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/fakerest/labPlus.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/fakerest/labOrders.ts",
           "type": "registry:component"
         },
@@ -815,6 +827,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/importBatch.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/finance.ts",
           "type": "registry:component"
         },
         {
@@ -963,6 +979,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/index.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/finance.ts",
           "type": "registry:component"
         },
         {
@@ -1714,6 +1734,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/lab/labPlusMath.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/lab/labOrderPdf.ts",
           "type": "registry:component"
         },
@@ -1722,11 +1746,27 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/lab/labActPdf.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/lab/PatientLabOrders.tsx",
           "type": "registry:component"
         },
         {
           "path": "src/components/atomic-crm/lab/LabSettlement.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabRemakeDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabReconciliationDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabQuality.tsx",
           "type": "registry:component"
         },
         {
@@ -1742,11 +1782,19 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/lab/LabOrderHistory.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/lab/LabOrderDialog.tsx",
           "type": "registry:component"
         },
         {
           "path": "src/components/atomic-crm/lab/LabOrderCard.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabFittingVisit.tsx",
           "type": "registry:component"
         },
         {
@@ -1823,6 +1871,50 @@
         },
         {
           "path": "src/components/atomic-crm/import/ImportPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/useFinance.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/financeTable.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/financeMath.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/TransactionDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/PnlTab.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/ModelTab.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/FinanceParts.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/FinancePage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/CashFlowTab.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/finance/ArticlesTab.tsx",
           "type": "registry:component"
         },
         {

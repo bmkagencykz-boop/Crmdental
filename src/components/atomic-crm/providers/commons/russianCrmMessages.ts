@@ -5624,6 +5624,11 @@ export const russianCrmMessages: CrmMessages = {
     },
   },
   cash_out: {
+    plan_item: {
+      doctor: "Врач",
+      default: "%{name} (по этапу)",
+      none: "По этапу",
+    },
     kind: "Расход",
     action: "Расход",
     tab: "Расходы",

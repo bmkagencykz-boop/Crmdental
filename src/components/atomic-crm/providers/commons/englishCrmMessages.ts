@@ -5597,6 +5597,11 @@ export const englishCrmMessages = {
     },
   },
   cash_out: {
+    plan_item: {
+      doctor: "Doctor",
+      default: "%{name} (by stage)",
+      none: "By stage",
+    },
     kind: "Expense",
     action: "Expense",
     tab: "Expenses",

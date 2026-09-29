@@ -832,7 +832,8 @@ $$;
 revoke all on function public.report_lab_settlement(date) from public, anon;
 grant execute on function public.report_lab_settlement(date) to authenticated, service_role;
 
--- 29_treatment_plans.sql: a duplicated plan keeps the doctor of its items
+-- 29_treatment_plans.sql: a duplicated plan keeps the doctor of its items;
+-- the doctor of an item in the audit log
 CREATE OR REPLACE FUNCTION "public"."duplicate_treatment_plan"("source_plan_id" bigint) RETURNS bigint
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -875,6 +876,10 @@ begin
   return new_plan_id;
 end;
 $$;
+
+create or replace trigger audit_treatment_plan_item
+    after insert or update or delete on public.treatment_plan_items
+    for each row execute function private.audit_row('treatment_plan_item', 'name,stage_no,tooth,quantity,unit_price,discount_percent,done,doctor_id');
 
 -- 15_audit.sql: the new clinic setting in the audit log
 create or replace trigger audit_settings

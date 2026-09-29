@@ -615,7 +615,7 @@ create or replace trigger audit_treatment_plan
 
 create or replace trigger audit_treatment_plan_item
     after insert or update or delete on public.treatment_plan_items
-    for each row execute function private.audit_row('treatment_plan_item', 'name,stage_no,tooth,quantity,unit_price,discount_percent,done');
+    for each row execute function private.audit_row('treatment_plan_item', 'name,stage_no,tooth,quantity,unit_price,discount_percent,done,doctor_id');
 
 create or replace trigger audit_service
     after insert or update or delete on public.services

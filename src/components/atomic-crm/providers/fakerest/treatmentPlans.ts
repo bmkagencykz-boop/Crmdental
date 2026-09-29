@@ -27,6 +27,7 @@ import type {
 import type {
   AuditLogEntry,
   Deal,
+  Doctor,
   OrganizationSettings,
   Sale,
   Service,
@@ -393,6 +394,13 @@ export const createTreatmentDemo = ({
       : undefined;
     const name = next.name?.trim() || service?.name;
     if (!name) throw new Error("Укажите название позиции");
+    // The doctor of the item (else the stage's, the plan's): of the clinic
+    if (
+      next.doctor_id != null &&
+      !(await all<Doctor>("doctors")).some((d) => same(d.id, next.doctor_id))
+    ) {
+      throw new Error("Врач не найден");
+    }
     const role = await myRole();
     if (!copying && !canExceedLimits(role)) {
       if (
@@ -518,6 +526,8 @@ export const createTreatmentDemo = ({
                 unit_price: item.unit_price,
                 discount_percent: item.discount_percent,
                 position: item.position,
+                // The item's own doctor (stage 39, editable since stage 42)
+                doctor_id: item.doctor_id ?? null,
                 done: false,
               },
             });

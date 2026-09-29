@@ -795,6 +795,18 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
       if (data.avatar) data.avatar = unsignFile(data.avatar);
       return { ...params, data };
     },
+    // Stage 41: the medical data is stored in patient_medical (the patients
+    // row keeps null): the saved patient is read back from the summary
+    afterCreate: async (result, dataProvider) => ({
+      ...result,
+      data: (await dataProvider.getOne("patients", { id: result.data.id }))
+        .data,
+    }),
+    afterUpdate: async (result, dataProvider) => ({
+      ...result,
+      data: (await dataProvider.getOne("patients", { id: result.data.id }))
+        .data,
+    }),
   },
   {
     resource: "audit_log",

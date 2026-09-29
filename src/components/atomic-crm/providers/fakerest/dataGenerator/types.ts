@@ -9,6 +9,15 @@ import type {
   LabPayment,
 } from "../../../lab/types";
 import type { AdSpend } from "../../../marketing/types";
+import type {
+  FinanceAccount,
+  FinanceArticle,
+  FinanceMethodAccount,
+  FinanceModel,
+  FinanceModelLine,
+  FinanceModelMonth,
+  FinanceTransaction,
+} from "../../../finance/types";
 import type { Branch, SalesBranch } from "../../../branches/branches";
 import type { Identifier } from "ra-core";
 import type {
@@ -235,6 +244,16 @@ export interface Db {
   lab_order_items: LabOrderItem[];
   lab_order_item_prices: LabOrderItemPrice[];
   // Money going out of the cash desk (stage 42)
-  cash_expense_categories: CashExpenseCategory[];
+  cash_expense_categories: (CashExpenseCategory & {
+    article_id?: Identifier | null;
+  })[];
   lab_payments: LabPayment[];
+  // Finance (stage 44)
+  finance_accounts: FinanceAccount[];
+  finance_articles: FinanceArticle[];
+  finance_method_accounts: (FinanceMethodAccount & { id: string })[];
+  finance_transactions: FinanceTransaction[];
+  finance_models: FinanceModel[];
+  finance_model_months: FinanceModelMonth[];
+  finance_model_lines: FinanceModelLine[];
 }

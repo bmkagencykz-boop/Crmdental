@@ -131,6 +131,7 @@ import { createPayrollDemo } from "./payroll";
 import { createWaitingListDemo } from "./waitingList";
 import { createLabOrdersDemo } from "./labOrders";
 import { createCashOutflowsDemo } from "./cashOutflows";
+import { createFinanceDemo } from "./finance";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -455,6 +456,18 @@ export const createDataProvider = ({
     getDataProvider: () => dataProvider,
     logAudit: (row) => logAudit(row),
     cancelLinkedExpense: (opId) => paymentsDemo.cancelLinkedExpense(opId),
+  });
+  // Finance: ДДС, ПиУ, the financial model (stage 44)
+  const financeDemo = createFinanceDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
+    reportsAllowed: async () =>
+      (await accessDemo.methods.getMyAccessRights())?.rights.reports.view ===
+      "all",
+    payrollLines: (month) => payrollDemo.monthLines(month),
+    labCosts: () => labDemo.views.lab_order_costs(),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -966,6 +979,7 @@ export const createDataProvider = ({
     ...patientCardDemo.methods,
     ...payrollDemo.methods,
     ...cashOutDemo.methods,
+    ...financeDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1911,6 +1925,8 @@ export const createDataProvider = ({
       // Lab work orders (stage 40): numbers, links, statuses, prices, rights
       ...labDemo.callbacks,
       ...cashOutDemo.callbacks,
+      // Finance (stage 44): rights, rules, the transactions of payouts
+      ...financeDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

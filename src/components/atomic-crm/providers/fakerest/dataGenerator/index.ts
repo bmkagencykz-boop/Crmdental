@@ -28,6 +28,7 @@ import { generatePayroll } from "./payroll";
 import { generateWaitingList } from "./waitingList";
 import { generateLabOrders } from "./labOrders";
 import { generateCashOutflows } from "./cashOutflows";
+import { generateFinance } from "./finance";
 import { generateDataSafety } from "./dataSafety";
 import type { Db } from "./types";
 
@@ -77,6 +78,8 @@ export default (): Db => {
   // Expenses, the advance from the cash desk, lab payments (stage 42):
   // after the payments, the payroll and the lab orders
   generateCashOutflows(db);
+  // Finance (stage 44): accounts, articles, a year of history, the models
+  generateFinance(db);
   // Data safety (stage 41): card numbers, the archive — last
   generateDataSafety(db);
   db.configuration = [

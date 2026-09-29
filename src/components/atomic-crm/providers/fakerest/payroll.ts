@@ -514,5 +514,19 @@ export const createPayrollDemo = ({
     },
   };
 
-  return { methods, callbacks };
+  /**
+   * The lines of a month, frozen when it is closed
+   * (private.payroll_month_lines): the finance P&L (stage 44) reads them
+   */
+  const monthLines = async (month: string) => {
+    const closing = await closingOf(month);
+    if (closing) {
+      return (await all<PayrollClosedLine>("payroll_closed_lines")).filter(
+        (line) => line.month === closing.month,
+      );
+    }
+    return computePayrollLines(await inputFor(monthStart(month)));
+  };
+
+  return { methods, callbacks, monthLines };
 };

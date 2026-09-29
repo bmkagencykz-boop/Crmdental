@@ -959,7 +959,7 @@ begin
       when model.investment_amount = 0 then null
       when payback is not null then payback
       when after_count > 0 and after_sum > 0 then
-        after_count + ceil((model.investment_amount - payback_cum) / (after_sum::numeric / after_count))::integer
+        after_count + ceil((model.investment_amount - payback_cum)::numeric * after_count / after_sum)::integer
     end,
     'payback_in_horizon', payback is not null);
 end;

@@ -20,6 +20,7 @@ import { accent } from "../misc/accent";
 import { NoteCreate } from "../notes/NoteCreate";
 import { NotesIterator } from "../notes/NotesIterator";
 import { PatientAccountBlock } from "../payments/PatientAccountBlock";
+import { PatientLabOrders } from "../lab/PatientLabOrders";
 import { usePaymentRights } from "../payments/usePayments";
 import { PatientAside } from "../patients/PatientAside";
 import { PatientCalls } from "../patients/PatientCalls";
@@ -196,6 +197,8 @@ const OverviewTab = ({
         >
           <PatientDeals deals={deals} />
         </Card>
+        {/* Lab work orders (stage 40) */}
+        <PatientLabOrders patientId={patient.id} />
         <Card title={translate("resources.notes.name", { smart_count: 2 })}>
           <InfiniteListBase
             resource="patient_notes"

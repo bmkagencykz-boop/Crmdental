@@ -1,0 +1,570 @@
+--
+-- Stage 38: the waiting list «Лист ожидания».
+-- Same statements as supabase/schemas/38_waiting_list.sql, plus the
+-- notification kind waiting_list_slot (16_notifications.sql) and the audit
+-- log linking the entries to their patient (15_audit.sql).
+--
+
+--
+-- Notification kind waiting_list_slot (16_notifications.sql)
+--
+
+alter table public.notifications drop constraint notifications_kind_check;
+alter table public.notifications add constraint notifications_kind_check
+    check (kind in ('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot'));
+alter table public.notification_preferences drop constraint notification_preferences_kinds_check;
+alter table public.notification_preferences add constraint notification_preferences_kinds_check
+    check (kinds <@ array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot']);
+alter table public.notification_preferences alter column kinds set default array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot'];
+
+CREATE OR REPLACE FUNCTION "public"."get_notification_preferences"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  me bigint := private.current_sales_id();
+  prefs public.notification_preferences;
+begin
+  if me is null then
+    raise exception 'Not an employee' using errcode = '42501';
+  end if;
+  select * into prefs from public.notification_preferences p where p.sales_id = me;
+  return jsonb_build_object(
+    'kinds', to_jsonb(coalesce(prefs.kinds, array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot'])),
+    'browser_enabled', coalesce(prefs.browser_enabled, false),
+    'telegram_enabled', coalesce(prefs.telegram_enabled, true),
+    'telegram_linked', prefs.telegram_chat_id is not null,
+    'telegram_username', prefs.telegram_username,
+    'telegram_link_code', case when prefs.telegram_link_expires_at > now() then prefs.telegram_link_code end,
+    'telegram_link_expires_at', case when prefs.telegram_link_expires_at > now() then prefs.telegram_link_expires_at end
+  );
+end;
+$$;
+
+--
+-- The audit log: an entry without a deal is linked to its patient (15_audit.sql)
+--
+
+CREATE OR REPLACE FUNCTION "private"."audit_row"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  entity_name text := tg_argv[0];
+  fields text[] := string_to_array(tg_argv[1], ',');
+  old_row jsonb := case when tg_op <> 'INSERT' then to_jsonb(old) end;
+  new_row jsonb := case when tg_op <> 'DELETE' then to_jsonb(new) end;
+  row_data jsonb := coalesce(new_row, old_row);
+  org_id bigint := (row_data ->> 'organization_id')::bigint;
+  diff jsonb;
+  row_action text;
+  row_deal_id bigint;
+  row_patient_id bigint;
+  actor record;
+begin
+  -- Cascades, and settings written by other code (template of a new clinic)
+  if pg_trigger_depth() > 1
+    and (tg_op = 'DELETE' or entity_name in ('pipeline', 'stage', 'task_rule', 'checklist_item', 'settings'))
+  then
+    return null;
+  end if;
+  -- A row deleted with its parent (deal of a deleted patient, task of a
+  -- deleted deal, stage of a deleted pipeline, anything of a deleted clinic):
+  -- only the parent's deletion is logged
+  if tg_op = 'DELETE' and (
+    not exists (select 1 from public.organizations o where o.id = org_id)
+    or (entity_name in ('task', 'payment') and not exists (
+      select 1 from public.deals d where d.organization_id = org_id and d.id = (row_data ->> 'deal_id')::bigint))
+    or (entity_name = 'deal' and not exists (
+      select 1 from public.patients p where p.organization_id = org_id and p.id = (row_data ->> 'patient_id')::bigint))
+    or (entity_name = 'stage' and not exists (
+      select 1 from public.pipelines p where p.id = (row_data ->> 'pipeline_id')::bigint))
+    or (entity_name in ('checklist_item', 'task_rule') and row_data ->> 'stage_id' is not null and not exists (
+      select 1 from public.stages s where s.id = (row_data ->> 'stage_id')::bigint))
+  ) then
+    return null;
+  end if;
+
+  diff := private.audit_diff(old_row, new_row, fields);
+  if tg_op = 'UPDATE' and diff = '{}'::jsonb then
+    return null;
+  end if;
+
+  row_action := case tg_op when 'INSERT' then 'create' when 'DELETE' then 'delete' else 'update' end;
+  if entity_name = 'task' and tg_op = 'UPDATE' then
+    if diff ? 'done_date' then
+      row_action := case when new_row ->> 'done_date' is null then 'reopen' else 'complete' end;
+    elsif diff ? 'sales_id' and (select count(*) from jsonb_object_keys(diff)) = 1 then
+      row_action := 'reassign';
+    end if;
+  end if;
+
+  if entity_name = 'patient' then
+    row_patient_id := (row_data ->> 'id')::bigint;
+  elsif entity_name = 'deal' then
+    row_deal_id := (row_data ->> 'id')::bigint;
+    row_patient_id := (row_data ->> 'patient_id')::bigint;
+  elsif row_data ? 'deal_id' then
+    row_deal_id := (row_data ->> 'deal_id')::bigint;
+    select d.patient_id into row_patient_id
+    from public.deals d
+    where d.organization_id = org_id and d.id = row_deal_id;
+  end if;
+  -- Rows of a patient without a deal (account operations, stage 36; the
+  -- patient card, stage 37; the waiting list, stage 38)
+  if row_patient_id is null and entity_name in ('account_operation', 'patient_tooth', 'visit_record',
+    'patient_questionnaire', 'patient_consent', 'patient_file', 'waiting_list') then
+    row_patient_id := (row_data ->> 'patient_id')::bigint;
+  end if;
+
+  select * into actor from private.audit_actor(org_id);
+  if pg_trigger_depth() > 1 then
+    actor.actor_id := null;
+    actor.actor_source := 'automation';
+  end if;
+
+  insert into public.audit_log (organization_id, sales_id, source, entity, entity_id, action, changes, deal_id, patient_id)
+  values (org_id, actor.actor_id, actor.actor_source, entity_name, (row_data ->> 'id')::bigint,
+    row_action, diff, row_deal_id, row_patient_id);
+  return null;
+end;
+$$;
+
+--
+-- The waiting list «Лист ожидания» (stage 38), like the button of the same
+-- name in Dentist Plus: patients who want an earlier or a specific time
+-- than the schedule has free now.
+--
+--   public.waiting_list   an entry: the patient (and optionally the deal),
+--                         the doctor (null: any), the service or a free
+--                         «direction», the branch, the desired period
+--                         (date_from … date_to, open-ended when null), the
+--                         days of the week (ISO 1–7, empty: any), the time
+--                         of day (morning < 12:00 ≤ day < 16:00 ≤ evening,
+--                         empty: any) and/or an hour range, the length of
+--                         the visit, the priority (normal / urgent), a
+--                         comment, the responsible and the author.
+--                         Status: waiting → offered (a time was proposed to
+--                         the patient) → booked (visit_id: the visit made
+--                         from it) | cancelled.
+--
+-- The nearest free slots of an entry are computed by the app from the
+-- doctors' hours and the visits (waiting-list/waitingMatch.ts, which uses
+-- schedule/scheduleLayout.ts findFreeSlots).
+--
+-- Automatic matching: when an active future visit is cancelled, marked «не
+-- пришёл», deleted or moved away, its time is a freed slot; the entries
+-- that fit it (private.waiting_entry_fits, twin: waitingMatch.ts
+-- entryFitsSlot) — up to five, urgent and oldest first, never the patient
+-- of the freed visit — are highlighted (slot_* columns) and their
+-- responsible (else the author, else the owner and the heads) gets the
+-- notification «Освободилось время для листа ожидания». The employee then
+-- offers the time to the patient in the messenger (the app sends it through
+-- the usual messenger path) and books the visit; the patient's reply is
+-- handled by hand.
+--
+-- A visit linked to an entry and then cancelled (or deleted) puts the entry
+-- back to «ждёт».
+--
+-- Rights: an entry follows its patient and its deal (stage 30): whoever sees
+-- the patient (and the deal, when there is one) sees and edits the entry;
+-- the owner, the head or its author deletes it; the integrator sees
+-- nothing. The branch (stage 33) is the deal's, else the doctor's. Every
+-- change of the entry goes to the audit log (group «Пациенты»).
+--
+
+create table public.waiting_list (
+    id bigint generated by default as identity primary key,
+    organization_id bigint not null default private.current_organization_id(),
+    patient_id bigint not null,
+    deal_id bigint,
+    -- null: any doctor
+    doctor_id bigint,
+    service_id bigint,
+    -- A direction in words when there is no service («Имплантация»)
+    direction text,
+    branch_id bigint,
+    date_from date not null default CURRENT_DATE,
+    -- null: open-ended
+    date_to date,
+    -- ISO days of the week, 1 (Monday) … 7 (Sunday); empty: any day
+    weekdays smallint[] not null default '{}'::smallint[],
+    -- morning, day, evening; empty: any time
+    day_parts text[] not null default '{}'::text[],
+    -- An hour range of the start of the visit (both or none)
+    time_from time without time zone,
+    time_to time without time zone,
+    -- Length of the visit; null: the doctor's (or the service's) default
+    duration_minutes integer,
+    priority text not null default 'normal',
+    status text not null default 'waiting',
+    comment text,
+    -- The visit booked from the entry
+    visit_id bigint,
+    -- The responsible (notified of a freed slot) and the author
+    sales_id bigint,
+    created_by bigint,
+    -- The time offered to the patient
+    offered_at timestamp with time zone,
+    offered_by bigint,
+    offered_starts_at timestamp with time zone,
+    offered_doctor_id bigint,
+    -- A freed slot that fits the entry (automatic matching)
+    slot_starts_at timestamp with time zone,
+    slot_ends_at timestamp with time zone,
+    slot_doctor_id bigint,
+    slot_found_at timestamp with time zone,
+    status_changed_at timestamp with time zone not null default now(),
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    constraint waiting_list_status_check check (status in ('waiting', 'offered', 'booked', 'cancelled')),
+    constraint waiting_list_priority_check check (priority in ('normal', 'urgent')),
+    constraint waiting_list_period_check check (date_to is null or date_to >= date_from),
+    constraint waiting_list_weekdays_check check (weekdays <@ '{1,2,3,4,5,6,7}'::smallint[]),
+    constraint waiting_list_day_parts_check check (day_parts <@ array['morning', 'day', 'evening']),
+    constraint waiting_list_hours_check check ((time_from is null and time_to is null) or (time_from is not null and time_to is not null and time_to > time_from)),
+    constraint waiting_list_duration_check check (duration_minutes is null or duration_minutes between 5 and 720),
+    constraint waiting_list_comment_length_check check (comment is null or char_length(comment) <= 2000),
+    constraint waiting_list_direction_length_check check (direction is null or char_length(direction) <= 200)
+);
+
+alter table public.waiting_list add constraint waiting_list_organization_id_id_key unique (organization_id, id);
+
+alter table public.waiting_list
+    add constraint waiting_list_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
+alter table public.waiting_list
+    add constraint waiting_list_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+alter table public.waiting_list
+    add constraint waiting_list_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete set null (deal_id);
+alter table public.waiting_list
+    add constraint waiting_list_doctor_id_fkey foreign key (organization_id, doctor_id) references public.doctors(organization_id, id) on delete set null (doctor_id);
+alter table public.waiting_list
+    add constraint waiting_list_service_id_fkey foreign key (organization_id, service_id) references public.services(organization_id, id) on delete set null (service_id);
+alter table public.waiting_list
+    add constraint waiting_list_branch_id_fkey foreign key (organization_id, branch_id) references public.branches(organization_id, id) on delete set null (branch_id);
+alter table public.waiting_list
+    add constraint waiting_list_visit_id_fkey foreign key (organization_id, visit_id) references public.visits(organization_id, id) on delete set null (visit_id);
+alter table public.waiting_list
+    add constraint waiting_list_sales_id_fkey foreign key (organization_id, sales_id) references public.sales(organization_id, id) on delete set null (sales_id);
+alter table public.waiting_list
+    add constraint waiting_list_created_by_fkey foreign key (organization_id, created_by) references public.sales(organization_id, id) on delete set null (created_by);
+alter table public.waiting_list
+    add constraint waiting_list_offered_by_fkey foreign key (organization_id, offered_by) references public.sales(organization_id, id) on delete set null (offered_by);
+alter table public.waiting_list
+    add constraint waiting_list_offered_doctor_id_fkey foreign key (organization_id, offered_doctor_id) references public.doctors(organization_id, id) on delete set null (offered_doctor_id);
+alter table public.waiting_list
+    add constraint waiting_list_slot_doctor_id_fkey foreign key (organization_id, slot_doctor_id) references public.doctors(organization_id, id) on delete set null (slot_doctor_id);
+
+create index waiting_list_status_idx on public.waiting_list using btree (organization_id, status, created_at);
+create index waiting_list_patient_id_idx on public.waiting_list using btree (organization_id, patient_id);
+create index waiting_list_deal_id_idx on public.waiting_list using btree (organization_id, deal_id) where deal_id is not null;
+create index waiting_list_visit_id_idx on public.waiting_list using btree (organization_id, visit_id) where visit_id is not null;
+
+--
+-- Matching
+--
+
+-- The part of the day of a start (minutes after midnight): morning before
+-- 12:00, day before 16:00, evening after. Twin: waitingMatch.ts dayPartOf
+CREATE OR REPLACE FUNCTION "private"."waiting_day_part"("start_minute" integer) RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case when start_minute < 720 then 'morning' when start_minute < 960 then 'day' else 'evening' end;
+$$;
+
+-- An entry fits a slot [starts, ends) of a doctor: still waiting (or
+-- offered), the doctor (or any), the branch (or either one open), the day
+-- inside the period, the day of the week, the part of the day, the hour
+-- range (the start inside it), and a slot long enough. The day and the time
+-- are those of the clinic's time zone. Twin: waitingMatch.ts entryFitsSlot
+CREATE OR REPLACE FUNCTION "private"."waiting_entry_fits"("entry" "public"."waiting_list", "slot_doctor_id" bigint, "slot_starts_at" timestamp with time zone, "slot_ends_at" timestamp with time zone, "slot_branch_id" bigint, "time_zone" "text") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO ''
+    AS $$
+declare
+  local_start timestamp without time zone := slot_starts_at at time zone coalesce(nullif(time_zone, ''), 'Asia/Almaty');
+  local_day date := local_start::date;
+  start_minute integer := extract(hour from local_start)::integer * 60 + extract(minute from local_start)::integer;
+  slot_minutes numeric := extract(epoch from slot_ends_at - slot_starts_at) / 60;
+begin
+  if entry.status not in ('waiting', 'offered') then
+    return false;
+  end if;
+  if entry.doctor_id is not null and entry.doctor_id is distinct from slot_doctor_id then
+    return false;
+  end if;
+  if entry.branch_id is not null and slot_branch_id is not null and entry.branch_id <> slot_branch_id then
+    return false;
+  end if;
+  if local_day < entry.date_from or (entry.date_to is not null and local_day > entry.date_to) then
+    return false;
+  end if;
+  if cardinality(entry.weekdays) > 0 and not (extract(isodow from local_day)::smallint = any(entry.weekdays)) then
+    return false;
+  end if;
+  if cardinality(entry.day_parts) > 0 and not (private.waiting_day_part(start_minute) = any(entry.day_parts)) then
+    return false;
+  end if;
+  if entry.time_from is not null and (local_start::time < entry.time_from or local_start::time >= entry.time_to) then
+    return false;
+  end if;
+  if entry.duration_minutes is not null and entry.duration_minutes > slot_minutes then
+    return false;
+  end if;
+  return true;
+end;
+$$;
+
+-- The entries (visible to the employee) that fit a slot of a doctor, the
+-- urgent and the oldest first
+CREATE OR REPLACE FUNCTION "public"."waiting_list_matches"("slot_doctor_id" bigint, "slot_starts_at" timestamp with time zone, "slot_ends_at" timestamp with time zone) RETURNS SETOF "public"."waiting_list"
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO ''
+    AS $$
+declare
+  org_id bigint := private.current_organization_id();
+  zone text := (select o.timezone from public.organizations o where o.id = org_id);
+  doctor_branch bigint := (select d.branch_id from public.doctors d where d.organization_id = org_id and d.id = waiting_list_matches.slot_doctor_id);
+begin
+  return query
+  select w.* from public.waiting_list w
+  where w.organization_id = org_id
+    and private.waiting_entry_fits(w, waiting_list_matches.slot_doctor_id, waiting_list_matches.slot_starts_at,
+      waiting_list_matches.slot_ends_at, doctor_branch, zone)
+  order by (w.priority = 'urgent') desc, w.created_at, w.id;
+end;
+$$;
+
+-- A freed slot: the fitting entries (up to five, not the patient of the
+-- freed visit) are highlighted and their responsible is notified, once per
+-- entry and slot. Returns how many entries were highlighted.
+CREATE OR REPLACE FUNCTION "private"."waiting_list_slot_freed"("org_id" bigint, "slot_doctor_id" bigint, "slot_starts_at" timestamp with time zone, "slot_ends_at" timestamp with time zone, "slot_branch_id" bigint, "freed_patient_id" bigint) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  zone text := (select o.timezone from public.organizations o where o.id = org_id);
+  entry public.waiting_list;
+  recipient bigint;
+  recipients bigint[];
+  doctor_name text;
+  patient_name text;
+  found integer := 0;
+begin
+  if slot_starts_at <= now() then
+    return 0;
+  end if;
+  select d.name into doctor_name from public.doctors d
+  where d.organization_id = org_id and d.id = waiting_list_slot_freed.slot_doctor_id;
+  for entry in
+    select w.* from public.waiting_list w
+    where w.organization_id = org_id
+      and w.patient_id is distinct from freed_patient_id
+      and private.waiting_entry_fits(w, waiting_list_slot_freed.slot_doctor_id, waiting_list_slot_freed.slot_starts_at,
+        waiting_list_slot_freed.slot_ends_at, slot_branch_id, zone)
+      and not (w.slot_starts_at is not distinct from waiting_list_slot_freed.slot_starts_at
+        and w.slot_doctor_id is not distinct from waiting_list_slot_freed.slot_doctor_id)
+    order by (w.priority = 'urgent') desc, w.created_at, w.id
+    limit 5
+  loop
+    update public.waiting_list w
+    set slot_starts_at = waiting_list_slot_freed.slot_starts_at,
+        slot_ends_at = waiting_list_slot_freed.slot_ends_at,
+        slot_doctor_id = waiting_list_slot_freed.slot_doctor_id,
+        slot_found_at = now()
+    where w.organization_id = org_id and w.id = entry.id;
+    found := found + 1;
+
+    if current_setting('crm.notifications', true) is distinct from 'off' then
+      select coalesce(nullif(btrim(concat_ws(' ', p.last_name, p.first_name)), ''), p.phones[1], 'Пациент')
+      into patient_name
+      from public.patients p where p.organization_id = org_id and p.id = entry.patient_id;
+      recipients := case when coalesce(entry.sales_id, entry.created_by) is not null
+        then array[coalesce(entry.sales_id, entry.created_by)]
+        else private.clinic_managers(org_id) end;
+      foreach recipient in array recipients loop
+        perform private.add_notification(org_id, recipient, 'waiting_list_slot',
+          'Освободилось время для листа ожидания',
+          concat_ws(' · ', patient_name, private.schedule_time_label(org_id, waiting_list_slot_freed.slot_starts_at), doctor_name),
+          entry.deal_id, entry.patient_id, null);
+      end loop;
+    end if;
+  end loop;
+  return found;
+end;
+$$;
+
+--
+-- Triggers
+--
+
+-- Author, responsible, branch, the deal and the visit of the patient, the
+-- status dates; a linked visit books the entry, an unlinked one (the visit
+-- deleted) puts it back to «ждёт»
+CREATE OR REPLACE FUNCTION "private"."handle_waiting_list_before_write"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  deal public.deals;
+begin
+  if new.deal_id is not null and (tg_op = 'INSERT' or new.deal_id is distinct from old.deal_id) then
+    select * into deal from public.deals d
+    where d.organization_id = new.organization_id and d.id = new.deal_id;
+    if deal.id is not null and deal.patient_id <> new.patient_id then
+      raise exception 'Сделка другого пациента' using errcode = '22023', hint = 'waiting_list_deal_patient';
+    end if;
+  end if;
+  if new.visit_id is not null and (tg_op = 'INSERT' or new.visit_id is distinct from old.visit_id) then
+    if not exists (
+      select 1 from public.visits v
+      where v.organization_id = new.organization_id and v.id = new.visit_id and v.patient_id = new.patient_id
+    ) then
+      raise exception 'Запись другого пациента' using errcode = '22023', hint = 'waiting_list_visit_patient';
+    end if;
+    if new.status in ('waiting', 'offered') then
+      new.status := 'booked';
+    end if;
+  end if;
+
+  new.comment := nullif(btrim(new.comment), '');
+  new.direction := nullif(btrim(new.direction), '');
+  new.weekdays := array(select distinct x from unnest(new.weekdays) x order by x);
+  new.day_parts := array(select distinct x from unnest(new.day_parts) x order by x);
+
+  if tg_op = 'INSERT' then
+    new.created_by := coalesce(new.created_by, private.current_sales_id());
+    new.sales_id := coalesce(new.sales_id, deal.sales_id, private.current_sales_id());
+    if new.branch_id is null then
+      new.branch_id := coalesce(deal.branch_id, (
+        select d.branch_id from public.doctors d
+        where d.organization_id = new.organization_id and d.id = new.doctor_id));
+    end if;
+    new.created_at := now();
+    new.updated_at := now();
+    new.status_changed_at := now();
+  else
+    new.created_by := old.created_by;
+    new.created_at := old.created_at;
+    new.updated_at := now();
+    -- The booked visit was deleted (or unlinked): back to the list
+    if old.visit_id is not null and new.visit_id is null and new.status = 'booked' then
+      new.status := 'waiting';
+    end if;
+    if new.status is distinct from old.status then
+      new.status_changed_at := now();
+    end if;
+  end if;
+
+  if new.status = 'offered' and (tg_op = 'INSERT' or old.status is distinct from 'offered'
+    or new.offered_starts_at is distinct from old.offered_starts_at) then
+    new.offered_at := now();
+    new.offered_by := coalesce(private.current_sales_id(), new.offered_by);
+  end if;
+  -- A booked or cancelled entry has no slot to offer
+  if new.status in ('booked', 'cancelled') then
+    new.slot_starts_at := null;
+    new.slot_ends_at := null;
+    new.slot_doctor_id := null;
+    new.slot_found_at := null;
+  end if;
+  return new;
+end;
+$$;
+
+-- A freed slot of the schedule: an active future visit cancelled, missed,
+-- deleted or moved away. A cancelled visit booked from an entry puts the
+-- entry back to «ждёт».
+CREATE OR REPLACE FUNCTION "private"."handle_visit_waiting_list"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if current_setting('crm.importing', true) = 'on' then
+    return null;
+  end if;
+  if tg_op = 'UPDATE' and new.status = 'cancelled' and old.status <> 'cancelled' then
+    update public.waiting_list w
+    set visit_id = null, status = 'waiting'
+    where w.organization_id = new.organization_id and w.visit_id = new.id and w.status = 'booked';
+  end if;
+  if old.status in ('cancelled', 'no_show') or old.starts_at <= now() then
+    return null;
+  end if;
+  if tg_op = 'UPDATE' and new.status not in ('cancelled', 'no_show')
+    and new.doctor_id is not distinct from old.doctor_id
+    and tstzrange(new.starts_at, new.ends_at) && tstzrange(old.starts_at, old.ends_at) then
+    return null;
+  end if;
+  perform private.waiting_list_slot_freed(old.organization_id, old.doctor_id, old.starts_at, old.ends_at,
+    old.branch_id, old.patient_id);
+  return null;
+end;
+$$;
+
+create or replace trigger waiting_list_before_write
+    before insert or update on public.waiting_list
+    for each row execute function private.handle_waiting_list_before_write();
+
+create or replace trigger visit_waiting_list
+    after update or delete on public.visits
+    for each row execute function private.handle_visit_waiting_list();
+
+create or replace trigger audit_waiting_list
+    after insert or update or delete on public.waiting_list
+    for each row execute function private.audit_row('waiting_list', 'patient_id,deal_id,doctor_id,service_id,direction,branch_id,date_from,date_to,weekdays,day_parts,time_from,time_to,priority,status,visit_id,offered_starts_at,sales_id,comment');
+
+--
+-- Row Level Security: an entry follows its patient and its deal
+--
+
+alter table public.waiting_list enable row level security;
+
+create policy "Entries of visible patients can be read" on public.waiting_list for select to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) is distinct from 'integrator'
+        and exists (select 1 from public.patients p where p.organization_id = waiting_list.organization_id and p.id = waiting_list.patient_id)
+        and (deal_id is null or exists (select 1 from public.deals d where d.organization_id = waiting_list.organization_id and d.id = waiting_list.deal_id)));
+create policy "Staff can add entries of visible patients" on public.waiting_list for insert to authenticated
+    with check (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.patients p where p.organization_id = waiting_list.organization_id and p.id = waiting_list.patient_id)
+        and (deal_id is null or exists (select 1 from public.deals d where d.organization_id = waiting_list.organization_id and d.id = waiting_list.deal_id)));
+create policy "Staff can update entries of visible patients" on public.waiting_list for update to authenticated
+    using (organization_id = (select private.current_organization_id()) and (select private.current_user_role()) in ('owner', 'head', 'manager')
+        and exists (select 1 from public.patients p where p.organization_id = waiting_list.organization_id and p.id = waiting_list.patient_id)
+        and (deal_id is null or exists (select 1 from public.deals d where d.organization_id = waiting_list.organization_id and d.id = waiting_list.deal_id)))
+    with check (organization_id = (select private.current_organization_id())
+        and (deal_id is null or exists (select 1 from public.deals d where d.organization_id = waiting_list.organization_id and d.id = waiting_list.deal_id)));
+create policy "Owner, head or author can delete" on public.waiting_list for delete to authenticated
+    using (organization_id = (select private.current_organization_id())
+        and ((select private.current_user_role()) in ('owner', 'head') or ((select private.current_user_role()) = 'manager' and created_by = (select private.current_sales_id())))
+        and exists (select 1 from public.patients p where p.organization_id = waiting_list.organization_id and p.id = waiting_list.patient_id)
+        and (deal_id is null or exists (select 1 from public.deals d where d.organization_id = waiting_list.organization_id and d.id = waiting_list.deal_id)));
+
+--
+-- Grants
+--
+
+revoke all on table public.waiting_list from anon;
+grant select, insert, update, delete on table public.waiting_list to authenticated;
+grant all on table public.waiting_list to service_role;
+revoke all on sequence public.waiting_list_id_seq from anon;
+grant usage on sequence public.waiting_list_id_seq to authenticated;
+grant all on sequence public.waiting_list_id_seq to service_role;
+
+revoke all on function public.waiting_list_matches(bigint, timestamp with time zone, timestamp with time zone) from public, anon;
+grant execute on function public.waiting_list_matches(bigint, timestamp with time zone, timestamp with time zone) to authenticated, service_role;
+revoke all on function private.waiting_list_slot_freed(bigint, bigint, timestamp with time zone, timestamp with time zone, bigint, bigint) from public, anon, authenticated;
+grant execute on function private.waiting_list_slot_freed(bigint, bigint, timestamp with time zone, timestamp with time zone, bigint, bigint) to service_role;
+revoke all on function private.handle_waiting_list_before_write() from public, anon, authenticated;
+revoke all on function private.handle_visit_waiting_list() from public, anon, authenticated;
+
+
+--
+-- Data
+--
+
+-- Employees who saved their preferences receive the new kind too
+update public.notification_preferences
+set kinds = array_append(kinds, 'waiting_list_slot')
+where not 'waiting_list_slot' = any(kinds);

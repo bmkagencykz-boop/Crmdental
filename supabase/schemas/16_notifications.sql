@@ -12,6 +12,8 @@
 --   response_overdue  a patient waits for an answer longer than the clinic's
 --                     limit (working minutes), once per waiting episode, and
 --                     once more to the owner and heads at 3x the limit
+--   waiting_list_slot a freed slot of the schedule fits an entry of the
+--                     waiting list I am responsible for (stage 38)
 -- Bulk writes (imports, migrations) can switch the triggers off for their
 -- transaction: set local crm.notifications = 'off'.
 -- pg_cron runs private.notifications_tick() every minute (overdue tasks and
@@ -76,7 +78,7 @@ create table public.notifications (
     telegram_claimed_at timestamp with time zone,
     telegram_sent_at timestamp with time zone,
     constraint notifications_kind_check
-        check (kind in ('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule')),
+        check (kind in ('lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot')),
     constraint notifications_telegram_status_check
         check (telegram_status in ('sending', 'sent', 'skipped', 'failed'))
 );
@@ -86,7 +88,7 @@ create table public.notifications (
 create table public.notification_preferences (
     sales_id bigint primary key,
     organization_id bigint not null,
-    kinds text[] not null default array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule'],
+    kinds text[] not null default array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot'],
     browser_enabled boolean not null default false,
     telegram_enabled boolean not null default true,
     -- Linked with /start <code> sent to the platform bot
@@ -97,7 +99,7 @@ create table public.notification_preferences (
     telegram_link_expires_at timestamp with time zone,
     updated_at timestamp with time zone not null default now(),
     constraint notification_preferences_kinds_check
-        check (kinds <@ array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule'])
+        check (kinds <@ array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot'])
 );
 
 -- response_overdue already sent: level 1 at the limit, level 2 at 3x the
@@ -704,7 +706,7 @@ begin
   end if;
   select * into prefs from public.notification_preferences p where p.sales_id = me;
   return jsonb_build_object(
-    'kinds', to_jsonb(coalesce(prefs.kinds, array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule'])),
+    'kinds', to_jsonb(coalesce(prefs.kinds, array['lead_assigned', 'patient_message', 'task_overdue', 'response_overdue', 'bot_handoff', 'visit_reschedule', 'waiting_list_slot'])),
     'browser_enabled', coalesce(prefs.browser_enabled, false),
     'telegram_enabled', coalesce(prefs.telegram_enabled, true),
     'telegram_linked', prefs.telegram_chat_id is not null,

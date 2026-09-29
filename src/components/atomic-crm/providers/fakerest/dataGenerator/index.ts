@@ -25,6 +25,7 @@ import { generatePriceList } from "./priceList";
 import { generatePayments } from "./payments";
 import { generatePatientCard } from "./patientCard";
 import { generatePayroll } from "./payroll";
+import { generateWaitingList } from "./waitingList";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -65,6 +66,8 @@ export default (): Db => {
   generatePatientCard(db);
   // Payroll (stage 39): after the plans, the visits and the payments
   generatePayroll(db);
+  // The waiting list (stage 38): after the visits and the notifications
+  generateWaitingList(db);
   db.configuration = [
     {
       id: 1,

@@ -18,6 +18,7 @@ import { toHm } from "../schedule/scheduleLayout";
 import type { Visit } from "../schedule/types";
 import { useScheduleSettings } from "../schedule/useSchedule";
 import { VisitDialog } from "../schedule/VisitDialog";
+import { AddToWaitingListButton } from "../waiting-list/WaitingListBlock";
 import { addDays, todayKey } from "../tasks/calendarLayout";
 import { useClinicTimeZone } from "../tasks/useClinicTimeZone";
 import { usePlanRights } from "../treatment/useTreatmentPlans";
@@ -251,6 +252,17 @@ export const PatientHeader = ({
             </Link>
           </Button>
         ) : null}
+        {/* «В лист ожидания» (stage 38) */}
+        <AddToWaitingListButton
+          draft={{
+            patient_id: patient.id,
+            deal_id: lastDeal && !lastDeal.archived_at ? lastDeal.id : null,
+            doctor_id: doctorId,
+            service_id: lastDeal?.service_id ?? null,
+            branch_id: lastDeal?.branch_id ?? null,
+          }}
+          className="bg-background"
+        />
         <Button variant="ghost" asChild>
           <Link to={`/patients/${patient.id}`}>
             {translate("patient_card.header.actions.edit")}

@@ -1,6 +1,7 @@
 import { InboxPage } from "../messages/InboxPage";
 import { TasksPage } from "../tasks/TasksPage";
 import { SchedulePage } from "../schedule/SchedulePage";
+import { WaitingListPage } from "../waiting-list/WaitingListPage";
 import { AuditPage } from "../audit/AuditPage";
 import { ReportsPage } from "../reports/ReportsPage";
 import { PriceListPage } from "../price-list/PriceListPage";
@@ -227,6 +228,7 @@ const DesktopAdmin = (
         <Route path={ChangelogPage.path} element={<ChangelogPage />} />
         <Route path={TasksPage.path} element={<TasksPage />} />
         <Route path={SchedulePage.path} element={<SchedulePage />} />
+        <Route path={WaitingListPage.path} element={<WaitingListPage />} />
         <Route path={InboxPage.path} element={<InboxPage />} />
         <Route path={ReportsPage.path} element={<ReportsPage />} />
         <Route path={PriceListPage.path} element={<PriceListPage />} />

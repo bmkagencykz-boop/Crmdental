@@ -74,6 +74,10 @@ import { VisitDialog, type VisitDraft } from "./VisitDialog";
 import { StatusGlyph } from "./StatusGlyph";
 import { inBranch } from "../branches/branches";
 import { useCurrentBranch } from "../branches/useBranches";
+import {
+  useWaitingCount,
+  useWaitingRights,
+} from "../waiting-list/useWaitingList";
 
 const useNow = () => {
   const [now, setNow] = useState(() => new Date());
@@ -128,6 +132,9 @@ export const SchedulePage = () => {
 
   const { hours: clinic, misKind } = useScheduleSettings();
   const readOnly = !!misKind;
+  // «Лист ожидания (N)» (stage 38)
+  const waitingRights = useWaitingRights();
+  const waiting = useWaitingCount(waitingRights.canUse);
   const { data: doctors } = useDoctors();
   const { data: chairs } = useChairs();
   const { data: services } = useServices();
@@ -587,6 +594,22 @@ export const SchedulePage = () => {
               <SettingsGlyph className="size-4" />
             </Link>
           </Button>
+          {waitingRights.canUse ? (
+            <Button
+              asChild
+              variant="outline"
+              className={cn(
+                "h-9 px-4",
+                waiting.freed > 0 && "bg-neon text-neon-ink hover:bg-neon/90",
+              )}
+            >
+              <Link to="/waiting-list" data-testid="schedule-waiting-list">
+                {translate("waiting_list.schedule_button", {
+                  count: waiting.total,
+                })}
+              </Link>
+            </Button>
+          ) : null}
           <Button
             className="h-9 px-5 font-semibold"
             disabled={readOnly}

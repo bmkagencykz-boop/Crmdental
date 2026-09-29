@@ -26,6 +26,8 @@ export type NavItem = {
   badge?: number;
   /** What the counter counts (screen readers, tooltip) */
   badgeLabel?: string;
+  /** Pink counter: something needs attention (a freed slot, stage 38) */
+  badgeAccent?: boolean;
 };
 
 /**

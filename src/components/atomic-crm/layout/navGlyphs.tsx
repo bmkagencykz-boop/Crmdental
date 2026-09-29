@@ -149,3 +149,12 @@ export const PayrollGlyph = glyph(
     <path d="M17.5 16.1v2.8" />
   </>,
 );
+
+/** Лист ожидания: a list and a clock */
+export const WaitingListGlyph = glyph(
+  <>
+    <path d="M3.5 5.5h9M3.5 10h6.5M3.5 14.5h4.5" />
+    <circle cx="16" cy="15.5" r="5" />
+    <path d="M16 12.75v2.75l1.9 1.4" />
+  </>,
+);

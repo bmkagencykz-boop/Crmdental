@@ -126,6 +126,8 @@ export const AUDIT_ENTITY_GROUPS = {
     "patient_questionnaire",
     "patient_consent",
     "patient_file",
+    // The waiting list (stage 38)
+    "waiting_list",
   ],
   payment: ["payment", "account_operation", "cash_shift"],
   task: ["task"],
@@ -358,17 +360,19 @@ export const describeAuditChanges = (
                               _: String(value),
                             }),
                     }
-                  : entity === "treatment_plan" && field === "status"
-                    ? {
-                        label: translate("treatment.audit.fields.status"),
-                        format: (value: unknown) =>
-                          value == null
-                            ? EMPTY
-                            : translate(`treatment.statuses.${value}`, {
-                                _: String(value),
-                              }),
-                      }
-                    : null);
+                  : entity === "waiting_list"
+                    ? waitingListChange(field, translate)
+                    : entity === "treatment_plan" && field === "status"
+                      ? {
+                          label: translate("treatment.audit.fields.status"),
+                          format: (value: unknown) =>
+                            value == null
+                              ? EMPTY
+                              : translate(`treatment.statuses.${value}`, {
+                                  _: String(value),
+                                }),
+                        }
+                      : null);
       // Fields of the treatment plans and the patient card (stage 29)
       const label =
         special?.label ??
@@ -385,7 +389,10 @@ export const describeAuditChanges = (
                     _: translate(`patient_card.audit.fields.${field}`, {
                       // The payroll (stage 39)
                       _: translate(`payroll.audit.fields.${field}`, {
-                        _: field,
+                        // The waiting list (stage 38)
+                        _: translate(`waiting_list.audit.fields.${field}`, {
+                          _: field,
+                        }),
                       }),
                     }),
                   }),
@@ -404,6 +411,34 @@ export const describeAuditChanges = (
         return `${label}: ${format(before)}`;
       return `${label}: ${format(before)} → ${format(after)}`;
     });
+
+/**
+ * Fields of an entry of the waiting list (stage 38) with their own values:
+ * status, priority, days of the week, parts of the day
+ */
+const waitingListChange = (field: string, translate: Translate) => {
+  const choice = (key: string) => (value: unknown) =>
+    value == null
+      ? EMPTY
+      : translate(key.replace("*", String(value)), { _: String(value) });
+  const list = (key: string) => (value: unknown) =>
+    Array.isArray(value) && value.length
+      ? value.map((item) => choice(key)(item)).join(", ")
+      : translate("waiting_list.any");
+  const format =
+    field === "status"
+      ? choice("waiting_list.statuses.*")
+      : field === "priority"
+        ? choice("waiting_list.priorities.*")
+        : field === "weekdays"
+          ? list("waiting_list.weekdays_short.*")
+          : field === "day_parts"
+            ? list("waiting_list.day_parts.*")
+            : null;
+  return format
+    ? { label: translate(`waiting_list.audit.fields.${field}`), format }
+    : null;
+};
 
 /** Fields of an account operation (stage 36): its kind, method, parts */
 const operationChange = (field: string, translate: Translate) => ({
@@ -492,17 +527,19 @@ export const auditEntityLabel = (
                 ? translate(`payroll.audit.${entry.entity}`)
                 : PAYMENT_ENTITIES.includes(entry.entity)
                   ? translate(`payments.audit.${entry.entity}`)
-                  : PATIENT_CARD_ENTITIES.includes(entry.entity)
-                    ? translate(`patient_card.audit.${entry.entity}`)
-                    : SCHEDULE_ENTITIES.includes(entry.entity)
-                      ? translate(`schedule.audit.${entry.entity}`)
-                      : PLAN_EDITOR_ENTITIES.includes(entry.entity)
-                        ? translate(`plan_editor.audit.${entry.entity}`)
-                        : TREATMENT_ENTITIES.includes(entry.entity)
-                          ? translate(`treatment.audit.${entry.entity}`)
-                          : translate(`audit.entities.${entry.entity}`, {
-                              _: entry.entity,
-                            });
+                  : entry.entity === "waiting_list"
+                    ? translate("waiting_list.audit.entity")
+                    : PATIENT_CARD_ENTITIES.includes(entry.entity)
+                      ? translate(`patient_card.audit.${entry.entity}`)
+                      : SCHEDULE_ENTITIES.includes(entry.entity)
+                        ? translate(`schedule.audit.${entry.entity}`)
+                        : PLAN_EDITOR_ENTITIES.includes(entry.entity)
+                          ? translate(`plan_editor.audit.${entry.entity}`)
+                          : TREATMENT_ENTITIES.includes(entry.entity)
+                            ? translate(`treatment.audit.${entry.entity}`)
+                            : translate(`audit.entities.${entry.entity}`, {
+                                _: entry.entity,
+                              });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -516,6 +553,7 @@ export const auditEntityLabel = (
         (entry.deal_id != null ? `#${entry.deal_id}` : undefined);
       break;
     case "account_operation":
+    case "waiting_list":
     case "visit_record":
     case "patient_questionnaire":
       name = entry.patient_name ?? undefined;

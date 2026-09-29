@@ -24,6 +24,7 @@ import type {
   VisitRecordTemplate,
 } from "../../../patient-card/types";
 import type { DeveloperApp } from "../../../integrations/types";
+import type { WaitingEntry } from "../../../waiting-list/types";
 import type { AccessRightsRow } from "../../../access-rights/accessRights";
 import type {
   AuditLogEntry,
@@ -209,4 +210,6 @@ export interface Db {
   payroll_adjustments: PayrollAdjustment[];
   payroll_months: PayrollMonthRow[];
   payroll_closed_lines: PayrollClosedLine[];
+  // The waiting list (stage 38)
+  waiting_list: WaitingEntry[];
 }

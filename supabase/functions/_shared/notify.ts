@@ -1,3 +1,4 @@
+import { secureEqual } from "./secureCompare.ts";
 /**
  * Employee notifications in Telegram (stage 16): one platform-wide bot
  * (NOTIFY_TELEGRAM_BOT_TOKEN), used by the edge functions
@@ -12,7 +13,10 @@ export type NotificationKind =
   | "patient_message"
   | "task_overdue"
   | "response_overdue"
-  | "bot_handoff";
+  | "bot_handoff"
+  | "visit_reschedule"
+  | "waiting_list_slot"
+  | "lab_order";
 
 /** A notification to send, as returned by public.claim_telegram_notifications */
 export type ClaimedNotification = {
@@ -31,6 +35,9 @@ const KIND_ICONS: Record<NotificationKind, string> = {
   task_overdue: "⏰",
   response_overdue: "🔥",
   bot_handoff: "🤝",
+  visit_reschedule: "📅",
+  waiting_list_slot: "🕒",
+  lab_order: "🦷",
 };
 
 /** Telegram HTML parse mode: only &, < and > must be escaped */
@@ -45,6 +52,27 @@ export const dealUrl = (
   const base = appUrl?.trim().replace(/\/+$/, "");
   if (!base || dealId == null) return null;
   return `${base}/deals/${dealId}/show`;
+};
+
+/**
+ * Where a notification leads: the waiting list and the lab have their own
+ * pages (as the bell of the app), the others open their deal
+ */
+export const notificationLink = (
+  appUrl: string | null | undefined,
+  kind: NotificationKind,
+  dealId: number | null | undefined,
+) => {
+  const base = appUrl?.trim().replace(/\/+$/, "");
+  if (!base) return null;
+  if (kind === "waiting_list_slot") {
+    return { url: `${base}/waiting-list`, label: "Открыть лист ожидания" };
+  }
+  if (kind === "lab_order") {
+    return { url: `${base}/lab`, label: "Открыть лабораторию" };
+  }
+  const url = dealUrl(base, dealId);
+  return url ? { url, label: "Открыть сделку" } : null;
 };
 
 /** Telegram refuses messages longer than 4096 characters */
@@ -83,9 +111,13 @@ export const formatTelegramNotification = (
   if (notification.clinic_name?.trim()) {
     lines.push(`<i>${escapeHtml(notification.clinic_name.trim())}</i>`);
   }
-  const url = dealUrl(appUrl, notification.notification_deal_id);
-  if (url) {
-    lines.push(`<a href="${escapeHtml(url)}">Открыть сделку</a>`);
+  const link = notificationLink(
+    appUrl,
+    notification.notification_kind,
+    notification.notification_deal_id,
+  );
+  if (link) {
+    lines.push(`<a href="${escapeHtml(link.url)}">${link.label}</a>`);
   }
   return lines.join("\n");
 };
@@ -167,7 +199,7 @@ export const botReply = (
 export const isWebhookAuthorized = (
   header: string | null,
   secret: string | null | undefined,
-) => !!secret && !!header && header === secret;
+) => !!secret && !!header && secureEqual(header, secret);
 
 /**
  * Telegram answered that the chat cannot receive messages any more (the

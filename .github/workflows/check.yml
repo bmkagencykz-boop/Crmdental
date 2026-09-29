@@ -93,6 +93,13 @@ jobs:
             - name: 🔎 Unit Tests on Supabase functions
               run: CI=1 npm run test:unit:functions -- --run
 
+            - name: 🦕 Setup Deno
+              uses: denoland/setup-deno@v2
+              with:
+                  deno-version: v2.x
+            - name: 🔎 Typecheck Supabase functions
+              run: npm run typecheck:functions
+
     test-db:
         name: 🗄️ Database & RLS tests
         runs-on: ubuntu-latest

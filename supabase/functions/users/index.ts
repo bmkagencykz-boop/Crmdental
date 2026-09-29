@@ -199,21 +199,22 @@ async function inviteUser(req: Request, currentUserSale: any) {
     }
 
     user = data[0];
+    if (!user) {
+      return createErrorResponse(500, "Internal Server Error");
+    }
     try {
       const { data: existingSale, error: salesError } = await supabaseAdmin
         .from("sales")
         .select("*")
         .eq("user_id", user.id);
       if (salesError) {
-        return createErrorResponse(salesError.status, salesError.message, {
+        return createErrorResponse(500, salesError.message, {
           code: salesError.code,
         });
       }
       if (existingSale.length > 0) {
-        return createErrorResponse(
-          400,
-          "A sales for this email already exists",
-        );
+        // Never tell which clinic the address belongs to
+        return createErrorResponse(400, "This email cannot be invited");
       }
 
       const sale = await createSale(
@@ -249,7 +250,7 @@ async function inviteUser(req: Request, currentUserSale: any) {
   } else {
     if (userError) {
       console.error(`Error inviting user: user_error=${userError}`);
-      return createErrorResponse(userError.status, userError.message, {
+      return createErrorResponse(userError.status ?? 500, userError.message, {
         code: userError.code,
       });
     }
@@ -266,6 +267,9 @@ async function inviteUser(req: Request, currentUserSale: any) {
     }
   }
 
+  if (!user) {
+    return createErrorResponse(500, "Internal Server Error");
+  }
   try {
     const asOwner = supabaseAdminAs(currentUserSale.id);
     await updateSaleDisabled(user.id, disabled, asOwner);
@@ -471,6 +475,7 @@ Deno.serve(async (req: Request) =>
   OptionsMiddleware(req, async (req) =>
     AuthMiddleware(req, async (req) =>
       UserMiddleware(req, async (req, user) => {
+        if (!user) return createErrorResponse(401, "Unauthorized");
         const currentUserSale = await getUserSale(user);
         if (!currentUserSale || currentUserSale.disabled) {
           return createErrorResponse(401, "Unauthorized");

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { notificationLink, describe, expect, it } from "vitest";
 import {
   botReply,
   dealUrl,
@@ -7,6 +7,7 @@ import {
   formatTelegramNotification,
   isChatGone,
   isWebhookAuthorized,
+  notificationLink,
   parseBotUpdate,
 } from "./notify";
 
@@ -169,5 +170,24 @@ describe("isChatGone", () => {
     expect(isChatGone(400, "Bad Request: chat not found")).toBe(true);
     expect(isChatGone(400, "Bad Request: message is too long")).toBe(false);
     expect(isChatGone(429)).toBe(false);
+  });
+});
+
+describe("notificationLink", () => {
+  it("leads the waiting list and the lab to their pages, the rest to the deal", () => {
+    expect(
+      notificationLink("https://crm.kz/#/", "waiting_list_slot", null),
+    ).toEqual({
+      url: "https://crm.kz/#/waiting-list",
+      label: "Открыть лист ожидания",
+    });
+    expect(notificationLink("https://crm.kz/#", "lab_order", 7)?.url).toBe(
+      "https://crm.kz/#/lab",
+    );
+    expect(
+      notificationLink("https://crm.kz/#", "visit_reschedule", 7)?.url,
+    ).toBe("https://crm.kz/#/deals/7/show");
+    expect(notificationLink("https://crm.kz", "task_overdue", null)).toBeNull();
+    expect(notificationLink(null, "lab_order", null)).toBeNull();
   });
 });

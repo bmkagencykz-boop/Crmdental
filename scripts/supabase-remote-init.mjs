@@ -6,7 +6,7 @@ import fs from "node:fs";
   await loginToSupabase();
   const projectName = await input({
     message: "Enter the name of the project:",
-    default: "Atomic CRM",
+    default: "DentalCRM",
   });
   const databasePassword = await input({
     message: "Enter a database password:",
@@ -39,10 +39,20 @@ import fs from "node:fs";
     databasePassword,
   });
 
+  // The keys of the scheduled jobs: the database (Vault) calls the edge
+  // functions with them, the functions check them (see docs/DEPLOY.md)
+  const dispatchKeys = {
+    automessages: generatePassword(40),
+    notifications: generatePassword(40),
+  };
+
   await setupSupabaseSecrets({
     projectRef,
     publishableKey,
+    dispatchKeys,
   });
+
+  writeVaultSetup({ projectRef, dispatchKeys });
 
   await persistSupabaseEnv({
     projectRef,
@@ -227,7 +237,7 @@ async function setupDatabase({ databasePassword }) {
       "push",
       "--linked",
       "--include-roles",
-      "--include-seed",
+      // Never --include-seed: seed.sql holds demo clinics with a known password
       "--password",
       databasePassword,
     ],
@@ -289,7 +299,11 @@ async function fetchApiKeys({ projectRef }) {
   return { publishableKey };
 }
 
-async function setupSupabaseSecrets({ projectRef, publishableKey }) {
+async function setupSupabaseSecrets({
+  projectRef,
+  publishableKey,
+  dispatchKeys,
+}) {
   await execa(
     "npx",
     [
@@ -297,12 +311,37 @@ async function setupSupabaseSecrets({ projectRef, publishableKey }) {
       "secrets",
       "set",
       `SB_PUBLISHABLE_KEY=${publishableKey}`,
+      `AUTOMESSAGES_DISPATCH_KEY=${dispatchKeys.automessages}`,
+      `NOTIFICATIONS_DISPATCH_KEY=${dispatchKeys.notifications}`,
+      `WEBHOOK_BASE_URL=https://${projectRef}.supabase.co/functions/v1`,
       "--project-ref",
       projectRef,
     ],
     {
       stdio: "inherit",
     },
+  );
+}
+
+/**
+ * The Vault secrets the scheduled jobs read: written to a local SQL file
+ * (ignored by git) to run once in the SQL editor of the project
+ */
+function writeVaultSetup({ projectRef, dispatchKeys }) {
+  const file = `${process.cwd()}/supabase/.temp/vault-setup.sql`;
+  fs.mkdirSync(`${process.cwd()}/supabase/.temp`, { recursive: true });
+  fs.writeFileSync(
+    file,
+    `-- Run once in the SQL editor of the project, then delete this file
+select vault.create_secret('https://${projectRef}.supabase.co', 'project_url');
+select vault.create_secret('${dispatchKeys.automessages}', 'automessages_dispatch_key');
+select vault.create_secret('${dispatchKeys.notifications}', 'notifications_dispatch_key');
+`,
+    { mode: 0o600 },
+  );
+  console.warn(
+    `\nVault: run ${file} in the SQL editor of the project, then delete it.` +
+      "\nThe rest of the setup (Telegram bot, app address, SMTP): docs/DEPLOY.md\n",
   );
 }
 

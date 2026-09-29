@@ -81,6 +81,8 @@ enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
+# Passwords of clinic staff: at least 8 characters
+minimum_password_length = 8
 # Development signing keys
 signing_keys_path = "./signing_keys.json"
 
@@ -99,16 +101,17 @@ double_confirm_changes = true
 enable_confirmations = false
 
 [auth.email.template.invite]
-subject = "You've been invited to Atomic CRM"
+subject = "Приглашение в DentalCRM"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.recovery]
-subject = "Reset your Atomic CRM Password"
+subject = "Восстановление пароля DentalCRM"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
-enable_signup = true
+# Clinics sign up with an email only
+enable_signup = false
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users

@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) =>
         }
 
         const result = await testConnection(
-          ADAPTERS[body.kind],
+          ADAPTERS[body.kind as keyof typeof ADAPTERS],
           connection,
           (url, init) =>
             fetch(url, { ...init, signal: AbortSignal.timeout(15_000) }),

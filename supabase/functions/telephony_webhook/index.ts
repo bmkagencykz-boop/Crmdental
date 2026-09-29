@@ -48,7 +48,12 @@ Deno.serve(async (req) => {
   }
   if (!integration) return new Response("Unknown token", { status: 401 });
 
-  const provider = address.provider ?? integration.provider;
+  // The clinic's provider decides the signature check: the address can
+  // name it (some PBXs need it in the URL) but never switch it
+  if (address.provider && address.provider !== integration.provider) {
+    return new Response("Provider mismatch", { status: 400 });
+  }
+  const provider = integration.provider;
   if (!isProvider(provider)) {
     return new Response("Unknown provider", { status: 400 });
   }

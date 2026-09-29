@@ -301,7 +301,7 @@ export const sendToPatient = async ({
           transport: lastMessage.data.transport,
           chat_id: lastMessage.data.chat_id,
           channel_external_id: (
-            lastMessage.data.messenger_channels as {
+            lastMessage.data.messenger_channels as unknown as {
               external_id: string;
             } | null
           )?.external_id,

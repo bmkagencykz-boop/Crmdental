@@ -362,7 +362,8 @@ export const createPaymentsDemo = ({
   };
 
   const views: Record<string, () => Promise<any[]>> = {
-    account_operations_summary: operationsSummary,
+    // account_operations_summary: the demo adapter reads it as the table
+    account_operations: operationsSummary,
     patient_accounts: patientAccounts,
     treatment_plan_payments: planPayments,
     cash_shifts: visibleShifts,

@@ -96,6 +96,19 @@ describe("demo payments", () => {
     expect(db.cash_shifts.filter((s) => !s.closed_at)).toHaveLength(1);
   });
 
+  it("reads the journal with the names, like the SQL view", async () => {
+    const { dataProvider } = setup();
+    const rows = await list<Record<string, unknown>>(
+      dataProvider,
+      "account_operations_summary",
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => typeof row.patient_name === "string")).toBe(
+      true,
+    );
+    expect(rows.some((row) => row.cashier_name)).toBe(true);
+  });
+
   it("has debtors", async () => {
     const { dataProvider } = setup();
     const debtors = await list<PatientAccount>(

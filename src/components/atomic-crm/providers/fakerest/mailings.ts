@@ -125,7 +125,7 @@ export const createMailingDemo = ({
       previousData: record,
     });
 
-  /** Same as private.cancel of the pending rows of a patient or a mailing */
+  /** Cancels the pending rows of a patient or a mailing, as the SQL does */
   const cancelPending = async (
     match: (row: MailingMessage) => boolean,
     reason: string,

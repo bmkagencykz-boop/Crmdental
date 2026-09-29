@@ -164,7 +164,7 @@ alter table public.cash_shifts add constraint cash_shifts_organization_id_id_key
 alter table public.account_operations
     add constraint account_operations_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.account_operations
-    add constraint account_operations_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint account_operations_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.account_operations
     add constraint account_operations_sales_id_fkey foreign key (organization_id, sales_id) references public.sales(organization_id, id) on delete set null (sales_id);
 alter table public.account_operations
@@ -172,7 +172,7 @@ alter table public.account_operations
 alter table public.account_operations
     add constraint account_operations_shift_id_fkey foreign key (organization_id, shift_id) references public.cash_shifts(organization_id, id) on delete set null (shift_id);
 alter table public.account_operations
-    add constraint account_operations_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete set null (deal_id);
+    add constraint account_operations_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete restrict;
 alter table public.account_operations
     add constraint account_operations_plan_id_fkey foreign key (organization_id, plan_id) references public.treatment_plans(organization_id, id) on delete set null (plan_id);
 alter table public.account_operations

@@ -459,13 +459,13 @@ alter table public.patient_consents add constraint patient_consents_organization
 alter table public.patient_teeth
     add constraint patient_teeth_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.patient_teeth
-    add constraint patient_teeth_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint patient_teeth_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.patient_teeth
     add constraint patient_teeth_updated_by_fkey foreign key (organization_id, updated_by) references public.sales(organization_id, id) on delete set null (updated_by);
 alter table public.patient_tooth_history
     add constraint patient_tooth_history_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.patient_tooth_history
-    add constraint patient_tooth_history_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint patient_tooth_history_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.patient_tooth_history
     add constraint patient_tooth_history_sales_id_fkey foreign key (organization_id, sales_id) references public.sales(organization_id, id) on delete set null (sales_id);
 alter table public.patient_tooth_history
@@ -473,7 +473,7 @@ alter table public.patient_tooth_history
 alter table public.visit_records
     add constraint visit_records_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.visit_records
-    add constraint visit_records_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint visit_records_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.visit_records
     add constraint visit_records_visit_id_fkey foreign key (organization_id, visit_id) references public.visits(organization_id, id) on delete set null (visit_id);
 alter table public.visit_records
@@ -491,7 +491,7 @@ alter table public.visit_record_templates
 alter table public.patient_questionnaires
     add constraint patient_questionnaires_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.patient_questionnaires
-    add constraint patient_questionnaires_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint patient_questionnaires_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.patient_questionnaires
     add constraint patient_questionnaires_updated_by_fkey foreign key (organization_id, updated_by) references public.sales(organization_id, id) on delete set null (updated_by);
 alter table public.consent_templates
@@ -499,13 +499,13 @@ alter table public.consent_templates
 alter table public.patient_files
     add constraint patient_files_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.patient_files
-    add constraint patient_files_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint patient_files_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.patient_files
     add constraint patient_files_sales_id_fkey foreign key (organization_id, sales_id) references public.sales(organization_id, id) on delete set null (sales_id);
 alter table public.patient_consents
     add constraint patient_consents_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.patient_consents
-    add constraint patient_consents_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint patient_consents_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.patient_consents
     add constraint patient_consents_template_id_fkey foreign key (organization_id, template_id) references public.consent_templates(organization_id, id) on delete set null (template_id);
 alter table public.patient_consents
@@ -563,10 +563,11 @@ begin
     or (new.state is not distinct from old.state and new.note is not distinct from old.note)) then
     return null;
   end if;
-  -- Deleted with the patient (or the clinic): nothing to tell
-  if tg_op = 'DELETE' and not exists (
+  -- Deleted with the patient (or the clinic), or given way to the kept
+  -- patient's own tooth in a merge (stage 41): nothing to tell
+  if tg_op = 'DELETE' and (current_setting('crm.patient_merge', true) = 'on' or not exists (
     select 1 from public.patients p where p.organization_id = old.organization_id and p.id = old.patient_id
-  ) then
+  )) then
     return null;
   end if;
   insert into public.patient_tooth_history (organization_id, patient_id, tooth, state_before, state, note_before, note, sales_id, source, plan_item_id)

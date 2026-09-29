@@ -133,7 +133,7 @@ alter table public.treatment_plans
 alter table public.treatment_plans
     add constraint treatment_plans_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete cascade;
 alter table public.treatment_plans
-    add constraint treatment_plans_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint treatment_plans_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.treatment_plans
     add constraint treatment_plans_doctor_id_fkey foreign key (organization_id, doctor_id) references public.doctors(organization_id, id) on delete set null (doctor_id);
 alter table public.treatment_plans

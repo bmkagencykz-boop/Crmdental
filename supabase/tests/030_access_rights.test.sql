@@ -61,10 +61,10 @@ select tests.login_as(current_setting('t.m1')::uuid);
 select tests.assert(
   (select public.my_access_rights() -> 'rights') = '{
     "deals": {"view": "all", "create": "all", "edit": "all", "delete": "none", "export": "all"},
-    "patients": {"view": "all", "create": "all", "edit": "all", "delete": "all", "export": "all"},
+    "patients": {"view": "all", "create": "all", "edit": "all", "delete": "none", "export": "all"},
     "tasks": {"view": "all", "create": "all", "edit": "all", "delete": "all", "export": "all"},
     "reports": {"view": "none"}}'::jsonb,
-  'defaults: a manager works with everything, deletes no deal, has no reports');
+  'defaults: a manager works with everything, deletes (archives) no deal and no patient (stage 41), has no reports');
 select tests.assert((select public.my_access_rights() ->> 'customized') = 'false', 'defaults: not customized');
 select tests.assert(tests.count('select * from public.deals') = 3, 'defaults: a manager sees every deal');
 select tests.assert(tests.count('select * from public.tasks') = 4, 'defaults: every task');

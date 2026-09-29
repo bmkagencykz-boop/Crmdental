@@ -89,6 +89,7 @@ declare
   id_number bigint;
   phrase text;
   is_phone boolean;
+  iin_value text;
   result_patients jsonb;
   result_deals jsonb;
   result_tasks jsonb;
@@ -104,6 +105,9 @@ begin
   is_phone := raw !~ '[^0-9\s()+-]';
   if raw ~ '^[#№]\s*[0-9]{1,18}$' or (raw ~ '^[0-9]{1,6}$') then
     id_number := regexp_replace(raw, '[^0-9]', '', 'g')::bigint;
+  end if;
+  if regexp_replace(raw, '[\s-]', '', 'g') ~ '^[0-9]{12}$' then
+    iin_value := regexp_replace(raw, '[\s-]', '', 'g');
   end if;
   if is_phone then
     phone_digits := regexp_replace(raw, '[^0-9]', '', 'g');
@@ -134,12 +138,21 @@ begin
     select p.*,
       private.patient_search_name(p.last_name, p.first_name, p.middle_name) as search_name,
       (select min(r.external_id) from public.external_refs r
-       where r.organization_id = p.organization_id and r.entity = 'patient' and r.entity_id = p.id) as card
+       where r.organization_id = p.organization_id and r.entity = 'patient' and r.entity_id = p.id) as card,
+      (iin_value is not null and exists (
+        select 1 from public.patient_medical m
+        where m.organization_id = p.organization_id and m.patient_id = p.id and m.iin = iin_value)) as iin_match
     from public.patients p
     where p.organization_id = org_id
+      -- Archived patients (stage 41) are found on the patient list's «Архив»
+      and p.archived_at is null
       and (
         (phone_digits is not null and private.phones_search_digits(p.phones) like '%' || phone_digits || '%')
         or (id_number is not null and p.id = id_number)
+        -- The IIN (stage 41): row level security keeps it from the integrator
+        or (iin_value is not null and exists (
+          select 1 from public.patient_medical m
+          where m.organization_id = p.organization_id and m.patient_id = p.id and m.iin = iin_value))
         or exists (
           select 1 from public.external_refs r
           where r.organization_id = p.organization_id and r.entity = 'patient'
@@ -162,6 +175,7 @@ begin
         when exact_phone is not null and exact_phone = any(f.phones) then 0
         when id_number is not null and f.id = id_number then 1
         when f.card = raw then 1
+        when f.iin_match then 1
         when cardinality(name_words) > 0 and btrim(f.search_name) = array_to_string(name_words, ' ') then 2
         when cardinality(name_words) > 0 and f.search_name like ' ' || name_words[1] || '%' then 3
         when cardinality(name_words) > 0 then 4

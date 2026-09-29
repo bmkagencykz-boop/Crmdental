@@ -113,8 +113,9 @@ begin
   if user_role = 'integrator' then
     return case when action = 'view' and entity <> 'reports' then 'all' else 'none' end;
   end if;
-  -- Manager (administrator)
-  if entity = 'reports' or (entity = 'deals' and action = 'delete') then
+  -- Manager (administrator). Stage 41: the patients «delete» right (moving
+  -- a patient to the archive) is the owner's choice, none by default
+  if entity = 'reports' or (entity in ('deals', 'patients') and action = 'delete') then
     return 'none';
   end if;
   if entity = 'deals' and action in ('view', 'edit') then

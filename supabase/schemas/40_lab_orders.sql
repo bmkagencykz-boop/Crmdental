@@ -262,7 +262,7 @@ alter table public.doctors
 alter table public.lab_orders
     add constraint lab_orders_organization_id_fkey foreign key (organization_id) references public.organizations(id) on delete cascade;
 alter table public.lab_orders
-    add constraint lab_orders_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete cascade;
+    add constraint lab_orders_patient_id_fkey foreign key (organization_id, patient_id) references public.patients(organization_id, id) on delete restrict;
 alter table public.lab_orders
     add constraint lab_orders_deal_id_fkey foreign key (organization_id, deal_id) references public.deals(organization_id, id) on delete set null (deal_id);
 alter table public.lab_orders

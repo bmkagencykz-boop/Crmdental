@@ -262,6 +262,12 @@ begin
   where t.organization_id = org_id and t.deal_id = lead_row.id;
   update public.deal_payments p set deal_id = target_row.id
   where p.organization_id = org_id and p.deal_id = lead_row.id;
+  -- Ledger rows of the lead without a deal payment (stage 41: a deal with
+  -- ledger rows is not deleted)
+  perform set_config('crm.ledger_sync', 'system', true);
+  update public.account_operations o set deal_id = target_row.id, patient_id = target_row.patient_id
+  where o.organization_id = org_id and o.deal_id = lead_row.id;
+  perform set_config('crm.ledger_sync', '', true);
   update public.lead_submissions s set deal_id = target_row.id, patient_id = target_row.patient_id
   where s.organization_id = org_id and s.deal_id = lead_row.id;
   update public.notifications n set deal_id = target_row.id, patient_id = target_row.patient_id
@@ -354,12 +360,15 @@ $$;
 --   chat        a Telegram or Instagram chat id or username (the patient's
 --               handles and chats; Telegram through Wazzup24 and the
 --               clinic's bot are one messenger);
---   name_birth  full name (last and first name at least) and birth date.
+--   name_birth  full name (last and first name at least) and birth date;
+--   iin         the IIN (stage 41, public.patient_medical).
 -- Runs with the caller's rights (RLS of patients and patient_chats).
 CREATE OR REPLACE FUNCTION "private"."patient_match_keys"("org_id" bigint, "only_patient_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("patient_id" bigint, "kind" "text", "match_key" "text")
-    LANGUAGE "sql" STABLE
+    LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
     AS $$
+begin
+  return query
   select p.id, 'phone', n.number
   from public.patients p
     cross join lateral unnest(p.phones) as n(number)
@@ -395,6 +404,12 @@ CREATE OR REPLACE FUNCTION "private"."patient_match_keys"("org_id" bigint, "only
     and p.birth_date is not null
     and nullif(btrim(p.last_name), '') is not null
     and nullif(btrim(p.first_name), '') is not null
+  union
+  select m.patient_id, 'iin', m.iin
+  from public.patient_medical m
+  where m.organization_id = org_id and (only_patient_id is null or m.patient_id = only_patient_id)
+    and m.iin is not null;
+end;
 $$;
 
 -- Possible duplicates of a patient, with what they share (phone, chat,
@@ -496,6 +511,9 @@ declare
   reference record;
   actor record;
   merged_label text;
+  keep_medical record;
+  merge_medical record;
+  merged_iin text;
 begin
   if keep_id is not distinct from merge_id then
     raise exception 'Выберите двух разных пациентов' using errcode = '22023';
@@ -532,6 +550,29 @@ begin
       where k.mailing_id = m.mailing_id and k.patient_id = keep_id
     );
 
+  -- The medical data (stage 41: IIN, allergies, contraindications, chronic
+  -- diseases): nothing is lost, the kept patient's IIN wins
+  select * into keep_medical from public.patient_medical m where m.organization_id = org_id and m.patient_id = keep_id;
+  select * into merge_medical from public.patient_medical m where m.organization_id = org_id and m.patient_id = merge_id;
+  if merge_medical.patient_id is not null then
+    delete from public.patient_medical m where m.organization_id = org_id and m.patient_id = merge_id;
+    merged_iin := coalesce(keep_medical.iin, merge_medical.iin);
+    insert into public.patient_medical (organization_id, patient_id, iin, iin_duplicate, allergies, contraindications,
+      chronic_diseases, updated_by)
+    values (org_id, keep_id, merged_iin,
+      merged_iin is not null and exists (
+        select 1 from public.patient_medical o
+        where o.organization_id = org_id and o.iin = merged_iin and o.patient_id <> keep_id and not o.iin_duplicate),
+      private.merge_note_text(keep_medical.allergies, merge_medical.allergies),
+      private.merge_note_text(keep_medical.contraindications, merge_medical.contraindications),
+      private.merge_note_text(keep_medical.chronic_diseases, merge_medical.chronic_diseases),
+      private.current_sales_id())
+    on conflict (patient_id) do update
+    set iin = excluded.iin, iin_duplicate = excluded.iin_duplicate, allergies = excluded.allergies,
+        contraindications = excluded.contraindications, chronic_diseases = excluded.chronic_diseases,
+        updated_at = now(), updated_by = excluded.updated_by;
+  end if;
+
   -- The visits of the MIS move with their patient
   perform set_config('crm.visit_sync', 'on', true);
   for reference in
@@ -552,7 +593,13 @@ begin
   update public.external_refs r set entity_id = keep_id
   where r.organization_id = org_id and r.entity = 'patient' and r.entity_id = merge_id;
 
+  -- The rows that gave way to the kept patient's own (a tooth, the
+  -- questionnaire): the medical rows no longer cascade (stage 41)
+  perform set_config('crm.patient_merge', 'on', true);
+  delete from public.patient_teeth t where t.organization_id = org_id and t.patient_id = merge_id;
+  delete from public.patient_questionnaires q where q.organization_id = org_id and q.patient_id = merge_id;
   delete from public.patients p where p.organization_id = org_id and p.id = merge_id;
+  perform set_config('crm.patient_merge', '', true);
 
   update public.patients p
   set first_name = case when take_name then merge_row.first_name else keep_row.first_name end,
@@ -581,10 +628,6 @@ begin
       last_seen = greatest(keep_row.last_seen, merge_row.last_seen),
       messaging_opt_out = keep_row.messaging_opt_out or merge_row.messaging_opt_out,
       messaging_opt_out_at = coalesce(keep_row.messaging_opt_out_at, merge_row.messaging_opt_out_at),
-      -- The light patient card (stage 29): nothing medical is lost
-      allergies = private.merge_note_text(keep_row.allergies, merge_row.allergies),
-      contraindications = private.merge_note_text(keep_row.contraindications, merge_row.contraindications),
-      chronic_diseases = private.merge_note_text(keep_row.chronic_diseases, merge_row.chronic_diseases),
       preferred_doctor_id = coalesce(keep_row.preferred_doctor_id, merge_row.preferred_doctor_id)
   where p.organization_id = org_id and p.id = keep_id;
 

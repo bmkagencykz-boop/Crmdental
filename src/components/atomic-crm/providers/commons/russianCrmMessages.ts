@@ -3539,6 +3539,19 @@ export const russianCrmMessages: CrmMessages = {
       prepayment: "предоплата %{amount}",
       paid_total: "оплачено %{amount}",
     },
+    menu: {
+      payment: "Принять оплату",
+      arrived: "Пациент пришёл",
+      confirm: "Подтвердить запись",
+      edit: "Редактировать визит",
+      record: "Заполнить лечение",
+      patient: "Карточка пациента",
+      move: "Перенести запись",
+      rebook: "Записать повторно",
+      no_show: "Не пришёл",
+      cancel: "Отменить запись",
+      cancel_confirm: "Точно отменить? Нажмите ещё раз",
+    },
   },
   treatment: {
     tab: "План лечения",
@@ -4216,7 +4229,6 @@ export const russianCrmMessages: CrmMessages = {
       open: "Открыть прайс",
     },
   },
-  // Payments, deposits and the cash desk (stage 36)
   payments: {
     report: {
       title: "Поступления по способам оплаты",

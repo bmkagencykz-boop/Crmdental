@@ -137,16 +137,37 @@ test.describe("schedule", () => {
     await expect(page.getByText(/Visit moved/).first()).toBeVisible();
     await expect(block).toContainText("11:00");
 
-    // The popover: «Пришёл»
+    // The menu of the visit, like Dentist Plus: «Пациент пришёл»
     await block.click();
-    const details = page.getByTestId("visit-details");
-    await expect(details).toContainText("Ivanov Ivan");
-    await details.getByRole("button", { name: "Arrived" }).click();
+    const menu = page.getByTestId("visit-details");
+    await expect(menu).toContainText("Akhmetov Daulet");
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Take a payment",
+      "Patient arrived",
+      "Confirm the visit",
+      "Edit the visit",
+      "Fill in the treatment",
+      "Patient card",
+      "Reschedule",
+      "Book again",
+      "Did not come",
+      "Cancel the visit",
+    ]);
+    await menu.getByRole("menuitem", { name: "Patient arrived" }).click();
     await expect(page.getByText("Status: Arrived").first()).toBeVisible();
     await expect(block).toHaveAttribute("data-status", "arrived");
 
+    // «Записать повторно»: a new visit of the same patient a week later
+    await block.click();
+    await menu.getByRole("menuitem", { name: "Book again" }).click();
+    const again = page.getByRole("dialog");
+    await expect(again.getByText("New visit").first()).toBeVisible();
+    await expect(again).toContainText("Akhmetov Daulet");
+    await page.keyboard.press("Escape");
+
     // The deal moved on
-    await details.getByRole("link", { name: "Open the deal" }).click();
+    await block.click();
+    await menu.getByRole("link", { name: "Open the deal" }).click();
     await expect(
       page
         .getByRole("main")

@@ -430,6 +430,12 @@ export const generateTreatmentPlans = (db: Db) => {
   // Consultations: two variants shown to the patient on the first deal,
   // a draft on the next one
   pick("Пришёл на консультацию", 2).forEach((deal, index) => {
+    // The first one is an implant (three stages on tooth 36), the second a
+    // therapy (caries, «T-01»), whatever the random data gave
+    const direction = db.services.find(
+      (s) => s.name === (index === 0 ? "Имплантация" : "Терапия"),
+    );
+    if (direction) deal.service_id = direction.id;
     const template = TEMPLATES[serviceName(deal)] ?? TEMPLATES.Терапия;
     if (index === 0) {
       addPlan(deal, "Вариант эконом", "presented", template.economy, {

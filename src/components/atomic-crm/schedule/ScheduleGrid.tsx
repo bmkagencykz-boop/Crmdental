@@ -3,6 +3,7 @@ import { useTranslate, type Identifier } from "ra-core";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
@@ -28,7 +29,9 @@ import {
   type Hours,
 } from "./scheduleLayout";
 import type { BusySlot, Visit } from "./types";
-import { VisitDetails } from "./VisitDetails";
+import { VisitMenu, type VisitMenuAction } from "./VisitMenu";
+import { PaymentDialog } from "../payments/PaymentDialog";
+import { VisitRecordDialog } from "../patient-card/VisitRecordDialog";
 import { StatusGlyph } from "./StatusGlyph";
 import { formatTime } from "./visitStyles";
 
@@ -80,6 +83,8 @@ type GridProps = {
   onCreate: (column: GridColumn, minute: number) => void;
   onMove: (visit: Visit, column: GridColumn, minute: number) => void;
   onEdit: (visit: Visit) => void;
+  /** «Записать повторно»: a new visit of the same patient, doctor, service */
+  onRebook: (visit: Visit) => void;
 };
 
 const readDrag = (event: React.DragEvent) => {
@@ -140,6 +145,7 @@ export const ScheduleGrid = ({
   onCreate,
   onMove,
   onEdit,
+  onRebook,
 }: GridProps) => {
   const translate = useTranslate();
   const rows = slotCount(range);
@@ -318,6 +324,7 @@ export const ScheduleGrid = ({
                       now={now}
                       readOnly={readOnly}
                       onEdit={onEdit}
+                      onRebook={onRebook}
                       rows={box.height}
                       style={{
                         top: box.top * SLOT_HEIGHT + 1,
@@ -364,6 +371,7 @@ const VisitBlock = ({
   now,
   readOnly,
   onEdit,
+  onRebook,
   rows,
   style,
 }: {
@@ -373,146 +381,193 @@ const VisitBlock = ({
   now: Date;
   readOnly: boolean;
   onEdit: (visit: Visit) => void;
+  onRebook: (visit: Visit) => void;
   /** Height in 15-minute rows */
   rows: number;
   style: CSSProperties;
 }) => {
   const translate = useTranslate();
   const [open, setOpen] = useState(false);
+  const [dialog, setDialog] = useState<"payment" | "record" | null>(null);
+  // The menu opens where the block was clicked, like a context menu
+  const [point, setPoint] = useState({ x: 0, y: 0 });
   const name = patientDisplayName(info.patient) || "…";
   const unconfirmed = isUnconfirmedTomorrow(visit, now, timeZone);
   const draggable = !readOnly && visit.source === "crm";
   const color = isRefused(visit) ? "#E5484D" : info.color;
   const time = `${formatTime(visit.starts_at, timeZone)} – ${formatTime(visit.ends_at, timeZone)}`;
+  const act = (action: VisitMenuAction) => {
+    setOpen(false);
+    if (action === "edit") onEdit(visit);
+    else if (action === "rebook") onRebook(visit);
+    else setDialog(action);
+  };
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <TooltipPrimitive.Root open={open ? false : undefined}>
-        <PopoverTrigger asChild>
-          <TooltipPrimitive.Trigger asChild>
-            <button
-              type="button"
-              draggable={draggable}
-              onDragStart={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData(
-                  DRAG_TYPE,
-                  JSON.stringify({
-                    id: String(visit.id),
-                    offset: event.clientY - rect.top,
-                  }),
-                );
-              }}
-              data-testid="visit-block"
-              data-visit-id={visit.id}
-              data-status={visit.status}
-              className={cn(
-                "absolute z-10 flex flex-col overflow-hidden rounded-sm border border-l-4 py-1 pr-5 pl-1.5 text-left text-foreground transition-shadow hover:z-30 hover:shadow-soft",
-                draggable && "cursor-grab active:cursor-grabbing",
-                visit.status === "cancelled" && "z-0 opacity-75",
-                visit.status === "completed" && "opacity-80",
-              )}
-              style={{
-                ...style,
-                borderColor: `color-mix(in oklab, ${color} 45%, transparent)`,
-                borderLeftColor: color,
-                backgroundColor: `color-mix(in oklab, ${color} 7%, var(--card))`,
-                backgroundImage: `repeating-linear-gradient(135deg, color-mix(in oklab, ${color} 11%, transparent) 0 9px, transparent 9px 18px)`,
-              }}
-            >
-              <span className="flex min-w-0 items-center gap-1.5">
-                <StatusGlyph
-                  status={visit.status}
-                  className="size-4 shrink-0"
-                />
-                <span
-                  className={cn(
-                    "truncate text-[13px] leading-tight font-semibold",
-                    visit.status === "cancelled" && "line-through",
-                  )}
-                >
-                  {name}
-                </span>
-                {unconfirmed ? (
-                  <span
-                    className="size-2 shrink-0 rounded-full bg-warn"
-                    aria-label={translate("schedule.grid.unconfirmed")}
-                  />
-                ) : null}
-              </span>
-              {rows >= 2 ? (
-                <span className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-5.5 text-[11.5px] leading-tight text-muted-foreground tabular-nums">
-                  <span className="shrink-0">{time}</span>
-                  {info.firstVisit ? (
-                    <span
-                      className="shrink-0 rounded-sm border border-destructive px-0.5 text-[9.5px] leading-[13px] font-bold text-destructive"
-                      title={translate("schedule.markers.first")}
-                      data-testid="visit-first"
-                    >
-                      {translate("schedule.markers.first_short")}
-                    </span>
-                  ) : null}
-                  {(info.paid ?? 0) > 0 || (info.prepayment ?? 0) > 0 ? (
-                    <span
-                      className="shrink-0 text-[12.5px] font-extrabold text-[#1F9D55] dark:text-[#3FCF7F]"
-                      title={translate("schedule.markers.paid")}
-                      data-testid="visit-paid"
-                    >
-                      ₸
-                    </span>
-                  ) : null}
-                  {visit.source === "mis" ? (
-                    <span className="rounded-sm border border-border px-1 text-[9.5px] font-bold tracking-wide">
-                      {translate("schedule.mis.badge")}
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-              {rows >= 3 && info.service ? (
-                <span className="mt-1 truncate pl-5.5 text-[11.5px] leading-tight">
-                  {info.service}
-                </span>
-              ) : null}
-              {rows >= 4 && visit.note ? (
-                <span className="mt-0.5 line-clamp-2 pl-5.5 text-[11px] leading-snug text-muted-foreground">
-                  {visit.note}
-                </span>
-              ) : null}
-              <span
-                className="absolute top-1 right-1 flex h-4 w-3 flex-col items-center justify-center gap-[2px]"
-                aria-hidden
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <TooltipPrimitive.Root open={open ? false : undefined}>
+          <PopoverTrigger asChild>
+            <TooltipPrimitive.Trigger asChild>
+              <button
+                type="button"
+                draggable={draggable}
+                onPointerDown={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setPoint({
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top,
+                  });
+                }}
+                onDragStart={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData(
+                    DRAG_TYPE,
+                    JSON.stringify({
+                      id: String(visit.id),
+                      offset: event.clientY - rect.top,
+                    }),
+                  );
+                }}
+                data-testid="visit-block"
+                data-visit-id={visit.id}
+                data-status={visit.status}
+                className={cn(
+                  "absolute z-10 flex flex-col overflow-hidden rounded-sm border border-l-4 py-1 pr-5 pl-1.5 text-left text-foreground transition-shadow hover:z-30 hover:shadow-soft",
+                  draggable && "cursor-grab active:cursor-grabbing",
+                  visit.status === "cancelled" && "z-0 opacity-75",
+                  visit.status === "completed" && "opacity-80",
+                )}
+                style={{
+                  ...style,
+                  borderColor: `color-mix(in oklab, ${color} 45%, transparent)`,
+                  borderLeftColor: color,
+                  backgroundColor: `color-mix(in oklab, ${color} 7%, var(--card))`,
+                  backgroundImage: `repeating-linear-gradient(135deg, color-mix(in oklab, ${color} 11%, transparent) 0 9px, transparent 9px 18px)`,
+                }}
               >
-                <span className="size-[3px] rounded-full bg-muted-foreground" />
-                <span className="size-[3px] rounded-full bg-muted-foreground" />
-                <span className="size-[3px] rounded-full bg-muted-foreground" />
-              </span>
-            </button>
-          </TooltipPrimitive.Trigger>
-        </PopoverTrigger>
-        <TooltipPrimitive.Portal>
-          <TooltipPrimitive.Content
-            side="right"
-            align="start"
-            sideOffset={6}
-            collisionPadding={12}
-            className="z-50 w-80 rounded-md border border-border bg-popover p-3.5 text-popover-foreground shadow-soft"
-            data-testid="visit-hover"
-          >
-            <VisitHover visit={visit} info={info} time={time} />
-          </TooltipPrimitive.Content>
-        </TooltipPrimitive.Portal>
-      </TooltipPrimitive.Root>
-      <PopoverContent className="w-80 p-3" align="start">
-        <VisitDetails
-          visit={visit}
-          onEdit={() => {
-            setOpen(false);
-            onEdit(visit);
-          }}
-          onDone={() => setOpen(false)}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <StatusGlyph
+                    status={visit.status}
+                    className="size-4 shrink-0"
+                  />
+                  <span
+                    className={cn(
+                      "truncate text-[13px] leading-tight font-semibold",
+                      visit.status === "cancelled" && "line-through",
+                    )}
+                  >
+                    {name}
+                  </span>
+                  {unconfirmed ? (
+                    <span
+                      className="size-2 shrink-0 rounded-full bg-warn"
+                      aria-label={translate("schedule.grid.unconfirmed")}
+                    />
+                  ) : null}
+                </span>
+                {rows >= 2 ? (
+                  <span className="mt-0.5 flex min-w-0 items-center gap-1.5 pl-5.5 text-[11.5px] leading-tight text-muted-foreground tabular-nums">
+                    <span className="shrink-0">{time}</span>
+                    {info.firstVisit ? (
+                      <span
+                        className="shrink-0 rounded-sm border border-destructive px-0.5 text-[9.5px] leading-[13px] font-bold text-destructive"
+                        title={translate("schedule.markers.first")}
+                        data-testid="visit-first"
+                      >
+                        {translate("schedule.markers.first_short")}
+                      </span>
+                    ) : null}
+                    {(info.paid ?? 0) > 0 || (info.prepayment ?? 0) > 0 ? (
+                      <span
+                        className="shrink-0 text-[12.5px] font-extrabold text-[#1F9D55] dark:text-[#3FCF7F]"
+                        title={translate("schedule.markers.paid")}
+                        data-testid="visit-paid"
+                      >
+                        ₸
+                      </span>
+                    ) : null}
+                    {visit.source === "mis" ? (
+                      <span className="rounded-sm border border-border px-1 text-[9.5px] font-bold tracking-wide">
+                        {translate("schedule.mis.badge")}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
+                {rows >= 3 && info.service ? (
+                  <span className="mt-1 truncate pl-5.5 text-[11.5px] leading-tight">
+                    {info.service}
+                  </span>
+                ) : null}
+                {rows >= 4 && visit.note ? (
+                  <span className="mt-0.5 line-clamp-2 pl-5.5 text-[11px] leading-snug text-muted-foreground">
+                    {visit.note}
+                  </span>
+                ) : null}
+                <span
+                  className="absolute top-1 right-1 flex h-4 w-3 flex-col items-center justify-center gap-[2px]"
+                  aria-hidden
+                >
+                  <span className="size-[3px] rounded-full bg-muted-foreground" />
+                  <span className="size-[3px] rounded-full bg-muted-foreground" />
+                  <span className="size-[3px] rounded-full bg-muted-foreground" />
+                </span>
+                <PopoverAnchor asChild>
+                  <span
+                    className="pointer-events-none absolute size-0"
+                    style={{ left: point.x, top: point.y }}
+                    aria-hidden
+                  />
+                </PopoverAnchor>
+              </button>
+            </TooltipPrimitive.Trigger>
+          </PopoverTrigger>
+          <TooltipPrimitive.Portal>
+            <TooltipPrimitive.Content
+              side="right"
+              align="start"
+              sideOffset={6}
+              collisionPadding={12}
+              className="z-50 w-80 rounded-md border border-border bg-popover p-3.5 text-popover-foreground shadow-soft"
+              data-testid="visit-hover"
+            >
+              <VisitHover visit={visit} info={info} time={time} />
+            </TooltipPrimitive.Content>
+          </TooltipPrimitive.Portal>
+        </TooltipPrimitive.Root>
+        <PopoverContent
+          className="w-72 rounded-2xl p-1.5"
+          side="right"
+          align="start"
+          sideOffset={4}
+          collisionPadding={12}
+        >
+          <VisitMenu
+            visit={visit}
+            name={name}
+            time={time}
+            onAction={act}
+            onDone={() => setOpen(false)}
+          />
+        </PopoverContent>
+      </Popover>
+      {dialog === "payment" ? (
+        <PaymentDialog
+          open
+          onOpenChange={(value) => !value && setDialog(null)}
+          patientId={visit.patient_id}
+          dealId={visit.deal_id ?? null}
         />
-      </PopoverContent>
-    </Popover>
+      ) : null}
+      {dialog === "record" ? (
+        <VisitRecordDialog
+          open
+          onClose={() => setDialog(null)}
+          patientId={visit.patient_id}
+          visit={visit}
+        />
+      ) : null}
+    </>
   );
 };
 

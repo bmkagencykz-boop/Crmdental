@@ -3519,6 +3519,19 @@ export const englishCrmMessages = {
       prepayment: "prepayment %{amount}",
       paid_total: "paid %{amount}",
     },
+    menu: {
+      payment: "Take a payment",
+      arrived: "Patient arrived",
+      confirm: "Confirm the visit",
+      edit: "Edit the visit",
+      record: "Fill in the treatment",
+      patient: "Patient card",
+      move: "Reschedule",
+      rebook: "Book again",
+      no_show: "Did not come",
+      cancel: "Cancel the visit",
+      cancel_confirm: "Cancel it? Click again",
+    },
   },
   treatment: {
     tab: "Treatment plan",
@@ -4191,7 +4204,6 @@ export const englishCrmMessages = {
       open: "Open the price list",
     },
   },
-  // Payments, deposits and the cash desk (stage 36)
   payments: {
     report: {
       title: "Money in by payment method",

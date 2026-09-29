@@ -373,6 +373,20 @@ export const SchedulePage = () => {
     });
   };
 
+  // «Записать повторно»: the same patient, deal, doctor, chair and service,
+  // a week later at the same time; the dialog shows the free slots
+  const onRebook = (visit: Visit) =>
+    setDraft({
+      patient_id: visit.patient_id,
+      deal_id: visit.deal_id ?? null,
+      doctor_id: visit.doctor_id ?? null,
+      chair_id: visit.chair_id ?? null,
+      service_id: visit.service_id ?? null,
+      day: addDays(dayKeyOf(visit.starts_at, timeZone), 7),
+      time: toHm(minuteOfDay(visit.starts_at, timeZone)),
+      duration: visitDuration(visit),
+    });
+
   const onMove = async (visit: Visit, column: GridColumn, minute: number) => {
     if (visit.source === "mis") {
       notify("schedule.mis.readonly", { type: "warning" });
@@ -646,6 +660,7 @@ export const SchedulePage = () => {
             onCreate={onCreate}
             onMove={onMove}
             onEdit={setEditing}
+            onRebook={onRebook}
           />
         )}
       </section>

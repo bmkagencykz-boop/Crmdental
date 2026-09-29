@@ -794,6 +794,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/fakerest/labOrders.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/fakerest/index.ts",
           "type": "registry:component"
         },
@@ -927,6 +931,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/mailings.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/labOrders.ts",
           "type": "registry:component"
         },
         {
@@ -1659,6 +1667,58 @@
         },
         {
           "path": "src/components/atomic-crm/layout/FormToolbar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/useLab.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/labOrderPdf.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/labMath.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/PatientLabOrders.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabSettlement.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabOrdersTab.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabOrderDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabOrderCard.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabDictionaries.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabCouriers.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabBits.tsx",
           "type": "registry:component"
         },
         {

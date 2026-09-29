@@ -24,6 +24,7 @@ import { generateBranches } from "./branches";
 import { generatePriceList } from "./priceList";
 import { generatePayments } from "./payments";
 import { generatePatientCard } from "./patientCard";
+import { generateLabOrders } from "./labOrders";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -62,6 +63,9 @@ export default (): Db => {
   generatePayments(db);
   // The full patient card (stage 37): after the plans and the visits
   generatePatientCard(db);
+  // Lab work orders (stage 40): after the plans, the patient files and the
+  // notifications
+  generateLabOrders(db);
   db.configuration = [
     {
       id: 1,

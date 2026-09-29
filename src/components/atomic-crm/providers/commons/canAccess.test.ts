@@ -199,4 +199,31 @@ describe("canAccess with access rights (stage 30)", () => {
       canAccess("manager", { resource: "access_rights", action: "list" }),
     ).toBe(false);
   });
+
+  it("gives the lab orders to the staff, the prices to the owner and the head (stage 40)", () => {
+    expect(canAccess("manager", { resource: "lab", action: "menu" })).toBe(
+      true,
+    );
+    expect(
+      canAccess("manager", { resource: "lab_orders", action: "create" }),
+    ).toBe(true);
+    expect(
+      canAccess("manager", { resource: "lab_prices", action: "list" }),
+    ).toBe(false);
+    expect(canAccess("head", { resource: "lab_prices", action: "list" })).toBe(
+      true,
+    );
+    expect(
+      canAccess("manager", { resource: "lab_dictionaries", action: "edit" }),
+    ).toBe(false);
+    expect(
+      canAccess("integrator", { resource: "lab_dictionaries", action: "edit" }),
+    ).toBe(true);
+    expect(
+      canAccess("integrator", { resource: "lab_orders", action: "list" }),
+    ).toBe(false);
+    expect(
+      canAccess("integrator", { resource: "lab_prices", action: "list" }),
+    ).toBe(false);
+  });
 });

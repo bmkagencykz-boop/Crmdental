@@ -90,7 +90,10 @@ export const NotificationBell = () => {
         { onSuccess: refresh },
       );
     }
-    if (notification.deal_id != null) {
+    if (notification.kind === "lab_order") {
+      // Lab work orders (stage 40): the board of the lab
+      navigate("/lab");
+    } else if (notification.deal_id != null) {
       navigate(`/deals/${notification.deal_id}/show`);
     }
   };

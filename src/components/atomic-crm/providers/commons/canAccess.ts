@@ -133,6 +133,15 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Lab work orders (stage 40): the dictionaries are configuration (owner,
+  // head, integrator); the lab prices and costs are money (owner, head)
+  if (params.resource === "lab_prices") {
+    return role === "head";
+  }
+  if (params.resource === "lab_dictionaries") {
+    return role === "head" || ["list", "show"].includes(params.action);
+  }
+
   return role === "head" || role === "manager";
 };
 
@@ -147,6 +156,10 @@ const integratorCanAccess = ({ resource, action }: CanAccessParams) => {
   }
   // The price list is configuration (stage 35): edited, but no cost price
   if (resource === "price_list") {
+    return true;
+  }
+  // The lab (stage 40): the dictionaries only, no order (medical data)
+  if (resource === "lab" || resource === "lab_dictionaries") {
     return true;
   }
   if (resource === "deals") {

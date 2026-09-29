@@ -126,6 +126,7 @@ import { createBranchesDemo } from "./branches";
 import { createPriceListDemo } from "./priceList";
 import { createPaymentsDemo } from "./payments";
 import { createPatientCardDemo } from "./patientCard";
+import { createLabOrdersDemo } from "./labOrders";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -242,6 +243,7 @@ export const createDataProvider = ({
       "task_overdue",
       "bot_handoff",
       "visit_reschedule",
+      "lab_order",
     ],
     browser_enabled: false,
     telegram_enabled: true,
@@ -395,6 +397,14 @@ export const createDataProvider = ({
         !!patient && (await accessDemo.filterPatients([patient])).length > 0
       );
     },
+  });
+  // Lab work orders (stage 40)
+  const labDemo = createLabOrdersDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
+    filterPatients: (patients) => accessDemo.filterPatients(patients),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -870,6 +880,7 @@ export const createDataProvider = ({
     ...treatmentDemo.views,
     ...priceListDemo.views,
     ...paymentsDemo.views,
+    ...labDemo.views,
   };
   const viewProvider = async (resource: string) =>
     fakeRestDataProvider({ [resource]: await views[resource]() }, false, 0);
@@ -1833,6 +1844,8 @@ export const createDataProvider = ({
       ...paymentsDemo.callbacks,
       // The patient card (stage 37): IIN, the chart and its history, records
       ...patientCardDemo.callbacks,
+      // Lab work orders (stage 40): numbers, links, statuses, prices, rights
+      ...labDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

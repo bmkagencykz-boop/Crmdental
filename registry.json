@@ -722,6 +722,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/supabase/cashOutflowMethods.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/supabase/branchMethods.ts",
           "type": "registry:component"
         },
@@ -815,6 +819,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataProvider.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/cashOutflows.ts",
           "type": "registry:component"
         },
         {
@@ -971,6 +979,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/clinic.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/cashOutflows.ts",
           "type": "registry:component"
         },
         {
@@ -1175,6 +1187,14 @@
         },
         {
           "path": "src/components/atomic-crm/payments/OperationsList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/ExpensesTab.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/ExpenseDialog.tsx",
           "type": "registry:component"
         },
         {
@@ -1695,6 +1715,10 @@
         },
         {
           "path": "src/components/atomic-crm/lab/LabSettlement.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/lab/LabPayments.tsx",
           "type": "registry:component"
         },
         {

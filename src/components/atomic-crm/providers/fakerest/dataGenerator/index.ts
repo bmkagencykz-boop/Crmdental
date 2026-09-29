@@ -24,6 +24,7 @@ import { generateBranches } from "./branches";
 import { generatePriceList } from "./priceList";
 import { generatePayments } from "./payments";
 import { generatePatientCard } from "./patientCard";
+import { generatePayroll } from "./payroll";
 import type { Db } from "./types";
 
 export default (): Db => {
@@ -62,6 +63,8 @@ export default (): Db => {
   generatePayments(db);
   // The full patient card (stage 37): after the plans and the visits
   generatePatientCard(db);
+  // Payroll (stage 39): after the plans, the visits and the payments
+  generatePayroll(db);
   db.configuration = [
     {
       id: 1,

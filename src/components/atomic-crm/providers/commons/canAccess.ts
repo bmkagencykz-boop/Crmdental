@@ -71,6 +71,11 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Payroll (stage 39): money of the staff, the owner and the head only
+  if (params.resource === "payroll") {
+    return role === "head";
+  }
+
   // Marketplace of integrations (stage 25): owner, head (and integrator)
   if (params.resource === "integrations") {
     return role === "head";

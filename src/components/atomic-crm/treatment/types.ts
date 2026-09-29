@@ -123,6 +123,8 @@ export type TreatmentPlanItem = {
   done: boolean;
   done_at?: string | null;
   position: number;
+  /** The doctor who did the work (stage 39); else the stage's, the plan's */
+  doctor_id?: Identifier | null;
   /** Computed by the database (lineTotal) */
   line_total?: number;
   created_at?: string;

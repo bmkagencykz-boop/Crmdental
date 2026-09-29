@@ -126,6 +126,7 @@ import { createBranchesDemo } from "./branches";
 import { createPriceListDemo } from "./priceList";
 import { createPaymentsDemo } from "./payments";
 import { createPatientCardDemo } from "./patientCard";
+import { createPayrollDemo } from "./payroll";
 import { branchPool, type Branch } from "../../branches/branches";
 
 export interface CreateFakeRestDataProviderOptions {
@@ -395,6 +396,13 @@ export const createDataProvider = ({
         !!patient && (await accessDemo.filterPatients([patient])).length > 0
       );
     },
+  });
+  // Payroll of the doctors and the staff (stage 39)
+  const payrollDemo = createPayrollDemo({
+    baseDataProvider,
+    all,
+    currentSalesId: () => currentSalesId(),
+    logAudit: (row) => logAudit(row),
   });
   const clinicSettings = async () =>
     (await all<OrganizationSettings>("organization_settings"))[0];
@@ -895,6 +903,7 @@ export const createDataProvider = ({
     ...priceListDemo.methods,
     ...paymentsDemo.methods,
     ...patientCardDemo.methods,
+    ...payrollDemo.methods,
     async getList(resource: string, params: GetListParams) {
       if (["automessages", "tasks", "messages"].includes(resource)) {
         await dispatchDueAutomessages();
@@ -1833,6 +1842,8 @@ export const createDataProvider = ({
       ...paymentsDemo.callbacks,
       // The patient card (stage 37): IIN, the chart and its history, records
       ...patientCardDemo.callbacks,
+      // Payroll (stage 39): the owner and the head, closed months, audit
+      ...payrollDemo.callbacks,
       // Access rights (stage 30): writes out of the employee's scopes
       ...accessDemo.callbacks,
       {

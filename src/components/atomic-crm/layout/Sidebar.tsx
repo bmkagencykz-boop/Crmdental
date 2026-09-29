@@ -2,6 +2,7 @@ import {
   CashGlyph,
   IntegrationsGlyph,
   MailingsGlyph,
+  PayrollGlyph,
   PriceListGlyph,
   ReportsGlyph,
   SettingsGlyph,
@@ -34,6 +35,13 @@ export const Sidebar = () => {
     match: "/cash",
     icon: CashGlyph,
     label: translate("payments.nav"),
+  };
+  // «Зарплаты» (stage 39): payroll of the doctors and the staff
+  const payroll: NavItem = {
+    to: "/payroll",
+    match: "/payroll/*",
+    icon: PayrollGlyph,
+    label: translate("payroll.nav"),
   };
   const reports: NavItem = {
     to: "/reports",
@@ -78,6 +86,9 @@ export const Sidebar = () => {
       <div className="mt-3 flex flex-col items-center gap-3">
         <CanAccess resource="cash_desk" action="list">
           <SidebarLink item={cash} active={isActive(cash)} />
+        </CanAccess>
+        <CanAccess resource="payroll" action="list">
+          <SidebarLink item={payroll} active={isActive(payroll)} />
         </CanAccess>
         <CanAccess resource="reports" action="list">
           <SidebarLink item={reports} active={isActive(reports)} />

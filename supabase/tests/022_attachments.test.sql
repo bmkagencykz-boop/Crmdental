@@ -211,4 +211,27 @@ select tests.assert(
   not exists (select 1 from public.deal_files where deal_id = current_setting('t.d1')::bigint),
   'the files of a deleted deal are removed from the list');
 
+-- The cleanup of note attachments deletes only what no note references
+select tests.login_as(current_setting('t.owner')::uuid);
+insert into public.deal_notes (deal_id, text, attachments) values (
+  current_setting('t.d2')::bigint, 'Снимки',
+  array[
+    jsonb_build_object('path', current_setting('t.org') || '/kept.png'),
+    jsonb_build_object('src', 'https://x.supabase.co/storage/v1/object/public/attachments/' || current_setting('t.org') || '/by-src.png')
+  ]);
+select tests.throws(
+  format($q$select public.note_attachment_paths_in_use(%s, array['x'])$q$, current_setting('t.org')),
+  '42501', 'staff cannot call the in-use check');
+select tests.logout();
+select tests.assert(
+  (select array_agg(p order by p) from public.note_attachment_paths_in_use(
+     current_setting('t.org')::bigint,
+     array[current_setting('t.org') || '/kept.png', current_setting('t.org') || '/by-src.png', current_setting('t.org') || '/orphan.png'])
+   p) = array[current_setting('t.org') || '/by-src.png', current_setting('t.org') || '/kept.png'],
+  'paths still referenced by a note (by path or by src) are in use, the orphan is not');
+select tests.assert(
+  not exists (select 1 from public.note_attachment_paths_in_use(
+     current_setting('t.other_org')::bigint, array[current_setting('t.org') || '/kept.png'])),
+  'another clinic does not see the notes of this one');
+
 rollback;

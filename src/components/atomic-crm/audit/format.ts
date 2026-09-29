@@ -129,7 +129,14 @@ export const AUDIT_ENTITY_GROUPS = {
   ],
   payment: ["payment", "account_operation", "cash_shift"],
   task: ["task"],
-  employee: ["employee", "access_rights"],
+  employee: [
+    "employee",
+    "access_rights",
+    // Payroll (stage 39)
+    "payroll_scheme",
+    "payroll_adjustment",
+    "payroll_month",
+  ],
   settings: [
     "pipeline",
     "stage",
@@ -376,7 +383,10 @@ export const describeAuditChanges = (
                   _: translate(`payments.audit.fields.${field}`, {
                     // The patient card (stage 37)
                     _: translate(`patient_card.audit.fields.${field}`, {
-                      _: field,
+                      // The payroll (stage 39)
+                      _: translate(`payroll.audit.fields.${field}`, {
+                        _: field,
+                      }),
                     }),
                   }),
                 }),
@@ -478,19 +488,21 @@ export const auditEntityLabel = (
             ? translate("marketing.audit.entity")
             : entry.entity === "branch"
               ? translate("branches.audit.entity")
-              : PAYMENT_ENTITIES.includes(entry.entity)
-                ? translate(`payments.audit.${entry.entity}`)
-                : PATIENT_CARD_ENTITIES.includes(entry.entity)
-                  ? translate(`patient_card.audit.${entry.entity}`)
-                  : SCHEDULE_ENTITIES.includes(entry.entity)
-                    ? translate(`schedule.audit.${entry.entity}`)
-                    : PLAN_EDITOR_ENTITIES.includes(entry.entity)
-                      ? translate(`plan_editor.audit.${entry.entity}`)
-                      : TREATMENT_ENTITIES.includes(entry.entity)
-                        ? translate(`treatment.audit.${entry.entity}`)
-                        : translate(`audit.entities.${entry.entity}`, {
-                            _: entry.entity,
-                          });
+              : PAYROLL_ENTITIES.includes(entry.entity)
+                ? translate(`payroll.audit.${entry.entity}`)
+                : PAYMENT_ENTITIES.includes(entry.entity)
+                  ? translate(`payments.audit.${entry.entity}`)
+                  : PATIENT_CARD_ENTITIES.includes(entry.entity)
+                    ? translate(`patient_card.audit.${entry.entity}`)
+                    : SCHEDULE_ENTITIES.includes(entry.entity)
+                      ? translate(`schedule.audit.${entry.entity}`)
+                      : PLAN_EDITOR_ENTITIES.includes(entry.entity)
+                        ? translate(`plan_editor.audit.${entry.entity}`)
+                        : TREATMENT_ENTITIES.includes(entry.entity)
+                          ? translate(`treatment.audit.${entry.entity}`)
+                          : translate(`audit.entities.${entry.entity}`, {
+                              _: entry.entity,
+                            });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -598,6 +610,13 @@ const PATIENT_CARD_ENTITIES = [
   "patient_file",
   "consent_template",
   "visit_record_template",
+];
+
+/** Entities of the payroll (stage 39), labelled in its namespace */
+const PAYROLL_ENTITIES = [
+  "payroll_scheme",
+  "payroll_adjustment",
+  "payroll_month",
 ];
 
 /** Entities of the cash desk (stage 36), labelled in its namespace */

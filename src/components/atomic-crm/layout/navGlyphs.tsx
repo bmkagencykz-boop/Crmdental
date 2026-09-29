@@ -139,3 +139,13 @@ export const CashGlyph = glyph(
     <path d="M3.5 14.5h17M10.5 17.5h3" />
   </>,
 );
+
+/** Зарплаты: a pay envelope with a coin */
+export const PayrollGlyph = glyph(
+  <>
+    <path d="M20.5 12V6.5h-17v12h9" />
+    <path d="M3.5 6.5l8.5 6 8.5-6" />
+    <circle cx="17.5" cy="17.5" r="3.25" />
+    <path d="M17.5 16.1v2.8" />
+  </>,
+);

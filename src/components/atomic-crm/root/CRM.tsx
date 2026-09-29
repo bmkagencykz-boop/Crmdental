@@ -5,6 +5,9 @@ import { AuditPage } from "../audit/AuditPage";
 import { ReportsPage } from "../reports/ReportsPage";
 import { PriceListPage } from "../price-list/PriceListPage";
 import { CashDeskPage } from "../payments/CashDeskPage";
+import { PayrollEmployeePage } from "../payroll/PayrollEmployeePage";
+import { PayrollPage } from "../payroll/PayrollPage";
+import { PayrollSchemesPage } from "../payroll/PayrollSchemesPage";
 import { MailingsPage } from "../mailings/MailingsPage";
 import type {
   CoreAdminProps,
@@ -228,6 +231,15 @@ const DesktopAdmin = (
         <Route path={ReportsPage.path} element={<ReportsPage />} />
         <Route path={PriceListPage.path} element={<PriceListPage />} />
         <Route path={CashDeskPage.path} element={<CashDeskPage />} />
+        <Route path={PayrollPage.path} element={<PayrollPage />} />
+        <Route
+          path={PayrollSchemesPage.path}
+          element={<PayrollSchemesPage />}
+        />
+        <Route
+          path={PayrollEmployeePage.path}
+          element={<PayrollEmployeePage />}
+        />
         <Route path={AuditPage.path} element={<AuditPage />} />
         <Route path={ImportPage.path} element={<ImportPage />} />
         <Route path={MailingsPage.path} element={<MailingsPage />} />

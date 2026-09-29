@@ -8,6 +8,12 @@ import type {
 } from "../../../price-list/types";
 import type { AccountOperation, CashShift } from "../../../payments/types";
 import type {
+  PayrollAdjustment,
+  PayrollClosedLine,
+  PayrollMonthRow,
+  PayrollScheme,
+} from "../../../payroll/types";
+import type {
   ConsentTemplate,
   PatientConsent,
   PatientFile,
@@ -198,4 +204,9 @@ export interface Db {
   consent_templates: ConsentTemplate[];
   patient_consents: PatientConsent[];
   patient_files: PatientFile[];
+  // Payroll of the doctors and the staff (stage 39)
+  payroll_schemes: PayrollScheme[];
+  payroll_adjustments: PayrollAdjustment[];
+  payroll_months: PayrollMonthRow[];
+  payroll_closed_lines: PayrollClosedLine[];
 }

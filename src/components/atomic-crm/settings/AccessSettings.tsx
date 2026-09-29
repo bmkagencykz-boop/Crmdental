@@ -58,6 +58,18 @@ export const AccessSettings = () => {
         }))}
         onChange={(pipeline_move_mode) => mutate({ pipeline_move_mode })}
       />
+      {/* Stage 42: administrators record expenses of the cash desk */}
+      <Choice
+        title={translate("cash_out.settings.managers")}
+        value={settings.manager_cash_expenses ? "yes" : "no"}
+        options={(["no", "yes"] as const).map((value) => ({
+          value,
+          label: translate(`cash_out.settings.${value}`),
+        }))}
+        onChange={(value) =>
+          mutate({ manager_cash_expenses: value === "yes" })
+        }
+      />
     </div>
   );
 };

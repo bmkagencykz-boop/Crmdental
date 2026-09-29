@@ -63,6 +63,7 @@ const TOUCHED = [
   "lab_payments_summary",
   "lab_settlement",
   "cash_expenses_report",
+  "cash_expense_categories",
 ];
 
 export const useRefreshMoney = () => {

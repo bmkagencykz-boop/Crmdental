@@ -143,7 +143,14 @@ export const AUDIT_ENTITY_GROUPS = {
     "lab_order_item",
     "lab_order_price",
   ],
-  payment: ["payment", "account_operation", "cash_shift"],
+  payment: [
+    "payment",
+    "account_operation",
+    "cash_shift",
+    // Money going out of the cash desk (stage 42)
+    "cash_expense_category",
+    "lab_payment",
+  ],
   task: ["task"],
   employee: [
     "employee",
@@ -419,7 +426,10 @@ export const describeAuditChanges = (
                       _: translate(`payroll.audit.fields.${field}`, {
                         // The waiting list (stage 38)
                         _: translate(`waiting_list.audit.fields.${field}`, {
-                          _: translate(`lab.fields.${field}`, { _: field }),
+                          // Money going out of the cash desk (stage 42)
+                          _: translate(`cash_out.audit.fields.${field}`, {
+                            _: translate(`lab.fields.${field}`, { _: field }),
+                          }),
                         }),
                       }),
                     }),
@@ -482,6 +492,9 @@ const operationChange = (field: string, translate: Translate) => ({
             )
             .join(" + ")
         : EMPTY;
+    }
+    if (field === "kind" && value === "expense") {
+      return translate("cash_out.kind");
     }
     const namespace =
       field === "kind" ? "kinds" : field === "method" ? "methods" : "accounts";
@@ -551,25 +564,27 @@ export const auditEntityLabel = (
             ? translate("marketing.audit.entity")
             : entry.entity === "branch"
               ? translate("branches.audit.entity")
-              : LAB_ENTITIES.includes(entry.entity)
-                ? translate(`lab.audit.${entry.entity}`)
-                : PAYROLL_ENTITIES.includes(entry.entity)
-                  ? translate(`payroll.audit.${entry.entity}`)
-                  : PAYMENT_ENTITIES.includes(entry.entity)
-                    ? translate(`payments.audit.${entry.entity}`)
-                    : entry.entity === "waiting_list"
-                      ? translate("waiting_list.audit.entity")
-                      : PATIENT_CARD_ENTITIES.includes(entry.entity)
-                        ? translate(`patient_card.audit.${entry.entity}`)
-                        : SCHEDULE_ENTITIES.includes(entry.entity)
-                          ? translate(`schedule.audit.${entry.entity}`)
-                          : PLAN_EDITOR_ENTITIES.includes(entry.entity)
-                            ? translate(`plan_editor.audit.${entry.entity}`)
-                            : TREATMENT_ENTITIES.includes(entry.entity)
-                              ? translate(`treatment.audit.${entry.entity}`)
-                              : translate(`audit.entities.${entry.entity}`, {
-                                  _: entry.entity,
-                                });
+              : CASH_OUT_ENTITIES.includes(entry.entity)
+                ? translate(`cash_out.audit.${entry.entity}`)
+                : LAB_ENTITIES.includes(entry.entity)
+                  ? translate(`lab.audit.${entry.entity}`)
+                  : PAYROLL_ENTITIES.includes(entry.entity)
+                    ? translate(`payroll.audit.${entry.entity}`)
+                    : PAYMENT_ENTITIES.includes(entry.entity)
+                      ? translate(`payments.audit.${entry.entity}`)
+                      : entry.entity === "waiting_list"
+                        ? translate("waiting_list.audit.entity")
+                        : PATIENT_CARD_ENTITIES.includes(entry.entity)
+                          ? translate(`patient_card.audit.${entry.entity}`)
+                          : SCHEDULE_ENTITIES.includes(entry.entity)
+                            ? translate(`schedule.audit.${entry.entity}`)
+                            : PLAN_EDITOR_ENTITIES.includes(entry.entity)
+                              ? translate(`plan_editor.audit.${entry.entity}`)
+                              : TREATMENT_ENTITIES.includes(entry.entity)
+                                ? translate(`treatment.audit.${entry.entity}`)
+                                : translate(`audit.entities.${entry.entity}`, {
+                                    _: entry.entity,
+                                  });
   const ref = entry.entity_id != null ? `#${entry.entity_id}` : "";
   let name: string | undefined;
   switch (entry.entity) {
@@ -712,6 +727,9 @@ const LAB_ENTITIES = [
   "lab_work_type",
   "lab_work_type_price",
 ];
+
+/** Money going out of the cash desk (stage 42), in its namespace */
+const CASH_OUT_ENTITIES = ["cash_expense_category", "lab_payment"];
 
 /** Entities of the cash desk (stage 36), labelled in its namespace */
 const PAYMENT_ENTITIES = ["account_operation", "cash_shift"];

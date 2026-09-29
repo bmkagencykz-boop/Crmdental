@@ -27,6 +27,8 @@ import { Implant3D } from "../misc/Dental3D";
 import type { CrmDataProvider } from "../providers/types";
 import { exportCsv, type ReportColumn } from "../reports/csv";
 import type { Sale } from "../types";
+import { ExpenseDialog } from "./ExpenseDialog";
+import { ExpensesTab } from "./ExpensesTab";
 import { OperationsList } from "./OperationsList";
 import { useMethodLabel } from "./operationFormat";
 import { NativeSelect, PaymentDialog, Pills } from "./PaymentDialog";
@@ -39,7 +41,7 @@ import {
 } from "./types";
 import { money, usePaymentRights, useRefreshMoney } from "./usePayments";
 
-const TABS = ["day", "debtors", "shifts"] as const;
+const TABS = ["day", "expenses", "debtors", "shifts"] as const;
 type Tab = (typeof TABS)[number];
 const ALL = "all";
 
@@ -78,8 +80,10 @@ export const CashDeskPage = () => {
   const translate = useTranslate();
   const rights = usePaymentRights();
   const [tab, setTab] = useStore<Tab>("cash_desk.tab", "day");
+  const [spending, setSpending] = useState(false);
   if (rights.isPending) return null;
   if (!rights.canAccept) return <Navigate to="/" replace />;
+  const onExpense = rights.canExpense ? () => setSpending(true) : undefined;
   return (
     <div className="flex flex-col gap-5" data-testid="cash-desk">
       <div className="flex flex-wrap items-center gap-2" role="tablist">
@@ -97,17 +101,32 @@ export const CashDeskPage = () => {
                 : "bg-card hover:bg-pill",
             )}
           >
-            {translate(`payments.desk.tabs.${value}`)}
+            {value === "expenses"
+              ? translate("cash_out.tab")
+              : translate(`payments.desk.tabs.${value}`)}
           </button>
         ))}
+        {onExpense ? (
+          <Button
+            variant="outline"
+            className="ml-auto h-11 px-5"
+            onClick={onExpense}
+            data-testid="cash-expense-button"
+          >
+            {translate("cash_out.action")}
+          </Button>
+        ) : null}
       </div>
       {tab === "debtors" ? (
         <DebtorsTab />
       ) : tab === "shifts" ? (
         <ShiftsTab />
+      ) : tab === "expenses" ? (
+        <ExpensesTab />
       ) : (
         <DayTab />
       )}
+      {spending ? <ExpenseDialog open onOpenChange={setSpending} /> : null}
     </div>
   );
 };
@@ -161,11 +180,14 @@ const DayTab = () => {
     },
     {
       label: translate("payments.desk.columns.patient"),
-      render: (op) => op.patient_name ?? "",
+      render: (op) => op.patient_name ?? op.category_name ?? "",
     },
     {
       label: translate("payments.desk.columns.kind"),
-      render: (op) => translate(`payments.kinds.${op.kind}`),
+      render: (op) =>
+        op.kind === "expense"
+          ? translate("cash_out.kind")
+          : translate(`payments.kinds.${op.kind}`),
     },
     {
       label: translate("payments.desk.columns.method"),
@@ -299,6 +321,14 @@ const DayTab = () => {
             <span className="rounded-full bg-white/45 px-3 py-1.5">
               {translate("payments.desk.refunds")}: {money(total.refunds)}
             </span>
+            {total.expenses ? (
+              <span
+                className="rounded-full bg-white/45 px-3 py-1.5"
+                data-testid="cash-expenses"
+              >
+                {translate("cash_out.total")}: {money(total.expenses)}
+              </span>
+            ) : null}
           </div>
           <Implant3D className="pointer-events-none absolute -top-4 -right-6 size-36 opacity-90" />
         </section>
@@ -332,9 +362,9 @@ const DayTab = () => {
                     />
                     <span className="absolute inset-y-0 left-3 flex items-center text-sm tabular-nums">
                       {money(line.income)}
-                      {line.refunds ? (
+                      {line.refunds + line.expenses ? (
                         <span className="ml-2 text-xs text-tone-red">
-                          −{money(line.refunds)}
+                          −{money(line.refunds + line.expenses)}
                         </span>
                       ) : null}
                     </span>

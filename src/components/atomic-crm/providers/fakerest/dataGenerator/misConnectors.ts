@@ -193,7 +193,7 @@ export const generateMisConnectors = (db: Db) => {
     });
   });
 
-  // The deal feed shows what the MIS did (like public.mis_apply_status)
+  // The deal feed shows what the MIS did (like private.mis_apply_status)
   const runId = () =>
     Math.max(0, ...db.stage_trigger_runs.map((run) => Number(run.id))) + 1;
   if (openDeals[1]) {

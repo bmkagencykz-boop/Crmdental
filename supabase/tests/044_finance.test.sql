@@ -458,6 +458,12 @@ select tests.assert(
      and (f ->> 'net')::bigint = -300300
    from jsonb_array_elements(current_setting('t.fm')::jsonb -> 'fact') f where (f ->> 'month')::date = '2026-06-01'),
   'plan vs fact: June from the P&L');
+update public.finance_models set investment_amount = 30000000 where id = current_setting('t.model')::bigint;
+select tests.assert(
+  (select (r ->> 'payback_months')::int = 12 + 22 and not (r ->> 'payback_in_horizon')::boolean
+   from public.report_finance_model(current_setting('t.model')::bigint) r),
+  'payback beyond the horizon: estimated from the average flow');
+update public.finance_models set investment_amount = 3000000 where id = current_setting('t.model')::bigint;
 select tests.throws($$select public.report_finance_model(1, 'best')$$, '22023', 'an unknown scenario');
 update public.finance_model_lines set to_index = 0 where name = 'Амортизация';
 select tests.assert(

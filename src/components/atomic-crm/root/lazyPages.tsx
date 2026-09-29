@@ -34,6 +34,9 @@ export const LazyPriceListPage = page(
 export const LazyCashDeskPage = page(
   async () => (await import("../payments/CashDeskPage")).CashDeskPage,
 );
+export const LazyFinancePage = page(
+  async () => (await import("../finance/FinancePage")).FinancePage,
+);
 export const LazyPayrollPage = page(
   async () => (await import("../payroll/PayrollPage")).PayrollPage,
 );

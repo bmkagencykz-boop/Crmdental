@@ -48,6 +48,7 @@ import {
   LazyApiDocsPage,
   LazyAuditPage,
   LazyCashDeskPage,
+  LazyFinancePage,
   LazyChangelogPage,
   LazyImportPage,
   LazyIntegrationsPage,
@@ -237,6 +238,7 @@ const DesktopAdmin = (
         <Route path="/reports" element={<LazyReportsPage />} />
         <Route path="/price-list" element={<LazyPriceListPage />} />
         <Route path="/cash" element={<LazyCashDeskPage />} />
+        <Route path="/finance" element={<LazyFinancePage />} />
         <Route path="/payroll" element={<LazyPayrollPage />} />
         <Route path="/payroll/schemes" element={<LazyPayrollSchemesPage />} />
         <Route path="/payroll/:key" element={<LazyPayrollEmployeePage />} />
@@ -264,6 +266,12 @@ const DesktopAdmin = (
       <Resource name="treatment_plan_payments" />
       <Resource name="cash_shifts" />
       <Resource name="cash_expense_categories" />
+      <Resource name="finance_accounts" />
+      <Resource name="finance_articles" />
+      <Resource name="finance_transactions" />
+      <Resource name="finance_models" />
+      <Resource name="finance_model_months" />
+      <Resource name="finance_model_lines" />
       <Resource name="lab_payments" />
       <Resource name="lab_payments_summary" />
       <Resource name="deal_events" />

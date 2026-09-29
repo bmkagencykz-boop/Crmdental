@@ -1,5 +1,6 @@
 import {
   CashGlyph,
+  FinanceGlyph,
   IntegrationsGlyph,
   LabGlyph,
   MailingsGlyph,
@@ -41,6 +42,13 @@ export const Sidebar = () => {
     match: "/cash",
     icon: CashGlyph,
     label: translate("payments.nav"),
+  };
+  // «Финансы» (stage 44): ДДС, ПиУ, the financial model
+  const finance: NavItem = {
+    to: "/finance",
+    match: "/finance",
+    icon: FinanceGlyph,
+    label: translate("finance.nav"),
   };
   // «Зарплаты» (stage 39): payroll of the doctors and the staff
   const payroll: NavItem = {
@@ -114,6 +122,9 @@ export const Sidebar = () => {
         ) : null}
         <CanAccess resource="cash_desk" action="list">
           <SidebarLink item={cash} active={isActive(cash)} />
+        </CanAccess>
+        <CanAccess resource="finance" action="menu">
+          <SidebarLink item={finance} active={isActive(finance)} />
         </CanAccess>
         <CanAccess resource="payroll" action="list">
           <SidebarLink item={payroll} active={isActive(payroll)} />

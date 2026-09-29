@@ -66,7 +66,9 @@
 --               with a priced service whose deal has no treatment plan (as
 --               the patient account of stage 36); − refunds of services
 --               (kind refund, account services, by their day); + manual
---               accruals on revenue articles.
+--               accruals on revenue articles. The average check = the
+--               services rendered (without accruals) − refunds per completed
+--               visit.
 --   Себестоимость = materials (service cost price × quantity of the same
 --               items and visits, stage 35) + lab (public.lab_order_costs by
 --               month) + doctors' variable pay (payroll lines of doctors
@@ -824,6 +826,8 @@ begin
     select m.month,
       coalesce(sum(f.amount) filter (where f.line = 'revenue'), 0) - coalesce(sum(f.amount) filter (where f.line = 'refunds'), 0) as revenue,
       coalesce(sum(f.amount) filter (where f.line = 'refunds'), 0) as refunds,
+      coalesce(sum(f.amount) filter (where f.line = 'revenue' and f.source = 'services'), 0)
+        - coalesce(sum(f.amount) filter (where f.line = 'refunds'), 0) as services,
       coalesce(sum(f.amount) filter (where f.line = 'materials'), 0) as materials,
       coalesce(sum(f.amount) filter (where f.line = 'lab'), 0) as lab,
       coalesce(sum(f.amount) filter (where f.line = 'doctors'), 0) as doctors,
@@ -849,7 +853,7 @@ begin
     from lines l
   ),
   total as (
-    select sum(s.revenue) as revenue, sum(s.refunds) as refunds, sum(s.materials) as materials, sum(s.lab) as lab,
+    select sum(s.revenue) as revenue, sum(s.refunds) as refunds, sum(s.services) as services, sum(s.materials) as materials, sum(s.lab) as lab,
       sum(s.doctors) as doctors, sum(s.staff) as staff, sum(s.marketing) as marketing, sum(s.opex_other) as opex_other,
       sum(s.other_income) as other_income, sum(s.interest) as interest, sum(s.depreciation) as depreciation,
       sum(s.tax) as tax, sum(s.visits) as visits, sum(s.cogs) as cogs, sum(s.gross) as gross, sum(s.opex) as opex,
@@ -872,7 +876,7 @@ begin
         'gross_margin', private.finance_share(s.gross, s.revenue),
         'net_margin', private.finance_share(s.ebitda - s.interest - s.depreciation - s.tax, s.revenue),
         'visits', s.visits,
-        'avg_check', private.finance_ratio(s.revenue, s.visits),
+        'avg_check', private.finance_ratio(s.services, s.visits),
         'revenue_per_chair', private.finance_ratio(s.revenue, chair_count),
         'lab_share', private.finance_share(s.lab, s.revenue),
         'payroll_share', private.finance_share(s.doctors + s.staff, s.revenue)
@@ -885,7 +889,7 @@ begin
         'gross_margin', private.finance_share(t.gross, t.revenue),
         'net_margin', private.finance_share(t.ebitda - t.interest - t.depreciation - t.tax, t.revenue),
         'visits', t.visits,
-        'avg_check', private.finance_ratio(t.revenue, t.visits),
+        'avg_check', private.finance_ratio(t.services, t.visits),
         'revenue_per_chair', private.finance_ratio(t.revenue, chair_count * t.months),
         'lab_share', private.finance_share(t.lab, t.revenue),
         'payroll_share', private.finance_share(t.doctors + t.staff, t.revenue)

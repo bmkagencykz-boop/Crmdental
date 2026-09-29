@@ -119,7 +119,9 @@ export const periodsOf = (
 
 /** Days between two days (b − a) */
 const daysBetween = (a: string, b: string) =>
-  Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+  Math.round(
+    (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000,
+  );
 
 // --- movements -----------------------------------------------------------
 
@@ -128,12 +130,20 @@ export type MovementInput = {
   transactions: FinanceTransaction[];
   articles: FinanceArticle[];
   methodAccounts: FinanceMethodAccount[];
-  categories: { id: Identifier; name: string; article_id?: Identifier | null }[];
+  categories: {
+    id: Identifier;
+    name: string;
+    article_id?: Identifier | null;
+  }[];
   adjustments: Pick<
     PayrollAdjustment,
     "id" | "doctor_id" | "account_operation_id"
   >[];
-  patients: { id: Identifier; first_name?: string | null; last_name?: string | null }[];
+  patients: {
+    id: Identifier;
+    first_name?: string | null;
+    last_name?: string | null;
+  }[];
   timeZone?: string | null;
   /** Half-open, null: no bound */
   from?: string | null;
@@ -189,9 +199,13 @@ export const financeMovements = (input: MovementInput): Movement[] => {
     }
     const patient = input.patients.find((row) => same(row.id, op.patient_id));
     const patientName =
-      [patient?.last_name, patient?.first_name].filter(Boolean).join(" ").trim() ||
-      null;
-    const category = input.categories.find((row) => same(row.id, op.category_id));
+      [patient?.last_name, patient?.first_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || null;
+    const category = input.categories.find((row) =>
+      same(row.id, op.category_id),
+    );
     const parts =
       op.method === "mixed"
         ? (op.parts ?? []).map((part) => ({
@@ -262,8 +276,10 @@ export const filterMovements = (
         m.day >= filters.from &&
         m.day < filters.to &&
         (filters.branch_id == null || same(m.branch_id, filters.branch_id)) &&
-        (filters.article_id == null || same(m.article_id, filters.article_id)) &&
-        (filters.account_id == null || same(m.account_id, filters.account_id)) &&
+        (filters.article_id == null ||
+          same(m.article_id, filters.article_id)) &&
+        (filters.account_id == null ||
+          same(m.account_id, filters.account_id)) &&
         (!filters.transfers || m.transfer),
     )
     .sort(
@@ -301,17 +317,25 @@ export const cashFlowReport = (input: {
     .map((m) => ({ ...m, period: bucketOf(m.day, granularity) }));
   const inside = mv.filter((m) => m.day >= input.from);
 
-  const rowMap = new Map<string, { article_id: Identifier; period: string; amount: number }>();
+  const rowMap = new Map<
+    string,
+    { article_id: Identifier; period: string; amount: number }
+  >();
   for (const m of inside) {
     if (m.transfer || m.article_id == null) continue;
     const key = `${m.article_id}|${m.period}`;
-    const row = rowMap.get(key) ?? { article_id: m.article_id, period: m.period, amount: 0 };
+    const row = rowMap.get(key) ?? {
+      article_id: m.article_id,
+      period: m.period,
+      amount: 0,
+    };
     row.amount += m.amount;
     rowMap.set(key, row);
   }
   const rows = [...rowMap.values()].sort(
     (a, b) =>
-      Number(a.article_id) - Number(b.article_id) || a.period.localeCompare(b.period),
+      Number(a.article_id) - Number(b.article_id) ||
+      a.period.localeCompare(b.period),
   );
 
   const accountRows: {
@@ -326,14 +350,20 @@ export const cashFlowReport = (input: {
     position: a.position,
   }));
   if (mv.some((m) => m.account_id == null)) {
-    accountRows.push({ account_id: null, opening_balance: 0, opening_date: null, position: 1_000_000 });
+    accountRows.push({
+      account_id: null,
+      opening_balance: 0,
+      opening_date: null,
+      position: 1_000_000,
+    });
   }
   const sameAccount = (m: Movement, account: Identifier | null) =>
     account == null ? m.account_id == null : same(m.account_id, account);
   const accounts = accountRows
     .sort(
       (a, b) =>
-        a.position - b.position || Number(a.account_id ?? 0) - Number(b.account_id ?? 0),
+        a.position - b.position ||
+        Number(a.account_id ?? 0) - Number(b.account_id ?? 0),
     )
     .map((a) => {
       const opening = balances
@@ -353,7 +383,8 @@ export const cashFlowReport = (input: {
       const own = inside.filter((m) => sameAccount(m, a.account_id));
       const flow = own.reduce((sum, m) => sum + m.amount, 0);
       const flowMap = new Map<string, number>();
-      for (const m of own) flowMap.set(m.period, (flowMap.get(m.period) ?? 0) + m.amount);
+      for (const m of own)
+        flowMap.set(m.period, (flowMap.get(m.period) ?? 0) + m.amount);
       return {
         account_id: a.account_id,
         opening,
@@ -382,7 +413,14 @@ export const cashFlowReport = (input: {
     const net = own.reduce((sum, m) => sum + m.amount, 0);
     const opening = running;
     running = running == null ? null : running + net;
-    return { period, inflow: inflow || 0, outflow: outflow || 0, net, opening, closing: running };
+    return {
+      period,
+      inflow: inflow || 0,
+      outflow: outflow || 0,
+      net,
+      opening,
+      closing: running,
+    };
   });
   const sum = (key: "inflow" | "outflow" | "net") =>
     totals.reduce((total, row) => total + row[key], 0);
@@ -474,10 +512,15 @@ export const revenueItems = (
     const subtotal = stages
       .filter((stage) => stage.status !== "cancelled")
       .reduce(
-        (sum, stage) => sum + stageTotal(linesOf(stage.id), stage.discount_percent),
+        (sum, stage) =>
+          sum + stageTotal(linesOf(stage.id), stage.discount_percent),
         0,
       );
-    const total = planTotal(subtotal, plan.discount_percent, plan.discount_amount);
+    const total = planTotal(
+      subtotal,
+      plan.discount_percent,
+      plan.discount_amount,
+    );
     const deal = input.deals.find((row) => same(row.id, plan.deal_id));
     for (const item of items) {
       const stage = stages.find((row) => same(row.id, item.stage_id));
@@ -502,7 +545,9 @@ export const revenueItems = (
   }
   for (const visit of input.visits) {
     const day = inRange(visit.starts_at);
-    const service = input.services.find((row) => same(row.id, visit.service_id));
+    const service = input.services.find((row) =>
+      same(row.id, visit.service_id),
+    );
     if (
       !day ||
       visit.status !== "completed" ||
@@ -510,7 +555,8 @@ export const revenueItems = (
       !service ||
       !(Number(service.price) > 0) ||
       input.plans.some(
-        (plan) => same(plan.deal_id, visit.deal_id) && plan.status !== "declined",
+        (plan) =>
+          same(plan.deal_id, visit.deal_id) && plan.status !== "declined",
       )
     )
       continue;
@@ -529,10 +575,19 @@ export const revenueItems = (
 
 export type PnlInput = RevenueInput & {
   operations: AccountOperation[];
-  labCosts: { month?: string | null; amount: number; branch_id?: Identifier | null }[];
+  labCosts: {
+    month?: string | null;
+    amount: number;
+    branch_id?: Identifier | null;
+  }[];
   /** The payroll lines of a month (frozen or computed) */
-  payrollLines: (month: string) => Pick<PayrollLine, "doctor_id" | "source" | "accrued">[];
-  adjustments: Pick<PayrollAdjustment, "doctor_id" | "month" | "kind" | "amount">[];
+  payrollLines: (
+    month: string,
+  ) => Pick<PayrollLine, "doctor_id" | "source" | "accrued">[];
+  adjustments: Pick<
+    PayrollAdjustment,
+    "doctor_id" | "month" | "kind" | "amount"
+  >[];
   doctors: { id: Identifier; branch_id?: Identifier | null }[];
   adSpend: { spent_from: string; spent_to: string; amount: number }[];
   /** The movements of the period (financeMovements) */
@@ -549,22 +604,61 @@ export const pnlFacts = (
 ): PnlFact[] => {
   const facts: PnlFact[] = [];
   const push = (fact: PnlFact) => {
-    if (fact.amount !== 0 || fact.source === "refunds" || fact.source === "payroll") facts.push(fact);
+    if (
+      fact.amount !== 0 ||
+      fact.source === "refunds" ||
+      fact.source === "payroll"
+    )
+      facts.push(fact);
   };
   for (const item of revenueItems(input, fromMonth, toMonth)) {
     const month = monthOf(item.day);
-    push({ month, line: "revenue", source: "services", article_id: null, branch_id: item.branch_id, amount: item.amount });
-    push({ month, line: "materials", source: "services", article_id: null, branch_id: item.branch_id, amount: item.cost });
+    push({
+      month,
+      line: "revenue",
+      source: "services",
+      article_id: null,
+      branch_id: item.branch_id,
+      amount: item.amount,
+    });
+    push({
+      month,
+      line: "materials",
+      source: "services",
+      article_id: null,
+      branch_id: item.branch_id,
+      amount: item.cost,
+    });
   }
   for (const op of input.operations) {
     if (op.kind !== "refund" || op.account !== "services") continue;
     const day = dayKeyOf(op.occurred_at, input.timeZone);
     if (day < fromMonth || day >= toMonth) continue;
-    push({ month: monthOf(day), line: "refunds", source: "refunds", article_id: null, branch_id: op.branch_id ?? null, amount: op.amount });
+    push({
+      month: monthOf(day),
+      line: "refunds",
+      source: "refunds",
+      article_id: null,
+      branch_id: op.branch_id ?? null,
+      amount: op.amount,
+    });
   }
   for (const cost of input.labCosts) {
-    if (!cost.month || cost.month < fromMonth || cost.month >= toMonth || !cost.amount) continue;
-    push({ month: cost.month, line: "lab", source: "lab", article_id: null, branch_id: cost.branch_id ?? null, amount: cost.amount });
+    if (
+      !cost.month ||
+      cost.month < fromMonth ||
+      cost.month >= toMonth ||
+      !cost.amount
+    )
+      continue;
+    push({
+      month: cost.month,
+      line: "lab",
+      source: "lab",
+      article_id: null,
+      branch_id: cost.branch_id ?? null,
+      amount: cost.amount,
+    });
   }
   const branchOfDoctor = (id: Identifier | null | undefined) =>
     input.doctors.find((row) => same(row.id, id))?.branch_id ?? null;
@@ -573,7 +667,10 @@ export const pnlFacts = (
       if (!line.accrued) continue;
       facts.push({
         month,
-        line: line.doctor_id != null && line.source !== "fixed" ? "doctors" : "staff",
+        line:
+          line.doctor_id != null && line.source !== "fixed"
+            ? "doctors"
+            : "staff",
         source: "payroll",
         article_id: null,
         branch_id: branchOfDoctor(line.doctor_id),
@@ -582,7 +679,12 @@ export const pnlFacts = (
     }
   }
   for (const a of input.adjustments) {
-    if ((a.kind !== "bonus" && a.kind !== "penalty") || a.month < fromMonth || a.month >= toMonth) continue;
+    if (
+      (a.kind !== "bonus" && a.kind !== "penalty") ||
+      a.month < fromMonth ||
+      a.month >= toMonth
+    )
+      continue;
     facts.push({
       month: a.month,
       line: a.doctor_id != null ? "doctors" : "staff",
@@ -593,13 +695,28 @@ export const pnlFacts = (
     });
   }
   for (const spend of input.adSpend) {
-    if (spend.spent_to < fromMonth || spend.spent_from >= toMonth || !(spend.amount > 0)) continue;
+    if (
+      spend.spent_to < fromMonth ||
+      spend.spent_from >= toMonth ||
+      !(spend.amount > 0)
+    )
+      continue;
     const total = daysBetween(spend.spent_from, spend.spent_to) + 1;
-    const first = monthOf(spend.spent_from > fromMonth ? spend.spent_from : fromMonth);
-    const lastDay = spend.spent_to < addDays(toMonth, -1) ? spend.spent_to : addDays(toMonth, -1);
-    for (let month = first; month <= monthOf(lastDay); month = addMonths(month, 1)) {
+    const first = monthOf(
+      spend.spent_from > fromMonth ? spend.spent_from : fromMonth,
+    );
+    const lastDay =
+      spend.spent_to < addDays(toMonth, -1)
+        ? spend.spent_to
+        : addDays(toMonth, -1);
+    for (
+      let month = first;
+      month <= monthOf(lastDay);
+      month = addMonths(month, 1)
+    ) {
       const end = addMonths(month, 1);
-      const upto = addDays(spend.spent_to, 1) < end ? addDays(spend.spent_to, 1) : end;
+      const upto =
+        addDays(spend.spent_to, 1) < end ? addDays(spend.spent_to, 1) : end;
       const since = spend.spent_from > month ? spend.spent_from : month;
       facts.push({
         month,
@@ -607,7 +724,10 @@ export const pnlFacts = (
         source: "ad_spend",
         article_id: null,
         branch_id: null,
-        amount: roundDiv(int(spend.amount) * BigInt(daysBetween(since, upto)), BigInt(total)),
+        amount: roundDiv(
+          int(spend.amount) * BigInt(daysBetween(since, upto)),
+          BigInt(total),
+        ),
       });
     }
   }
@@ -627,7 +747,12 @@ export const pnlFacts = (
     });
   }
   for (const t of input.transactions) {
-    if (t.kind !== "accrual" || t.occurred_on < fromMonth || t.occurred_on >= toMonth) continue;
+    if (
+      t.kind !== "accrual" ||
+      t.occurred_on < fromMonth ||
+      t.occurred_on >= toMonth
+    )
+      continue;
     const article = articleOf(t.article_id);
     if (!article?.pnl_line) continue;
     facts.push({
@@ -684,7 +809,8 @@ const summaryOf = (
     gross_margin: share(gross, revenue),
     net_margin: share(net, revenue),
     visits,
-    avg_check: ratio(revenue, visits),
+    // The work of the CRM per visit (accruals from another system aside)
+    avg_check: ratio((sums.services ?? 0) - (sums.refunds ?? 0), visits),
     revenue_per_chair: ratio(revenue, chairs),
     lab_share: share(lab, revenue),
     payroll_share: share(doctors + staff, revenue),
@@ -698,7 +824,11 @@ export const pnlReport = (input: {
   to: string;
   branchId?: Identifier | null;
   /** Completed visits (the average check), any source */
-  visits: { status: string; starts_at: string; branch_id?: Identifier | null }[];
+  visits: {
+    status: string;
+    starts_at: string;
+    branch_id?: Identifier | null;
+  }[];
   chairs: { is_active: boolean; branch_id?: Identifier | null }[];
   timeZone?: string | null;
 }): PnlReport => {
@@ -708,7 +838,8 @@ export const pnlReport = (input: {
   );
   const chairs = input.chairs.filter(
     (chair) =>
-      chair.is_active && (input.branchId == null || same(chair.branch_id, input.branchId)),
+      chair.is_active &&
+      (input.branchId == null || same(chair.branch_id, input.branchId)),
   ).length;
   const rowMap = new Map<string, PnlReport["rows"][number]>();
   for (const fact of facts) {
@@ -733,7 +864,8 @@ export const pnlReport = (input: {
   const visitsOf = (month: string) =>
     input.visits.filter((visit) => {
       if (visit.status !== "completed") return false;
-      if (input.branchId != null && !same(visit.branch_id, input.branchId)) return false;
+      if (input.branchId != null && !same(visit.branch_id, input.branchId))
+        return false;
       return monthOf(dayKeyOf(visit.starts_at, input.timeZone)) === month;
     }).length;
   const totalSums: Record<string, number> = {};
@@ -744,6 +876,10 @@ export const pnlReport = (input: {
       if (fact.month !== month) continue;
       sums[fact.line] = (sums[fact.line] ?? 0) + fact.amount;
       totalSums[fact.line] = (totalSums[fact.line] ?? 0) + fact.amount;
+      if (fact.line === "revenue" && fact.source === "services") {
+        sums.services = (sums.services ?? 0) + fact.amount;
+        totalSums.services = (totalSums.services ?? 0) + fact.amount;
+      }
     }
     const visits = visitsOf(month);
     totalVisits += visits;
@@ -807,10 +943,7 @@ export const computeModel = (
   for (let i = 0; i < 12; i++) {
     const override = monthRows.find((row) => Number(row.month_index) === i);
     const driver = Object.fromEntries(
-      MODEL_DRIVERS.map((key) => [
-        key,
-        Number(override?.[key] ?? model[key]),
-      ]),
+      MODEL_DRIVERS.map((key) => [key, Number(override?.[key] ?? model[key])]),
     ) as Record<(typeof MODEL_DRIVERS)[number], number>;
     const capacity =
       cents(driver.chairs) *
@@ -847,7 +980,9 @@ export const computeModel = (
     const ebitda = gross - opex;
     const net = ebitda - sums.interest - sums.depreciation - sums.tax;
     const cashFlow =
-      net + sums.depreciation - (i === Number(model.investment_month) ? investment : 0);
+      net +
+      sums.depreciation -
+      (i === Number(model.investment_month) ? investment : 0);
     cash += cashFlow;
     const beRevenue =
       percentCents < 10000n
@@ -940,7 +1075,11 @@ export const computeModel = (
         : payback != null
           ? payback
           : afterCount > 0 && afterSum > 0
-            ? afterCount + ceilDiv(int(investment - paybackCum) * BigInt(afterCount), int(afterSum))
+            ? afterCount +
+              ceilDiv(
+                int(investment - paybackCum) * BigInt(afterCount),
+                int(afterSum),
+              )
             : null,
     payback_in_horizon: payback != null,
   };
@@ -973,6 +1112,9 @@ export const modelFacts = (
 
 /** The months of a model with a fact: from its start to the current month, at most 12 */
 export const factRange = (startMonth: string, currentMonth: string) => {
-  const to = [addMonths(currentMonth, 1), addMonths(monthOf(startMonth), 12)].sort()[0];
+  const to = [
+    addMonths(currentMonth, 1),
+    addMonths(monthOf(startMonth), 12),
+  ].sort()[0];
   return to > monthOf(startMonth) ? { from: monthOf(startMonth), to } : null;
 };

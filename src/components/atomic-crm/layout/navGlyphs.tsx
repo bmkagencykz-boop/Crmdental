@@ -140,6 +140,16 @@ export const CashGlyph = glyph(
   </>,
 );
 
+/** Финансы: a rising line over a ledger with a coin in the corner */
+export const FinanceGlyph = glyph(
+  <>
+    <path d="M3.5 3.5v17h17" />
+    <path d="M6.5 15.5l4-4.5 3 2.5 5-6" />
+    <path d="M15.5 7.5h3v3" />
+    <circle cx="17.5" cy="17" r="2" />
+  </>,
+);
+
 /** Зарплаты: a pay envelope with a coin */
 export const PayrollGlyph = glyph(
   <>

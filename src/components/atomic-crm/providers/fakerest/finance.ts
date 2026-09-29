@@ -52,7 +52,10 @@ import type {
   Sale,
   Service,
 } from "../../types";
-import type { CashFlowFilters, MovementFilters } from "../supabase/financeMethods";
+import type {
+  CashFlowFilters,
+  MovementFilters,
+} from "../supabase/financeMethods";
 
 const same = (
   a: Identifier | null | undefined,
@@ -164,7 +167,9 @@ export const createFinanceDemo = ({
   const checkView = async () => {
     if (!(await canView())) throw fail("Нет доступа к финансам", "42501");
   };
-  const checkEdit = async (message = "Финансы меняют владелец и руководитель") => {
+  const checkEdit = async (
+    message = "Финансы меняют владелец и руководитель",
+  ) => {
     if (!(await canEdit())) throw fail(message, "42501");
   };
   const timeZone = async () =>
@@ -183,7 +188,10 @@ export const createFinanceDemo = ({
 
   // --- the linked transactions of payouts and lab payments ---------------
 
-  const linkedOf = async (field: "payroll_adjustment_id" | "lab_payment_id", id: Identifier) =>
+  const linkedOf = async (
+    field: "payroll_adjustment_id" | "lab_payment_id",
+    id: Identifier,
+  ) =>
     (await all<FinanceTransaction>("finance_transactions")).find((row) =>
       same(row[field], id),
     );
@@ -200,12 +208,18 @@ export const createFinanceDemo = ({
     await withSync(async () => {
       if (payout.kind !== "payout" || payout.account_operation_id != null) {
         if (linked) {
-          await baseDataProvider.delete("finance_transactions", { id: linked.id, previousData: linked });
+          await baseDataProvider.delete("finance_transactions", {
+            id: linked.id,
+            previousData: linked,
+          });
         }
         return;
       }
       if (linked) {
-        if (linked.amount !== payout.amount || linked.occurred_on !== payout.occurred_on) {
+        if (
+          linked.amount !== payout.amount ||
+          linked.occurred_on !== payout.occurred_on
+        ) {
           await baseDataProvider.update("finance_transactions", {
             id: linked.id,
             data: { amount: payout.amount, occurred_on: payout.occurred_on },
@@ -221,7 +235,9 @@ export const createFinanceDemo = ({
       if (account == null || !article) return;
       const person =
         payout.doctor_id != null
-          ? (await all<Doctor>("doctors")).find((d) => same(d.id, payout.doctor_id))?.name
+          ? (await all<Doctor>("doctors")).find((d) =>
+              same(d.id, payout.doctor_id),
+            )?.name
           : (() => null)();
       const sale =
         payout.sales_id != null
@@ -237,8 +253,12 @@ export const createFinanceDemo = ({
           amount: payout.amount,
           counterparty:
             person ??
-            ([sale?.first_name, sale?.last_name].filter(Boolean).join(" ") || null),
-          comment: [`Зарплата за ${payout.month.slice(5, 7)}.${payout.month.slice(0, 4)}`, payout.note]
+            ([sale?.first_name, sale?.last_name].filter(Boolean).join(" ") ||
+              null),
+          comment: [
+            `Зарплата за ${payout.month.slice(5, 7)}.${payout.month.slice(0, 4)}`,
+            payout.note,
+          ]
             .filter(Boolean)
             .join(" — "),
           branch_id: null,
@@ -256,7 +276,10 @@ export const createFinanceDemo = ({
     await withSync(async () => {
       if (payment.account_operation_id != null) {
         if (linked) {
-          await baseDataProvider.delete("finance_transactions", { id: linked.id, previousData: linked });
+          await baseDataProvider.delete("finance_transactions", {
+            id: linked.id,
+            previousData: linked,
+          });
         }
         return;
       }
@@ -267,7 +290,11 @@ export const createFinanceDemo = ({
             : linked.account_id;
         await baseDataProvider.update("finance_transactions", {
           id: linked.id,
-          data: { amount: payment.amount, occurred_on: day, account_id: account },
+          data: {
+            amount: payment.amount,
+            occurred_on: day,
+            account_id: account,
+          },
           previousData: linked,
         });
         return;
@@ -276,7 +303,9 @@ export const createFinanceDemo = ({
         (await accountOf(payment.method)) ?? (await accountOf("bank_transfer"));
       const article = await articleByCode("lab");
       if (account == null || !article) return;
-      const lab = (await all<Lab>("labs")).find((row) => same(row.id, payment.lab_id));
+      const lab = (await all<Lab>("labs")).find((row) =>
+        same(row.id, payment.lab_id),
+      );
       await baseDataProvider.create("finance_transactions", {
         data: {
           kind: "out",
@@ -286,7 +315,10 @@ export const createFinanceDemo = ({
           article_id: article.id,
           amount: payment.amount,
           counterparty: lab?.name ?? null,
-          comment: [`Лаборатория за ${payment.month.slice(5, 7)}.${payment.month.slice(0, 4)}`, payment.comment]
+          comment: [
+            `Лаборатория за ${payment.month.slice(5, 7)}.${payment.month.slice(0, 4)}`,
+            payment.comment,
+          ]
             .filter(Boolean)
             .join(" — "),
           branch_id: null,
@@ -298,11 +330,17 @@ export const createFinanceDemo = ({
       });
     });
   };
-  const dropLinked = async (field: "payroll_adjustment_id" | "lab_payment_id", id: Identifier) => {
+  const dropLinked = async (
+    field: "payroll_adjustment_id" | "lab_payment_id",
+    id: Identifier,
+  ) => {
     const linked = await linkedOf(field, id);
     if (linked) {
       await withSync(() =>
-        baseDataProvider.delete("finance_transactions", { id: linked.id, previousData: linked }),
+        baseDataProvider.delete("finance_transactions", {
+          id: linked.id,
+          previousData: linked,
+        }),
       );
     }
   };
@@ -315,12 +353,19 @@ export const createFinanceDemo = ({
   ): Promise<Partial<FinanceTransaction>> => {
     const next = { ...previous, ...data } as FinanceTransaction;
     if (!["in", "out", "transfer", "accrual"].includes(next.kind)) {
-      throw fail("Вид движения: поступление, выплата, перевод или начисление", "23514");
+      throw fail(
+        "Вид движения: поступление, выплата, перевод или начисление",
+        "23514",
+      );
     }
     if (!(Number(next.amount) > 0)) throw fail("Укажите сумму", "23514");
     if (!next.occurred_on) throw fail("Укажите дату", "23514");
     if (next.kind === "transfer") {
-      if (next.account_id == null || next.to_account_id == null || same(next.account_id, next.to_account_id)) {
+      if (
+        next.account_id == null ||
+        next.to_account_id == null ||
+        same(next.account_id, next.to_account_id)
+      ) {
         throw fail("Перевод — между двумя разными счетами", "23514");
       }
       next.article_id = null;
@@ -332,7 +377,9 @@ export const createFinanceDemo = ({
       next.to_account_id = null;
     }
     if (next.kind !== "transfer") {
-      const article = (await articles()).find((row) => same(row.id, next.article_id));
+      const article = (await articles()).find((row) =>
+        same(row.id, next.article_id),
+      );
       if (!article) throw fail("Статья не найдена");
       if (next.kind === "in" && article.section !== "in") {
         throw fail("Поступление — по статье поступлений");
@@ -343,7 +390,11 @@ export const createFinanceDemo = ({
       if (next.kind === "accrual" && !article.pnl_line) {
         throw fail("Начисление — по статье, которая входит в ПиУ");
       }
-      if (!article.is_active && !syncing && (!previous || !same(previous.article_id, next.article_id))) {
+      if (
+        !article.is_active &&
+        !syncing &&
+        (!previous || !same(previous.article_id, next.article_id))
+      ) {
         throw fail("Статья в архиве");
       }
     }
@@ -404,8 +455,9 @@ export const createFinanceDemo = ({
     },
   });
 
-  const readable = (check: () => Promise<boolean>) => async (result: GetListResult) =>
-    (await check()) ? result : { ...result, data: [], total: 0 };
+  const readable =
+    (check: () => Promise<boolean>) => async (result: GetListResult) =>
+      (await check()) ? result : { ...result, data: [], total: 0 };
 
   const dictionary = (
     resource: "finance_accounts" | "finance_articles",
@@ -439,9 +491,9 @@ export const createFinanceDemo = ({
     ...auditAfter(resource),
     beforeUpdate: async (params) => {
       await checkEdit();
-      const previous = (await all<FinanceAccount & FinanceArticle>(resource)).find((row) =>
-        same(row.id, params.id),
-      );
+      const previous = (
+        await all<FinanceAccount & FinanceArticle>(resource)
+      ).find((row) => same(row.id, params.id));
       if (!previous) throw fail("Не найдено", "P0002");
       const data = { ...params.data };
       if ("code" in data && data.code !== previous.code) {
@@ -451,7 +503,9 @@ export const createFinanceDemo = ({
         resource === "finance_articles" &&
         previous.code &&
         (["section", "activity", "pnl_line"] as const).some(
-          (field) => field in data && (data[field] ?? null) !== (previous[field] ?? null),
+          (field) =>
+            field in data &&
+            (data[field] ?? null) !== (previous[field] ?? null),
         )
       ) {
         throw fail("У системной статьи меняются только название и архив");
@@ -466,13 +520,23 @@ export const createFinanceDemo = ({
     },
     beforeDelete: async (params) => {
       await checkEdit();
-      const previous = (await all<FinanceAccount>(resource)).find((row) => same(row.id, params.id));
+      const previous = (await all<FinanceAccount>(resource)).find((row) =>
+        same(row.id, params.id),
+      );
       if (previous?.code) {
-        throw fail(`Системный ${label} нельзя удалить — только переименовать или убрать в архив`);
+        throw fail(
+          `Системный ${label} нельзя удалить — только переименовать или убрать в архив`,
+        );
       }
-      const field = resource === "finance_accounts" ? ["account_id", "to_account_id"] : ["article_id"];
-      const used = (await all<FinanceTransaction>("finance_transactions")).some((row) =>
-        field.some((key) => same((row as Record<string, any>)[key], params.id)),
+      const field =
+        resource === "finance_accounts"
+          ? ["account_id", "to_account_id"]
+          : ["article_id"];
+      const used = (await all<FinanceTransaction>("finance_transactions")).some(
+        (row) =>
+          field.some((key) =>
+            same((row as Record<string, any>)[key], params.id),
+          ),
       );
       const mapped =
         resource === "finance_accounts"
@@ -492,7 +556,10 @@ export const createFinanceDemo = ({
       beforeCreate: async (params) => {
         if (!syncing) {
           await checkEdit();
-          if (params.data.payroll_adjustment_id != null || params.data.lab_payment_id != null) {
+          if (
+            params.data.payroll_adjustment_id != null ||
+            params.data.lab_payment_id != null
+          ) {
             throw fail("Связь с выплатой задаёт только система");
           }
         }
@@ -504,34 +571,47 @@ export const createFinanceDemo = ({
             branch_id: null,
             ...params.data,
             ...(syncing ? {} : await checkTransaction(params.data)),
-            created_by: syncing ? params.data.created_by : ((await currentSalesId()) ?? null),
+            created_by: syncing
+              ? params.data.created_by
+              : ((await currentSalesId()) ?? null),
             created_at: new Date().toISOString(),
           },
         };
       },
       ...auditAfter("finance_transactions"),
       beforeUpdate: async (params) => {
-        const previous = (await all<FinanceTransaction>("finance_transactions")).find((row) =>
-          same(row.id, params.id),
-        );
+        const previous = (
+          await all<FinanceTransaction>("finance_transactions")
+        ).find((row) => same(row.id, params.id));
         if (!previous) throw fail("Движение не найдено", "P0002");
         if (syncing) return params;
         await checkEdit();
         const data = { ...params.data } as Partial<FinanceTransaction>;
-        const linked = previous.payroll_adjustment_id != null || previous.lab_payment_id != null;
+        const linked =
+          previous.payroll_adjustment_id != null ||
+          previous.lab_payment_id != null;
         if (
-          ("payroll_adjustment_id" in data && !same(data.payroll_adjustment_id, previous.payroll_adjustment_id) && (data.payroll_adjustment_id != null || previous.payroll_adjustment_id != null)) ||
-          ("lab_payment_id" in data && !same(data.lab_payment_id, previous.lab_payment_id) && (data.lab_payment_id != null || previous.lab_payment_id != null))
+          ("payroll_adjustment_id" in data &&
+            !same(data.payroll_adjustment_id, previous.payroll_adjustment_id) &&
+            (data.payroll_adjustment_id != null ||
+              previous.payroll_adjustment_id != null)) ||
+          ("lab_payment_id" in data &&
+            !same(data.lab_payment_id, previous.lab_payment_id) &&
+            (data.lab_payment_id != null || previous.lab_payment_id != null))
         ) {
           throw fail("Связь с выплатой не меняется");
         }
         if (
           linked &&
-          ((data.amount !== undefined && Number(data.amount) !== previous.amount) ||
-            (data.occurred_on !== undefined && data.occurred_on !== previous.occurred_on) ||
+          ((data.amount !== undefined &&
+            Number(data.amount) !== previous.amount) ||
+            (data.occurred_on !== undefined &&
+              data.occurred_on !== previous.occurred_on) ||
             (data.kind !== undefined && data.kind !== previous.kind))
         ) {
-          throw fail("Сумму и дату выплаты меняют в разделе «Зарплаты» или «Лаборатория»");
+          throw fail(
+            "Сумму и дату выплаты меняют в разделе «Зарплаты» или «Лаборатория»",
+          );
         }
         previousRows.set(`finance_transactions${params.id}`, previous);
         return { ...params, data: await checkTransaction(data, previous) };
@@ -539,10 +619,14 @@ export const createFinanceDemo = ({
       beforeDelete: async (params) => {
         if (syncing) return params;
         await checkEdit();
-        const previous = (await all<FinanceTransaction>("finance_transactions")).find((row) =>
-          same(row.id, params.id),
-        );
-        if (previous && (previous.payroll_adjustment_id != null || previous.lab_payment_id != null)) {
+        const previous = (
+          await all<FinanceTransaction>("finance_transactions")
+        ).find((row) => same(row.id, params.id));
+        if (
+          previous &&
+          (previous.payroll_adjustment_id != null ||
+            previous.lab_payment_id != null)
+        ) {
           throw fail(
             "Это выплата зарплаты или оплата лаборатории: удалите её в разделе «Зарплаты» или «Лаборатория»",
           );
@@ -560,19 +644,24 @@ export const createFinanceDemo = ({
           if (resource === "finance_models") {
             data.name = String(data.name ?? "").trim();
             if (!data.name) throw fail("Укажите название", "23514");
-            data.start_month = monthOf(data.start_month ?? todayKey(await timeZone()));
+            data.start_month = monthOf(
+              data.start_month ?? todayKey(await timeZone()),
+            );
             data.created_by = (await currentSalesId()) ?? null;
             data.created_at = new Date().toISOString();
             data.updated_at = data.created_at;
           }
           if (resource === "finance_model_months") {
             const taken = (await all<FinanceModelMonth>(resource)).some(
-              (row) => same(row.model_id, data.model_id) && Number(row.month_index) === Number(data.month_index),
+              (row) =>
+                same(row.model_id, data.model_id) &&
+                Number(row.month_index) === Number(data.month_index),
             );
             if (taken) throw fail("Месяц уже задан", "23505");
           }
           if (resource === "finance_model_lines") {
-            if (!String(data.name ?? "").trim()) throw fail("Укажите название", "23514");
+            if (!String(data.name ?? "").trim())
+              throw fail("Укажите название", "23514");
             if (Number(data.to_index ?? 11) < Number(data.from_index ?? 0)) {
               throw fail("Месяцы строки", "23514");
             }
@@ -586,7 +675,9 @@ export const createFinanceDemo = ({
           if (resource === "finance_models") {
             if (data.start_month) data.start_month = monthOf(data.start_month);
             data.updated_at = new Date().toISOString();
-            const previous = (await all<FinanceModel>(resource)).find((row) => same(row.id, params.id));
+            const previous = (await all<FinanceModel>(resource)).find((row) =>
+              same(row.id, params.id),
+            );
             if (previous) previousRows.set(`${resource}${params.id}`, previous);
           }
           return { ...params, data };
@@ -595,10 +686,19 @@ export const createFinanceDemo = ({
           await checkEdit("Финмодель меняют владелец и руководитель");
           if (resource === "finance_models") {
             // The months and the lines go with the model (on delete cascade)
-            for (const child of ["finance_model_months", "finance_model_lines"]) {
-              for (const row of await all<{ id: Identifier; model_id: Identifier }>(child)) {
+            for (const child of [
+              "finance_model_months",
+              "finance_model_lines",
+            ]) {
+              for (const row of await all<{
+                id: Identifier;
+                model_id: Identifier;
+              }>(child)) {
                 if (same(row.model_id, params.id)) {
-                  await baseDataProvider.delete(child, { id: row.id, previousData: row });
+                  await baseDataProvider.delete(child, {
+                    id: row.id,
+                    previousData: row,
+                  });
                 }
               }
             }
@@ -618,15 +718,19 @@ export const createFinanceDemo = ({
         return result;
       },
       afterDelete: async (result) => {
-        if (result.data) await dropLinked("payroll_adjustment_id", result.data.id);
+        if (result.data)
+          await dropLinked("payroll_adjustment_id", result.data.id);
         return result;
       },
     },
     {
       resource: "lab_payments",
       beforeUpdate: async (params) => {
-        const previous = (await all<LabPayment>("lab_payments")).find((row) => same(row.id, params.id));
-        if (previous) previousRows.set(`lab_payments${params.id}`, previous as never);
+        const previous = (await all<LabPayment>("lab_payments")).find((row) =>
+          same(row.id, params.id),
+        );
+        if (previous)
+          previousRows.set(`lab_payments${params.id}`, previous as never);
         return params;
       },
       afterCreate: async (result) => {
@@ -649,17 +753,29 @@ export const createFinanceDemo = ({
 
   // --- reports ---------------------------------------------------------------
 
-  const movementsUpTo = async (to: string | null, from: string | null = null) => {
-    const [operations, transactions, arts, methods, categories, adjustments, patients] =
-      await Promise.all([
-        all<AccountOperation>("account_operations"),
-        all<FinanceTransaction>("finance_transactions"),
-        articles(),
-        methodRows(),
-        all<CashExpenseCategory & { article_id?: Identifier | null }>("cash_expense_categories"),
-        all<PayrollAdjustment>("payroll_adjustments"),
-        all<Patient>("patients"),
-      ]);
+  const movementsUpTo = async (
+    to: string | null,
+    from: string | null = null,
+  ) => {
+    const [
+      operations,
+      transactions,
+      arts,
+      methods,
+      categories,
+      adjustments,
+      patients,
+    ] = await Promise.all([
+      all<AccountOperation>("account_operations"),
+      all<FinanceTransaction>("finance_transactions"),
+      articles(),
+      methodRows(),
+      all<CashExpenseCategory & { article_id?: Identifier | null }>(
+        "cash_expense_categories",
+      ),
+      all<PayrollAdjustment>("payroll_adjustments"),
+      all<Patient>("patients"),
+    ]);
     return financeMovements({
       operations,
       transactions,
@@ -674,7 +790,11 @@ export const createFinanceDemo = ({
     });
   };
 
-  const pnl = async (from: string, to: string, branchId?: Identifier | null): Promise<PnlReport> => {
+  const pnl = async (
+    from: string,
+    to: string,
+    branchId?: Identifier | null,
+  ): Promise<PnlReport> => {
     const tz = await timeZone();
     const [
       plans,
@@ -713,7 +833,10 @@ export const createFinanceDemo = ({
     for (let month = monthOf(from); month < to; ) {
       months[month] = await payrollLines(month);
       const [y, m] = month.split("-").map(Number);
-      month = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+      month =
+        m === 12
+          ? `${y + 1}-01-01`
+          : `${y}-${String(m + 1).padStart(2, "0")}-01`;
     }
     const facts = pnlFacts(
       {
@@ -746,7 +869,9 @@ export const createFinanceDemo = ({
       visits,
       chairs: chairs.map((chair) => ({
         is_active: chair.is_active,
-        branch_id: (chair as Chair & { branch_id?: Identifier | null }).branch_id ?? null,
+        branch_id:
+          (chair as Chair & { branch_id?: Identifier | null }).branch_id ??
+          null,
       })),
       timeZone: tz,
     });
@@ -770,9 +895,16 @@ export const createFinanceDemo = ({
     },
     async getCashFlowMovements(filters: MovementFilters) {
       await checkView();
-      return filterMovements(await movementsUpTo(filters.to, filters.from), filters);
+      return filterMovements(
+        await movementsUpTo(filters.to, filters.from),
+        filters,
+      );
     },
-    async getPnl(filters: { from: string; to: string; branch_id?: Identifier | null }) {
+    async getPnl(filters: {
+      from: string;
+      to: string;
+      branch_id?: Identifier | null;
+    }) {
       await checkEdit("ПиУ видят только владелец и руководитель");
       const from = monthOf(filters.from);
       const to = monthOf(filters.to);
@@ -784,24 +916,40 @@ export const createFinanceDemo = ({
       scenario: Scenario = "base",
     ): Promise<FinanceModelReport> {
       await checkEdit("Финмодель видят только владелец и руководитель");
-      const model = (await all<FinanceModel>("finance_models")).find((row) => same(row.id, modelId));
+      const model = (await all<FinanceModel>("finance_models")).find((row) =>
+        same(row.id, modelId),
+      );
       if (!model) throw fail("Модель не найдена", "P0002");
       const plan = computeModel(
         model,
-        (await all<FinanceModelMonth>("finance_model_months")).filter((row) => same(row.model_id, modelId)),
-        (await all<FinanceModelLine>("finance_model_lines")).filter((row) => same(row.model_id, modelId)),
+        (await all<FinanceModelMonth>("finance_model_months")).filter((row) =>
+          same(row.model_id, modelId),
+        ),
+        (await all<FinanceModelLine>("finance_model_lines")).filter((row) =>
+          same(row.model_id, modelId),
+        ),
         scenario,
       );
       const currentMonth = monthOf(todayKey(await timeZone()));
       const range = factRange(model.start_month, currentMonth);
       const fact = range ? await pnl(range.from, range.to, null) : null;
-      return { ...plan, current_month: currentMonth, fact: modelFacts(plan, fact, currentMonth) };
+      return {
+        ...plan,
+        current_month: currentMonth,
+        fact: modelFacts(plan, fact, currentMonth),
+      };
     },
     async getFinanceMethodAccounts(): Promise<FinanceMethodAccount[]> {
       if (!(await canView())) return [];
-      return (await methodRows()).map(({ method, account_id }) => ({ method, account_id }));
+      return (await methodRows()).map(({ method, account_id }) => ({
+        method,
+        account_id,
+      }));
     },
-    async setFinanceMethodAccount(method: FinanceMethod, accountId: Identifier) {
+    async setFinanceMethodAccount(
+      method: FinanceMethod,
+      accountId: Identifier,
+    ) {
       await checkEdit();
       const row = (await methodRows()).find((r) => r.method === method);
       if (!row) throw fail("Способ не найден", "P0002");

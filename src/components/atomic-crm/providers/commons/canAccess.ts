@@ -100,6 +100,17 @@ export const canAccess = <
     return role === "head";
   }
 
+  // Finance (stage 44): the ДДС with the reports right (the head, an
+  // administrator given «Отчёты»); the P&L, the model and every change —
+  // the owner and the head
+  if (params.resource === "finance") {
+    if (role !== "head" && role !== "manager") return false;
+    return rights ? rights.reports.view === "all" : role === "head";
+  }
+  if (params.resource === "finance_pnl" || params.resource === "finance_edit") {
+    return role === "head";
+  }
+
   // Marketplace of integrations (stage 25): owner, head (and integrator)
   if (params.resource === "integrations") {
     return role === "head";

@@ -64,9 +64,36 @@ const ARTICLES: FinanceArticle[] = (
 }));
 const art = (code: string) => ARTICLES.find((a) => a.code === code)!.id;
 const ACCOUNTS: FinanceAccount[] = [
-  { id: 1, name: "Касса", kind: "cash", code: "till", opening_balance: 100000, opening_date: "2026-06-01", is_active: true, position: 0 },
-  { id: 2, name: "Kaspi", kind: "kaspi", code: "kaspi", opening_balance: 0, opening_date: null, is_active: true, position: 1 },
-  { id: 3, name: "Банк", kind: "bank", code: "bank", opening_balance: 500000, opening_date: "2026-06-01", is_active: true, position: 2 },
+  {
+    id: 1,
+    name: "Касса",
+    kind: "cash",
+    code: "till",
+    opening_balance: 100000,
+    opening_date: "2026-06-01",
+    is_active: true,
+    position: 0,
+  },
+  {
+    id: 2,
+    name: "Kaspi",
+    kind: "kaspi",
+    code: "kaspi",
+    opening_balance: 0,
+    opening_date: null,
+    is_active: true,
+    position: 1,
+  },
+  {
+    id: 3,
+    name: "Банк",
+    kind: "bank",
+    code: "bank",
+    opening_balance: 500000,
+    opening_date: "2026-06-01",
+    is_active: true,
+    position: 2,
+  },
 ];
 const METHODS = [
   { method: "cash" as const, account_id: 1 },
@@ -82,13 +109,23 @@ const CATEGORIES = [
   { id: 2, name: "Лаборатория", article_id: art("lab") },
   { id: 4, name: "Аренда", article_id: art("rent") },
 ];
-const op = (row: Partial<AccountOperation> & Pick<AccountOperation, "id" | "kind" | "amount" | "method" | "occurred_at">): AccountOperation => ({
+const op = (
+  row: Partial<AccountOperation> &
+    Pick<AccountOperation, "id" | "kind" | "amount" | "method" | "occurred_at">,
+): AccountOperation => ({
   patient_id: 1,
   account: "services",
   ...row,
 });
 const OPERATIONS: AccountOperation[] = [
-  op({ id: 1, kind: "payment", amount: 50000, method: "cash", occurred_at: "2026-06-10T12:00:00+05:00", branch_id: 1 }),
+  op({
+    id: 1,
+    kind: "payment",
+    amount: 50000,
+    method: "cash",
+    occurred_at: "2026-06-10T12:00:00+05:00",
+    branch_id: 1,
+  }),
   op({
     id: 2,
     kind: "payment",
@@ -101,31 +138,150 @@ const OPERATIONS: AccountOperation[] = [
     occurred_at: "2026-06-11T12:00:00+05:00",
     branch_id: 1,
   }),
-  op({ id: 3, kind: "deposit", account: "deposit", amount: 40000, method: "kaspi_transfer", occurred_at: "2026-06-12T12:00:00+05:00" }),
-  op({ id: 4, kind: "deposit_payment", amount: 20000, method: "deposit", occurred_at: "2026-06-13T12:00:00+05:00", branch_id: 1 }),
-  op({ id: 5, kind: "refund", amount: 5000, method: "cash", occurred_at: "2026-06-14T12:00:00+05:00", branch_id: 1 }),
-  op({ id: 6, kind: "expense", patient_id: null, amount: 20000, method: "cash", category_id: 4, occurred_at: "2026-06-15T12:00:00+05:00" }),
+  op({
+    id: 3,
+    kind: "deposit",
+    account: "deposit",
+    amount: 40000,
+    method: "kaspi_transfer",
+    occurred_at: "2026-06-12T12:00:00+05:00",
+  }),
+  op({
+    id: 4,
+    kind: "deposit_payment",
+    amount: 20000,
+    method: "deposit",
+    occurred_at: "2026-06-13T12:00:00+05:00",
+    branch_id: 1,
+  }),
+  op({
+    id: 5,
+    kind: "refund",
+    amount: 5000,
+    method: "cash",
+    occurred_at: "2026-06-14T12:00:00+05:00",
+    branch_id: 1,
+  }),
+  op({
+    id: 6,
+    kind: "expense",
+    patient_id: null,
+    amount: 20000,
+    method: "cash",
+    category_id: 4,
+    occurred_at: "2026-06-15T12:00:00+05:00",
+  }),
   // The therapist's payout from the cash desk, the lab from the cash desk
-  op({ id: 7, kind: "expense", patient_id: null, amount: 30000, method: "kaspi_transfer", category_id: 1, occurred_at: "2026-06-25T12:00:00+05:00" }),
-  op({ id: 8, kind: "expense", patient_id: null, amount: 4000, method: "card", category_id: 2, occurred_at: "2026-06-28T12:00:00+05:00" }),
+  op({
+    id: 7,
+    kind: "expense",
+    patient_id: null,
+    amount: 30000,
+    method: "kaspi_transfer",
+    category_id: 1,
+    occurred_at: "2026-06-25T12:00:00+05:00",
+  }),
+  op({
+    id: 8,
+    kind: "expense",
+    patient_id: null,
+    amount: 4000,
+    method: "card",
+    category_id: 2,
+    occurred_at: "2026-06-28T12:00:00+05:00",
+  }),
 ];
-const tx = (row: Partial<FinanceTransaction> & Pick<FinanceTransaction, "id" | "kind" | "occurred_on" | "amount">): FinanceTransaction => ({
+const tx = (
+  row: Partial<FinanceTransaction> &
+    Pick<FinanceTransaction, "id" | "kind" | "occurred_on" | "amount">,
+): FinanceTransaction => ({
   account_id: 3,
   ...row,
 });
 const TRANSACTIONS: FinanceTransaction[] = [
-  tx({ id: 1, kind: "in", occurred_on: "2026-05-20", article_id: art("other_in"), amount: 7777 }),
-  tx({ id: 2, kind: "in", occurred_on: "2026-06-05", article_id: art("loans_in"), amount: 1000000 }),
-  tx({ id: 3, kind: "out", occurred_on: "2026-06-07", article_id: art("equipment"), amount: 200000 }),
-  tx({ id: 4, kind: "out", occurred_on: "2026-06-18", article_id: art("marketing"), amount: 5000 }),
-  tx({ id: 5, kind: "out", occurred_on: "2026-06-25", article_id: art("taxes"), amount: 30000 }),
-  tx({ id: 6, kind: "accrual", occurred_on: "2026-06-30", account_id: null, article_id: art("depreciation"), amount: 8000 }),
-  tx({ id: 7, kind: "out", occurred_on: "2026-07-05", article_id: art("dividends"), amount: 100000 }),
-  tx({ id: 8, kind: "out", occurred_on: "2026-06-20", article_id: art("utilities"), amount: 25000, branch_id: 1 }),
-  tx({ id: 9, kind: "transfer", occurred_on: "2026-06-30", account_id: 1, to_account_id: 3, amount: 10000 }),
+  tx({
+    id: 1,
+    kind: "in",
+    occurred_on: "2026-05-20",
+    article_id: art("other_in"),
+    amount: 7777,
+  }),
+  tx({
+    id: 2,
+    kind: "in",
+    occurred_on: "2026-06-05",
+    article_id: art("loans_in"),
+    amount: 1000000,
+  }),
+  tx({
+    id: 3,
+    kind: "out",
+    occurred_on: "2026-06-07",
+    article_id: art("equipment"),
+    amount: 200000,
+  }),
+  tx({
+    id: 4,
+    kind: "out",
+    occurred_on: "2026-06-18",
+    article_id: art("marketing"),
+    amount: 5000,
+  }),
+  tx({
+    id: 5,
+    kind: "out",
+    occurred_on: "2026-06-25",
+    article_id: art("taxes"),
+    amount: 30000,
+  }),
+  tx({
+    id: 6,
+    kind: "accrual",
+    occurred_on: "2026-06-30",
+    account_id: null,
+    article_id: art("depreciation"),
+    amount: 8000,
+  }),
+  tx({
+    id: 7,
+    kind: "out",
+    occurred_on: "2026-07-05",
+    article_id: art("dividends"),
+    amount: 100000,
+  }),
+  tx({
+    id: 8,
+    kind: "out",
+    occurred_on: "2026-06-20",
+    article_id: art("utilities"),
+    amount: 25000,
+    branch_id: 1,
+  }),
+  tx({
+    id: 9,
+    kind: "transfer",
+    occurred_on: "2026-06-30",
+    account_id: 1,
+    to_account_id: 3,
+    amount: 10000,
+  }),
   // The linked transactions of the bank payout and the bank lab payment
-  tx({ id: 10, kind: "out", occurred_on: "2026-06-30", article_id: art("salary_staff"), amount: 150000, payroll_adjustment_id: 2 }),
-  tx({ id: 11, kind: "out", occurred_on: "2026-06-28", article_id: art("lab"), amount: 36000, lab_payment_id: 1 }),
+  tx({
+    id: 10,
+    kind: "out",
+    occurred_on: "2026-06-30",
+    article_id: art("salary_staff"),
+    amount: 150000,
+    payroll_adjustment_id: 2,
+  }),
+  tx({
+    id: 11,
+    kind: "out",
+    occurred_on: "2026-06-28",
+    article_id: art("lab"),
+    amount: 36000,
+    lab_payment_id: 1,
+  }),
 ];
 const movements = (from?: string, to?: string) =>
   financeMovements({
@@ -140,8 +296,13 @@ const movements = (from?: string, to?: string) =>
     from,
     to,
   });
-const row = (report: ReturnType<typeof cashFlowReport>, code: string, period: string) =>
-  report.rows.find((r) => r.article_id === art(code) && r.period === period)?.amount ?? 0;
+const row = (
+  report: ReturnType<typeof cashFlowReport>,
+  code: string,
+  period: string,
+) =>
+  report.rows.find((r) => r.article_id === art(code) && r.period === period)
+    ?.amount ?? 0;
 
 describe("ДДС", () => {
   const report = cashFlowReport({
@@ -171,12 +332,19 @@ describe("ДДС", () => {
       opening: 600000,
       closing: 1235000,
     });
-    expect(report.totals[1]).toMatchObject({ net: -100000, opening: 1235000, closing: 1135000 });
-    const account = (id: number) => report.accounts.find((a) => a.account_id === id)!;
+    expect(report.totals[1]).toMatchObject({
+      net: -100000,
+      opening: 1235000,
+      closing: 1135000,
+    });
+    const account = (id: number) =>
+      report.accounts.find((a) => a.account_id === id)!;
     expect([account(1).opening, account(1).closing]).toEqual([100000, 115000]);
     expect([account(2).opening, account(2).closing]).toEqual([0, 56000]);
     expect([account(3).opening, account(3).closing]).toEqual([500000, 964000]);
-    expect(report.accounts.reduce((sum, a) => sum + a.flow, 0)).toBe(report.total.net);
+    expect(report.accounts.reduce((sum, a) => sum + a.flow, 0)).toBe(
+      report.total.net,
+    );
   });
 
   it("before the opening date ends at the opening balance", () => {
@@ -192,18 +360,42 @@ describe("ДДС", () => {
   });
 
   it("by day and by week", () => {
-    const days = cashFlowReport({ movements: movements(), accounts: ACCOUNTS, articles: ARTICLES, from: "2026-06-01", to: "2026-07-01", granularity: "day" });
+    const days = cashFlowReport({
+      movements: movements(),
+      accounts: ACCOUNTS,
+      articles: ARTICLES,
+      from: "2026-06-01",
+      to: "2026-07-01",
+      granularity: "day",
+    });
     expect(days.periods).toHaveLength(30);
     expect(row(days, "services", "2026-06-11")).toBe(50000);
-    const weeks = cashFlowReport({ movements: movements(), accounts: ACCOUNTS, articles: ARTICLES, from: "2026-06-01", to: "2026-07-01", granularity: "week" });
+    const weeks = cashFlowReport({
+      movements: movements(),
+      accounts: ACCOUNTS,
+      articles: ARTICLES,
+      from: "2026-06-01",
+      to: "2026-07-01",
+      granularity: "week",
+    });
     expect(weeks.periods[0]).toBe("2026-06-01");
     expect(row(weeks, "services", "2026-06-08")).toBe(100000);
     expect(bucketOf("2026-06-14", "week")).toBe("2026-06-08");
-    expect(periodsOf("2026-06-03", "2026-06-10", "week")).toEqual(["2026-06-01", "2026-06-08"]);
+    expect(periodsOf("2026-06-03", "2026-06-10", "week")).toEqual([
+      "2026-06-01",
+      "2026-06-08",
+    ]);
   });
 
   it("the branch filter: no balances", () => {
-    const branch = cashFlowReport({ movements: movements(), accounts: ACCOUNTS, articles: ARTICLES, from: "2026-06-01", to: "2026-07-01", branchId: 1 });
+    const branch = cashFlowReport({
+      movements: movements(),
+      accounts: ACCOUNTS,
+      articles: ARTICLES,
+      from: "2026-06-01",
+      to: "2026-07-01",
+      branchId: 1,
+    });
     expect(branch.balances).toBe(false);
     expect(branch.total.opening).toBeNull();
     expect(row(branch, "utilities", "2026-06-01")).toBe(-25000);
@@ -213,12 +405,24 @@ describe("ДДС", () => {
 
   it("the drill-down", () => {
     const all = movements();
-    const services = filterMovements(all, { from: "2026-06-01", to: "2026-07-01", article_id: art("services") });
+    const services = filterMovements(all, {
+      from: "2026-06-01",
+      to: "2026-07-01",
+      article_id: art("services"),
+    });
     expect(services).toHaveLength(3);
     expect(services.reduce((sum, m) => sum + m.amount, 0)).toBe(100000);
-    const transfers = filterMovements(all, { from: "2026-06-01", to: "2026-07-01", transfers: true });
+    const transfers = filterMovements(all, {
+      from: "2026-06-01",
+      to: "2026-07-01",
+      transfers: true,
+    });
     expect(transfers.map((m) => m.amount).sort()).toEqual([-10000, 10000]);
-    const till = filterMovements(all, { from: "2026-06-01", to: "2026-07-01", account_id: 1 });
+    const till = filterMovements(all, {
+      from: "2026-06-01",
+      to: "2026-07-01",
+      account_id: 1,
+    });
     expect(till.reduce((sum, m) => sum + m.amount, 0)).toBe(15000);
   });
 });
@@ -233,7 +437,12 @@ describe("ПиУ", () => {
     discount_amount: 0,
     doctor_id: 1,
   } as unknown as TreatmentPlan;
-  const stage = { id: 1, plan_id: 1, status: "in_progress", discount_percent: 0 } as unknown as TreatmentStage;
+  const stage = {
+    id: 1,
+    plan_id: 1,
+    status: "in_progress",
+    discount_percent: 0,
+  } as unknown as TreatmentStage;
   const item = (id: number, quantity: number, done_at: string | null) =>
     ({
       id,
@@ -255,7 +464,16 @@ describe("ПиУ", () => {
       item(3, 1, null),
     ],
     visits: [
-      { id: 1, status: "completed", source: "crm", service_id: 2, deal_id: null, doctor_id: 1, branch_id: 1, starts_at: "2026-06-20T10:00:00+05:00" },
+      {
+        id: 1,
+        status: "completed",
+        source: "crm",
+        service_id: 2,
+        deal_id: null,
+        doctor_id: 1,
+        branch_id: 1,
+        starts_at: "2026-06-20T10:00:00+05:00",
+      },
     ],
     services: [
       { id: 1, price: 30000 },
@@ -275,9 +493,18 @@ describe("ПиУ", () => {
             { doctor_id: null, source: "fixed" as const, accrued: 200000 },
           ]
         : [{ doctor_id: null, source: "fixed" as const, accrued: 200000 }],
-    adjustments: [{ doctor_id: 1, month: "2026-06-01", kind: "bonus" as const, amount: 5000 }],
+    adjustments: [
+      {
+        doctor_id: 1,
+        month: "2026-06-01",
+        kind: "bonus" as const,
+        amount: 5000,
+      },
+    ],
     doctors: [{ id: 1, branch_id: branch ? 1 : 1 }],
-    adSpend: [{ spent_from: "2026-06-16", spent_to: "2026-07-15", amount: 30000 }],
+    adSpend: [
+      { spent_from: "2026-06-16", spent_to: "2026-07-15", amount: 30000 },
+    ],
     movements: movements("2026-06-01", "2026-08-01"),
     transactions: TRANSACTIONS,
     articles: ARTICLES,
@@ -324,26 +551,61 @@ describe("ПиУ", () => {
       payroll_share: 270.1,
     });
     const july = report().summary[1];
-    expect(july).toMatchObject({ revenue: 0, marketing: 15000, staff: 200000, net: -215000 });
+    expect(july).toMatchObject({
+      revenue: 0,
+      marketing: 15000,
+      staff: 200000,
+      net: -215000,
+    });
     expect(report().total.net).toBe(-515300);
     expect(
-      report().rows.find((r) => r.line === "opex" && r.article_id === art("rent")),
+      report().rows.find(
+        (r) => r.line === "opex" && r.article_id === art("rent"),
+      ),
     ).toMatchObject({ amount: 20000, source: "cash" });
   });
 
   it("the branch filter", () => {
     const june = report(1).summary[0];
-    expect(june).toMatchObject({ revenue: 86000, lab: 36000, doctors: 32300, staff: 0, opex_other: 25000, marketing: 0, revenue_per_chair: 43000 });
+    expect(june).toMatchObject({
+      revenue: 86000,
+      lab: 36000,
+      doctors: 32300,
+      staff: 0,
+      opex_other: 25000,
+      marketing: 0,
+      revenue_per_chair: 43000,
+    });
     expect(report(2).summary[0]).toMatchObject({ revenue: 0, net: 0 });
   });
 
   it("an accrual on a revenue article is revenue", () => {
     const facts = pnlFacts(
-      { ...input(), transactions: [...TRANSACTIONS, tx({ id: 20, kind: "accrual", occurred_on: "2026-07-10", account_id: null, article_id: art("services"), amount: 1000000 })] },
+      {
+        ...input(),
+        transactions: [
+          ...TRANSACTIONS,
+          tx({
+            id: 20,
+            kind: "accrual",
+            occurred_on: "2026-07-10",
+            account_id: null,
+            article_id: art("services"),
+            amount: 1000000,
+          }),
+        ],
+      },
       "2026-07-01",
       "2026-08-01",
     );
-    const july = pnlReport({ facts, from: "2026-07-01", to: "2026-08-01", visits: [], chairs: [], timeZone: TZ });
+    const july = pnlReport({
+      facts,
+      from: "2026-07-01",
+      to: "2026-08-01",
+      visits: [],
+      chairs: [],
+      timeZone: TZ,
+    });
     expect(july.summary[0].revenue).toBe(1000000);
   });
 
@@ -371,7 +633,13 @@ describe("Финмодель", () => {
     investment_amount: 3000000,
     investment_month: 0,
   };
-  const line = (id: number, name: string, pnl_line: FinanceModelLine["pnl_line"], kind: "fixed" | "percent", value: number): FinanceModelLine => ({
+  const line = (
+    id: number,
+    name: string,
+    pnl_line: FinanceModelLine["pnl_line"],
+    kind: "fixed" | "percent",
+    value: number,
+  ): FinanceModelLine => ({
     id,
     model_id: 1,
     name,
@@ -419,18 +687,29 @@ describe("Финмодель", () => {
   });
 
   it("scenarios and limited lines", () => {
-    expect(computeModel(model, months, lines, "pessimistic").months[0]).toMatchObject({ visits: 170, revenue: 3400000 });
-    expect(computeModel(model, months, lines, "optimistic").months[0].visits).toBe(230);
+    expect(
+      computeModel(model, months, lines, "pessimistic").months[0],
+    ).toMatchObject({ visits: 170, revenue: 3400000 });
+    expect(
+      computeModel(model, months, lines, "optimistic").months[0].visits,
+    ).toBe(230);
     const limited = lines.map((l) => (l.id === 7 ? { ...l, to_index: 0 } : l));
     expect(computeModel(model, months, limited).months[1].depreciation).toBe(0);
   });
 
   it("payback beyond the horizon is estimated", () => {
-    const plan = computeModel({ ...model, investment_amount: 30000000 }, [], lines);
+    const plan = computeModel(
+      { ...model, investment_amount: 30000000 },
+      [],
+      lines,
+    );
     expect(plan.payback_in_horizon).toBe(false);
     // 820 000 a month: 12 + ceil((30 000 000 − 9 840 000) / 820 000) = 12 + 25
     expect(plan.payback_months).toBe(37);
-    expect(computeModel({ ...model, investment_amount: 0 }, [], lines).payback_months).toBeNull();
+    expect(
+      computeModel({ ...model, investment_amount: 0 }, [], lines)
+        .payback_months,
+    ).toBeNull();
   });
 
   it("plan vs fact", () => {
@@ -438,12 +717,29 @@ describe("Финмодель", () => {
     const facts = modelFacts(
       plan,
       {
-        summary: [{ month: "2026-06-01", revenue: 86000, gross: 2700, ebitda: -262300, net: -300300, visits: 1 }],
+        summary: [
+          {
+            month: "2026-06-01",
+            revenue: 86000,
+            gross: 2700,
+            ebitda: -262300,
+            net: -300300,
+            visits: 1,
+          },
+        ],
       } as never,
       "2026-09-01",
     );
-    expect(facts[0]).toMatchObject({ revenue_delta: 86000 - 4000000, net_delta: -300300 - 770000, revenue_percent: 2.2, partial: false });
-    expect(factRange("2026-06-01", "2026-09-01")).toEqual({ from: "2026-06-01", to: "2026-10-01" });
+    expect(facts[0]).toMatchObject({
+      revenue_delta: 86000 - 4000000,
+      net_delta: -300300 - 770000,
+      revenue_percent: 2.2,
+      partial: false,
+    });
+    expect(factRange("2026-06-01", "2026-09-01")).toEqual({
+      from: "2026-06-01",
+      to: "2026-10-01",
+    });
     expect(factRange("2026-10-01", "2026-09-01")).toBeNull();
   });
 });
